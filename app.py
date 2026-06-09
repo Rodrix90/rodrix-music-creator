@@ -215,7 +215,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         TASKS[task_id]["logs"] += line + "\n"
         
     def save_local_log():
-        import os
         import datetime
         os.makedirs("logs", exist_ok=True)
         filename = f"logs/generation_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{task_id[:6]}.log"
@@ -260,7 +259,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
             bypass_result = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
             
-            import os
             if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
                 target_upload_file = bypassed_file_path
                 log_msg("FFmpeg terminó exitosamente. Usando audio modificado.")
