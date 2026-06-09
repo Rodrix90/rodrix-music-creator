@@ -470,6 +470,19 @@
                 const response = await fetch('/api/transform', { method: 'POST', body: formData });
                 const data = await response.json();
                 
+                // Descargar logs automáticamente si están disponibles
+                if (data.logs) {
+                    const blob = new Blob([data.logs], { type: 'text/plain' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `log_udio_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+                
                 if (!response.ok) {
                     throw new Error(data.detail || 'Error en el backend.');
                 }

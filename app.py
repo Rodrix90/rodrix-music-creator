@@ -196,6 +196,21 @@ async def transform_audio(
     temp_file_path = None
     bypassed_file_path = None
     
+    # --- LOGGING SYSTEM ---
+    log_trace = []
+    def log_msg(msg):
+        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+        line = f"[{timestamp}] {msg}"
+        print(line)
+        log_trace.append(line)
+        
+    def save_local_log():
+        os.makedirs("logs", exist_ok=True)
+        filename = f"logs/generation_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}.log"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write("\n".join(log_trace))
+        return "\n".join(log_trace)
+    
     if audio and not ignore_audio:
         try:
             ext = ".mp3"
@@ -211,16 +226,17 @@ async def transform_audio(
             with open(temp_file_path, "wb") as f:
                 f.write(content)
                 
-            print("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
+            log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
             success = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
             
             target_upload_file = bypassed_file_path if success and os.path.exists(bypassed_file_path) else temp_file_path
-            print("Subiendo MP3 a servidor temporal para obtener URL pública...")
+            log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
             upload_url = await upload_to_tmpfiles_async(target_upload_file)
             
             if not upload_url:
+                log_msg("ERROR: Fallo al subir el audio a servidor temporal.")
                 raise HTTPException(status_code=500, detail="Fallo al subir el audio a servidor temporal.")
-            print("Audio subido exitosamente a:", upload_url)
+            log_msg(f"Audio subido exitosamente a: {upload_url}")
             
         finally:
             for p in [temp_file_path, bypassed_file_path]:
@@ -229,7 +245,7 @@ async def transform_audio(
                     except: pass
                     
     if upload_url:
-        print("Usando endpoint V2 Upload & Cover")
+        log_msg("Usando endpoint V2 Upload & Cover")
         url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
         url_status = "https://udioapi.pro/api/v2/upload-cover/status"
         
@@ -250,7 +266,7 @@ async def transform_audio(
         if exclude_styles.strip():
             payload["negative_tags"] = exclude_styles.strip()
     else:
-        print("Usando endpoint estándar Generate")
+        log_msg("Usando endpoint estándar Generate")
         url_generate = "https://udioapi.pro/api/generate"
         url_status = "https://udioapi.pro/api/feed"
         
@@ -269,14 +285,14 @@ async def transform_audio(
             payload["negative_tags"] = exclude_styles.strip()
 
     try:
-        print(f"Submitting request to {url_generate}...")
+        log_msg(f"Submitting request to {url_generate}...")
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(url_generate, json=payload, headers=headers)
             
             if r.status_code == 402:
-                raise HTTPException(status_code=402, detail="No hay créditos suficientes en la API de Udio (Status 402).")
+                raise Exception("No hay créditos suficientes en la API de Udio (Status 402).")
             elif r.status_code != 200:
-                raise HTTPException(status_code=r.status_code, detail=f"Error de API: {r.text}")
+                raise Exception(f"Error de API HTTP {r.status_code}: {r.text}")
 
             resp_json = r.json()
             work_id = resp_json.get("workId") or resp_json.get("id")
@@ -288,7 +304,7 @@ async def transform_audio(
                 if not work_id:
                     raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
 
-            print(f"Task successfully queued. ID: {work_id}")
+            log_msg(f"Task successfully queued. ID: {work_id}")
             
             tracks = []
             for i in range(120):
@@ -307,6 +323,7 @@ async def transform_audio(
                         response_array = raw_data.get("response_data", [])
                         if status.upper() in ["SUCCESS", "COMPLETED"]:
                             tracks = response_array if isinstance(response_array, list) else [response_array]
+                            log_msg("Generación completada exitosamente.")
                             break
                         elif status.upper() in ["FAILED", "ERROR"]:
                             if isinstance(response_array, list) and len(response_array) > 0:
@@ -335,14 +352,16 @@ async def transform_audio(
 
                         if status.upper() in ["SUCCESS", "COMPLETED"]:
                             tracks = data
+                            log_msg("Generación completada exitosamente.")
                             break
                         elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
                             tracks = data
+                            log_msg("Generación completada exitosamente.")
                             break
                         elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
                             raise Exception(f"API Error: {error_msg}")
 
-                    print(f"Polling (Attempt {i+1}): Status={status}")
+                    log_msg(f"Polling (Attempt {i+1}): Status={status}")
                 await asyncio.sleep(5)
 
             if not tracks:
@@ -369,16 +388,17 @@ async def transform_audio(
                         }
                         final_tracks.append(track_info)
                         add_track_to_library(track_info)
+                        log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid})")
 
+            log_str = save_local_log()
             log_conversion(payload, "SUCCESS", None, final_tracks)
-            return JSONResponse(content={"status": "success", "tracks": final_tracks})
+            return JSONResponse(content={"status": "success", "tracks": final_tracks, "logs": log_str})
 
-    except HTTPException:
-        raise
     except Exception as e:
-        print(f"Processing error: {str(e)}")
+        log_msg(f"ERROR: {str(e)}")
+        log_str = save_local_log()
         log_conversion(payload if 'payload' in locals() else {}, "ERROR", str(e), None)
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"detail": str(e), "logs": log_str})
 
 @app.get("/api/library")
 async def api_get_library(current_user: str = Depends(get_current_user)):
