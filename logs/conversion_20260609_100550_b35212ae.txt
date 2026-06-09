@@ -1,0 +1,22 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 10:05:50
+Status: ERROR
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/wnwKZKhc0uye/bypassed_b6778d80682d41c7a50b0fdab9644ffb.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "[Vocals in Spanish]\n[Verse 1]\r\n[Male Solo]\r\nEn las olas inmensas de embravecido mar,\r\nque asaltan mi alma, la pobre embarcación,\r\nde rodillas ante Cristo, clamé y el huracán,\r\ndeshecho fué al instante a la voz de Dios.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nEs Cristo la roca, el ancla de mi fe;\r\nlos males, lamentos, y ayes de temor,\r\nterminan por siempre con mi Supremo Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Verse 2]\r\n[Female Solo]\r\nMe guarda del peligro, de prueba y de dolor;\r\nÉl manda que los vientos no agiten tempestad.\r\nlos mares se detienen, la ola reposó\r\ny en Cristo fijo el ancla, confiando más.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nEs Cristo la roca, el ancla de mi fe;\r\nlos males, lamentos, y ayes de temor,\r\nterminan por siempre con mi Supremo Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Verse 3]\r\n[Duet]\r\nMi dulce Salvador, si, mi hermoso amigo y Dios, \r\nQue libra de tristezas y aleja amarga hiel; \r\nPor fe yo iré al cielo, mansión del ser de amor; \r\nLa fuente inagotable, de dicha y bien.\r\n\r\n[Key Change]\r\n[Chorus]\r\n[Full Choir]\r\n[Crescendo]\r\nEs Cristo la roca, el ancla de mi fe;\r\nlos males, lamentos, y ayes de temor,\r\nterminan por siempre con mi Supremo Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Grand Finale]\r\nEs Cristo la roca, el ancla de mi fe;\r\nlos males, lamentos, y ayes de temor,\r\nterminan por siempre con mi Supremo Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Big Finish]\r\n[Sustained Chord]\r\n[Applause]",
+  "style": "Southern gospel,  style, live concert ambience, traditional white gospel choir, rich vocal harmonies, acoustic grand piano, deep melodic bass guitar, organic Pearl drums, country-gospel overheads, uplifting, majestic, emotional, heartfelt, cathedral acoustics, 1990s gospel production, inspirational, spanish vocals",
+  "title": "Cristo",
+  "make_instrumental": false,
+  "style_weight": 0.5,
+  "audio_weight": 0.25,
+  "weirdness_constraint": 0.5,
+  "negative_tags": "spanish acent"
+}
+
+--- ERROR ---
+API Error: Your lyrics contain copyrighted material. Please change it and try again.
+

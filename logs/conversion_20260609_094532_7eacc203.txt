@@ -1,0 +1,22 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 09:45:32
+Status: ERROR
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/w6wfZOsfRnn0/bypassed_9ba3c5c0fdd44229b59bcf17700d0145.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "[Vocals in Spanish]\n[Verse 1]\r\n[Male Solo]\r\nSobre el agua profunda del tempestuoso mar,\r\nke golpea mi alma, mi frágil embarcasión,\r\nme postré ante el Maestro, clamé y el uracán,\r\nse calmó en un instante por la bos de Dios.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Verse 2]\r\n[Female Solo]\r\nMe cuida del peligro, de angustia y de dolor;\r\nÉl frena ke los bientos lebanten tempestad.\r\nlas aguas se detienen, la ola ya paró\r\ny en Cristo anclo mi alma, confiando más.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Verse 3]\r\n[Duet]\r\nMi tierno Salbador, sí, mi buen amigo y Dios, \r\nke kita las tristesas y aleja toda iel; \r\npor fe yo iré a la gloria, morada de su amor; \r\nla fuente inagotable, de grasia y bien.\r\n\r\n[Key Change]\r\n[Chorus]\r\n[Full Choir]\r\n[Crescendo]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Grand Finale]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Big Finish]\r\n[Sustained Chord]\r\n[Applause]",
+  "style": "Southern gospel, Gaither Homecoming style, live concert ambience, traditional white gospel choir, rich vocal harmonies, acoustic grand piano, deep melodic bass guitar, organic Pearl drums, country-gospel overheads, uplifting, majestic, emotional, heartfelt, cathedral acoustics, 1990s gospel production, inspirational, spanish vocals",
+  "title": "Cristo",
+  "make_instrumental": false,
+  "style_weight": 0.72,
+  "audio_weight": 0.57,
+  "weirdness_constraint": 0.18,
+  "negative_tags": "worship, rock, pop, spanish acent"
+}
+
+--- ERROR ---
+API Error: Your lyrics contain copyrighted material. Please change it and try again.
+

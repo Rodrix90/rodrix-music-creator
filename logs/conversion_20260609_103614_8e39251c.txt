@@ -1,0 +1,21 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 10:36:14
+Status: ERROR
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/wGwFZ7kY0kbj/bypassed_101777bb172e42b7aebdb3b78be62226.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "[Vocals in Spanish]\nVerse 1]\r\n[Male Solo]\r\nenlasolas inmensas, dembrabecidomar\r\nqueasaltandemi alma , mi pobreembarcación,\r\nme postré ante el Maestro, clamé y el huracán,\r\nse calmó en un instante por la voz de Dios.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Verse 2]\r\n[Female Solo]\r\nMe cuida del peligro, de angustia y de dolor;\r\nÉl frena que los vientos levanten tempestad.\r\nlas aguas se detienen, la ola ya paró\r\ny en Cristo anclo mi alma, confiando más.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Verse 3]\r\n[Duet]\r\nMi tierno Salvador, sí, mi buen amigo y Dios, \r\nque quita las tristezas y aleja toda hiel; \r\npor fe yo iré a la gloria, morada de su amor; \r\nla fuente inagotable, de gracia y bien.\r\n\r\n[Key Change]\r\n[Chorus]\r\n[Full Choir]\r\n[Crescendo]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Grand Finale]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi refugio!\r\n\r\n[Big Finish]\r\n[Sustained Chord]\r\n",
+  "style": "Instrumental southern gospel, Gaither Homecoming style, live concert mix, pristine acoustic grand piano, deep melodic bass guitar, punchy deep kick drum, heavy rock drums, bright piercing cymbals, close-mic drums, shifting dynamics, uplifting, majestic, emotional, crystal clear auditorium acoustics, 1990s high-end gospel production., spanish vocals",
+  "title": "Cristo",
+  "make_instrumental": false,
+  "style_weight": 0.5,
+  "audio_weight": 0.25,
+  "weirdness_constraint": 0.5
+}
+
+--- ERROR ---
+API Error: Your lyrics contain copyrighted material. Please change it and try again.
+

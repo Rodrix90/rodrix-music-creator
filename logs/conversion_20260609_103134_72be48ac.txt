@@ -1,0 +1,38 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 10:31:34
+Status: SUCCESS
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/wNwDZOkrVacJ/bypassed_57f0954970dd43968307b6559ceb3bf8.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "[Instrumental]",
+  "style": "Instrumental southern gospel, Gaither Homecoming style, live concert mix, pristine acoustic grand piano, deep melodic bass guitar, premium DW drum kit, crisp Sabian Paragon cymbals, bright hi-hats, explosive crash cymbal swells, shifting dynamics, uplifting, majestic, emotional, crystal clear auditorium acoustics, 1990s high-end gospel production, virtuoso instrumentation., instrumental, no vocals",
+  "title": "En las olas inmensas",
+  "make_instrumental": true,
+  "style_weight": 0.71,
+  "audio_weight": 0.53,
+  "weirdness_constraint": 0.39,
+  "negative_tags": "voices"
+}
+
+--- TRACKS RECIBIDOS ---
+[
+  {
+    "id": "5c6b7326-f8d7-4324-af74-9d5bdf06ba0e",
+    "title": "En las olas inmensas",
+    "audio_url": "https://tempfile.aiquickdraw.com/r/55d047326067484f9fcfd04b42b2f3cf.mp3",
+    "image_url": "https://cdn2.suno.ai/image_5c6b7326-f8d7-4324-af74-9d5bdf06ba0e.jpeg",
+    "duration": 177.92,
+    "status": "complete"
+  },
+  {
+    "id": "69e366c8-285a-40df-8d7d-699b76d3e2fe",
+    "title": "En las olas inmensas",
+    "audio_url": "https://tempfile.aiquickdraw.com/r/3a3b7dc339c849c69c3b59cba92b56c6.mp3",
+    "image_url": "https://cdn2.suno.ai/image_69e366c8-285a-40df-8d7d-699b76d3e2fe.jpeg",
+    "duration": 198.56,
+    "status": "complete"
+  }
+]

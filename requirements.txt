@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+httpx
+python-multipart
+pydub
+mutagen
+python-dotenv

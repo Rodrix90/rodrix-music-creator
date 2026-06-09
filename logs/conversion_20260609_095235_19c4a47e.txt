@@ -1,0 +1,21 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 09:52:35
+Status: ERROR
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/wLwrZ0s1kEN6/bypassed_2ded6543226049249d5d58958676ff06.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "[Verse 1]\r\n[Male Solo]\r\nSobre el agua profunda del tempestuoso mar,\r\nque golpea mi alma, mi frágil embarcación,\r\nme postré ante el Maestro, clamé y el huracán,\r\nse calmó en un instante por la voz de Dios.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Verse 2]\r\n[Female Solo]\r\nMe cuida del peligro, de angustia y de dolor;\r\nÉl frena que los vientos levanten tempestad.\r\nlas aguas se detienen, la ola ya paró\r\ny en Cristo anclo mi alma, confiando más.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Verse 3]\r\n[Duet]\r\nMi tierno Salvador, sí, mi buen amigo y Dios, \r\nque quita las tristezas y aleja toda hiel; \r\npor fe yo iré a la gloria, morada de su amor; \r\nla fuente inagotable, de gracia y bien.\r\n\r\n[Key Change]\r\n[Chorus]\r\n[Full Choir]\r\n[Crescendo]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Grand Finale]\r\nMi Cristo es la roca, el ancla en mi creer;\r\nlas penas, lamentos y angustias de terror,\r\nacaban por siempre con mi grandioso Rey;\r\n¡es Jesucristo mi gran refugio!\r\n\r\n[Big Finish]\r\n[Sustained Chord]\r\n[Applause]",
+  "style": "Southern gospel,, live concert ambience, traditional white gospel choir, rich vocal harmonies, acoustic grand piano, deep melodic bass guitar, organic Pearl drums, country-gospel overheads, uplifting, majestic, emotional, heartfelt, cathedral acoustics, 1990s gospel production, inspirational",
+  "title": "Cristo",
+  "make_instrumental": false,
+  "style_weight": 0.96,
+  "audio_weight": 0.8,
+  "weirdness_constraint": 0.19
+}
+
+--- ERROR ---
+API Error: Your lyrics contain copyrighted material. Please change it and try again.
+

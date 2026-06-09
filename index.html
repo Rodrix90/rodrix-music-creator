@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodrix Music Creator V3.0 - Udio Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        :root {
+            --bg-base: #0b0b0f;
+            --bg-sidebar: #121218;
+            --bg-panel: rgba(24, 24, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-cyan: #00f0ff;
+            --gradient-primary: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
+            --gradient-glow: linear-gradient(135deg, rgba(0,122,204,0.15) 0%, rgba(157,78,237,0.15) 100%);
+            --transition-speed: 0.3s;
+        }
+        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-base); color: var(--text-primary); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .app-container { display: flex; flex: 1; height: calc(100vh - 80px); overflow: hidden; }
+        
+        .sidebar { width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; padding: 24px; flex-shrink: 0; z-index: 10; }
+        .logo-container { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+        .logo-icon { font-size: 24px; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 8px rgba(0, 122, 204, 0.6)); }
+        .logo-text { font-size: 20px; font-weight: 700; background: linear-gradient(to right, #ffffff, #9ca3af); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-menu { display: flex; flex-direction: column; gap: 8px; list-style: none; flex-grow: 1; }
+        .nav-item a { display: flex; align-items: center; gap: 16px; padding: 12px 16px; color: var(--text-secondary); text-decoration: none; font-weight: 500; font-size: 15px; border-radius: 8px; transition: all var(--transition-speed); }
+        .nav-item.active a { color: var(--text-primary); background: var(--gradient-glow); border-left: 3px solid var(--accent-cyan); }
+        .nav-item i { font-size: 18px; width: 20px; text-align: center; }
+        
+        .main-content { flex: 1; background-color: var(--bg-base); padding: 32px; overflow-y: auto; position: relative; }
+        .main-content::-webkit-scrollbar { width: 8px; }
+        .main-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.08); border-radius: 4px; }
+        
+        .tab-view { display: flex; flex-direction: column; gap: 24px; width: 100%; animation: fade-in 0.3s ease-in-out; }
+        
+        /* Dashboard Grid Layout */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 32px; }
+        .dashboard-left { display: flex; flex-direction: column; gap: 20px; }
+        .dashboard-right { display: flex; flex-direction: column; gap: 20px; }
+        .dashboard-bottom { grid-column: 1 / -1; margin-top: 10px; }
+        
+        .top-row-split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        .panel-box { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .panel-title { font-size: 16px; font-weight: 600; background: linear-gradient(to right, #ffffff, #d1d5db); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; }
+        
+        #errorBanner { display: none; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 12px; color: #ff6b6b; font-size: 13px; margin-bottom: 20px; font-weight: 500; align-items: center; gap: 8px; line-height: 1.4; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 8px; flex-grow: 1; }
+        .form-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], textarea { background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; font-family: inherit; font-size: 14px; color: var(--text-primary); outline: none; transition: all var(--transition-speed); width: 100%; }
+        input[type="text"]:focus, textarea:focus { border-color: var(--accent-cyan); background-color: rgba(255, 255, 255, 0.05); }
+        textarea.style-input { height: 100%; min-height: 120px; resize: none; }
+        textarea.lyrics-input { height: 100%; min-height: 120px; resize: none; }
+        
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-cyan); cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5); }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 2px; }
+        
+        .submit-btn { background: var(--gradient-primary); border: none; border-radius: 8px; padding: 16px; color: white; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all var(--transition-speed); width: 100%; }
+        .submit-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0, 122, 204, 0.4); }
+        .submit-btn:disabled { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .adv-row { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+        .adv-row-header { display: flex; justify-content: space-between; align-items: center; }
+        .adv-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        
+        .toggle-group { display: flex; gap: 8px; }
+        .toggle-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 13px; font-family: inherit; font-weight: 500; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; background: rgba(255,255,255,0.03); }
+        .toggle-btn.selected { color: var(--accent-cyan); background: rgba(0,240,255,0.1); }
+        
+        .pipeline-container { background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 16px; display: none; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.2); margin-top: 16px; }
+        .pipeline-title { font-size: 14px; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; }
+        
+        .songs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .songs-grid.compact { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; max-height: 400px; overflow-y: auto; padding-right: 8px; }
+        .songs-grid.compact::-webkit-scrollbar { width: 6px; }
+        .songs-grid.compact::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+        
+        .song-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition-speed); position: relative; }
+        .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); }
+        .song-cover-container { width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative; background: #1f1f2e; cursor: pointer; }
+        .song-cover { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .song-card:hover .song-cover { transform: scale(1.05); }
+        .cover-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity var(--transition-speed); }
+        .song-card:hover .cover-overlay { opacity: 1; }
+        .play-btn-circle { width: 48px; height: 48px; border-radius: 50%; background: var(--gradient-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; border: none; cursor: pointer; }
+        .song-title { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .song-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); }
+        
+        /* 3-Dot Menu */
+        .dropdown { position: relative; display: inline-block; }
+        .dropbtn { background: transparent; color: var(--text-secondary); border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 4px; }
+        .dropbtn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+        .dropdown-content { display: none; position: absolute; right: 0; bottom: 100%; margin-bottom: 4px; background-color: #1e1e24; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5); z-index: 100; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden; }
+        .dropdown-content a { color: var(--text-primary); padding: 10px 16px; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; transition: background 0.2s; }
+        .dropdown-content a:hover { background-color: rgba(255,255,255,0.05); color: var(--accent-cyan); }
+        .dropdown-content a.danger:hover { background-color: rgba(255,68,68,0.1); color: #ff6b6b; }
+        .show { display: block; }
+        
+        .footer-player { height: 80px; background-color: var(--bg-sidebar); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: relative; z-index: 20; }
+        .footer-left { display: flex; align-items: center; gap: 16px; width: 30%; }
+        .now-playing-vinyl { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle, #2d2d3a 30%, #000 60%); border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; }
+        .now-playing-vinyl i { color: rgba(255, 255, 255, 0.4); font-size: 16px; }
+        .now-playing-details { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+        .now-playing-title { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .now-playing-style { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .footer-middle { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 40%; }
+        .player-buttons { display: flex; align-items: center; gap: 20px; }
+        .player-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
+        .player-btn.btn-play-pause { width: 36px; height: 36px; border-radius: 50%; background-color: var(--text-primary); color: var(--bg-base); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .player-progress-bar { display: flex; align-items: center; gap: 12px; width: 100%; }
+        .time-display { font-size: 11px; color: var(--text-secondary); min-width: 35px; }
+        .track-timeline { flex-grow: 1; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; cursor: pointer; position: relative; }
+        .track-timeline-fill { height: 100%; background: var(--gradient-primary); border-radius: 2px; width: 0%; position: relative; }
+        
+        @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR NAVEGACION -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <i class="fa-solid fa-compact-disc logo-icon"></i>
+                <span class="logo-text">Rodrix Udio V3</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" id="nav-crear"><a href="#" onclick="switchTab('crear')"><i class="fa-solid fa-music"></i><span>Creaciones</span></a></li>
+                <li class="nav-item" id="nav-libreria"><a href="#" onclick="switchTab('libreria')"><i class="fa-solid fa-book-open"></i><span>Librería</span></a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN AREA -->
+        <main class="main-content">
+            <!-- TAB 1: CREACIONES (DASHBOARD) -->
+            <div class="tab-view" id="crearView">
+                <form id="generatorForm" onsubmit="handleSubmit(event)">
+                    <div class="dashboard-grid">
+                        
+                        <!-- COLUMNA IZQUIERDA -->
+                        <div class="dashboard-left">
+                            <div class="top-row-split" style="flex-grow: 1;">
+                                <div class="panel-box">
+                                    <div class="panel-title">
+                                        Letra
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input type="checkbox" id="instrumentalCheckbox" style="accent-color: var(--accent-cyan); width: 14px; height: 14px; cursor: pointer;">
+                                            <span style="font-size: 10px; font-weight: normal; color:var(--text-secondary); cursor: pointer; text-transform: uppercase;">Instrumental</span>
+                                        </div>
+                                    </div>
+                                    <textarea class="lyrics-input" id="lyricsInput" placeholder="[Verse] Escribe aquí..."></textarea>
+                                </div>
+                                <div class="panel-box">
+                                    <div class="panel-title">Estilo / Tags</div>
+                                    <textarea class="style-input" id="styleInput" placeholder="Ej: pop, rock, symphonic metal, female vocals" required></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="panel-box">
+                                <div class="panel-title" style="margin-bottom:0;">Título Base</div>
+                                <input type="text" id="titleInput" placeholder="Ej: Himno Épico" required>
+                            </div>
+
+                            <div class="panel-box" style="flex-direction: row; align-items: center; gap: 15px;">
+                                <div style="flex-grow: 1;">
+                                    <div class="panel-title" style="margin-bottom:0; font-size:14px;">Carga Archivo Audio</div>
+                                    <span style="font-size: 11px; color:var(--text-secondary);">Para Udio Extend / Remix</span>
+                                </div>
+                                <input type="file" id="audioInput" accept="audio/*" style="width: auto; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; color: var(--text-primary); cursor: pointer; font-size: 13px;">
+                            </div>
+
+                            <div class="panel-box">
+                                <div class="adv-row form-full-width" style="flex-direction: row; align-items: center; background: transparent; padding:0;">
+                                    <i class="fa-solid fa-scissors" style="color:var(--text-secondary); font-size: 14px; margin-right: 10px;"></i>
+                                    <input type="text" id="excludeStylesInput" placeholder="Exclude styles" style="background:transparent; border:none; color:var(--text-primary); font-size:14px; width:100%; outline:none; padding:0;">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px; background: rgba(255, 68, 68, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 68, 68, 0.2);">
+                                <input type="checkbox" id="bypassCopyrightCheckbox" style="accent-color: #ff4444; width: 16px; height: 16px; cursor: pointer;" checked>
+                                <label for="bypassCopyrightCheckbox" style="font-size: 12px; font-weight: 700; color: #ff6b6b; cursor: pointer; text-transform: uppercase;">🔥 Modo Anti-Copyright (Evitar bloqueos)</label>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA DERECHA -->
+                        <div class="dashboard-right">
+                            <div class="panel-box">
+                                <div class="panel-title">Opciones Avanzadas</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                    <!-- Vocal Gender -->
+                                    <div class="adv-row form-full-width" style="flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                                        <div class="adv-label">Vocal Gender <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                        <div class="toggle-group">
+                                            <button type="button" class="toggle-btn selected" id="genderBtn-random" onclick="selectGender('random')">Random</button>
+                                            <button type="button" class="toggle-btn" id="genderBtn-male" onclick="selectGender('male')">Male</button>
+                                            <button type="button" class="toggle-btn" id="genderBtn-female" onclick="selectGender('female')">Female</button>
+                                        </div>
+                                        <input type="hidden" id="vocalGenderInput" value="random">
+                                    </div>
+                                    
+                                    <!-- Weirdness -->
+                                    <div class="adv-row">
+                                        <div class="adv-row-header">
+                                            <div class="adv-label">Weirdness <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                            <span id="weirdnessValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">50%</span>
+                                        </div>
+                                        <input type="range" id="weirdnessSlider" min="0" max="100" value="50" oninput="document.getElementById('weirdnessValueDisplay').innerText = this.value + '%'">
+                                    </div>
+                                    
+                                    <!-- Style Influence -->
+                                    <div class="adv-row">
+                                        <div class="adv-row-header">
+                                            <div class="adv-label">Style Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                            <span id="styleInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">50%</span>
+                                        </div>
+                                        <input type="range" id="styleInfluenceSlider" min="0" max="100" value="50" oninput="document.getElementById('styleInfluenceValueDisplay').innerText = this.value + '%'">
+                                    </div>
+                                    
+                                    <!-- Audio Influence -->
+                                    <div class="adv-row">
+                                        <div class="adv-row-header">
+                                            <div class="adv-label">Audio Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                            <span id="audioInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">25%</span>
+                                        </div>
+                                        <input type="range" id="audioInfluenceSlider" min="0" max="100" value="25" oninput="document.getElementById('audioInfluenceValueDisplay').innerText = this.value + '%'">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel-box" style="flex-grow: 1;">
+                                <div class="panel-title">
+                                    Audios Transformados
+                                    <button type="button" class="player-btn" onclick="clearGrid()" title="Limpiar" style="color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                                <div class="songs-grid compact" id="songsGrid">
+                                    <!-- Generations go here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BOTTOM SUBMIT -->
+                        <div class="dashboard-bottom">
+                            <div id="errorBanner">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span id="errorBannerText">Error</span>
+                            </div>
+                            <button type="submit" class="submit-btn" id="submitBtn">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Generar con Udio API</span>
+                            </button>
+                            <div class="pipeline-container" id="pipelineContainer">
+                                <i class="fa-solid fa-gears fa-spin" style="color: var(--accent-cyan); font-size: 18px;"></i>
+                                <span id="pipelineStatus" style="color: var(--accent-cyan); font-weight: 500;">Conectando con Udio API... (Demora ~2 minutos)</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 2: LIBRERIA -->
+            <div class="tab-view" id="libreriaView" style="display: none;">
+                <div class="panel-box" style="flex-grow: 1;">
+                    <div class="panel-title" style="margin-bottom: 24px; font-size: 20px;">
+                        Mi Librería de Pistas
+                        <button class="player-btn" onclick="loadLibrary()" title="Actualizar" style="color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 6px; font-size: 14px;">
+                            <i class="fa-solid fa-rotate-right"></i> Refrescar
+                        </button>
+                    </div>
+                    <div class="songs-grid" id="libraryGrid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                        <!-- Library Items -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- GLOBAL PLAYER FOOTER -->
+    <footer class="footer-player">
+        <div class="footer-left">
+            <div class="now-playing-vinyl" id="vinylIcon"><i class="fa-solid fa-music"></i></div>
+            <div class="now-playing-details">
+                <div class="now-playing-title" id="playerTrackTitle">Sin Pista Activa</div>
+                <div class="now-playing-style" id="playerTrackStyle">-</div>
+            </div>
+        </div>
+        <div class="footer-middle">
+            <div class="player-buttons">
+                <button class="player-btn btn-play-pause" onclick="togglePlayPause()"><i class="fa-solid fa-play" id="playPauseIcon"></i></button>
+            </div>
+            <div class="player-progress-bar">
+                <span class="time-display" id="currentTime">00:00</span>
+                <div class="track-timeline" id="timeline" onclick="handleTimelineClick(event)">
+                    <div class="track-timeline-fill" id="timelineFill"></div>
+                </div>
+                <span class="time-display" id="totalTime">00:00</span>
+            </div>
+        </div>
+        <div class="footer-right">
+            <!-- Footer tools can go here, like volume -->
+        </div>
+    </footer>
+
+    <audio id="audioEngine" style="display:none;"></audio>
+
+    <script>
+        const errorBanner = document.getElementById('errorBanner');
+        const errorBannerText = document.getElementById('errorBannerText');
+        const submitBtn = document.getElementById('submitBtn');
+        const pipelineContainer = document.getElementById('pipelineContainer');
+        const pipelineStatus = document.getElementById('pipelineStatus');
+        const audioEngine = document.getElementById('audioEngine');
+        const playPauseIcon = document.getElementById('playPauseIcon');
+        const timelineFill = document.getElementById('timelineFill');
+
+        let isPlaying = false;
+
+        // Cierra los menús desplegables si el usuario hace clic fuera de ellos
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropbtn') && !event.target.matches('.fa-ellipsis-vertical')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        function toggleDropdown(id, event) {
+            event.stopPropagation();
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                if(dropdowns[i].id !== 'dropdown-' + id) {
+                    dropdowns[i].classList.remove('show');
+                }
+            }
+            document.getElementById('dropdown-' + id).classList.toggle("show");
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            errorBanner.style.display = 'none';
+            submitBtn.style.display = 'none';
+            pipelineContainer.style.display = 'flex';
+            pipelineStatus.innerText = "Conectando con Udio API... (Demora ~2 minutos)";
+
+            const formData = new FormData();
+            formData.append('style', document.getElementById('styleInput').value);
+            formData.append('lyrics', document.getElementById('instrumentalCheckbox').checked ? '[Instrumental]' : document.getElementById('lyricsInput').value);
+            formData.append('title', document.getElementById('titleInput').value);
+            formData.append('include_lyrics', !document.getElementById('instrumentalCheckbox').checked);
+            formData.append('bypass_copyright', document.getElementById('bypassCopyrightCheckbox').checked);
+            formData.append('exclude_styles', document.getElementById('excludeStylesInput').value);
+            formData.append('vocal_gender', document.getElementById('vocalGenderInput').value);
+            formData.append('weirdness', document.getElementById('weirdnessSlider').value);
+            formData.append('style_influence', document.getElementById('styleInfluenceSlider').value);
+            formData.append('audio_influence', document.getElementById('audioInfluenceSlider').value);
+            
+            const audioInput = document.getElementById('audioInput');
+            if (audioInput && audioInput.files.length > 0) {
+                formData.append('audio', audioInput.files[0]);
+            }
+            
+            try {
+                const response = await fetch('/api/transform', { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Error en el backend.');
+                }
+
+                const tracks = data.tracks || [];
+                tracks.forEach((track, index) => {
+                    addSongCardToGrid(track.id, track.title + ` (Alt ${index+1})`, track.tags, track.audio_url, track.image_url, 'songsGrid');
+                });
+
+            } catch (err) {
+                console.error(err);
+                errorBannerText.innerText = err.message;
+                errorBanner.style.display = 'flex';
+            } finally {
+                submitBtn.style.display = 'flex';
+                pipelineContainer.style.display = 'none';
+            }
+        }
+
+        function addSongCardToGrid(id, title, style, audioUrl, imageUrl, targetGridId) {
+            if(!audioUrl) return;
+            const grid = document.getElementById(targetGridId);
+            const card = document.createElement('div');
+            card.className = 'song-card';
+            card.id = 'card-' + id;
+            
+            const safeId = id.replace(/[^a-zA-Z0-9]/g, '');
+            
+            card.innerHTML = `
+                <div class="song-cover-container" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}')">
+                    <img src="${imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300'}" class="song-cover">
+                    <div class="cover-overlay"><button class="play-btn-circle"><i class="fa-solid fa-play"></i></button></div>
+                </div>
+                <div class="song-title" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}')">${title}</div>
+                <div class="song-meta">
+                    <span class="song-genre" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${style || 'Udio'}</span>
+                    
+                    <div class="dropdown">
+                        <button class="dropbtn" onclick="toggleDropdown('${safeId}', event)">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div id="dropdown-${safeId}" class="dropdown-content">
+                            <a href="${audioUrl}" download="${title}.mp3" onclick="event.stopPropagation()"><i class="fa-solid fa-file-audio"></i> MP3 (Original)</a>
+                            <a href="/api/download/${id}/wav" onclick="event.stopPropagation()"><i class="fa-solid fa-file-waveform"></i> WAV (Lossless)</a>
+                            <a href="/api/download/${id}/flac" onclick="event.stopPropagation()"><i class="fa-solid fa-compact-disc"></i> FLAC (HQ)</a>
+                            <a href="#" onclick="event.stopPropagation(); shareTrack('${audioUrl}')"><i class="fa-solid fa-share-nodes"></i> Copiar Enlace</a>
+                            <a href="#" class="danger" onclick="event.stopPropagation(); deleteTrack('${id}')"><i class="fa-solid fa-trash"></i> Borrar</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (targetGridId === 'songsGrid') {
+                grid.insertBefore(card, grid.firstChild);
+            } else {
+                grid.appendChild(card);
+            }
+        }
+
+        function shareTrack(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert("Enlace copiado al portapapeles.");
+            }).catch(err => {
+                console.error("No se pudo copiar: ", err);
+            });
+        }
+
+        function playMockSong(title, style, url) {
+            document.getElementById('playerTrackTitle').innerText = title;
+            document.getElementById('playerTrackStyle').innerText = style;
+            audioEngine.src = url;
+            audioEngine.play();
+            isPlaying = true;
+            playPauseIcon.className = 'fa-solid fa-pause';
+        }
+
+        function togglePlayPause() {
+            if (!audioEngine.src) return;
+            if (isPlaying) { audioEngine.pause(); playPauseIcon.className = 'fa-solid fa-play'; }
+            else { audioEngine.play(); playPauseIcon.className = 'fa-solid fa-pause'; }
+            isPlaying = !isPlaying;
+        }
+
+        audioEngine.addEventListener('timeupdate', () => {
+            const ratio = audioEngine.currentTime / audioEngine.duration;
+            timelineFill.style.width = (ratio * 100) + '%';
+            document.getElementById('currentTime').innerText = formatTime(audioEngine.currentTime);
+            document.getElementById('totalTime').innerText = formatTime(audioEngine.duration || 0);
+        });
+
+        function handleTimelineClick(e) {
+            const rect = document.getElementById('timeline').getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            audioEngine.currentTime = pos * audioEngine.duration;
+        }
+
+        function clearGrid() {
+            if (confirm('¿Estás seguro de que quieres borrar de la vista las canciones recientes? (Seguirán en tu Librería)')) {
+                document.getElementById('songsGrid').innerHTML = '';
+            }
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+        }
+
+        // --- FUNCIONES ADV OPTIONS ---
+        function selectGender(gender) {
+            document.getElementById('genderBtn-random').classList.remove('selected');
+            document.getElementById('genderBtn-male').classList.remove('selected');
+            document.getElementById('genderBtn-female').classList.remove('selected');
+            document.getElementById('genderBtn-' + gender).classList.add('selected');
+            document.getElementById('vocalGenderInput').value = gender;
+        }
+
+        // --- SISTEMA DE PESTAÑAS ---
+        function switchTab(tabId) {
+            document.getElementById('nav-crear').classList.remove('active');
+            document.getElementById('nav-libreria').classList.remove('active');
+            document.getElementById('crearView').style.display = 'none';
+            document.getElementById('libreriaView').style.display = 'none';
+
+            document.getElementById('nav-' + tabId).classList.add('active');
+            document.getElementById(tabId + 'View').style.display = 'flex';
+
+            if (tabId === 'libreria') {
+                loadLibrary();
+            }
+        }
+
+        // --- SISTEMA DE LIBRERÍA ---
+        async function loadLibrary() {
+            const libraryGrid = document.getElementById('libraryGrid');
+            libraryGrid.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1 / -1;">Cargando librería...</p>';
+            try {
+                const response = await fetch('/api/library');
+                const data = await response.json();
+                if (data.status === 'success') {
+                    libraryGrid.innerHTML = '';
+                    if (data.tracks.length === 0) {
+                        libraryGrid.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1 / -1;">No tienes pistas guardadas en tu librería aún.</p>';
+                        return;
+                    }
+                    data.tracks.forEach(track => {
+                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, 'libraryGrid');
+                    });
+                }
+            } catch (err) {
+                console.error("Error al cargar la librería", err);
+                libraryGrid.innerHTML = '<p style="color:#ff6b6b; grid-column: 1 / -1;">Error al cargar la librería.</p>';
+            }
+        }
+
+        async function deleteTrack(trackId) {
+            if (!confirm("¿Estás seguro de que quieres eliminar esta pista? Se borrará de la librería y no podrás recuperarla.")) return;
+            
+            try {
+                const response = await fetch('/api/library/' + trackId, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // Remover de la vista
+                    const cardList = document.querySelectorAll('#card-' + trackId);
+                    cardList.forEach(c => c.remove());
+                } else {
+                    alert("No se pudo eliminar: " + (data.detail || "Error desconocido"));
+                }
+            } catch (err) {
+                console.error("Error al borrar", err);
+                alert("Error al intentar borrar la pista.");
+            }
+        }
+    </script>
+</body>
+</html>

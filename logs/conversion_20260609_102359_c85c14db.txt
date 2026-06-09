@@ -1,0 +1,38 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 10:23:59
+Status: SUCCESS
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/wQwpZEkEwSW5/bypassed_fe728bfeae054e7ba8d8661712a1db0a.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "",
+  "style": "Instrumental southern gospel, Gaither Homecoming style, live concert mix, pristine acoustic grand piano, deep melodic bass guitar, premium DW drum kit, crisp Sabian Paragon cymbals, bright hi-hats, explosive crash cymbal swells, shifting dynamics, uplifting, majestic, emotional, crystal clear auditorium acoustics, 1990s high-end gospel production, virtuoso instrumentation.",
+  "title": "La Roca",
+  "make_instrumental": true,
+  "style_weight": 0.5,
+  "audio_weight": 0.25,
+  "weirdness_constraint": 0.5,
+  "negative_tags": "Spanish accent, Castilian accent, Spain accent, electronic drums, drum machine, 808, 909, synth bass, techno, edm, midi drums, quantized programmed drums, plastic snare, compressed cymbals, autotune, robotic vocals, low-fi, distorted mp3"
+}
+
+--- TRACKS RECIBIDOS ---
+[
+  {
+    "id": "0f841294-bbb7-460d-bca1-3884e4c0a72b",
+    "title": "La Roca",
+    "audio_url": "https://tempfile.aiquickdraw.com/r/7f29e245a9c34d47a65a36412996c8e1.mp3",
+    "image_url": "https://cdn2.suno.ai/image_0f841294-bbb7-460d-bca1-3884e4c0a72b.jpeg",
+    "duration": 254.72,
+    "status": "complete"
+  },
+  {
+    "id": "f12e37c8-8813-436c-a194-430f25b2c2c4",
+    "title": "La Roca",
+    "audio_url": "https://tempfile.aiquickdraw.com/r/684beaf5f8d44b0ca43017db7a9bd654.mp3",
+    "image_url": "https://cdn2.suno.ai/image_f12e37c8-8813-436c-a194-430f25b2c2c4.jpeg",
+    "duration": 188.72,
+    "status": "complete"
+  }
+]

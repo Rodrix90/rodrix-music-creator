@@ -1,0 +1,38 @@
+--- LOG DE CONVERSIÓN ---
+Fecha/Hora: 2026-06-09 10:14:26
+Status: SUCCESS
+
+--- PAYLOAD ENVIADO ---
+{
+  "upload_url": "https://tmpfiles.org/dl/wJwmZNhSzeGO/bypassed_2791ad3870d5469084cc999d384d06b1.mp3",
+  "model": "chirp-v4-5",
+  "custom_mode": true,
+  "prompt": "[Verse 1]\r\n[Male Solo]\r\nEn las aguas furiosas del turbulento mar,\r\nque sacuden mi vida, mi débil embarcación,\r\nyo clamé de rodillas, y el fiero huracán,\r\nse rindió en un segundo a la voz de Dios.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nÉl es mi baluarte, la base de mi fe;\r\nel miedo, las penas y el llanto de dolor,\r\nse acaban ahora con mi glorioso Rey;\r\n¡es Jesucristo mi protector!\r\n\r\n[Verse 2]\r\n[Female Solo]\r\nMe protege del daño, de angustia y de aflicción;\r\nÉl ordena a los vientos frenar la tempestad.\r\nla marea obedece, la brisa descansó\r\ny en Él pongo mi ancla, con más seguridad.\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Powerful Harmonies]\r\nÉl es mi baluarte, la base de mi fe;\r\nel miedo, las penas y el llanto de dolor,\r\nse acaban ahora con mi glorioso Rey;\r\n¡es Jesucristo mi protector!\r\n\r\n[Verse 3]\r\n[Duet]\r\nMi amado Redentor, mi gran amigo y Dios, \r\nque borra las tristezas y aleja el padecer; \r\nal cielo llegaré, hogar de su esplendor; \r\nla fuente inagotable, de gracia y de poder.\r\n\r\n[Key Change]\r\n[Chorus]\r\n[Full Choir]\r\n[Crescendo]\r\nÉl es mi baluarte, la base de mi fe;\r\nel miedo, las penas y el llanto de dolor,\r\nse acaban ahora con mi glorioso Rey;\r\n¡es Jesucristo mi protector!\r\n\r\n[Chorus]\r\n[Full Choir]\r\n[Grand Finale]\r\nÉl es mi baluarte, la base de mi fe;\r\nel miedo, las penas y el llanto de dolor,\r\nse acaban ahora con mi glorioso Rey;\r\n¡es Jesucristo mi protector!\r\n\r\n[Big Finish]\r\n[Sustained Chord]\r\n[Applause]",
+  "style": "Southern gospel, Gaither Homecoming style, live concert ambience, traditional white gospel choir, rich vocal harmonies, acoustic grand piano, deep melodic bass guitar, organic Pearl drums, country-gospel overheads, uplifting, majestic, emotional, heartfelt, cathedral acoustics, 1990s gospel production, inspirational",
+  "title": "La Roca",
+  "make_instrumental": false,
+  "style_weight": 0.5,
+  "audio_weight": 0.25,
+  "weirdness_constraint": 0.5,
+  "negative_tags": "Spanish accent, Castilian accent, Spain accent, electronic drums, drum machine, 808, 909, synth bass, techno, edm, midi drums, quantized programmed drums, plastic snare, compressed cymbals, autotune, robotic vocals, low-fi, distorted mp3"
+}
+
+--- TRACKS RECIBIDOS ---
+[
+  {
+    "id": "00654d8f-6daf-4775-b96e-75840194bbcd",
+    "title": "La Roca",
+    "audio_url": "https://tempfile.aiquickdraw.com/r/e88d3775488d4312bb11f6f58e932f67.mp3",
+    "image_url": "https://cdn2.suno.ai/image_00654d8f-6daf-4775-b96e-75840194bbcd.jpeg",
+    "duration": 193.44,
+    "status": "complete"
+  },
+  {
+    "id": "ab5ff2f7-49c3-4cd7-a1b6-c95cc316e915",
+    "title": "La Roca",
+    "audio_url": "https://tempfile.aiquickdraw.com/r/b399d984c25c45a497f7bf822d11550f.mp3",
+    "image_url": "https://cdn2.suno.ai/image_ab5ff2f7-49c3-4cd7-a1b6-c95cc316e915.jpeg",
+    "duration": 197.88,
+    "status": "complete"
+  }
+]

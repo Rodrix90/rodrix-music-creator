@@ -1,0 +1,16 @@
+# Entorno y Claves Privadas
+.env
+
+# Archivos Temporales de Python y Caché
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.textarea_caches/
+
+# Almacenamiento Local de Audios (No subir a la nube)
+downloads/
+temp_*/
+*.mp3
+*.wav
