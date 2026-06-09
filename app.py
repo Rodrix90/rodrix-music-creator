@@ -14,7 +14,7 @@ import json
 import datetime
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
-from starlette.responses import RedirectResponse
+
 # Load environment variables
 load_dotenv()
 
@@ -31,19 +31,18 @@ app.add_middleware(
 UDIO_API_KEY = os.environ.get("UDIO_API_KEY", "sk-e6c60cad69b44514b66651740a2c5885")
 SECRET_KEY = os.environ.get("SECRET_KEY", "default_secret_key_12345").encode('utf-8')
 
+# Middleware de sesión para Authlib / Starlette
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY.decode('utf-8'))
-
-ALLOWED_EMAIL = os.environ.get("ALLOWED_EMAIL", "")
 
 # Instanciar OAuth globalmente
 oauth = OAuth()
 
 @app.on_event("startup")
 async def startup_event():
-    # Registrar el cliente de Google en caliente (startup) para asegurar la carga del .env en Render
+    # Registrar el cliente de Google usando tu ID REAL inyectado directamente
     oauth.register(
         name='google',
-        client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+        client_id="813430947107-3aa7i4809aj47jpm0okp92me855l1tt0.apps.googleusercontent.com",
         client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={
@@ -57,7 +56,8 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="No autenticado")
     
     email = user.get('email', '')
-    if ALLOWED_EMAIL and email != ALLOWED_EMAIL:
+    # Whitelist estricta en las llamadas del backend para proteger tus créditos de Udio
+    if email != "rodryandy@gmail.com":
         raise HTTPException(status_code=403, detail="Tu correo no está en la lista blanca.")
     
     return email
@@ -65,13 +65,6 @@ def get_current_user(request: Request):
 def obfuscate_lyrics(text: str) -> str:
     if not text:
         return text
-        
-    # TÉCNICA DEFINITIVA: Inyección de Marca de Izquierda a Derecha (LTR Mark - \u200E)
-    # Este es un caracter de control Unicode completamente válido e invisible.
-    # A diferencia de los espacios invisibles, los limpiadores de texto (NLP) suelen respetar los caracteres de control LTR
-    # porque asumen que el texto podría ser bidireccional (ej. Árabe + Español).
-    # Esto rompe la cadena exacta a nivel de bytes, burlando a la base de datos de copyright,
-    # pero la letra se ve PERFECTA en pantalla y el motor vocal la lee impecable.
     processed_lines = []
     for line in text.split('\n'):
         if line.strip().startswith('[') and line.strip().endswith(']'):
@@ -90,9 +83,7 @@ async def upload_to_tmpfiles_async(file_path: str) -> str | None:
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             with open(file_path, 'rb') as f:
-                files = {
-                    'file': f
-                }
+                files = {'file': f}
                 response = await client.post(url, files=files)
             if response.status_code == 200:
                 resp_json = response.json()
@@ -104,12 +95,6 @@ async def upload_to_tmpfiles_async(file_path: str) -> str | None:
     return None
 
 def bypass_audio_fingerprint(input_path: str, output_path: str):
-    # Camino 2: "Destrucción Sónica" (Filtro Anti-STT)
-    # 1. Aceleramos un 6% para romper la firma acústica.
-    # 2. Aplicamos un 'lowpass' fuerte (corta todo por encima de 900Hz). Esto borra las consonantes de las palabras.
-    # 3. Aplicamos un aecho y chorus para emborronar lo que quede.
-    # El resultado sonará como si escucharas la iglesia a través de una pared gruesa (lofi).
-    # La IA de Udio no podrá entender qué cantan, así que no saltará el copyright.
     ffmpeg_cmd = [
         "ffmpeg.exe",
         "-y",
@@ -167,7 +152,6 @@ def log_conversion(payload, response_status, error_msg=None, tracks=None):
 
 def add_track_to_library(track_info):
     library = load_library()
-    # Evitar duplicados por ID
     if not any(t.get("id") == track_info.get("id") for t in library):
         library.append(track_info)
         save_library(library)
@@ -201,7 +185,6 @@ async def transform_audio(
     if is_instrumental:
         title = f"{title} (Instrumental)"
     
-    # Procesar Bypass Copyright si aplica y no es instrumental
     final_lyrics = lyrics if not is_instrumental else "[Instrumental]"
     if is_instrumental:
         style = style + ", instrumental, no vocals"
@@ -213,10 +196,8 @@ async def transform_audio(
     temp_file_path = None
     bypassed_file_path = None
     
-    # Manejar subida a Catbox/Tmpfiles si hay audio
     if audio and not ignore_audio:
         try:
-            # Crear archivo temporal
             ext = ".mp3"
             if audio.filename:
                 _, fext = os.path.splitext(audio.filename)
@@ -234,26 +215,19 @@ async def transform_audio(
             success = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
             
             target_upload_file = bypassed_file_path if success and os.path.exists(bypassed_file_path) else temp_file_path
-                
             print("Subiendo MP3 a servidor temporal para obtener URL pública...")
             upload_url = await upload_to_tmpfiles_async(target_upload_file)
             
             if not upload_url:
                 raise HTTPException(status_code=500, detail="Fallo al subir el audio a servidor temporal.")
-                
             print("Audio subido exitosamente a:", upload_url)
             
         finally:
-            # Housekeeping
             for p in [temp_file_path, bypassed_file_path]:
                 if p and os.path.exists(p):
-                    try:
-                        os.remove(p)
-                        print(f"Archivo temporal {p} eliminado.")
-                    except Exception as e:
-                        print(f"No se pudo borrar el temporal {p}:", e)
+                    try: os.remove(p)
+                    except: pass
                     
-    # Determinar qué endpoint usar
     if upload_url:
         print("Usando endpoint V2 Upload & Cover")
         url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
@@ -273,13 +247,12 @@ async def transform_audio(
         }
         if vocal_gender in ["male", "female"]:
             payload["gender"] = vocal_gender
-            
         if exclude_styles.strip():
             payload["negative_tags"] = exclude_styles.strip()
     else:
         print("Usando endpoint estándar Generate")
         url_generate = "https://udioapi.pro/api/generate"
-        url_status = "https://udioapi.pro/api/feed" # Feed endpoint for generation
+        url_status = "https://udioapi.pro/api/feed"
         
         payload = {
             "prompt": style,
@@ -287,13 +260,11 @@ async def transform_audio(
             "tags": style,
             "title": title,
             "make_instrumental": is_instrumental,
-            "model": "udio32",  # Default Udio model
+            "model": "udio32",
             "custom_mode": True
         }
-        
         if vocal_gender in ["male", "female"]:
             payload["gender"] = vocal_gender
-            
         if exclude_styles.strip():
             payload["negative_tags"] = exclude_styles.strip()
 
@@ -302,7 +273,6 @@ async def transform_audio(
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(url_generate, json=payload, headers=headers)
             
-            # Catch the 402 No credit and other HTTP errors specifically
             if r.status_code == 402:
                 raise HTTPException(status_code=402, detail="No hay créditos suficientes en la API de Udio (Status 402).")
             elif r.status_code != 200:
@@ -312,19 +282,16 @@ async def transform_audio(
             work_id = resp_json.get("workId") or resp_json.get("id")
             
             if not work_id:
-                # Also try to check if they returned data.task_id
                 data_block = resp_json.get("data", {})
                 if isinstance(data_block, dict):
                     work_id = data_block.get("task_id")
-                    
                 if not work_id:
                     raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
 
             print(f"Task successfully queued. ID: {work_id}")
             
-            # Polling for completion
             tracks = []
-            for i in range(120): # Max 10 minutes
+            for i in range(120):
                 if upload_url:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                 else:
@@ -332,25 +299,20 @@ async def transform_audio(
                     
                 if r_status.status_code == 200:
                     status_json = r_status.json()
-                    
                     error_msg = "La generación falló internamente."
                     
                     if upload_url:
-                        # V2 cover logic
                         raw_data = status_json.get("data", {})
                         status = raw_data.get("type", "") or raw_data.get("status", "")
-                        
                         response_array = raw_data.get("response_data", [])
-                        if status.upper() == "SUCCESS" or status.upper() == "COMPLETED":
+                        if status.upper() in ["SUCCESS", "COMPLETED"]:
                             tracks = response_array if isinstance(response_array, list) else [response_array]
                             break
-                        elif status.upper() == "FAILED" or status.upper() == "ERROR":
+                        elif status.upper() in ["FAILED", "ERROR"]:
                             if isinstance(response_array, list) and len(response_array) > 0:
                                 error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
                             raise Exception(f"API Error: {error_msg}")
-                            
                     else:
-                        # V1 generate logic
                         if isinstance(status_json, list):
                             data = status_json
                             status = data[0].get("status", "") if len(data) > 0 else ""
@@ -361,7 +323,6 @@ async def transform_audio(
                             if isinstance(raw_data, dict):
                                 if not status:
                                     status = raw_data.get("type", "") or raw_data.get("status", "")
-                                
                                 response_array = raw_data.get("response_data", [])
                                 if isinstance(response_array, list) and len(response_array) > 0:
                                     data = response_array
@@ -382,13 +343,11 @@ async def transform_audio(
                             raise Exception(f"API Error: {error_msg}")
 
                     print(f"Polling (Attempt {i+1}): Status={status}")
-                
                 await asyncio.sleep(5)
 
             if not tracks:
                 raise Exception("Tiempo de espera agotado. La tarea no finalizó a tiempo.")
 
-            # Formatear la respuesta para el frontend
             final_tracks = []
             for t in tracks:
                 if isinstance(t, dict):
@@ -424,7 +383,6 @@ async def transform_audio(
 @app.get("/api/library")
 async def api_get_library(current_user: str = Depends(get_current_user)):
     library = load_library()
-    # Retornar invertido para que las más recientes salgan arriba
     return JSONResponse(content={"status": "success", "tracks": library[::-1]})
 
 @app.delete("/api/library/{task_id}")
@@ -449,14 +407,12 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
         
     audio_url = track.get("audio_url")
     title = track.get("title", "Rodrix_Track")
-    # Limpiar titulo para el archivo
     safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
     
     temp_mp3 = f"temp_dl_{uuid.uuid4().hex}.mp3"
     temp_out = f"temp_out_{uuid.uuid4().hex}.{audio_format}"
     
     try:
-        # Descargar el MP3
         async with httpx.AsyncClient(timeout=120.0) as client:
             r = await client.get(audio_url)
             if r.status_code != 200:
@@ -464,24 +420,15 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
             with open(temp_mp3, "wb") as f:
                 f.write(r.content)
                 
-        # Convertir con FFmpeg
-        ffmpeg_cmd = [
-            "ffmpeg.exe", "-y", "-i", temp_mp3, 
-            "-map_metadata", "-1"
-        ]
-        
+        ffmpeg_cmd = ["ffmpeg.exe", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
         if audio_format == "wav":
             ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
         elif audio_format == "flac":
             ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8"])
             
         ffmpeg_cmd.append(temp_out)
-        
         subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        # Ojo: No podemos borrar los temporales inmediatamente si usamos FileResponse normal 
-        # sin BackgroundTasks. Para simplificar, FileResponse con un filename sirve,
-        # pero para evitar basura, usamos BackgroundTasks.
         from fastapi.background import BackgroundTasks
         def cleanup_files(files):
             for file in files:
@@ -498,7 +445,6 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
         print(f"Error descargando formato: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/", response_class=HTMLResponse)
 async def serve_spa(request: Request):
     user = request.session.get('user')
@@ -506,7 +452,7 @@ async def serve_spa(request: Request):
         return RedirectResponse(url="/login")
         
     email = user.get('email', '')
-    if ALLOWED_EMAIL and email != ALLOWED_EMAIL:
+    if email != "rodryandy@gmail.com":
         return RedirectResponse(url="/login?error=Correo%20No%20Autorizado")
         
     index_path = os.path.join(os.getcwd(), "index.html")
@@ -522,7 +468,7 @@ async def serve_login(request: Request):
     user = request.session.get('user')
     if user:
         email = user.get('email', '')
-        if not ALLOWED_EMAIL or email == ALLOWED_EMAIL:
+        if email == "rodryandy@gmail.com":
             return RedirectResponse(url="/")
         
     login_path = os.path.join(os.getcwd(), "login.html")
@@ -533,21 +479,28 @@ async def serve_login(request: Request):
 
 @app.get("/api/login/google")
 async def login_via_google(request: Request):
-    # La URI de redirección después del login exitoso
+    # Forzar dinámicamente HTTPS en producción (Render) para evitar el desajuste de protocolo http/https
     redirect_uri = str(request.base_url) + "api/auth/callback"
+    if "localhost" not in str(request.base_url):
+        redirect_uri = redirect_uri.replace("http://", "https://")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @app.get("/api/auth/callback")
 async def auth_callback(request: Request):
     try:
-        token = await oauth.google.authorize_access_token(request)
+        # Se extrae de forma limpia el callback URI para Authlib
+        redirect_uri = str(request.base_url) + "api/auth/callback"
+        if "localhost" not in str(request.base_url):
+            redirect_uri = redirect_uri.replace("http://", "https://")
+            
+        token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
         user = token.get('userinfo')
         if user:
             email = user.get('email', '')
-            if ALLOWED_EMAIL and email != ALLOWED_EMAIL:
+            # Lista blanca dura y directa al hueso
+            if email != "rodryandy@gmail.com":
                 return RedirectResponse(url="/login?error=Acceso%20Denegado:%20Correo%20fuera%20de%20la%20lista%20blanca.")
             
-            # Guardar usuario en sesión (Starlette/itsdangerous lo maneja como cookie cifrada)
             request.session['user'] = user
             return RedirectResponse(url="/")
     except Exception as e:
@@ -563,6 +516,5 @@ async def api_logout(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    import os
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
