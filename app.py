@@ -12,6 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 import json
 import datetime
+from starlette.middleware.sessions import SessionMiddleware
+from authlib.integrations.starlette_client import OAuth
+from starlette.responses import RedirectResponse
 # Load environment variables
 load_dotenv()
 
@@ -28,33 +31,32 @@ app.add_middleware(
 UDIO_API_KEY = os.environ.get("UDIO_API_KEY", "sk-e6c60cad69b44514b66651740a2c5885")
 SECRET_KEY = os.environ.get("SECRET_KEY", "default_secret_key_12345").encode('utf-8')
 
-def sign_username(username: str) -> str:
-    signature = hmac.new(SECRET_KEY, username.encode('utf-8'), hashlib.sha256).hexdigest()
-    return f"{username}.{signature}"
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY.decode('utf-8'))
 
-def verify_username(signed_value: str) -> str | None:
-    try:
-        if not signed_value or "." not in signed_value:
-            return None
-        username, signature = signed_value.split(".", 1)
-        expected = hmac.new(SECRET_KEY, username.encode('utf-8'), hashlib.sha256).hexdigest()
-        if hmac.compare_digest(signature, expected):
-            return username
-    except Exception:
-        pass
-    return None
+ALLOWED_EMAIL = os.environ.get("ALLOWED_EMAIL", "")
+
+# Configurar OAuth de Google
+oauth = OAuth()
+oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 def get_current_user(request: Request):
-    token = request.cookies.get("session_token")
-    if not token:
+    user = request.session.get('user')
+    if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
-    username = verify_username(token)
-    if not username:
-        raise HTTPException(status_code=401, detail="Sesión inválida o expirada")
-    configured_username = os.environ.get("APP_USERNAME", "admin")
-    if username != configured_username:
-        raise HTTPException(status_code=401, detail="Usuario no coincide")
-    return username
+    
+    email = user.get('email', '')
+    if ALLOWED_EMAIL and email != ALLOWED_EMAIL:
+        raise HTTPException(status_code=403, detail="Tu correo no está en la lista blanca.")
+    
+    return email
 
 def obfuscate_lyrics(text: str) -> str:
     if not text:
@@ -495,12 +497,13 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_spa(request: Request):
-    token = request.cookies.get("session_token")
-    username = verify_username(token) if token else None
-    configured_username = os.environ.get("APP_USERNAME", "admin")
-    
-    if not username or username != configured_username:
+    user = request.session.get('user')
+    if not user:
         return RedirectResponse(url="/login")
+        
+    email = user.get('email', '')
+    if ALLOWED_EMAIL and email != ALLOWED_EMAIL:
+        return RedirectResponse(url="/login?error=Correo%20No%20Autorizado")
         
     index_path = os.path.join(os.getcwd(), "index.html")
     if os.path.exists(index_path):
@@ -510,12 +513,11 @@ async def serve_spa(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def serve_login(request: Request):
-    token = request.cookies.get("session_token")
-    username = verify_username(token) if token else None
-    configured_username = os.environ.get("APP_USERNAME", "admin")
-    
-    if username and username == configured_username:
-        return RedirectResponse(url="/")
+    user = request.session.get('user')
+    if user:
+        email = user.get('email', '')
+        if not ALLOWED_EMAIL or email == ALLOWED_EMAIL:
+            return RedirectResponse(url="/")
         
     login_path = os.path.join(os.getcwd(), "login.html")
     if os.path.exists(login_path):
@@ -523,23 +525,35 @@ async def serve_login(request: Request):
             return f.read()
     return "<h3>login.html not found.</h3>"
 
-@app.post("/api/login")
-async def api_login(username: str = Form(...), password: str = Form(...)):
-    configured_username = os.environ.get("APP_USERNAME", "admin")
-    configured_password = os.environ.get("APP_PASSWORD", "rodrix2026")
-    
-    if username == configured_username and password == configured_password:
-        token = sign_username(username)
-        response = JSONResponse(content={"status": "success"})
-        response.set_cookie(key="session_token", value=token, httponly=True)
-        return response
-    raise HTTPException(status_code=400, detail="Credenciales incorrectas")
+@app.get("/api/login/google")
+async def login_via_google(request: Request):
+    # La URI de redirección después del login exitoso
+    redirect_uri = str(request.base_url) + "api/auth/callback"
+    return await oauth.google.authorize_redirect(request, redirect_uri)
 
-@app.post("/api/logout")
-async def api_logout():
-    response = JSONResponse(content={"status": "success"})
-    response.delete_cookie("session_token")
-    return response
+@app.get("/api/auth/callback")
+async def auth_callback(request: Request):
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        user = token.get('userinfo')
+        if user:
+            email = user.get('email', '')
+            if ALLOWED_EMAIL and email != ALLOWED_EMAIL:
+                return RedirectResponse(url="/login?error=Acceso%20Denegado:%20Correo%20fuera%20de%20la%20lista%20blanca.")
+            
+            # Guardar usuario en sesión (Starlette/itsdangerous lo maneja como cookie cifrada)
+            request.session['user'] = user
+            return RedirectResponse(url="/")
+    except Exception as e:
+        print("Error en OAuth callback:", str(e))
+        return RedirectResponse(url="/login?error=Error%20al%20conectar%20con%20Google")
+    
+    return RedirectResponse(url="/login?error=No%20se%20pudo%20obtener%20el%20usuario")
+
+@app.get("/api/logout")
+async def api_logout(request: Request):
+    request.session.pop('user', None)
+    return RedirectResponse(url="/login")
 
 if __name__ == "__main__":
     import uvicorn

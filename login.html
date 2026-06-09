@@ -3,372 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - Rodrix Music Creator</title>
-    
-    <!-- Google Fonts - Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <title>Rodrix Music Creator - Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
-
-        :root {
-            --bg-base: #07070a;
-            --bg-card: rgba(20, 20, 30, 0.5);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --accent-cyan: #00f0ff;
-            --accent-purple: #9d4edd;
-            --gradient-primary: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
-            --transition-speed: 0.3s;
-        }
-
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-base);
-            color: var(--text-primary);
-            height: 100vh;
-            display: flex;
-            align-items: center;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background-color: #0b0b0f; 
+            color: #f3f4f6; 
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
             justify-content: center;
-            overflow: hidden;
-            position: relative;
         }
-
-        /* Moving Background Ambient Glows */
-        .ambient-glow-1 {
-            position: absolute;
-            top: -20%;
-            left: -10%;
-            width: 500px;
-            height: 500px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(157, 78, 237, 0.25) 0%, rgba(0,0,0,0) 70%);
-            filter: blur(80px);
-            animation: move-glow-1 15s infinite alternate ease-in-out;
-            z-index: 1;
-        }
-
-        .ambient-glow-2 {
-            position: absolute;
-            bottom: -20%;
-            right: -10%;
-            width: 600px;
-            height: 600px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 240, 255, 0.18) 0%, rgba(0,0,0,0) 70%);
-            filter: blur(80px);
-            animation: move-glow-2 18s infinite alternate ease-in-out;
-            z-index: 1;
-        }
-
-        @keyframes move-glow-1 {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(150px, 100px) scale(1.2); }
-        }
-
-        @keyframes move-glow-2 {
-            0% { transform: translate(0, 0) scale(1.1); }
-            100% { transform: translate(-100px, -150px) scale(0.9); }
-        }
-
-        /* Glassmorphic Login Card */
         .login-card {
-            width: 400px;
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
+            background: rgba(24, 24, 34, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
             padding: 40px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-            z-index: 10;
-            animation: card-appear 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-        }
-
-        .login-card::after {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(135deg, var(--accent-cyan), transparent, var(--accent-purple));
-            border-radius: 20px;
-            z-index: -1;
-            opacity: 0.15;
-            transition: opacity 0.5s ease;
-        }
-
-        .login-card:hover::after {
-            opacity: 0.3;
-        }
-
-        @keyframes card-appear {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.98);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        /* Brand Logo Area */
-        .logo-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            text-align: center;
-        }
-
-        .logo-icon {
-            font-size: 32px;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 10px rgba(0, 122, 204, 0.6));
-            animation: pulse-glow 2s infinite alternate;
-        }
-
-        .logo-title {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            background: linear-gradient(to right, #ffffff, #9ca3af);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .logo-subtitle {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: -4px;
-        }
-
-        @keyframes pulse-glow {
-            from { filter: drop-shadow(0 0 4px rgba(0, 122, 204, 0.4)); }
-            to { filter: drop-shadow(0 0 14px rgba(157, 78, 237, 0.8)); }
-        }
-
-        /* Form Controls */
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            position: relative;
-        }
-
-        .form-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-wrapper i {
-            position: absolute;
-            left: 14px;
-            color: var(--text-secondary);
-            font-size: 14px;
-            transition: color var(--transition-speed);
-        }
-
-        .login-input {
             width: 100%;
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px 12px 12px 42px;
-            font-family: inherit;
-            font-size: 14px;
-            color: var(--text-primary);
-            outline: none;
-            transition: all var(--transition-speed);
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-
-        .login-input:focus {
-            border-color: var(--accent-cyan);
-            background-color: rgba(255, 255, 255, 0.05);
-            box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+        .logo-icon { 
+            font-size: 48px; 
+            background: linear-gradient(135deg, #007acc 0%, #9d4edd 100%); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            filter: drop-shadow(0 0 12px rgba(0, 122, 204, 0.6)); 
+            margin-bottom: 20px;
         }
-
-        .login-input:focus + i {
-            color: var(--accent-cyan);
-        }
-
-        /* Button */
-        .btn-submit {
-            background: var(--gradient-primary);
+        h2 { margin-bottom: 8px; font-weight: 600; }
+        p.subtitle { color: #9ca3af; font-size: 14px; margin-bottom: 32px; }
+        
+        .google-btn {
+            background: white;
+            color: #444;
             border: none;
             border-radius: 8px;
-            padding: 14px;
-            color: white;
-            font-family: inherit;
-            font-size: 14px;
+            padding: 12px 24px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            transition: all var(--transition-speed);
-            box-shadow: 0 4px 15px rgba(157, 78, 237, 0.35);
-            margin-top: 10px;
+            gap: 12px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-decoration: none;
         }
-
-        .btn-submit:hover {
-            opacity: 0.95;
-            box-shadow: 0 4px 22px rgba(0, 122, 204, 0.6);
-            transform: translateY(-1px);
+        .google-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
-
-        .btn-submit:active {
-            transform: translateY(1px);
-        }
-
-        .btn-submit:disabled {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-secondary);
-            box-shadow: none;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Error Banner */
-        .error-banner {
-            background: rgba(255, 107, 107, 0.08);
-            border: 1px solid rgba(255, 107, 107, 0.25);
-            border-radius: 8px;
-            padding: 12px;
-            color: #ff8b8b;
+        .google-icon { width: 24px; height: 24px; }
+        
+        .error-msg {
+            color: #ff6b6b;
             font-size: 13px;
+            margin-top: 16px;
             display: none;
-            align-items: center;
-            gap: 10px;
-            animation: shake 0.4s ease-in-out;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-6px); }
-            40%, 80% { transform: translateX(6px); }
+            background: rgba(255, 68, 68, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 68, 68, 0.2);
         }
     </style>
 </head>
 <body>
 
-    <div class="ambient-glow-1"></div>
-    <div class="ambient-glow-2"></div>
-
     <div class="login-card">
-        <div class="logo-area">
-            <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
-            <h1 class="logo-title">Rodrix Music Creator</h1>
-            <p class="logo-subtitle">Acceso Seguro a la Suite de Producción</p>
-        </div>
+        <i class="fa-solid fa-compact-disc logo-icon"></i>
+        <h2>Rodrix Music Creator</h2>
+        <p class="subtitle">Acceso restringido (Whitelist)</p>
 
-        <div class="error-banner" id="errorBanner">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <span id="errorMessage">Credenciales incorrectas</span>
-        </div>
+        <!-- Botón de Login con Google -->
+        <a href="/api/login/google" class="google-btn">
+            <svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+            </svg>
+            Continuar con Google
+        </a>
 
-        <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
-            <div class="form-group">
-                <label for="usernameInput" class="form-label">Usuario</label>
-                <div class="input-wrapper">
-                    <input type="text" id="usernameInput" class="login-input" placeholder="Nombre de usuario" required autocomplete="off">
-                    <i class="fa-solid fa-user"></i>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="passwordInput" class="form-label">Contraseña</label>
-                <div class="input-wrapper">
-                    <input type="password" id="passwordInput" class="login-input" placeholder="Contraseña de acceso" required>
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-submit" id="btnSubmit">
-                <i class="fa-solid fa-arrow-right-to-bracket"></i>
-                <span>Ingresar</span>
-            </button>
-        </form>
+        <div id="errorMsg" class="error-msg"></div>
     </div>
 
     <script>
-        async function handleLogin(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('usernameInput').value.trim();
-            const password = document.getElementById('passwordInput').value;
-            const btnSubmit = document.getElementById('btnSubmit');
-            const errorBanner = document.getElementById('errorBanner');
-            const errorMessage = document.getElementById('errorMessage');
-
-            // Reset UI
-            errorBanner.style.display = 'none';
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Conectando...</span>';
-
-            const formData = new FormData();
-            formData.append('username', username);
-            formData.append('password', password);
-
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.detail || 'Error al iniciar sesión');
-                }
-
-                // If success, FastAPI sets the HttpOnly cookie.
-                // We redirect to "/" (the SPA app)
-                window.location.href = '/';
-
-            } catch (err) {
-                console.error(err);
-                errorMessage.innerText = err.message;
-                errorBanner.style.display = 'flex';
-                
-                // Reset button
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i><span>Ingresar</span>';
-            }
+        // Si hay un error en la URL (ej: ?error=No_Autorizado), lo mostramos
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        if (error) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.innerText = decodeURIComponent(error);
+            errorMsg.style.display = 'block';
         }
     </script>
 </body>

@@ -5,3 +5,5 @@ python-multipart
 pydub
 mutagen
 python-dotenv
+authlib
+itsdangerous
