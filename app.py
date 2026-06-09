@@ -453,7 +453,7 @@ async def api_delete_from_library(task_id: str, current_user: str = Depends(get_
 
 @app.get("/api/download/{task_id}/{audio_format}")
 async def download_track_format(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
-    if audio_format not in ["wav", "flac"]:
+    if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
         
     library = load_library()
@@ -477,11 +477,13 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
             with open(temp_mp3, "wb") as f:
                 f.write(r.content)
                 
-        ffmpeg_cmd = ["ffmpeg.exe", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
         if audio_format == "wav":
             ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
         elif audio_format == "flac":
             ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8"])
+        elif audio_format == "mp3":
+            ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-q:a", "2"])
             
         ffmpeg_cmd.append(temp_out)
         subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -576,7 +576,7 @@
                             <i class="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         <div id="dropdown-${safeId}" class="dropdown-content">
-                            <a href="${audioUrl}" download="${title}.mp3" onclick="event.stopPropagation()"><i class="fa-solid fa-file-audio"></i> MP3 (Original)</a>
+                            <a href="/api/download/${id}/mp3" onclick="event.stopPropagation()"><i class="fa-solid fa-file-audio"></i> MP3 (Original)</a>
                             <a href="/api/download/${id}/wav" onclick="event.stopPropagation()"><i class="fa-solid fa-file-waveform"></i> WAV (Lossless)</a>
                             <a href="/api/download/${id}/flac" onclick="event.stopPropagation()"><i class="fa-solid fa-compact-disc"></i> FLAC (HQ)</a>
                             <a href="#" onclick="event.stopPropagation(); shareTrack('${audioUrl}')"><i class="fa-solid fa-share-nodes"></i> Copiar Enlace</a>
