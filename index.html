@@ -466,8 +466,27 @@
             }
             
             try {
-                const response = await fetch('/api/transform', { method: 'POST', body: formData });
-                const data = await response.json();
+                const initResponse = await fetch('/api/transform', { method: 'POST', body: formData });
+                const initData = await initResponse.json();
+                
+                if (!initResponse.ok) {
+                    throw new Error(initData.detail || 'Error en el backend al iniciar tarea.');
+                }
+                
+                const taskId = initData.task_id;
+                
+                // Bucle de polling
+                let data = null;
+                while (true) {
+                    await new Promise(r => setTimeout(r, 4000));
+                    const statusResponse = await fetch(`/api/status/${taskId}`);
+                    if (!statusResponse.ok) continue;
+                    
+                    data = await statusResponse.json();
+                    if (data.status === 'COMPLETED' || data.status === 'ERROR') {
+                        break;
+                    }
+                }
                 
                 // Descargar logs automáticamente si están disponibles
                 if (data.logs) {
@@ -482,8 +501,8 @@
                     window.URL.revokeObjectURL(url);
                 }
                 
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Error en el backend.');
+                if (data.status === 'ERROR') {
+                    throw new Error(data.detail || 'La tarea falló internamente.');
                 }
 
                 stopProgressBar(true);

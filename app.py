@@ -159,8 +159,11 @@ def add_track_to_library(track_info):
         library.append(track_info)
         save_library(library)
 
+TASKS = {}
+
 @app.post("/api/transform")
 async def transform_audio(
+    background_tasks: BackgroundTasks,
     style: str = Form(...),
     lyrics: str = Form(...),
     title: str = Form(...),
@@ -178,13 +181,50 @@ async def transform_audio(
     if not UDIO_API_KEY:
         raise HTTPException(status_code=400, detail="Falta UDIO_API_KEY")
 
+    audio_content = None
+    audio_filename = None
+    if audio and not ignore_audio:
+        audio_content = await audio.read()
+        audio_filename = audio.filename
+
+    task_id = str(uuid.uuid4())
+    TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
+
+    background_tasks.add_task(
+        run_transform_task,
+        task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
+        include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
+        style_influence, audio_influence
+    )
+    
+    return {"status": "started", "task_id": task_id}
+
+@app.get("/api/status/{task_id}")
+async def get_task_status(task_id: str):
+    if task_id not in TASKS:
+        raise HTTPException(status_code=404, detail="Task no encontrada")
+    return TASKS[task_id]
+
+async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence):
+    def log_msg(msg):
+        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+        line = f"[{timestamp}] {msg}"
+        print(line)
+        TASKS[task_id]["logs"] += line + "\n"
+        
+    def save_local_log():
+        os.makedirs("logs", exist_ok=True)
+        filename = f"logs/generation_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{task_id[:6]}.log"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(TASKS[task_id]["logs"])
+        return TASKS[task_id]["logs"]
+
     headers = {
         "Authorization": f"Bearer {UDIO_API_KEY}",
         "Content-Type": "application/json"
     }
 
     is_instrumental = not include_lyrics or (lyrics.strip().lower() == "[instrumental]")
-    
     if is_instrumental:
         title = f"{title} (Instrumental)"
     
@@ -199,35 +239,19 @@ async def transform_audio(
     temp_file_path = None
     bypassed_file_path = None
     
-    # --- LOGGING SYSTEM ---
-    log_trace = []
-    def log_msg(msg):
-        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
-        line = f"[{timestamp}] {msg}"
-        print(line)
-        log_trace.append(line)
-        
-    def save_local_log():
-        os.makedirs("logs", exist_ok=True)
-        filename = f"logs/generation_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}.log"
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write("\n".join(log_trace))
-        return "\n".join(log_trace)
-    
-    if audio and not ignore_audio:
-        try:
+    try:
+        if audio_content and not ignore_audio:
             ext = ".mp3"
-            if audio.filename:
-                _, fext = os.path.splitext(audio.filename)
+            if audio_filename:
+                _, fext = os.path.splitext(audio_filename)
                 if fext:
                     ext = fext
             
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
             bypassed_file_path = f"bypassed_{uuid.uuid4().hex}{ext}"
             
-            content = await audio.read()
             with open(temp_file_path, "wb") as f:
-                f.write(content)
+                f.write(audio_content)
                 
             log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
             bypass_result = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
@@ -238,61 +262,60 @@ async def transform_audio(
             else:
                 target_upload_file = temp_file_path
                 log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
+                
             log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
             upload_url = await upload_to_tmpfiles_async(target_upload_file)
             
             if not upload_url:
                 log_msg("ERROR: Fallo al subir el audio a servidor temporal.")
-                raise HTTPException(status_code=500, detail="Fallo al subir el audio a servidor temporal.")
+                raise Exception("Fallo al subir el audio a servidor temporal.")
             log_msg(f"Audio subido exitosamente a: {upload_url}")
             
-        finally:
             for p in [temp_file_path, bypassed_file_path]:
                 if p and os.path.exists(p):
                     try: os.remove(p)
                     except: pass
                     
-    if upload_url:
-        log_msg("Usando endpoint V2 Upload & Cover")
-        url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
-        url_status = "https://udioapi.pro/api/v2/upload-cover/status"
-        
-        payload = {
-            "upload_url": upload_url,
-            "model": "chirp-v4-5",
-            "custom_mode": True,
-            "prompt": final_lyrics,
-            "style": style,
-            "title": title,
-            "make_instrumental": is_instrumental,
-            "style_weight": round(style_influence / 100.0, 2),
-            "audio_weight": round(audio_influence / 100.0, 2),
-            "weirdness_constraint": round(weirdness / 100.0, 2)
-        }
-        if vocal_gender in ["male", "female"]:
-            payload["gender"] = vocal_gender
-        if exclude_styles.strip():
-            payload["negative_tags"] = exclude_styles.strip()
-    else:
-        log_msg("Usando endpoint estándar Generate")
-        url_generate = "https://udioapi.pro/api/generate"
-        url_status = "https://udioapi.pro/api/feed"
-        
-        payload = {
-            "prompt": style,
-            "lyrics": final_lyrics,
-            "tags": style,
-            "title": title,
-            "make_instrumental": is_instrumental,
-            "model": "udio32",
-            "custom_mode": True
-        }
-        if vocal_gender in ["male", "female"]:
-            payload["gender"] = vocal_gender
-        if exclude_styles.strip():
-            payload["negative_tags"] = exclude_styles.strip()
+        if upload_url:
+            log_msg("Usando endpoint V2 Upload & Cover")
+            url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
+            url_status = "https://udioapi.pro/api/v2/upload-cover/status"
+            
+            payload = {
+                "upload_url": upload_url,
+                "model": "chirp-v4-5",
+                "custom_mode": True,
+                "prompt": final_lyrics,
+                "style": style,
+                "title": title,
+                "make_instrumental": is_instrumental,
+                "style_weight": round(style_influence / 100.0, 2),
+                "audio_weight": round(audio_influence / 100.0, 2),
+                "weirdness_constraint": round(weirdness / 100.0, 2)
+            }
+            if vocal_gender in ["male", "female"]:
+                payload["gender"] = vocal_gender
+            if exclude_styles.strip():
+                payload["negative_tags"] = exclude_styles.strip()
+        else:
+            log_msg("Usando endpoint estándar Generate")
+            url_generate = "https://udioapi.pro/api/generate"
+            url_status = "https://udioapi.pro/api/feed"
+            
+            payload = {
+                "prompt": style,
+                "lyrics": final_lyrics,
+                "tags": style,
+                "title": title,
+                "make_instrumental": is_instrumental,
+                "model": "udio32",
+                "custom_mode": True
+            }
+            if vocal_gender in ["male", "female"]:
+                payload["gender"] = vocal_gender
+            if exclude_styles.strip():
+                payload["negative_tags"] = exclude_styles.strip()
 
-    try:
         log_msg(f"Submitting request to {url_generate}...")
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(url_generate, json=payload, headers=headers)
@@ -398,147 +421,19 @@ async def transform_audio(
                         add_track_to_library(track_info)
                         log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid})")
 
-            log_str = save_local_log()
-            log_conversion(payload, "SUCCESS", None, final_tracks)
-            return JSONResponse(content={"status": "success", "tracks": final_tracks, "logs": log_str})
+            save_local_log()
+            TASKS[task_id]["tracks"] = final_tracks
+            TASKS[task_id]["status"] = "COMPLETED"
 
     except Exception as e:
         log_msg(f"ERROR: {str(e)}")
-        log_str = save_local_log()
-        log_conversion(payload if 'payload' in locals() else {}, "ERROR", str(e), None)
-        return JSONResponse(status_code=500, content={"detail": str(e), "logs": log_str})
+        save_local_log()
+        TASKS[task_id]["detail"] = str(e)
+        TASKS[task_id]["status"] = "ERROR"
 
-@app.get("/api/library")
-async def api_get_library(current_user: str = Depends(get_current_user)):
-    library = load_library()
-    return JSONResponse(content={"status": "success", "tracks": library[::-1]})
-
-@app.delete("/api/library/{task_id}")
-async def api_delete_from_library(task_id: str, current_user: str = Depends(get_current_user)):
-    library = load_library()
-    new_library = [t for t in library if t.get("id") != task_id]
-    if len(new_library) == len(library):
-        raise HTTPException(status_code=404, detail="Track no encontrado")
-    save_library(new_library)
-    return JSONResponse(content={"status": "success"})
-
-@app.get("/api/download/{task_id}/{audio_format}")
-async def download_track_format(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
-    if audio_format not in ["wav", "flac"]:
-        raise HTTPException(status_code=400, detail="Formato no soportado")
-        
-    library = load_library()
-    track = next((t for t in library if t.get("id") == task_id), None)
-    
-    if not track or not track.get("audio_url"):
-        raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
-        
-    audio_url = track.get("audio_url")
-    title = track.get("title", "Rodrix_Track")
-    safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
-    
-    temp_mp3 = f"temp_dl_{uuid.uuid4().hex}.mp3"
-    temp_out = f"temp_out_{uuid.uuid4().hex}.{audio_format}"
-    
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            r = await client.get(audio_url)
-            if r.status_code != 200:
-                raise HTTPException(status_code=500, detail="No se pudo descargar el audio original")
-            with open(temp_mp3, "wb") as f:
-                f.write(r.content)
-                
-        ffmpeg_cmd = ["ffmpeg.exe", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
-        if audio_format == "wav":
-            ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
-        elif audio_format == "flac":
-            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8"])
-            
-        ffmpeg_cmd.append(temp_out)
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        from fastapi.background import BackgroundTasks
-        def cleanup_files(files):
-            for file in files:
-                if os.path.exists(file):
-                    try: os.remove(file)
-                    except: pass
-                    
-        return FileResponse(
-            path=temp_out, 
-            filename=f"{safe_title}.{audio_format}", 
-            media_type=f"audio/{audio_format}"
-        )
-    except Exception as e:
-        print(f"Error descargando formato: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/", response_class=HTMLResponse)
-async def serve_spa(request: Request):
-    user = request.session.get('user')
-    if not user:
-        return RedirectResponse(url="/login")
-        
-    email = user.get('email', '')
-    if email != "rodryandy@gmail.com":
-        return RedirectResponse(url="/login?error=Correo%20No%20Autorizado")
-        
-    index_path = os.path.join(os.getcwd(), "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            html = f.read()
-            html = html.replace("{{USER_EMAIL}}", email if email else "Usuario")
-            return html
-    return "<h3>index.html not found.</h3>"
-
-@app.get("/login", response_class=HTMLResponse)
-async def serve_login(request: Request):
-    user = request.session.get('user')
-    if user:
-        email = user.get('email', '')
-        if email == "rodryandy@gmail.com":
-            return RedirectResponse(url="/")
-        
-    login_path = os.path.join(os.getcwd(), "login.html")
-    if os.path.exists(login_path):
-        with open(login_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h3>login.html not found.</h3>"
-
-@app.get("/api/login/google")
-async def login_via_google(request: Request):
-    # Forzar dinámicamente HTTPS en producción (Render) para evitar el desajuste de protocolo http/https
-    redirect_uri = str(request.base_url) + "api/auth/callback"
-    if "localhost" not in str(request.base_url):
-        redirect_uri = redirect_uri.replace("http://", "https://")
-    return await oauth.google.authorize_redirect(request, redirect_uri)
-
-@app.get("/api/auth/callback")
-async def auth_callback(request: Request):
-    try:
-        # Quitamos el redirect_uri de los argumentos para evitar el "multiple values"
-        token = await oauth.google.authorize_access_token(request)
-        user = token.get('userinfo')
-        if user:
-            email = user.get('email', '')
-            # Whitelist estricta
-            if email != "rodryandy@gmail.com":
-                return RedirectResponse(url="/login?error=Acceso%20Denegado:%20Correo%20fuera%20de%20la%20lista%20blanca.")
-            
-            request.session['user'] = user
-            return RedirectResponse(url="/")
-    except Exception as e:
-        print("Error en OAuth callback:", str(e))
-        return RedirectResponse(url="/login?error=Error%20al%20conectar%20con%20Google")
-    
-    return RedirectResponse(url="/login?error=No%20se%20pudo%20obtener%20el%20usuario")
-
-@app.get("/api/logout")
-async def api_logout(request: Request):
-    request.session.pop('user', None)
-    return RedirectResponse(url="/login")
 
 if __name__ == "__main__":
+
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
