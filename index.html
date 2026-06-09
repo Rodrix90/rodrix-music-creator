@@ -73,10 +73,9 @@
         .submit-btn { background: var(--gradient-primary); border: none; border-radius: 8px; padding: 14px; color: white; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all var(--transition-speed); width: 100%; }
         .submit-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0, 122, 204, 0.4); }
         .submit-btn:disabled { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); cursor: not-allowed; transform: none; box-shadow: none; }
-        
-        .adv-row { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
-        .adv-row-header { display: flex; justify-content: space-between; align-items: center; }
-        .adv-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .advanced-row { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+        .advanced-row-header { display: flex; justify-content: space-between; align-items: center; }
+        .advanced-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
         
         .toggle-group { display: flex; gap: 8px; }
         .toggle-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 13px; font-family: inherit; font-weight: 500; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; background: rgba(255,255,255,0.03); }
@@ -257,8 +256,8 @@
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                     <!-- Vocal Gender -->
-                                    <div class="adv-row form-full-width" style="flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-                                        <div class="adv-label">Vocal Gender <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                    <div class="advanced-row form-full-width" style="flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                                        <div class="advanced-label">Vocal Gender <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
                                         <div class="toggle-group">
                                             <button type="button" class="toggle-btn selected" id="genderBtn-random" onclick="selectGender('random')">Random</button>
                                             <button type="button" class="toggle-btn" id="genderBtn-male" onclick="selectGender('male')">Male</button>
@@ -268,27 +267,27 @@
                                     </div>
                                     
                                     <!-- Weirdness -->
-                                    <div class="adv-row">
-                                        <div class="adv-row-header">
-                                            <div class="adv-label">Weirdness <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                    <div class="advanced-row">
+                                        <div class="advanced-row-header">
+                                            <div class="advanced-label">Weirdness <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
                                             <span id="weirdnessValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">50%</span>
                                         </div>
                                         <input type="range" id="weirdnessSlider" min="0" max="100" value="50" oninput="document.getElementById('weirdnessValueDisplay').innerText = this.value + '%'">
                                     </div>
                                     
                                     <!-- Style Influence -->
-                                    <div class="adv-row">
-                                        <div class="adv-row-header">
-                                            <div class="adv-label">Style Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                    <div class="advanced-row">
+                                        <div class="advanced-row-header">
+                                            <div class="advanced-label">Style Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
                                             <span id="styleInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">50%</span>
                                         </div>
                                         <input type="range" id="styleInfluenceSlider" min="0" max="100" value="50" oninput="document.getElementById('styleInfluenceValueDisplay').innerText = this.value + '%'">
                                     </div>
                                     
                                     <!-- Audio Influence -->
-                                    <div class="adv-row">
-                                        <div class="adv-row-header">
-                                            <div class="adv-label">Audio Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                    <div class="advanced-row">
+                                        <div class="advanced-row-header">
+                                            <div class="advanced-label">Audio Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
                                             <span id="audioInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">25%</span>
                                         </div>
                                         <input type="range" id="audioInfluenceSlider" min="0" max="100" value="25" oninput="document.getElementById('audioInfluenceValueDisplay').innerText = this.value + '%'">
