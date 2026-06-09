@@ -224,10 +224,15 @@
                                     <i class="fa-solid fa-triangle-exclamation"></i>
                                     <span id="errorBannerText">Error</span>
                                 </div>
-                                <button type="submit" class="submit-btn" id="submitBtn">
-                                    <i class="fa-solid fa-bolt"></i>
-                                    <span>Generar con Udio API</span>
-                                </button>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="submit" class="submit-btn" id="submitBtn">
+                                        <i class="fa-solid fa-bolt"></i>
+                                        <span>Generar con Udio API</span>
+                                    </button>
+                                    <button type="button" class="submit-btn" onclick="clearForm()" style="background: rgba(255,255,255,0.05); width: auto; padding: 0 16px; color: var(--text-secondary);" title="Limpiar todo (Audio, Letra, Prompt)">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
                                 <div class="pipeline-container" id="pipelineContainer" style="flex-direction: column; align-items: stretch; padding: 16px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                         <div class="pipeline-title"><i class="fa-solid fa-gears fa-spin"></i> <span id="pipelineStatus" style="font-size: 12px;">Conectando...</span></div>
@@ -614,6 +619,15 @@
             document.getElementById('genderBtn-female').classList.remove('selected');
             document.getElementById('genderBtn-' + gender).classList.add('selected');
             document.getElementById('vocalGenderInput').value = gender;
+        }
+
+        // Funciones de UI
+        function clearForm() {
+            document.getElementById('audioForm').reset();
+            selectGender('random');
+            document.getElementById('weirdnessValueDisplay').innerText = '50%';
+            document.getElementById('styleInfluenceValueDisplay').innerText = '50%';
+            document.getElementById('audioInfluenceValueDisplay').innerText = '25%';
         }
 
         // --- SISTEMA DE PESTAÑAS ---
