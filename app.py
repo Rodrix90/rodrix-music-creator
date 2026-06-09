@@ -7,7 +7,7 @@ import uuid
 import tempfile
 import subprocess
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Depends, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 import json
@@ -187,6 +187,7 @@ async def transform_audio(
         audio_content = await audio.read()
         audio_filename = audio.filename
 
+    import uuid
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
 
@@ -207,12 +208,15 @@ async def get_task_status(task_id: str):
 
 async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence):
     def log_msg(msg):
+        import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
         line = f"[{timestamp}] {msg}"
         print(line)
         TASKS[task_id]["logs"] += line + "\n"
         
     def save_local_log():
+        import os
+        import datetime
         os.makedirs("logs", exist_ok=True)
         filename = f"logs/generation_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{task_id[:6]}.log"
         with open(filename, "w", encoding="utf-8") as f:
@@ -246,7 +250,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 _, fext = os.path.splitext(audio_filename)
                 if fext:
                     ext = fext
-            
+            import uuid
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
             bypassed_file_path = f"bypassed_{uuid.uuid4().hex}{ext}"
             
@@ -256,6 +260,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
             bypass_result = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
             
+            import os
             if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
                 target_upload_file = bypassed_file_path
                 log_msg("FFmpeg terminó exitosamente. Usando audio modificado.")
@@ -317,6 +322,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 payload["negative_tags"] = exclude_styles.strip()
 
         log_msg(f"Submitting request to {url_generate}...")
+        import httpx
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(url_generate, json=payload, headers=headers)
             
@@ -338,6 +344,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             log_msg(f"Task successfully queued. ID: {work_id}")
             
             tracks = []
+            import asyncio
             for i in range(120):
                 if upload_url:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
@@ -432,8 +439,137 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         TASKS[task_id]["status"] = "ERROR"
 
 
-if __name__ == "__main__":
+@app.get("/api/library")
+async def api_get_library(current_user: str = Depends(get_current_user)):
+    library = load_library()
+    return JSONResponse(content={"status": "success", "tracks": library[::-1]})
 
+@app.delete("/api/library/{task_id}")
+async def api_delete_from_library(task_id: str, current_user: str = Depends(get_current_user)):
+    library = load_library()
+    new_library = [t for t in library if t.get("id") != task_id]
+    if len(new_library) == len(library):
+        raise HTTPException(status_code=404, detail="Track no encontrado")
+    save_library(new_library)
+    return JSONResponse(content={"status": "success"})
+
+@app.get("/api/download/{task_id}/{audio_format}")
+async def download_track_format(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
+    if audio_format not in ["wav", "flac"]:
+        raise HTTPException(status_code=400, detail="Formato no soportado")
+        
+    library = load_library()
+    track = next((t for t in library if t.get("id") == task_id), None)
+    
+    if not track or not track.get("audio_url"):
+        raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
+        
+    audio_url = track.get("audio_url")
+    title = track.get("title", "Rodrix_Track")
+    safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+    
+    temp_mp3 = f"temp_dl_{uuid.uuid4().hex}.mp3"
+    temp_out = f"temp_out_{uuid.uuid4().hex}.{audio_format}"
+    
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            r = await client.get(audio_url)
+            if r.status_code != 200:
+                raise HTTPException(status_code=500, detail="No se pudo descargar el audio original")
+            with open(temp_mp3, "wb") as f:
+                f.write(r.content)
+                
+        ffmpeg_cmd = ["ffmpeg.exe", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
+        if audio_format == "wav":
+            ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
+        elif audio_format == "flac":
+            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8"])
+            
+        ffmpeg_cmd.append(temp_out)
+        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        from fastapi.background import BackgroundTasks
+        def cleanup_files(files):
+            for file in files:
+                if os.path.exists(file):
+                    try: os.remove(file)
+                    except: pass
+                    
+        return FileResponse(
+            path=temp_out, 
+            filename=f"{safe_title}.{audio_format}", 
+            media_type=f"audio/{audio_format}"
+        )
+    except Exception as e:
+        print(f"Error descargando formato: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_spa(request: Request):
+    user = request.session.get('user')
+    if not user:
+        return RedirectResponse(url="/login")
+        
+    email = user.get('email', '')
+    if email != "rodryandy@gmail.com":
+        return RedirectResponse(url="/login?error=Correo%20No%20Autorizado")
+        
+    index_path = os.path.join(os.getcwd(), "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            html = f.read()
+            html = html.replace("{{USER_EMAIL}}", email if email else "Usuario")
+            return html
+    return "<h3>index.html not found.</h3>"
+
+@app.get("/login", response_class=HTMLResponse)
+async def serve_login(request: Request):
+    user = request.session.get('user')
+    if user:
+        email = user.get('email', '')
+        if email == "rodryandy@gmail.com":
+            return RedirectResponse(url="/")
+        
+    login_path = os.path.join(os.getcwd(), "login.html")
+    if os.path.exists(login_path):
+        with open(login_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h3>login.html not found.</h3>"
+
+@app.get("/api/login/google")
+async def login_via_google(request: Request):
+    # Forzar dinámicamente HTTPS en producción (Render) para evitar el desajuste de protocolo http/https
+    redirect_uri = str(request.base_url) + "api/auth/callback"
+    if "localhost" not in str(request.base_url):
+        redirect_uri = redirect_uri.replace("http://", "https://")
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+@app.get("/api/auth/callback")
+async def auth_callback(request: Request):
+    try:
+        # Quitamos el redirect_uri de los argumentos para evitar el "multiple values"
+        token = await oauth.google.authorize_access_token(request)
+        user = token.get('userinfo')
+        if user:
+            email = user.get('email', '')
+            # Whitelist estricta
+            if email != "rodryandy@gmail.com":
+                return RedirectResponse(url="/login?error=Acceso%20Denegado:%20Correo%20fuera%20de%20la%20lista%20blanca.")
+            
+            request.session['user'] = user
+            return RedirectResponse(url="/")
+    except Exception as e:
+        print("Error en OAuth callback:", str(e))
+        return RedirectResponse(url="/login?error=Error%20al%20conectar%20con%20Google")
+    
+    return RedirectResponse(url="/login?error=No%20se%20pudo%20obtener%20el%20usuario")
+
+@app.get("/api/logout")
+async def api_logout(request: Request):
+    request.session.pop('user', None)
+    return RedirectResponse(url="/login")
+
+if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
