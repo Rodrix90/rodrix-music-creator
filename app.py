@@ -35,17 +35,21 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY.decode('utf-8'))
 
 ALLOWED_EMAIL = os.environ.get("ALLOWED_EMAIL", "")
 
-# Configurar OAuth de Google
+# Instanciar OAuth globalmente
 oauth = OAuth()
-oauth.register(
-    name='google',
-    client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
-    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
-)
+
+@app.on_event("startup")
+async def startup_event():
+    # Registrar el cliente de Google en caliente (startup) para asegurar la carga del .env en Render
+    oauth.register(
+        name='google',
+        client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+        client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={
+            'scope': 'openid email profile'
+        }
+    )
 
 def get_current_user(request: Request):
     user = request.session.get('user')
