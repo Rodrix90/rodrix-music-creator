@@ -94,9 +94,9 @@ async def upload_to_tmpfiles_async(file_path: str) -> str | None:
         print("Error subiendo a Tmpfiles:", e)
     return None
 
-def bypass_audio_fingerprint(input_path: str, output_path: str):
+def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_cmd = [
-        "ffmpeg.exe",
+        "ffmpeg",
         "-y",
         "-i", input_path,
         "-map_metadata", "-1",
@@ -104,11 +104,14 @@ def bypass_audio_fingerprint(input_path: str, output_path: str):
         output_path
     ]
     try:
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
+        process = subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return "SUCCESS"
+    except FileNotFoundError:
+        return "ERROR: FFmpeg no está instalado o no está en el PATH del sistema."
+    except subprocess.CalledProcessError as e:
+        return f"ERROR FFmpeg: {e.stderr}"
     except Exception as e:
-        print("Error en bypass ffmpeg:", e)
-        return False
+        return f"ERROR inesperado: {str(e)}"
 
 # Funciones de persistencia para la librería
 LIBRARY_FILE = "library.json"
@@ -227,9 +230,14 @@ async def transform_audio(
                 f.write(content)
                 
             log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
-            success = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
+            bypass_result = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
             
-            target_upload_file = bypassed_file_path if success and os.path.exists(bypassed_file_path) else temp_file_path
+            if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
+                target_upload_file = bypassed_file_path
+                log_msg("FFmpeg terminó exitosamente. Usando audio modificado.")
+            else:
+                target_upload_file = temp_file_path
+                log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
             log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
             upload_url = await upload_to_tmpfiles_async(target_upload_file)
             
