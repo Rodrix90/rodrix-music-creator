@@ -14,3 +14,4 @@ downloads/
 temp_*/
 *.mp3
 *.wav
+ffmpeg.exe

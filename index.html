@@ -77,13 +77,24 @@
         .pipeline-container { background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 16px; display: none; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.2); margin-top: 16px; }
         .pipeline-title { font-size: 14px; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; }
         
-        .songs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .songs-grid.compact { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; max-height: 400px; overflow-y: auto; padding-right: 8px; }
+        .songs-grid { display: flex; flex-direction: column; gap: 24px; }
+        .songs-grid.compact { max-height: 500px; overflow-y: auto; padding-right: 8px; }
         .songs-grid.compact::-webkit-scrollbar { width: 6px; }
         .songs-grid.compact::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 3px; }
         
+        /* Generation Groups */
+        .generation-group { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px; animation: fade-in 0.4s ease-out; }
+        .group-header { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
+        .group-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .group-prompt { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .group-cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+        
         .song-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition-speed); position: relative; }
-        .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); }
+        .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        
+        /* Version Badge */
+        .version-badge { position: absolute; top: -10px; left: -10px; background: var(--gradient-primary); color: white; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 8px; z-index: 5; box-shadow: 0 4px 10px rgba(0,122,204,0.3); letter-spacing: 0.5px; text-transform: uppercase; }
+        
         .song-cover-container { width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative; background: #1f1f2e; cursor: pointer; }
         .song-cover { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
         .song-card:hover .song-cover { transform: scale(1.05); }
@@ -120,6 +131,12 @@
         .track-timeline { flex-grow: 1; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; cursor: pointer; position: relative; }
         .track-timeline-fill { height: 100%; background: var(--gradient-primary); border-radius: 2px; width: 0%; position: relative; }
         
+        /* Top Navigation / User Profile */
+        .top-navbar { display: flex; justify-content: flex-end; padding-bottom: 24px; }
+        .user-profile-btn { background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
+        .user-profile-btn:hover { background: rgba(255,255,255,0.05); }
+        .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+        
         @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -139,6 +156,21 @@
 
         <!-- MAIN AREA -->
         <main class="main-content">
+            
+            <!-- TOP NAVBAR -->
+            <div class="top-navbar">
+                <div class="dropdown">
+                    <button class="user-profile-btn" onclick="toggleDropdown('user', event)">
+                        <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+                        <span>{{USER_EMAIL}}</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 10px; color: var(--text-secondary);"></i>
+                    </button>
+                    <div id="dropdown-user" class="dropdown-content" style="right: 0; left: auto; min-width: 180px;">
+                        <a href="/api/logout" style="color: #ff6b6b;"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+
             <!-- TAB 1: CREACIONES (DASHBOARD) -->
             <div class="tab-view" id="crearView">
                 <form id="generatorForm" onsubmit="handleSubmit(event)">
@@ -257,9 +289,14 @@
                                 <i class="fa-solid fa-bolt"></i>
                                 <span>Generar con Udio API</span>
                             </button>
-                            <div class="pipeline-container" id="pipelineContainer">
-                                <i class="fa-solid fa-gears fa-spin" style="color: var(--accent-cyan); font-size: 18px;"></i>
-                                <span id="pipelineStatus" style="color: var(--accent-cyan); font-weight: 500;">Conectando con Udio API... (Demora ~2 minutos)</span>
+                            <div class="pipeline-container" id="pipelineContainer" style="flex-direction: column; align-items: stretch; padding: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div class="pipeline-title"><i class="fa-solid fa-gears fa-spin"></i> <span id="pipelineStatus">Conectando con Udio API...</span></div>
+                                    <span id="progressPercentage" style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">0%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: rgba(0, 240, 255, 0.1); border-radius: 4px; overflow: hidden;">
+                                    <div id="progressBarFill" style="height: 100%; width: 0%; background: var(--gradient-primary); transition: width 1s linear;"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -349,17 +386,64 @@
             document.getElementById('dropdown-' + id).classList.toggle("show");
         }
 
+        let progressInterval = null;
+
+        function startProgressBar() {
+            let progress = 0;
+            const progressBarFill = document.getElementById('progressBarFill');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const pipelineStatus = document.getElementById('pipelineStatus');
+            
+            progressBarFill.style.width = '0%';
+            progressPercentage.innerText = '0%';
+            pipelineStatus.innerText = "Subiendo y analizando...";
+
+            if (progressInterval) clearInterval(progressInterval);
+            
+            progressInterval = setInterval(() => {
+                // Udio takes about 120-150 seconds. We'll animate up to 99% over 120 seconds.
+                // That's roughly 0.83% per second. Let's do 1% per 1.2s
+                progress += 0.8;
+                if (progress > 99) progress = 99;
+                
+                progressBarFill.style.width = progress + '%';
+                progressPercentage.innerText = Math.floor(progress) + '%';
+                
+                if (progress > 30 && progress < 60) pipelineStatus.innerText = "Generando voces e instrumentos...";
+                if (progress >= 60 && progress < 90) pipelineStatus.innerText = "Sintetizando alta calidad...";
+                if (progress >= 90) pipelineStatus.innerText = "Finalizando render...";
+                
+            }, 1000);
+        }
+
+        function stopProgressBar(success) {
+            if (progressInterval) clearInterval(progressInterval);
+            const progressBarFill = document.getElementById('progressBarFill');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const pipelineStatus = document.getElementById('pipelineStatus');
+            
+            if (success) {
+                progressBarFill.style.width = '100%';
+                progressPercentage.innerText = '100%';
+                pipelineStatus.innerText = "¡Completado!";
+            }
+        }
+
         async function handleSubmit(event) {
             event.preventDefault();
             errorBanner.style.display = 'none';
             submitBtn.style.display = 'none';
             pipelineContainer.style.display = 'flex';
-            pipelineStatus.innerText = "Conectando con Udio API... (Demora ~2 minutos)";
+            
+            startProgressBar();
+
+            const titleVal = document.getElementById('titleInput').value;
+            const styleVal = document.getElementById('styleInput').value;
 
             const formData = new FormData();
-            formData.append('style', document.getElementById('styleInput').value);
+            formData.append('style', styleVal);
             formData.append('lyrics', document.getElementById('instrumentalCheckbox').checked ? '[Instrumental]' : document.getElementById('lyricsInput').value);
-            formData.append('title', document.getElementById('titleInput').value);
+            formData.append('title', titleVal);
             formData.append('include_lyrics', !document.getElementById('instrumentalCheckbox').checked);
             formData.append('bypass_copyright', document.getElementById('bypassCopyrightCheckbox').checked);
             formData.append('exclude_styles', document.getElementById('excludeStylesInput').value);
@@ -381,22 +465,47 @@
                     throw new Error(data.detail || 'Error en el backend.');
                 }
 
+                stopProgressBar(true);
+
                 const tracks = data.tracks || [];
-                tracks.forEach((track, index) => {
-                    addSongCardToGrid(track.id, track.title + ` (Alt ${index+1})`, track.tags, track.audio_url, track.image_url, 'songsGrid');
-                });
+                if (tracks.length > 0) {
+                    // Create Generation Group
+                    const grid = document.getElementById('songsGrid');
+                    const groupId = 'group-' + Date.now();
+                    
+                    const groupContainer = document.createElement('div');
+                    groupContainer.className = 'generation-group';
+                    groupContainer.id = groupId;
+                    
+                    groupContainer.innerHTML = `
+                        <div class="group-header">
+                            <div class="group-title">${titleVal}</div>
+                            <div class="group-prompt"><i class="fa-solid fa-tags" style="font-size:10px;"></i> ${styleVal}</div>
+                        </div>
+                        <div class="group-cards-container" id="${groupId}-cards"></div>
+                    `;
+                    
+                    grid.insertBefore(groupContainer, grid.firstChild);
+                    
+                    tracks.forEach((track, index) => {
+                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${groupId}-cards`, index + 1);
+                    });
+                }
 
             } catch (err) {
                 console.error(err);
+                stopProgressBar(false);
                 errorBannerText.innerText = err.message;
                 errorBanner.style.display = 'flex';
             } finally {
-                submitBtn.style.display = 'flex';
-                pipelineContainer.style.display = 'none';
+                setTimeout(() => {
+                    submitBtn.style.display = 'flex';
+                    pipelineContainer.style.display = 'none';
+                }, 1500);
             }
         }
 
-        function addSongCardToGrid(id, title, style, audioUrl, imageUrl, targetGridId) {
+        function addSongCardToGrid(id, title, style, audioUrl, imageUrl, targetGridId, versionNum = null) {
             if(!audioUrl) return;
             const grid = document.getElementById(targetGridId);
             const card = document.createElement('div');
@@ -405,7 +514,15 @@
             
             const safeId = id.replace(/[^a-zA-Z0-9]/g, '');
             
+            let badgeHtml = '';
+            if (versionNum === 1) {
+                badgeHtml = '<div class="version-badge">✨ Versión 1</div>';
+            } else if (versionNum === 2) {
+                badgeHtml = '<div class="version-badge" style="background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);">🔥 Versión 2</div>';
+            }
+            
             card.innerHTML = `
+                ${badgeHtml}
                 <div class="song-cover-container" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}')">
                     <img src="${imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300'}" class="song-cover">
                     <div class="cover-overlay"><button class="play-btn-circle"><i class="fa-solid fa-play"></i></button></div>
@@ -513,6 +630,12 @@
         // --- SISTEMA DE LIBRERÍA ---
         async function loadLibrary() {
             const libraryGrid = document.getElementById('libraryGrid');
+            
+            // As the library view is just a simple grid, we use grid layout
+            libraryGrid.style.display = 'grid';
+            libraryGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
+            libraryGrid.style.gap = '20px';
+            
             libraryGrid.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1 / -1;">Cargando librería...</p>';
             try {
                 const response = await fetch('/api/library');

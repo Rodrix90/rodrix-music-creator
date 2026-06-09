@@ -508,7 +508,9 @@ async def serve_spa(request: Request):
     index_path = os.path.join(os.getcwd(), "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
-            return f.read()
+            html = f.read()
+            html = html.replace("{{USER_EMAIL}}", email if email else "Usuario")
+            return html
     return "<h3>index.html not found.</h3>"
 
 @app.get("/login", response_class=HTMLResponse)
