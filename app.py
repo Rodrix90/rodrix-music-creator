@@ -488,16 +488,12 @@ async def login_via_google(request: Request):
 @app.get("/api/auth/callback")
 async def auth_callback(request: Request):
     try:
-        # Se extrae de forma limpia el callback URI para Authlib
-        redirect_uri = str(request.base_url) + "api/auth/callback"
-        if "localhost" not in str(request.base_url):
-            redirect_uri = redirect_uri.replace("http://", "https://")
-            
-        token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
+        # Quitamos el redirect_uri de los argumentos para evitar el "multiple values"
+        token = await oauth.google.authorize_access_token(request)
         user = token.get('userinfo')
         if user:
             email = user.get('email', '')
-            # Lista blanca dura y directa al hueso
+            # Whitelist estricta
             if email != "rodryandy@gmail.com":
                 return RedirectResponse(url="/login?error=Acceso%20Denegado:%20Correo%20fuera%20de%20la%20lista%20blanca.")
             
