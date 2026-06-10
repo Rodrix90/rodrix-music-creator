@@ -486,7 +486,10 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
             ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-q:a", "2"])
             
         ffmpeg_cmd.append(temp_out)
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        except subprocess.CalledProcessError as pe:
+            raise Exception(f"FFmpeg Error: {pe.stderr}")
         
         from fastapi.background import BackgroundTasks
         def cleanup_files(files):
