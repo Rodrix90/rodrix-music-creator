@@ -483,7 +483,7 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
         elif audio_format == "flac":
             ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8"])
         elif audio_format == "mp3":
-            ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-q:a", "2"])
+            ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100"])
             
         ffmpeg_cmd.append(temp_out)
         try:
