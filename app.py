@@ -111,7 +111,7 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         "-i", input_path,
         "-t", "55",
         "-map_metadata", "-1",
-        "-af", "atempo=1.0",
+        "-af", "bandreject=f=1800:width_type=h:w=3000",
         output_path
     ]
     try:
