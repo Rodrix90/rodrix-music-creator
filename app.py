@@ -287,7 +287,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             
             payload = {
                 "upload_url": upload_url,
-                "model": "chirp-v4-5",
+                "model": "udio32",
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
