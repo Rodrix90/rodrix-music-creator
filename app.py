@@ -81,9 +81,9 @@ def obfuscate_lyrics(text: str) -> str:
         obfuscated = ""
         for char in line:
             if char in lookalikes:
-                obfuscated += lookalikes[char]
+                obfuscated += lookalikes[char] + '\u200B'
             else:
-                obfuscated += char
+                obfuscated += char + '\u200B'
         processed_lines.append(obfuscated)
         
     return "\n".join(processed_lines)
@@ -106,11 +106,13 @@ async def upload_to_tmpfiles_async(file_path: str) -> str | None:
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_cmd = [
-        "ffmpeg",
-        "-y",
+        "ffmpeg", "-y", 
         "-i", input_path,
         "-t", "55",
         "-map_metadata", "-1",
+        "-fflags", "+bitexact",
+        "-write_id3v1", "0",
+        "-id3v2_version", "0",
         "-af", "bandreject=f=1800:width_type=h:w=3000",
         output_path
     ]
@@ -461,7 +463,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
-                "title": title,
+                "title": obfuscate_lyrics(title) if title else "",
                 "make_instrumental": is_instrumental,
                 "style_weight": round(style_influence / 100.0, 2),
                 "audio_weight": round(audio_influence / 100.0, 2),
