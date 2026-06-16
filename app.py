@@ -113,7 +113,7 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         "-fflags", "+bitexact",
         "-write_id3v1", "0",
         "-id3v2_version", "0",
-        "-af", "bandreject=f=1800:width_type=h:w=3000",
+        "-af", "atempo=1.0",
         output_path
     ]
     try:
