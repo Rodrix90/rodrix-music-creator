@@ -1,0 +1,36 @@
+[13:04:36] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[13:05:24] FFmpeg terminó exitosamente. Usando audio modificado.
+[13:05:24] Subiendo MP3 a servidor temporal para obtener URL pública...
+[13:05:26] Audio subido exitosamente a: https://tmpfiles.org/dl/wWwecjEe73eu/bypassed_85a83b8190554ace81cfcd7af5f111f9.mp3
+[13:05:26] Usando endpoint V2 Upload & Cover
+[13:05:26] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[13:05:28] Task successfully queued. ID: upcovbee5d4919b50493895a264d8dff5efe5
+[13:05:29] Polling (Attempt 1): Status=IN_PROGRESS
+[13:05:34] Polling (Attempt 2): Status=IN_PROGRESS
+[13:05:39] Polling (Attempt 3): Status=IN_PROGRESS
+[13:05:45] Polling (Attempt 4): Status=IN_PROGRESS
+[13:05:50] Polling (Attempt 5): Status=IN_PROGRESS
+[13:05:57] Polling (Attempt 6): Status=IN_PROGRESS
+[13:06:02] Polling (Attempt 7): Status=IN_PROGRESS
+[13:06:08] Polling (Attempt 8): Status=IN_PROGRESS
+[13:06:13] Polling (Attempt 9): Status=IN_PROGRESS
+[13:06:18] Polling (Attempt 10): Status=IN_PROGRESS
+[13:06:24] Polling (Attempt 11): Status=IN_PROGRESS
+[13:06:29] Polling (Attempt 12): Status=IN_PROGRESS
+[13:06:34] Polling (Attempt 13): Status=IN_PROGRESS
+[13:06:40] Polling (Attempt 14): Status=IN_PROGRESS
+[13:06:46] Polling (Attempt 15): Status=IN_PROGRESS
+[13:06:51] Polling (Attempt 16): Status=IN_PROGRESS
+[13:06:56] Polling (Attempt 17): Status=IN_PROGRESS
+[13:07:02] Polling (Attempt 18): Status=IN_PROGRESS
+[13:07:07] Polling (Attempt 19): Status=IN_PROGRESS
+[13:07:12] Polling (Attempt 20): Status=IN_PROGRESS
+[13:07:18] Polling (Attempt 21): Status=IN_PROGRESS
+[13:07:23] Polling (Attempt 22): Status=IN_PROGRESS
+[13:07:28] Polling (Attempt 23): Status=IN_PROGRESS
+[13:07:34] Polling (Attempt 24): Status=IN_PROGRESS
+[13:07:39] Polling (Attempt 25): Status=IN_PROGRESS
+[13:07:45] Polling (Attempt 26): Status=IN_PROGRESS
+[13:07:55] Generación completada exitosamente.
+[13:07:55] Pista procesada con éxito: Hermano toma el arado (ID: 0e881089-0f73-488e-acce-5a7527922349)
+[13:07:55] Pista procesada con éxito: Hermano toma el arado (ID: 53e73728-400d-4f21-b5a4-2920a6d61615)

@@ -1,0 +1,30 @@
+[00:18:13] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[00:18:37] FFmpeg terminó exitosamente. Usando audio modificado.
+[00:18:37] Subiendo MP3 a servidor temporal para obtener URL pública...
+[00:18:39] Audio subido exitosamente a: https://tmpfiles.org/dl/w3wjcAgSjN7z/bypassed_b5a5e2f8cc71415f8bf53fc545bcfc7f.mp3
+[00:18:39] Usando endpoint V2 Upload & Cover
+[00:18:39] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[00:18:42] Task successfully queued. ID: upcova94d60ab2e6e4895a1c6887931d8874a
+[00:18:42] Polling (Attempt 1): Status=IN_PROGRESS
+[00:18:47] Polling (Attempt 2): Status=IN_PROGRESS
+[00:18:52] Polling (Attempt 3): Status=IN_PROGRESS
+[00:18:58] Polling (Attempt 4): Status=IN_PROGRESS
+[00:19:03] Polling (Attempt 5): Status=IN_PROGRESS
+[00:19:08] Polling (Attempt 6): Status=IN_PROGRESS
+[00:19:14] Polling (Attempt 7): Status=IN_PROGRESS
+[00:19:19] Polling (Attempt 8): Status=IN_PROGRESS
+[00:19:24] Polling (Attempt 9): Status=IN_PROGRESS
+[00:19:30] Polling (Attempt 10): Status=IN_PROGRESS
+[00:19:35] Polling (Attempt 11): Status=IN_PROGRESS
+[00:19:40] Polling (Attempt 12): Status=IN_PROGRESS
+[00:19:46] Polling (Attempt 13): Status=IN_PROGRESS
+[00:19:51] Polling (Attempt 14): Status=IN_PROGRESS
+[00:19:56] Polling (Attempt 15): Status=IN_PROGRESS
+[00:20:01] Polling (Attempt 16): Status=IN_PROGRESS
+[00:20:07] Polling (Attempt 17): Status=IN_PROGRESS
+[00:20:12] Polling (Attempt 18): Status=IN_PROGRESS
+[00:20:17] Polling (Attempt 19): Status=IN_PROGRESS
+[00:20:23] Polling (Attempt 20): Status=IN_PROGRESS
+[00:20:28] Generación completada exitosamente.
+[00:20:28] Pista procesada con éxito: Dulce Oración (ID: fa817e25-27ef-462f-bb2b-bb27b17dcbd1)
+[00:20:28] Pista procesada con éxito: Dulce Oración (ID: 030927ec-98d8-4452-b070-54e28566c938)

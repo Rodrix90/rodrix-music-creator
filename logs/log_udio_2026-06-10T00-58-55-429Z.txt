@@ -1,0 +1,25 @@
+[00:56:43] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[00:57:22] FFmpeg terminó exitosamente. Usando audio modificado.
+[00:57:22] Subiendo MP3 a servidor temporal para obtener URL pública...
+[00:57:23] Audio subido exitosamente a: https://tmpfiles.org/dl/wfwgcD6ZeN1P/bypassed_50be3605ebd04ec3b3f9734864fc0c69.mp3
+[00:57:23] Usando endpoint V2 Upload & Cover
+[00:57:23] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[00:57:26] Task successfully queued. ID: upcovba4dd3c2680f4410897150e430e709b3
+[00:57:26] Polling (Attempt 1): Status=IN_PROGRESS
+[00:57:32] Polling (Attempt 2): Status=IN_PROGRESS
+[00:57:37] Polling (Attempt 3): Status=IN_PROGRESS
+[00:57:42] Polling (Attempt 4): Status=IN_PROGRESS
+[00:57:47] Polling (Attempt 5): Status=IN_PROGRESS
+[00:57:53] Polling (Attempt 6): Status=IN_PROGRESS
+[00:57:58] Polling (Attempt 7): Status=IN_PROGRESS
+[00:58:03] Polling (Attempt 8): Status=IN_PROGRESS
+[00:58:09] Polling (Attempt 9): Status=IN_PROGRESS
+[00:58:22] Polling (Attempt 10): Status=IN_PROGRESS
+[00:58:27] Polling (Attempt 11): Status=IN_PROGRESS
+[00:58:32] Polling (Attempt 12): Status=IN_PROGRESS
+[00:58:38] Polling (Attempt 13): Status=IN_PROGRESS
+[00:58:43] Polling (Attempt 14): Status=IN_PROGRESS
+[00:58:49] Polling (Attempt 15): Status=IN_PROGRESS
+[00:58:54] Generación completada exitosamente.
+[00:58:54] Pista procesada con éxito: Caminé en éste mundo (ID: ea556e01-7071-490f-a1c1-86ea25f56ca1)
+[00:58:54] Pista procesada con éxito: Caminé en éste mundo (ID: 71a091f8-5f2a-4401-8fe6-bea84d37fb8b)

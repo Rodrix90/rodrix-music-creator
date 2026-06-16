@@ -1,0 +1,33 @@
+[12:58:31] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[12:59:18] FFmpeg terminó exitosamente. Usando audio modificado.
+[12:59:18] Subiendo MP3 a servidor temporal para obtener URL pública...
+[12:59:21] Audio subido exitosamente a: https://tmpfiles.org/dl/wqwqc9EUcvo1/bypassed_2b879edb7a2745f5bab77940de97ff44.mp3
+[12:59:21] Usando endpoint V2 Upload & Cover
+[12:59:21] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[12:59:23] Task successfully queued. ID: upcov759f90122c1b4d16849c7b3eb411eeae
+[12:59:24] Polling (Attempt 1): Status=IN_PROGRESS
+[12:59:29] Polling (Attempt 2): Status=IN_PROGRESS
+[12:59:34] Polling (Attempt 3): Status=IN_PROGRESS
+[12:59:43] Polling (Attempt 4): Status=IN_PROGRESS
+[12:59:49] Polling (Attempt 5): Status=IN_PROGRESS
+[12:59:54] Polling (Attempt 6): Status=IN_PROGRESS
+[13:00:00] Polling (Attempt 7): Status=IN_PROGRESS
+[13:00:07] Polling (Attempt 8): Status=IN_PROGRESS
+[13:00:12] Polling (Attempt 9): Status=IN_PROGRESS
+[13:00:18] Polling (Attempt 10): Status=IN_PROGRESS
+[13:00:23] Polling (Attempt 11): Status=IN_PROGRESS
+[13:00:28] Polling (Attempt 12): Status=IN_PROGRESS
+[13:00:36] Polling (Attempt 13): Status=IN_PROGRESS
+[13:00:46] Polling (Attempt 14): Status=IN_PROGRESS
+[13:00:51] Polling (Attempt 15): Status=IN_PROGRESS
+[13:00:57] Polling (Attempt 16): Status=IN_PROGRESS
+[13:01:02] Polling (Attempt 17): Status=IN_PROGRESS
+[13:01:07] Polling (Attempt 18): Status=IN_PROGRESS
+[13:01:13] Polling (Attempt 19): Status=IN_PROGRESS
+[13:01:18] Polling (Attempt 20): Status=IN_PROGRESS
+[13:01:23] Polling (Attempt 21): Status=IN_PROGRESS
+[13:01:29] Polling (Attempt 22): Status=IN_PROGRESS
+[13:02:14] Polling (Attempt 23): Status=IN_PROGRESS
+[13:02:19] Generación completada exitosamente.
+[13:02:19] Pista procesada con éxito: Hermano toma el arado (ID: 4551afbe-a16f-48af-95fb-115fa8057414)
+[13:02:19] Pista procesada con éxito: Hermano toma el arado (ID: 6ce5911b-f3cd-4061-82ac-a844137024f0)

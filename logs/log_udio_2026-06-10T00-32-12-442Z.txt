@@ -1,0 +1,25 @@
+[00:30:11] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[00:30:34] FFmpeg terminó exitosamente. Usando audio modificado.
+[00:30:34] Subiendo MP3 a servidor temporal para obtener URL pública...
+[00:30:36] Audio subido exitosamente a: https://tmpfiles.org/dl/wSwjcOgEi7ZM/bypassed_2c84ca903fef4493a7e203bff214b697.mp3
+[00:30:36] Usando endpoint V2 Upload & Cover
+[00:30:36] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[00:30:38] Task successfully queued. ID: upcov95f46fd1bec447ddadb08722c113d1cb
+[00:30:38] Polling (Attempt 1): Status=IN_PROGRESS
+[00:30:44] Polling (Attempt 2): Status=IN_PROGRESS
+[00:30:49] Polling (Attempt 3): Status=IN_PROGRESS
+[00:30:54] Polling (Attempt 4): Status=IN_PROGRESS
+[00:31:00] Polling (Attempt 5): Status=IN_PROGRESS
+[00:31:05] Polling (Attempt 6): Status=IN_PROGRESS
+[00:31:10] Polling (Attempt 7): Status=IN_PROGRESS
+[00:31:16] Polling (Attempt 8): Status=IN_PROGRESS
+[00:31:21] Polling (Attempt 9): Status=IN_PROGRESS
+[00:31:26] Polling (Attempt 10): Status=IN_PROGRESS
+[00:31:31] Polling (Attempt 11): Status=IN_PROGRESS
+[00:31:37] Polling (Attempt 12): Status=IN_PROGRESS
+[00:31:42] Polling (Attempt 13): Status=IN_PROGRESS
+[00:31:47] Polling (Attempt 14): Status=IN_PROGRESS
+[00:31:53] Polling (Attempt 15): Status=IN_PROGRESS
+[00:31:58] Polling (Attempt 16): Status=IN_PROGRESS
+[00:32:03] Polling (Attempt 17): Status=IN_PROGRESS
+[00:32:09] ERROR: API Error: Task failed - credits refunded. Possible causes: the extending lyrics are empty, too short, or malformed. Please check the lyrics field and retry.

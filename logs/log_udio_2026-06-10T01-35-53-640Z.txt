@@ -1,0 +1,36 @@
+[01:32:47] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[01:33:29] FFmpeg terminó exitosamente. Usando audio modificado.
+[01:33:29] Subiendo MP3 a servidor temporal para obtener URL pública...
+[01:33:31] Audio subido exitosamente a: https://tmpfiles.org/dl/w9wscW6E97oq/bypassed_ef448e66507840f1a2dfce815986597d.mp3
+[01:33:31] Usando endpoint V2 Upload & Cover
+[01:33:31] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[01:33:34] Task successfully queued. ID: upcove4820082b5d64018b5e8a64ba3694642
+[01:33:34] Polling (Attempt 1): Status=IN_PROGRESS
+[01:33:40] Polling (Attempt 2): Status=IN_PROGRESS
+[01:33:45] Polling (Attempt 3): Status=IN_PROGRESS
+[01:33:50] Polling (Attempt 4): Status=IN_PROGRESS
+[01:33:55] Polling (Attempt 5): Status=IN_PROGRESS
+[01:34:01] Polling (Attempt 6): Status=IN_PROGRESS
+[01:34:06] Polling (Attempt 7): Status=IN_PROGRESS
+[01:34:11] Polling (Attempt 8): Status=IN_PROGRESS
+[01:34:17] Polling (Attempt 9): Status=IN_PROGRESS
+[01:34:22] Polling (Attempt 10): Status=IN_PROGRESS
+[01:34:27] Polling (Attempt 11): Status=IN_PROGRESS
+[01:34:33] Polling (Attempt 12): Status=IN_PROGRESS
+[01:34:38] Polling (Attempt 13): Status=IN_PROGRESS
+[01:34:43] Polling (Attempt 14): Status=IN_PROGRESS
+[01:34:49] Polling (Attempt 15): Status=IN_PROGRESS
+[01:34:54] Polling (Attempt 16): Status=IN_PROGRESS
+[01:34:59] Polling (Attempt 17): Status=IN_PROGRESS
+[01:35:04] Polling (Attempt 18): Status=IN_PROGRESS
+[01:35:10] Polling (Attempt 19): Status=IN_PROGRESS
+[01:35:15] Polling (Attempt 20): Status=IN_PROGRESS
+[01:35:20] Polling (Attempt 21): Status=IN_PROGRESS
+[01:35:26] Polling (Attempt 22): Status=IN_PROGRESS
+[01:35:31] Polling (Attempt 23): Status=IN_PROGRESS
+[01:35:36] Polling (Attempt 24): Status=IN_PROGRESS
+[01:35:42] Polling (Attempt 25): Status=IN_PROGRESS
+[01:35:48] Polling (Attempt 26): Status=IN_PROGRESS
+[01:35:53] Generación completada exitosamente.
+[01:35:53] Pista procesada con éxito: Caminé en éste mundo (ID: bfa1ec0d-6edd-4ed8-b204-40f7de0a7f23)
+[01:35:53] Pista procesada con éxito: Caminé en éste mundo (ID: b430024d-d889-445b-8f56-ae27497ff3ae)

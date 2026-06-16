@@ -1,0 +1,12 @@
+[19:11:08] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[19:11:25] FFmpeg terminó exitosamente. Usando audio modificado.
+[19:11:25] Subiendo MP3 a servidor temporal para obtener URL pública...
+[19:11:26] Audio subido exitosamente a: https://tmpfiles.org/dl/w9wmZzpbUHxW/bypassed_216dae4a0eca4304b92152d1942529f4.mp3
+[19:11:26] Usando endpoint V2 Upload & Cover
+[19:11:26] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[19:11:28] Task successfully queued. ID: upcov8e802c00f146400196d78ed2683975da
+[19:11:29] Polling (Attempt 1): Status=IN_PROGRESS
+[19:11:34] Polling (Attempt 2): Status=IN_PROGRESS
+[19:11:39] Polling (Attempt 3): Status=IN_PROGRESS
+[19:11:45] Polling (Attempt 4): Status=IN_PROGRESS
+[19:11:50] ERROR: API Error: This audio matches an existing recording in our catalog.

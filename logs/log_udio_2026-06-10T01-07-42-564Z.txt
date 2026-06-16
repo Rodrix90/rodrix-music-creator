@@ -1,0 +1,34 @@
+[01:04:40] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[01:05:23] FFmpeg terminó exitosamente. Usando audio modificado.
+[01:05:23] Subiendo MP3 a servidor temporal para obtener URL pública...
+[01:05:26] Audio subido exitosamente a: https://tmpfiles.org/dl/wYwNca6ScPic/bypassed_6b7677c2cd624d2fad323a1efaab4431.mp3
+[01:05:26] Usando endpoint V2 Upload & Cover
+[01:05:26] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[01:05:30] Task successfully queued. ID: upcovdec0b788f3e14f30bf56880a28c00afe
+[01:05:30] Polling (Attempt 1): Status=IN_PROGRESS
+[01:05:35] Polling (Attempt 2): Status=IN_PROGRESS
+[01:05:41] Polling (Attempt 3): Status=IN_PROGRESS
+[01:05:46] Polling (Attempt 4): Status=IN_PROGRESS
+[01:05:51] Polling (Attempt 5): Status=IN_PROGRESS
+[01:05:57] Polling (Attempt 6): Status=IN_PROGRESS
+[01:06:02] Polling (Attempt 7): Status=IN_PROGRESS
+[01:06:07] Polling (Attempt 8): Status=IN_PROGRESS
+[01:06:12] Polling (Attempt 9): Status=IN_PROGRESS
+[01:06:18] Polling (Attempt 10): Status=IN_PROGRESS
+[01:06:23] Polling (Attempt 11): Status=IN_PROGRESS
+[01:06:28] Polling (Attempt 12): Status=IN_PROGRESS
+[01:06:34] Polling (Attempt 13): Status=IN_PROGRESS
+[01:06:39] Polling (Attempt 14): Status=IN_PROGRESS
+[01:06:44] Polling (Attempt 15): Status=IN_PROGRESS
+[01:06:50] Polling (Attempt 16): Status=IN_PROGRESS
+[01:06:55] Polling (Attempt 17): Status=IN_PROGRESS
+[01:07:00] Polling (Attempt 18): Status=IN_PROGRESS
+[01:07:05] Polling (Attempt 19): Status=IN_PROGRESS
+[01:07:11] Polling (Attempt 20): Status=IN_PROGRESS
+[01:07:16] Polling (Attempt 21): Status=IN_PROGRESS
+[01:07:21] Polling (Attempt 22): Status=IN_PROGRESS
+[01:07:27] Polling (Attempt 23): Status=IN_PROGRESS
+[01:07:32] Polling (Attempt 24): Status=IN_PROGRESS
+[01:07:37] Generación completada exitosamente.
+[01:07:37] Pista procesada con éxito: Caminé en éste mundo (ID: acf9b99e-e667-4d39-8f38-e8ffaf2585ee)
+[01:07:37] Pista procesada con éxito: Caminé en éste mundo (ID: 5735189b-943e-4d0b-8c0c-0d3336c3fd86)

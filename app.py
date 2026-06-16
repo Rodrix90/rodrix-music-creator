@@ -67,7 +67,8 @@ def obfuscate_lyrics(text: str) -> str:
         return text
     processed_lines = []
     for line in text.split('\n'):
-        if line.strip().startswith('[') and line.strip().endswith(']'):
+        stripped = line.strip()
+        if (stripped.startswith('[') and stripped.endswith(']')) or (stripped.startswith('(') and stripped.endswith(')')):
             processed_lines.append(line)
             continue
             
@@ -100,7 +101,7 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         "-y",
         "-i", input_path,
         "-map_metadata", "-1",
-        "-af", "asetrate=44100*1.26,aresample=44100,atempo=0.83,vibrato=f=6.0:d=0.6,aecho=0.8:0.9:100:0.5",
+        "-af", "rubberband=pitch=1.05946",
         output_path
     ]
     try:

@@ -1,0 +1,13 @@
+[00:34:59] Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...
+[00:35:19] FFmpeg terminó exitosamente. Usando audio modificado.
+[00:35:19] Subiendo MP3 a servidor temporal para obtener URL pública...
+[00:35:20] Audio subido exitosamente a: https://tmpfiles.org/dl/wewIciglObtx/bypassed_fb7984114d834c1fa3008983c8f6b779.mp3
+[00:35:20] Usando endpoint V2 Upload & Cover
+[00:35:20] Submitting request to https://udioapi.pro/api/v2/upload-cover/generate...
+[00:35:23] Task successfully queued. ID: upcov6b04bdfbbde44682824f509663f8484a
+[00:35:23] Polling (Attempt 1): Status=IN_PROGRESS
+[00:35:28] Polling (Attempt 2): Status=IN_PROGRESS
+[00:35:33] Polling (Attempt 3): Status=IN_PROGRESS
+[00:35:39] Polling (Attempt 4): Status=IN_PROGRESS
+[00:35:44] Polling (Attempt 5): Status=IN_PROGRESS
+[00:35:50] ERROR: API Error: Uploaded audio contains copyrighted lyrics.
