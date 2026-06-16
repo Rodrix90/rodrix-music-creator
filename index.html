@@ -403,15 +403,18 @@
             }
         }
 
-        function toggleDropdown(id, event) {
+        function toggleDropdown(buttonElement, event) {
             event.stopPropagation();
             var dropdowns = document.getElementsByClassName("dropdown-content");
+            var myDropdown = buttonElement.nextElementSibling;
             for (var i = 0; i < dropdowns.length; i++) {
-                if(dropdowns[i].id !== 'dropdown-' + id) {
+                if (dropdowns[i] !== myDropdown) {
                     dropdowns[i].classList.remove('show');
                 }
             }
-            document.getElementById('dropdown-' + id).classList.toggle("show");
+            if (myDropdown) {
+                myDropdown.classList.toggle("show");
+            }
         }
 
         let progressInterval = null;
@@ -593,7 +596,7 @@
                     <span class="song-genre" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${style || 'Udio'}</span>
                     
                     <div class="dropdown">
-                        <button class="dropbtn" onclick="toggleDropdown('${safeId}', event)">
+                        <button class="dropbtn" onclick="toggleDropdown(this, event)">
                             <i class="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         <div id="dropdown-${safeId}" class="dropdown-content">

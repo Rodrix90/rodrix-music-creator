@@ -161,7 +161,165 @@ def add_track_to_library(track_info):
         library.append(track_info)
         save_library(library)
 
-TASKS = {}
+
+TASKS_FILE = "tasks.json"
+def load_tasks_state():
+    import os, json
+    if os.path.exists(TASKS_FILE):
+        try:
+            with open(TASKS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_tasks_state():
+    import json
+    try:
+        with open(TASKS_FILE, "w", encoding="utf-8") as f:
+            json.dump(TASKS, f, indent=2, ensure_ascii=False)
+    except:
+        pass
+
+TASKS = load_tasks_state()
+
+import asyncio
+import httpx
+
+async def resume_polling_task(task_id, t_data):
+    work_id = t_data.get("work_id")
+    url_status = t_data.get("url_status")
+    has_upload = t_data.get("upload_url", False)
+    title = t_data.get("title", "Recuperada")
+    
+    def log_msg(msg):
+        import datetime
+        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+        line = f"[{timestamp}] [Recuperación] {msg}"
+        print(line)
+        TASKS[task_id]["logs"] += line + "\n"
+        save_tasks_state()
+        save_tasks_state()
+        
+    log_msg(f"Reanudando polling para tarea {work_id}...")
+    headers = {
+        "Authorization": f"Bearer {UDIO_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            tracks = []
+            for i in range(120):
+                if has_upload:
+                    r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
+                else:
+                    r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
+                    
+                if r_status.status_code == 200:
+                    status_json = r_status.json()
+                    error_msg = "La generación falló internamente."
+                    
+                    if has_upload:
+                        raw_data = status_json.get("data", {})
+                        status = raw_data.get("type", "") or raw_data.get("status", "")
+                        response_array = raw_data.get("response_data", [])
+                        if status.upper() in ["SUCCESS", "COMPLETED"]:
+                            tracks = response_array if isinstance(response_array, list) else [response_array]
+                            log_msg("Generación completada exitosamente.")
+                            break
+                        elif status.upper() in ["FAILED", "ERROR"]:
+                            if isinstance(response_array, list) and len(response_array) > 0:
+                                error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
+                            raise Exception(f"API Error: {error_msg}")
+                    else:
+                        if isinstance(status_json, list):
+                            data = status_json
+                            status = data[0].get("status", "") if len(data) > 0 else ""
+                        else:
+                            status = status_json.get("status", "")
+                            raw_data = status_json.get("data", {})
+                            if isinstance(raw_data, dict):
+                                if not status:
+                                    status = raw_data.get("type", "") or raw_data.get("status", "")
+                                response_array = raw_data.get("response_data", [])
+                                if isinstance(response_array, list) and len(response_array) > 0:
+                                    data = response_array
+                                    if response_array[0].get("fail_message"):
+                                        error_msg = response_array[0].get("fail_message")
+                                else:
+                                    data = [raw_data]
+                            else:
+                                data = raw_data if isinstance(raw_data, list) else []
+
+                        if status.upper() in ["SUCCESS", "COMPLETED"]:
+                            tracks = data
+                            log_msg("Generación completada exitosamente.")
+                            break
+                        elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
+                            tracks = data
+                            log_msg("Generación completada exitosamente.")
+                            break
+                        elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
+                            raise Exception(f"API Error: {error_msg}")
+
+                    log_msg(f"Polling (Attempt {i+1}): Status={status}")
+                await asyncio.sleep(5)
+
+            if not tracks:
+                raise Exception("Tiempo de espera agotado.")
+
+            final_tracks = []
+            for t in tracks:
+                if isinstance(t, dict):
+                    tid = t.get("id") or t.get("task_id")
+                    ttitle = t.get("title", title)
+                    taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
+                    timage = t.get("image_url") or t.get("image_path")
+                    tduration = t.get("duration", 0)
+                    tstatus = t.get("status", "SUCCESS")
+                    
+                    if taudio:
+                        track_info = {
+                            "id": tid,
+                            "title": ttitle,
+                            "audio_url": taudio,
+                            "image_url": timage,
+                            "duration": tduration,
+                            "status": tstatus
+                        }
+                        final_tracks.append(track_info)
+                        add_track_to_library(track_info)
+                        log_msg(f"Pista recuperada: {ttitle} (ID: {tid})")
+
+            TASKS[task_id]["tracks"] = final_tracks
+            TASKS[task_id]["status"] = "COMPLETED"
+            save_tasks_state()
+            save_tasks_state()
+
+    except Exception as e:
+        log_msg(f"ERROR: {str(e)}")
+        TASKS[task_id]["detail"] = str(e)
+        TASKS[task_id]["status"] = "ERROR"
+        save_tasks_state()
+        save_tasks_state()
+
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    global TASKS
+    for t_id, t_data in TASKS.items():
+        if t_data.get("status") == "IN_PROGRESS":
+            work_id = t_data.get("work_id")
+            url_status = t_data.get("url_status")
+            if work_id and url_status:
+                asyncio.create_task(resume_polling_task(t_id, t_data))
+            else:
+                t_data["status"] = "ERROR"
+                t_data["detail"] = "Servidor reiniciado antes de enviar a Udio."
+    save_tasks_state()
+
+
 
 @app.post("/api/transform")
 async def transform_audio(
@@ -192,6 +350,7 @@ async def transform_audio(
     import uuid
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
+    save_tasks_state()
 
     background_tasks.add_task(
         run_transform_task,
@@ -215,6 +374,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         line = f"[{timestamp}] {msg}"
         print(line)
         TASKS[task_id]["logs"] += line + "\n"
+        save_tasks_state()
         
     def save_local_log():
         import datetime
@@ -342,6 +502,11 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
 
             log_msg(f"Task successfully queued. ID: {work_id}")
+            TASKS[task_id]["work_id"] = work_id
+            TASKS[task_id]["url_status"] = url_status
+            TASKS[task_id]["upload_url"] = bool(upload_url)
+            TASKS[task_id]["title"] = title
+            save_tasks_state()
             
             tracks = []
             import asyncio
@@ -431,12 +596,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             save_local_log()
             TASKS[task_id]["tracks"] = final_tracks
             TASKS[task_id]["status"] = "COMPLETED"
+            save_tasks_state()
 
     except Exception as e:
         log_msg(f"ERROR: {str(e)}")
         save_local_log()
         TASKS[task_id]["detail"] = str(e)
         TASKS[task_id]["status"] = "ERROR"
+        save_tasks_state()
 
 
 @app.get("/api/library")
