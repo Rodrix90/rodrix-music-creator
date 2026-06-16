@@ -339,27 +339,28 @@ async def transform_audio(
     weirdness: int = Form(50),
     style_influence: int = Form(50),
     audio_influence: int = Form(25),
+    model: str = Form("chirp-v4-5"),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
         raise HTTPException(status_code=400, detail="Falta UDIO_API_KEY")
-
-    audio_content = None
-    audio_filename = None
-    if audio and not ignore_audio:
-        audio_content = await audio.read()
-        audio_filename = audio.filename
 
     import uuid
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
     save_tasks_state()
 
+    audio_content = None
+    audio_filename = None
+    if audio and audio.filename:
+        audio_content = await audio.read()
+        audio_filename = audio.filename
+
     background_tasks.add_task(
         run_transform_task,
         task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
         include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-        style_influence, audio_influence
+        style_influence, audio_influence, model
     )
     
     return {"status": "started", "task_id": task_id}
@@ -451,7 +452,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             
             payload = {
                 "upload_url": upload_url,
-                "model": "chirp-v4-5",
+                "model": model,
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
@@ -476,7 +477,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "tags": style,
                 "title": title,
                 "make_instrumental": is_instrumental,
-                "model": "udio32",
+                "model": model,
                 "custom_mode": True
             }
             if vocal_gender in ["male", "female"]:

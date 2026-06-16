@@ -227,6 +227,18 @@
                                     <input type="text" id="excludeStylesInput" placeholder="Exclude styles" style="background:transparent; border:none; color:var(--text-primary); font-size:13px; width:100%; outline:none; padding:0;">
                                 </div>
                             </div>
+
+                            <div class="panel-box">
+                                <div class="panel-title" style="margin-bottom:0;">Modelo de IA</div>
+                                <select id="modelInput" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; color: var(--text-primary); cursor: pointer; font-size: 13px; width: 100%; outline: none; margin-top: 8px;">
+                                    <option value="chirp-v4-5">Chirp v4.5 (10 cr - Recomendado)</option>
+                                    <option value="chirp-v4-5-plus">Chirp v4.5 Plus (10 cr)</option>
+                                    <option value="chirp-v5">Chirp v5 (12 cr)</option>
+                                    <option value="chirp-v5-5">Chirp v5.5 (12 cr - Máxima Calidad)</option>
+                                    <option value="chirp-v4">Chirp v4 (8 cr)</option>
+                                    <option value="chirp-v3-5">Chirp v3.5 (5 cr - Económico)</option>
+                                </select>
+                            </div>
                             
                             <!-- BOTTOM SUBMIT MOVED TO LEFT COLUMN TO SAVE SPACE -->
                             <div class="dashboard-bottom">
@@ -482,6 +494,7 @@
             formData.append('weirdness', document.getElementById('weirdnessSlider').value);
             formData.append('style_influence', document.getElementById('styleInfluenceSlider').value);
             formData.append('audio_influence', document.getElementById('audioInfluenceSlider').value);
+            formData.append('model', document.getElementById('modelInput').value);
             
             const audioInput = document.getElementById('audioInput');
             if (audioInput && audioInput.files.length > 0) {
