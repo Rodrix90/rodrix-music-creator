@@ -96,18 +96,12 @@ async def upload_to_tmpfiles_async(file_path: str) -> str | None:
     return None
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
-    import random
-    semitones = random.uniform(1.5, 4.0)
-    rate_multiplier = 2 ** (semitones / 12.0)
-    tempo_compensation = 1 / (rate_multiplier * 0.95)
-
     ffmpeg_cmd = [
-        "ffmpeg", "-y",
+        "ffmpeg",
+        "-y",
         "-i", input_path,
-        "-f", "lavfi", "-i", "anoisesrc=color=pink:r=44100:a=0.005",
         "-map_metadata", "-1",
-        "-filter_complex", 
-        f"[0:a]asetrate=44100*{rate_multiplier:.4f},aresample=44100,atempo={tempo_compensation:.4f},aecho=0.8:0.8:15:0.2[main];[main][1:a]amix=inputs=2:duration=first",
+        "-af", "asetrate=44100*1.1892,aresample=44100,atempo=0.925",
         output_path
     ]
     try:
