@@ -66,11 +66,6 @@ def obfuscate_lyrics(text: str) -> str:
     if not text:
         return text
     
-    lookalikes = {
-        'a': 'а', 'e': 'е', 'o': 'о', 'p': 'р', 'c': 'с', 'x': 'х', 'y': 'у',
-        'A': 'А', 'E': 'Е', 'O': 'О', 'P': 'Р', 'C': 'С', 'X': 'Х', 'H': 'Н', 'M': 'М', 'T': 'Т'
-    }
-    
     processed_lines = []
     for line in text.split('\n'):
         stripped = line.strip()
@@ -80,10 +75,7 @@ def obfuscate_lyrics(text: str) -> str:
             
         obfuscated = ""
         for char in line:
-            if char in lookalikes:
-                obfuscated += lookalikes[char] + '\u200B'
-            else:
-                obfuscated += char + '\u200B'
+            obfuscated += char + '\u200B'
         processed_lines.append(obfuscated)
         
     return "\n".join(processed_lines)
