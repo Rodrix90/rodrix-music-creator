@@ -44,17 +44,17 @@
         .main-content::-webkit-scrollbar { width: 8px; }
         .main-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.08); border-radius: 4px; }
         
-        .tab-view { display: flex; flex-direction: column; gap: 16px; width: 100%; animation: fade-in 0.3s ease-in-out; }
+        .tab-view { display: flex; flex-direction: column; gap: 16px; width: 100%; animation: fade-in 0.3s ease-in-out; min-width: 0; }
         
         /* Dashboard Grid Layout */
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
-        .dashboard-left { display: flex; flex-direction: column; gap: 16px; }
-        .dashboard-right { display: flex; flex-direction: column; gap: 16px; }
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; min-width: 0; }
+        .dashboard-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        .dashboard-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
         .dashboard-bottom { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
         
         .top-row-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         
-        .panel-box { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .panel-box { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
         .panel-title { font-size: 16px; font-weight: 600; background: linear-gradient(to right, #ffffff, #d1d5db); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; }
         
         #errorBanner { display: none; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 12px; color: #ff6b6b; font-size: 13px; margin-bottom: 20px; font-weight: 500; align-items: center; gap: 8px; line-height: 1.4; }
@@ -90,14 +90,14 @@
         .songs-grid.compact::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 3px; }
         
         /* Generation Groups */
-        .generation-group { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px; animation: fade-in 0.4s ease-out; }
-        .group-header { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
-        .group-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .generation-group { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px; animation: fade-in 0.4s ease-out; min-width: 0; }
+        .group-header { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; min-width: 0; }
+        .group-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .group-prompt { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .group-cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
         
-        .song-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition-speed); position: relative; }
-        .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .song-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition-speed); position: relative; min-width: 0; overflow: visible; }
+        .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); z-index: 5; }
         
         /* Version Badge */
         .version-badge { position: absolute; top: -10px; left: -10px; background: var(--gradient-primary); color: white; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 8px; z-index: 5; box-shadow: 0 4px 10px rgba(0,122,204,0.3); letter-spacing: 0.5px; text-transform: uppercase; }
@@ -144,6 +144,17 @@
         .user-profile-btn:hover { background: rgba(255,255,255,0.05); }
         .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
         
+        /* Checkboxes and Bulk Bar */
+        .card-checkbox { position: absolute; top: 8px; left: 8px; z-index: 10; width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-cyan); display: none; }
+        .song-card:hover .card-checkbox, .card-checkbox:checked { display: block; }
+        
+        .bulk-action-bar { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: #1e1e24; border: 1px solid var(--border-color); border-radius: 30px; padding: 12px 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .bulk-action-bar.show { bottom: 100px; }
+        .bulk-text { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .bulk-btn { background: rgba(255,255,255,0.05); border: none; color: var(--text-primary); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+        .bulk-btn:hover { background: rgba(255,255,255,0.1); }
+        .bulk-btn.danger:hover { background: rgba(255,68,68,0.15); color: #ff6b6b; }
+
         @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -359,6 +370,14 @@
 
     <audio id="audioEngine" style="display:none;"></audio>
 
+    <!-- BULK ACTION BAR -->
+    <div class="bulk-action-bar" id="bulkActionBar">
+        <span class="bulk-text" id="bulkText">0 seleccionadas</span>
+        <button class="bulk-btn" onclick="bulkDownload()"><i class="fa-solid fa-download"></i> MP3</button>
+        <button class="bulk-btn danger" onclick="bulkDelete()"><i class="fa-solid fa-trash"></i> Borrar</button>
+        <button class="bulk-btn" onclick="clearSelection()" style="padding: 8px; border-radius: 50%;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
     <script>
         const errorBanner = document.getElementById('errorBanner');
         const errorBannerText = document.getElementById('errorBannerText');
@@ -563,6 +582,7 @@
             }
             
             card.innerHTML = `
+                <input type="checkbox" class="card-checkbox" value="${safeId}" onclick="toggleSelection(event, '${id}')">
                 ${badgeHtml}
                 <div class="song-cover-container" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}')">
                     <img src="${imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300'}" class="song-cover">
@@ -577,7 +597,7 @@
                             <i class="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         <div id="dropdown-${safeId}" class="dropdown-content">
-                            <a href="${audioUrl}" download="${title}.mp3" onclick="event.stopPropagation()"><i class="fa-solid fa-file-audio"></i> MP3 (Original)</a>
+                            <a href="/api/download/${id}/mp3" onclick="event.stopPropagation()"><i class="fa-solid fa-file-audio"></i> MP3 (Original)</a>
                             <a href="/api/download/${id}/wav" onclick="event.stopPropagation()"><i class="fa-solid fa-file-waveform"></i> WAV (Lossless)</a>
                             <a href="/api/download/${id}/flac" onclick="event.stopPropagation()"><i class="fa-solid fa-compact-disc"></i> FLAC (HQ)</a>
                             <a href="#" onclick="event.stopPropagation(); shareTrack('${audioUrl}')"><i class="fa-solid fa-share-nodes"></i> Copiar Enlace</a>
@@ -655,7 +675,7 @@
 
         // Funciones de UI
         function clearForm() {
-            document.getElementById('audioForm').reset();
+            document.getElementById('generatorForm').reset();
             selectGender('random');
             document.getElementById('weirdnessValueDisplay').innerText = '50%';
             document.getElementById('styleInfluenceValueDisplay').innerText = '50%';
@@ -716,6 +736,11 @@
                     // Remover de la vista
                     const cardList = document.querySelectorAll('#card-' + trackId);
                     cardList.forEach(c => c.remove());
+                    // Remove from selection if it was selected
+                    if (selectedTracks.has(trackId)) {
+                        selectedTracks.delete(trackId);
+                        updateBulkActionBar();
+                    }
                 } else {
                     alert("No se pudo eliminar: " + (data.detail || "Error desconocido"));
                 }
@@ -723,6 +748,65 @@
                 console.error("Error al borrar", err);
                 alert("Error al intentar borrar la pista.");
             }
+        }
+
+        // --- BULK SELECTION LOGIC ---
+        let selectedTracks = new Set();
+        
+        function toggleSelection(event, id) {
+            event.stopPropagation();
+            if (event.target.checked) {
+                selectedTracks.add(id);
+            } else {
+                selectedTracks.delete(id);
+            }
+            updateBulkActionBar();
+        }
+
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const text = document.getElementById('bulkText');
+            if (selectedTracks.size > 0) {
+                text.innerText = selectedTracks.size + (selectedTracks.size === 1 ? ' seleccionada' : ' seleccionadas');
+                bar.classList.add('show');
+            } else {
+                bar.classList.remove('show');
+            }
+        }
+
+        function clearSelection() {
+            selectedTracks.clear();
+            document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+            updateBulkActionBar();
+        }
+
+        async function bulkDelete() {
+            if (!confirm(`¿Estás seguro de borrar definitivamente ${selectedTracks.size} pistas?`)) return;
+            const idsToDelete = Array.from(selectedTracks);
+            for (const id of idsToDelete) {
+                try {
+                    await fetch('/api/library/' + id, { method: 'DELETE' });
+                    document.querySelectorAll('#card-' + id).forEach(c => c.remove());
+                } catch(e) { console.error("Error deleting", id, e); }
+            }
+            clearSelection();
+        }
+
+        function bulkDownload() {
+            if (selectedTracks.size > 5) {
+                if(!confirm(`Estás a punto de descargar ${selectedTracks.size} canciones al mismo tiempo. Esto puede trabar tu navegador. ¿Continuar?`)) return;
+            }
+            selectedTracks.forEach(id => {
+                const url = `/api/download/${id}/mp3`;
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => a.remove(), 200);
+            });
+            clearSelection();
         }
     </script>
 </body>
