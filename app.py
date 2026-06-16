@@ -65,6 +65,12 @@ def get_current_user(request: Request):
 def obfuscate_lyrics(text: str) -> str:
     if not text:
         return text
+    
+    lookalikes = {
+        'a': 'а', 'e': 'е', 'o': 'о', 'p': 'р', 'c': 'с', 'x': 'х', 'y': 'у',
+        'A': 'А', 'E': 'Е', 'O': 'О', 'P': 'Р', 'C': 'С', 'X': 'Х', 'H': 'Н', 'M': 'М', 'T': 'Т'
+    }
+    
     processed_lines = []
     for line in text.split('\n'):
         stripped = line.strip()
@@ -74,7 +80,10 @@ def obfuscate_lyrics(text: str) -> str:
             
         obfuscated = ""
         for char in line:
-            obfuscated += char + '\u200E'
+            if char in lookalikes:
+                obfuscated += lookalikes[char]
+            else:
+                obfuscated += char
         processed_lines.append(obfuscated)
         
     return "\n".join(processed_lines)
