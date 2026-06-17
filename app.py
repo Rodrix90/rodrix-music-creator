@@ -9,7 +9,7 @@ import subprocess
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse, PlainTextResponse
 import json
 import datetime
 from starlette.middleware.sessions import SessionMiddleware
@@ -65,7 +65,6 @@ def get_current_user(request: Request):
 def obfuscate_lyrics(text: str) -> str:
     if not text:
         return text
-    
     processed_lines = []
     for line in text.split('\n'):
         stripped = line.strip()
@@ -75,7 +74,7 @@ def obfuscate_lyrics(text: str) -> str:
             
         obfuscated = ""
         for char in line:
-            obfuscated += char + '\u200B'
+            obfuscated += char + '\u200E'
         processed_lines.append(obfuscated)
         
     return "\n".join(processed_lines)
@@ -98,26 +97,15 @@ async def upload_to_tmpfiles_async(file_path: str) -> str | None:
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_cmd = [
-        "ffmpeg", "-y", 
+        "ffmpeg",
+        "-y",
         "-i", input_path,
-        "-t", "55",
         "-map_metadata", "-1",
-        "-fflags", "+bitexact",
-        "-write_id3v1", "0",
-        "-id3v2_version", "0",
-        "-af", "atempo=1.0",
+        "-af", "asetrate=44100*1.1892,aresample=44100,atempo=0.925",
         output_path
     ]
     try:
-        process = subprocess.run(
-            ffmpeg_cmd, 
-            check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE, 
-            stdin=subprocess.DEVNULL,
-            text=True,
-            timeout=120
-        )
+        process = subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, text=True, timeout=120)
         return "SUCCESS"
     except FileNotFoundError:
         return "ERROR: FFmpeg no está instalado o no está en el PATH del sistema."
@@ -172,167 +160,7 @@ def add_track_to_library(track_info):
         library.append(track_info)
         save_library(library)
 
-
-TASKS_FILE = "tasks.json"
-def load_tasks_state():
-    import os, json
-    if os.path.exists(TASKS_FILE):
-        try:
-            with open(TASKS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            pass
-    return {}
-
-def save_tasks_state():
-    import json
-    try:
-        with open(TASKS_FILE, "w", encoding="utf-8") as f:
-            json.dump(TASKS, f, indent=2, ensure_ascii=False)
-    except:
-        pass
-
-TASKS = load_tasks_state()
-
-import asyncio
-import httpx
-
-async def resume_polling_task(task_id, t_data):
-    work_id = t_data.get("work_id")
-    url_status = t_data.get("url_status")
-    has_upload = t_data.get("upload_url", False)
-    title = t_data.get("title", "Recuperada")
-    
-    def log_msg(msg):
-        import datetime
-        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
-        line = f"[{timestamp}] [Recuperación] {msg}"
-        print(line)
-        TASKS[task_id]["logs"] += line + "\n"
-        save_tasks_state()
-        save_tasks_state()
-        
-    log_msg(f"Reanudando polling para tarea {work_id}...")
-    headers = {
-        "Authorization": f"Bearer {UDIO_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            tracks = []
-            for i in range(360):
-                if has_upload:
-                    r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
-                else:
-                    r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
-                    
-                if r_status.status_code == 200:
-                    status_json = r_status.json()
-                    error_msg = "La generación falló internamente."
-                    
-                    if has_upload:
-                        raw_data = status_json.get("data", {})
-                        status = raw_data.get("type", "") or raw_data.get("status", "")
-                        response_array = raw_data.get("response_data", [])
-                        if status.upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = response_array if isinstance(response_array, list) else [response_array]
-                            log_msg("Generación completada exitosamente.")
-                            break
-                        elif status.upper() in ["FAILED", "ERROR"]:
-                            if isinstance(response_array, list) and len(response_array) > 0:
-                                error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
-                            raise Exception(f"API Error: {error_msg}")
-                    else:
-                        if isinstance(status_json, list):
-                            data = status_json
-                            status = data[0].get("status", "") if len(data) > 0 else ""
-                        else:
-                            status = status_json.get("status", "")
-                            raw_data = status_json.get("data", {})
-                            if isinstance(raw_data, dict):
-                                if not status:
-                                    status = raw_data.get("type", "") or raw_data.get("status", "")
-                                response_array = raw_data.get("response_data", [])
-                                if isinstance(response_array, list) and len(response_array) > 0:
-                                    data = response_array
-                                    if response_array[0].get("fail_message"):
-                                        error_msg = response_array[0].get("fail_message")
-                                else:
-                                    data = [raw_data]
-                            else:
-                                data = raw_data if isinstance(raw_data, list) else []
-
-                        if status.upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = data
-                            log_msg("Generación completada exitosamente.")
-                            break
-                        elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = data
-                            log_msg("Generación completada exitosamente.")
-                            break
-                        elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
-                            raise Exception(f"API Error: {error_msg}")
-                else:
-                    log_msg(f"Polling HTTP Status: {r_status.status_code} - Response: {r_status.text[:200]}")
-
-                    log_msg(f"Polling (Attempt {i+1}): Status={status}")
-                await asyncio.sleep(5)
-
-            if not tracks:
-                raise Exception("Tiempo de espera agotado.")
-
-            final_tracks = []
-            for t in tracks:
-                if isinstance(t, dict):
-                    tid = t.get("id") or t.get("task_id")
-                    ttitle = t.get("title", title)
-                    taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
-                    timage = t.get("image_url") or t.get("image_path")
-                    tduration = t.get("duration", 0)
-                    tstatus = t.get("status", "SUCCESS")
-                    
-                    if taudio:
-                        track_info = {
-                            "id": tid,
-                            "title": ttitle,
-                            "audio_url": taudio,
-                            "image_url": timage,
-                            "duration": tduration,
-                            "status": tstatus
-                        }
-                        final_tracks.append(track_info)
-                        add_track_to_library(track_info)
-                        log_msg(f"Pista recuperada: {ttitle} (ID: {tid})")
-
-            TASKS[task_id]["tracks"] = final_tracks
-            TASKS[task_id]["status"] = "COMPLETED"
-            save_tasks_state()
-            save_tasks_state()
-
-    except Exception as e:
-        log_msg(f"ERROR: {str(e)}")
-        TASKS[task_id]["detail"] = str(e)
-        TASKS[task_id]["status"] = "ERROR"
-        save_tasks_state()
-        save_tasks_state()
-
-@app.on_event("startup")
-async def startup_event():
-    import asyncio
-    global TASKS
-    for t_id, t_data in TASKS.items():
-        if t_data.get("status") == "IN_PROGRESS":
-            work_id = t_data.get("work_id")
-            url_status = t_data.get("url_status")
-            if work_id and url_status:
-                asyncio.create_task(resume_polling_task(t_id, t_data))
-            else:
-                t_data["status"] = "ERROR"
-                t_data["detail"] = "Servidor reiniciado antes de enviar a Udio."
-    save_tasks_state()
-
-
+TASKS = {}
 
 @app.post("/api/transform")
 async def transform_audio(
@@ -349,28 +177,26 @@ async def transform_audio(
     weirdness: int = Form(50),
     style_influence: int = Form(50),
     audio_influence: int = Form(25),
-    model: str = Form("chirp-v4-5"),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
         raise HTTPException(status_code=400, detail="Falta UDIO_API_KEY")
 
+    audio_content = None
+    audio_filename = None
+    if audio and not ignore_audio:
+        audio_content = await audio.read()
+        audio_filename = audio.filename
+
     import uuid
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
-    save_tasks_state()
-
-    audio_content = None
-    audio_filename = None
-    if audio and audio.filename:
-        audio_content = await audio.read()
-        audio_filename = audio.filename
 
     background_tasks.add_task(
         run_transform_task,
         task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
         include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-        style_influence, audio_influence, model
+        style_influence, audio_influence
     )
     
     return {"status": "started", "task_id": task_id}
@@ -388,7 +214,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         line = f"[{timestamp}] {msg}"
         print(line, flush=True)
         TASKS[task_id]["logs"] += line + "\n"
-        save_tasks_state()
         
     def save_local_log():
         import datetime
@@ -462,11 +287,11 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             
             payload = {
                 "upload_url": upload_url,
-                "model": model,
+                "model": "chirp-v4-5",
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
-                "title": obfuscate_lyrics(title) if title else "",
+                "title": title,
                 "make_instrumental": is_instrumental,
                 "style_weight": round(style_influence / 100.0, 2),
                 "audio_weight": round(audio_influence / 100.0, 2),
@@ -487,7 +312,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "tags": style,
                 "title": title,
                 "make_instrumental": is_instrumental,
-                "model": model,
+                "model": "udio32",
                 "custom_mode": True
             }
             if vocal_gender in ["male", "female"]:
@@ -516,15 +341,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
 
             log_msg(f"Task successfully queued. ID: {work_id}")
-            TASKS[task_id]["work_id"] = work_id
-            TASKS[task_id]["url_status"] = url_status
-            TASKS[task_id]["upload_url"] = bool(upload_url)
-            TASKS[task_id]["title"] = title
-            save_tasks_state()
             
             tracks = []
             import asyncio
-            for i in range(360):
+            for i in range(120):
                 if upload_url:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                 else:
@@ -577,10 +397,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                             break
                         elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
                             raise Exception(f"API Error: {error_msg}")
-                else:
-                    log_msg(f"Polling HTTP Status: {r_status.status_code} - Response: {r_status.text[:200]}")
 
-                log_msg(f"Polling (Attempt {i+1}): Status={status} | Raw JSON: {str(r_status.text)[:250]}")
+                log_msg(f"Polling (Attempt {i+1}): Status Code={r_status.status_code} | JSON={str(r_status.text)[:250]}")
                 await asyncio.sleep(5)
 
             if not tracks:
@@ -612,21 +430,17 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             save_local_log()
             TASKS[task_id]["tracks"] = final_tracks
             TASKS[task_id]["status"] = "COMPLETED"
-            save_tasks_state()
 
     except Exception as e:
         log_msg(f"ERROR: {str(e)}")
         save_local_log()
         TASKS[task_id]["detail"] = str(e)
         TASKS[task_id]["status"] = "ERROR"
-        save_tasks_state()
-
 
 @app.get("/api/latest-logs")
 async def get_latest_logs():
     if not TASKS:
         return PlainTextResponse("No hay tareas registradas desde el último reinicio.")
-    # Obtener el último task (asumiendo que los diccionarios preservan el orden de inserción en python 3.7+)
     latest_task_id = list(TASKS.keys())[-1]
     task = TASKS[latest_task_id]
     
