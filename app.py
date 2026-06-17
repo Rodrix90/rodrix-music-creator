@@ -622,6 +622,21 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         save_tasks_state()
 
 
+@app.get("/api/latest-logs")
+async def get_latest_logs():
+    if not TASKS:
+        return PlainTextResponse("No hay tareas registradas desde el último reinicio.")
+    # Obtener el último task (asumiendo que los diccionarios preservan el orden de inserción en python 3.7+)
+    latest_task_id = list(TASKS.keys())[-1]
+    task = TASKS[latest_task_id]
+    
+    output = f"--- LOGS DE LA TAREA {latest_task_id} ---\n"
+    output += f"Estado actual: {task.get('status')}\n"
+    output += f"Error/Detalle: {task.get('detail', '')}\n\n"
+    output += task.get("logs", "No hay logs aún.")
+    
+    return PlainTextResponse(output)
+
 @app.get("/api/library")
 async def api_get_library(current_user: str = Depends(get_current_user)):
     library = load_library()
