@@ -535,7 +535,7 @@
                 let data = null;
                 while (true) {
                     await new Promise(r => setTimeout(r, 4000));
-                    const statusResponse = await fetch(`/api/status/${taskId}`);
+                    const statusResponse = await fetch(`/api/status/${taskId}?t=${Date.now()}`);
                     if (!statusResponse.ok) {
                         if (statusResponse.status === 404) {
                             throw new Error("La tarea no se encontró. El servidor puede haberse reiniciado.");
