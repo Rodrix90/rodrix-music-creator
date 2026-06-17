@@ -102,6 +102,7 @@
         .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); z-index: 5; }
         
         .song-card.list-view { flex-direction: row; align-items: center; padding: 8px 12px; gap: 16px; border-radius: 8px; }
+        .song-card.playing-active { border-color: var(--accent-cyan); background: rgba(0, 240, 255, 0.05); box-shadow: 0 0 20px rgba(0, 240, 255, 0.3); }
         .song-card.list-view:hover { transform: translateY(-2px); }
         .song-card.list-view .song-cover-container { width: 44px; height: 44px; border-radius: 6px; flex-shrink: 0; }
         .song-card.list-view .song-title { flex-grow: 1; font-size: 14px; margin-bottom: 0; }
@@ -637,11 +638,11 @@
             card.innerHTML = `
                 <input type="checkbox" class="card-checkbox" value="${safeId}" onclick="toggleSelection(event, '${id}')">
                 ${badgeHtml}
-                <div class="song-cover-container" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}')">
+                <div class="song-cover-container" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}', '${id}')">
                     <img src="${imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300'}" class="song-cover">
                     <div class="cover-overlay"><button class="play-btn-circle"><i class="fa-solid fa-play"></i></button></div>
                 </div>
-                <div class="song-title" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}')">${title}</div>
+                <div class="song-title" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}', '${id}')">${title}</div>
                 <div class="song-meta">
                     <span class="song-genre" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${style || 'Udio'}</span>
                     
@@ -675,13 +676,18 @@
             });
         }
 
-        function playMockSong(title, style, url) {
+        function playMockSong(title, style, url, id = null) {
             document.getElementById('playerTrackTitle').innerText = title;
             document.getElementById('playerTrackStyle').innerText = style;
             audioEngine.src = url;
             audioEngine.play();
             isPlaying = true;
             playPauseIcon.className = 'fa-solid fa-pause';
+            
+            document.querySelectorAll('.song-card').forEach(card => card.classList.remove('playing-active'));
+            if (id) {
+                document.querySelectorAll('#card-' + id).forEach(card => card.classList.add('playing-active'));
+            }
         }
 
         function togglePlayPause() {
