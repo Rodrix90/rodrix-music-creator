@@ -178,6 +178,7 @@ async def transform_audio(
     weirdness: int = Form(50),
     style_influence: int = Form(50),
     audio_influence: int = Form(25),
+    model: str = Form("chirp-v4-5"),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
@@ -197,7 +198,7 @@ async def transform_audio(
         run_transform_task,
         task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
         include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-        style_influence, audio_influence
+        style_influence, audio_influence, model
     )
     
     return {"status": "started", "task_id": task_id}
@@ -208,7 +209,15 @@ async def get_task_status(task_id: str):
         raise HTTPException(status_code=404, detail="Task no encontrada")
     return TASKS[task_id]
 
-async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence):
+@app.delete("/api/task/{task_id}")
+async def cancel_task(task_id: str):
+    if task_id in TASKS:
+        TASKS[task_id]["status"] = "CANCELLED"
+        TASKS[task_id]["detail"] = "Cancelado por el usuario"
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="Task no encontrada")
+
+async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model):
     def log_msg(msg):
         import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
@@ -287,7 +296,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             
             payload = {
                 "upload_url": upload_url,
-                "model": "chirp-v4-5",
+                "model": model,
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
@@ -312,7 +321,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "tags": style,
                 "title": title,
                 "make_instrumental": is_instrumental,
-                "model": "udio32",
+                "model": model,
                 "custom_mode": True
             }
             if vocal_gender in ["male", "female"]:
@@ -343,6 +352,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             
             tracks = []
             for i in range(120):
+                if TASKS.get(task_id, {}).get("status") == "CANCELLED":
+                    log_msg("Generación abortada por el usuario.")
+                    break
+                    
                 if upload_url:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                 else:
