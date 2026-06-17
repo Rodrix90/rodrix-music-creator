@@ -563,6 +563,17 @@
                 }
                 
                 if (data.status === 'ERROR') {
+                    if (data.logs) {
+                        const blob = new Blob([data.logs], { type: 'text/plain' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `log_udio_ERROR_${taskId}.txt`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    }
                     throw new Error(data.detail || 'La tarea falló internamente.');
                 }
 
