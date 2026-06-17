@@ -265,6 +265,8 @@ async def resume_polling_task(task_id, t_data):
                             break
                         elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
                             raise Exception(f"API Error: {error_msg}")
+                else:
+                    log_msg(f"Polling HTTP Status: {r_status.status_code} - Response: {r_status.text[:200]}")
 
                     log_msg(f"Polling (Attempt {i+1}): Status={status}")
                 await asyncio.sleep(5)
@@ -376,7 +378,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
         line = f"[{timestamp}] {msg}"
-        print(line)
+        print(line, flush=True)
         TASKS[task_id]["logs"] += line + "\n"
         save_tasks_state()
         
@@ -567,8 +569,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                             break
                         elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
                             raise Exception(f"API Error: {error_msg}")
+                else:
+                    log_msg(f"Polling HTTP Status: {r_status.status_code} - Response: {r_status.text[:200]}")
 
-                    log_msg(f"Polling (Attempt {i+1}): Status={status}")
+                log_msg(f"Polling (Attempt {i+1}): Status={status} | Raw JSON: {str(r_status.text)[:250]}")
                 await asyncio.sleep(5)
 
             if not tracks:
