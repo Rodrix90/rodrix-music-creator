@@ -232,7 +232,12 @@
                                     <div class="panel-title" style="margin-bottom:0; font-size:14px;">Carga Archivo Audio</div>
                                     <span style="font-size: 11px; color:var(--text-secondary);">Para Udio Extend / Remix</span>
                                 </div>
-                                <input type="file" id="audioInput" accept="audio/*" style="width: auto; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px; color: var(--text-primary); cursor: pointer; font-size: 12px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <input type="file" id="audioInput" accept="audio/*" style="width: auto; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px; color: var(--text-primary); cursor: pointer; font-size: 12px;">
+                                    <button type="button" onclick="document.getElementById('audioInput').value = '';" style="background: rgba(255,255,255,0.05); border: none; color: var(--text-secondary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Quitar audio">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="panel-box">
