@@ -250,7 +250,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 _, fext = os.path.splitext(audio_filename)
                 if fext:
                     ext = fext
-            import uuid
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
             bypassed_file_path = f"bypassed_{uuid.uuid4().hex}{ext}"
             
@@ -321,7 +320,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 payload["negative_tags"] = exclude_styles.strip()
 
         log_msg(f"Submitting request to {url_generate}...")
-        import httpx
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(url_generate, json=payload, headers=headers)
             
@@ -343,7 +341,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             log_msg(f"Task successfully queued. ID: {work_id}")
             
             tracks = []
-            import asyncio
             for i in range(120):
                 if upload_url:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
