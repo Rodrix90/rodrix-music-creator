@@ -531,7 +531,12 @@
                 while (true) {
                     await new Promise(r => setTimeout(r, 4000));
                     const statusResponse = await fetch(`/api/status/${taskId}`);
-                    if (!statusResponse.ok) continue;
+                    if (!statusResponse.ok) {
+                        if (statusResponse.status === 404) {
+                            throw new Error("La tarea no se encontró. El servidor puede haberse reiniciado.");
+                        }
+                        continue;
+                    }
                     
                     data = await statusResponse.json();
                     if (data.status === 'COMPLETED' || data.status === 'ERROR') {
