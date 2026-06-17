@@ -100,12 +100,13 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         "ffmpeg",
         "-y",
         "-i", input_path,
+        "-t", "120",
         "-map_metadata", "-1",
-        "-af", "asetrate=44100*1.1892,aresample=44100,atempo=0.925",
+        "-af", "aformat=channel_layouts=stereo,asetrate=44100*1.045,aresample=44100,atempo=0.956,chorus=0.5:0.9:50|60:0.4|0.32:0.25|0.4:2|2.3,bass=g=4,treble=g=3",
         output_path
     ]
     try:
-        process = subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, text=True, timeout=120)
+        process = subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, text=True, timeout=300)
         return "SUCCESS"
     except FileNotFoundError:
         return "ERROR: FFmpeg no está instalado o no está en el PATH del sistema."
