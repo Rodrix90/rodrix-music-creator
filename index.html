@@ -482,8 +482,13 @@
             
             if (success) {
                 progressBarFill.style.width = '100%';
+                progressBarFill.style.background = 'var(--gradient-primary)';
                 progressPercentage.innerText = '100%';
                 pipelineStatus.innerText = "¡Completado!";
+            } else {
+                progressBarFill.style.background = '#ff4444';
+                progressPercentage.innerText = 'Error';
+                pipelineStatus.innerText = "¡Falló la generación!";
             }
         }
 
