@@ -213,7 +213,7 @@ async def resume_polling_task(task_id, t_data):
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             tracks = []
-            for i in range(120):
+            for i in range(360):
                 if has_upload:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                 else:
@@ -514,7 +514,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             
             tracks = []
             import asyncio
-            for i in range(120):
+            for i in range(360):
                 if upload_url:
                     r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                 else:
