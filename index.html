@@ -94,10 +94,23 @@
         .group-header { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; min-width: 0; }
         .group-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .group-prompt { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .group-cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+        .group-cards-container { display: flex; flex-direction: column; gap: 8px; }
+        
+        select option { background-color: #1e1e24; color: var(--text-primary); }
         
         .song-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition-speed); position: relative; min-width: 0; overflow: visible; }
         .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); z-index: 5; }
+        
+        .song-card.list-view { flex-direction: row; align-items: center; padding: 8px 12px; gap: 16px; border-radius: 8px; }
+        .song-card.list-view:hover { transform: translateY(-2px); }
+        .song-card.list-view .song-cover-container { width: 44px; height: 44px; border-radius: 6px; flex-shrink: 0; }
+        .song-card.list-view .song-title { flex-grow: 1; font-size: 14px; margin-bottom: 0; }
+        .song-card.list-view .song-meta { display: flex; gap: 16px; width: auto; align-items: center; }
+        .song-card.list-view .song-meta .song-genre { display: none; } /* Hide genre in list to save space */
+        .song-card.list-view .version-badge { position: static; box-shadow: none; padding: 2px 6px; font-size: 10px; margin-right: auto; }
+        .song-card.list-view .card-checkbox { position: static; margin-right: 0; display: block; opacity: 0.5; }
+        .song-card.list-view:hover .card-checkbox, .song-card.list-view .card-checkbox:checked { opacity: 1; }
+
         
         /* Version Badge */
         .version-badge { position: absolute; top: -10px; left: -10px; background: var(--gradient-primary); color: white; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 8px; z-index: 5; box-shadow: 0 4px 10px rgba(0,122,204,0.3); letter-spacing: 0.5px; text-transform: uppercase; }
@@ -228,18 +241,7 @@
                                 </div>
                             </div>
 
-                            <div class="panel-box">
-                                <div class="panel-title" style="margin-bottom:0;">Modelo de IA</div>
-                                <select id="modelInput" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; color: var(--text-primary); cursor: pointer; font-size: 13px; width: 100%; outline: none; margin-top: 8px;">
-                                    <option value="chirp-v4-5">Chirp v4.5 (10 cr - Recomendado)</option>
-                                    <option value="chirp-v4-5-plus">Chirp v4.5 Plus (10 cr)</option>
-                                    <option value="chirp-v5">Chirp v5 (12 cr)</option>
-                                    <option value="chirp-v5-5">Chirp v5.5 (12 cr - Máxima Calidad)</option>
-                                    <option value="chirp-v4">Chirp v4 (8 cr)</option>
-                                    <option value="chirp-v3-5">Chirp v3.5 (5 cr - Económico)</option>
-                                </select>
-                            </div>
-                            
+
                             <!-- BOTTOM SUBMIT MOVED TO LEFT COLUMN TO SAVE SPACE -->
                             <div class="dashboard-bottom">
                                 <div id="errorBanner">
@@ -277,7 +279,20 @@
                                         <label for="bypassCopyrightCheckbox" style="font-size: 10px; font-weight: 700; color: #ff6b6b; cursor: pointer; text-transform: uppercase;">🔥 Anti-Copyright</label>
                                     </div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    
+                                    <!-- Modelo de IA -->
+                                    <div class="settings-box form-full-width" style="flex-direction: row; align-items: center; justify-content: space-between;">
+                                        <div class="settings-text">Modelo <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
+                                        <select id="modelInput" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; color: var(--text-primary); cursor: pointer; font-size: 12px; outline: none; width: 180px;">
+                                            <option value="chirp-v4-5">Chirp v4.5 (10cr)</option>
+                                            <option value="chirp-v4-5-plus">Chirp v4.5+ (10cr)</option>
+                                            <option value="chirp-v5">Chirp v5 (12cr)</option>
+                                            <option value="chirp-v5-5">Chirp v5.5 (12cr)</option>
+                                            <option value="chirp-v4">Chirp v4 (8cr)</option>
+                                            <option value="chirp-v3-5">Chirp v3.5 (5cr)</option>
+                                        </select>
+                                    </div>
                                     <!-- Vocal Gender -->
                                     <div class="settings-box form-full-width" style="flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;">
                                         <div class="settings-text">Vocal Gender <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
@@ -585,7 +600,8 @@
             if(!audioUrl) return;
             const grid = document.getElementById(targetGridId);
             const card = document.createElement('div');
-            card.className = 'song-card';
+            const isList = targetGridId !== 'libraryGrid';
+            card.className = isList ? 'song-card list-view' : 'song-card';
             card.id = 'card-' + id;
             
             const safeId = id.replace(/[^a-zA-Z0-9]/g, '');
