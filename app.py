@@ -109,7 +109,15 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         output_path
     ]
     try:
-        process = subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.run(
+            ffmpeg_cmd, 
+            check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            stdin=subprocess.DEVNULL,
+            text=True,
+            timeout=120
+        )
         return "SUCCESS"
     except FileNotFoundError:
         return "ERROR: FFmpeg no está instalado o no está en el PATH del sistema."
@@ -425,7 +433,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 f.write(audio_content)
                 
             log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
-            bypass_result = bypass_audio_fingerprint(temp_file_path, bypassed_file_path)
+            bypass_result = await asyncio.to_thread(bypass_audio_fingerprint, temp_file_path, bypassed_file_path)
             
             if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
                 target_upload_file = bypassed_file_path
