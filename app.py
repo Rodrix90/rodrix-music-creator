@@ -487,6 +487,10 @@ async def root():
 async def player():
     return FileResponse('player.html')
 
+@app.get("/api/me")
+async def get_me(current_user: str = Depends(get_current_user)):
+    return JSONResponse(content={"email": current_user})
+
 @app.get("/api/download/{task_id}/{audio_format}")
 async def download_track_format(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
     if audio_format not in ["wav", "flac", "mp3"]:

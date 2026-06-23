@@ -965,6 +965,19 @@
 
         // Cargar recientes al iniciar la página
         loadRecentGenerations();
+
+        // Cargar usuario actual
+        fetch('/api/me')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.email) {
+                    const emailSpan = document.querySelector('.user-email');
+                    if (emailSpan) {
+                        emailSpan.innerText = data.email;
+                    }
+                }
+            })
+            .catch(err => console.error("Error fetching user email:", err));
     </script>
 </body>
 </html>
