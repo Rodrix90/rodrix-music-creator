@@ -666,8 +666,8 @@
                 badgeHtml = '<div class="version-badge" style="background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);">🔥 Versión 2</div>';
             }
             
-            // Clean lyrics for template literal string interpolation
-            const cleanLyrics = (lyrics || '').replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+            window.tracksMap = window.tracksMap || {};
+            window.tracksMap[id] = { title, audioUrl: audioUrl, imageUrl: imageUrl, lyrics: lyrics };
             
             card.innerHTML = `
                 <input type="checkbox" class="card-checkbox" value="${safeId}" onclick="toggleSelection(event, '${id}')">
@@ -680,7 +680,7 @@
                 <div class="song-meta">
                     <span class="song-genre" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${style || 'Udio'}</span>
                     
-                    <button type="button" onclick="openPremiumPlayer('${title.replace(/'/g, "\\'")}', '${audioUrl}', '${imageUrl}', \`${cleanLyrics}\`)" style="background:transparent; border:none; color:var(--accent-cyan); cursor:pointer; font-size:16px; margin-right:10px; transition: transform 0.2s;" title="Modo Vinilo Premium" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><i class="fa-solid fa-record-vinyl"></i></button>
+                    <button type="button" onclick="openPremiumPlayerFromMap('${id}')" style="background:transparent; border:none; color:var(--accent-cyan); cursor:pointer; font-size:16px; margin-right:10px; transition: transform 0.2s;" title="Modo Vinilo Premium" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><i class="fa-solid fa-record-vinyl"></i></button>
 
                     <div class="dropdown">
                         <button class="dropbtn" onclick="toggleDropdown(this, event)">
@@ -733,13 +733,9 @@
             isPlaying = !isPlaying;
         }
 
-        function openPremiumPlayer(title, audioUrl, imageUrl, lyrics) {
-            const data = {
-                title: title,
-                audio_url: audioUrl,
-                image_url: imageUrl,
-                lyrics: lyrics
-            };
+        function openPremiumPlayerFromMap(id) {
+            const data = window.tracksMap && window.tracksMap[id];
+            if (!data) return;
             localStorage.setItem('currentPlayerData', JSON.stringify(data));
             window.open('/player.html', '_blank');
         }
