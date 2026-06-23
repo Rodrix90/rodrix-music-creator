@@ -667,7 +667,7 @@
             }
             
             window.tracksMap = window.tracksMap || {};
-            window.tracksMap[id] = { title, audioUrl: audioUrl, imageUrl: imageUrl, lyrics: lyrics };
+            window.tracksMap[id] = { title: title, audio_url: audioUrl, image_url: imageUrl, lyrics: lyrics };
             
             card.innerHTML = `
                 <input type="checkbox" class="card-checkbox" value="${safeId}" onclick="toggleSelection(event, '${id}')">

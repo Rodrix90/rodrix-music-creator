@@ -355,7 +355,7 @@
 
             // Render Lyrics
             const rawLyrics = data.lyrics || "Pista instrumental o sin letra proporcionada.";
-            const linesArray = rawLyrics.split('\\n').filter(l => l.trim() !== '');
+            const linesArray = rawLyrics.split('\n').filter(l => l.trim() !== '');
             totalLines = linesArray.length;
             
             lyricsContent.innerHTML = '';
