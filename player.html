@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Player</title>
+    <title>Walkman Premium Player</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #050505;
@@ -19,7 +19,7 @@
             margin: 0;
             padding: 0;
             background-color: var(--bg-color);
-            background-image: radial-gradient(circle at 50% 0%, rgba(138, 43, 226, 0.15) 0%, transparent 70%);
+            background-image: radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.1) 0%, transparent 70%);
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             height: 100vh;
@@ -57,124 +57,369 @@
             box-sizing: border-box;
         }
 
-        /* --- VINYL SECTION --- */
-        .vinyl-container {
+        /* --- WALKMAN SECTION --- */
+        .walkman-container {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             max-width: 500px;
+            perspective: 1000px;
         }
 
-        .vinyl-record {
-            width: 400px;
-            height: 400px;
+        .walkman {
+            width: 380px;
+            background: #2a2a2e;
+            border-radius: 12px;
+            box-shadow: inset -2px -2px 10px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.9);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transform: rotateX(5deg);
+        }
+
+        /* Botones Mecánicos Arriba */
+        .walkman-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px 0;
+            margin-bottom: -5px;
+            z-index: 5;
+        }
+
+        .w-btn {
+            width: 60px;
+            height: 35px;
+            background: #1a1a1c;
+            border: none;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            border-top: 3px solid #444;
+            border-left: 2px solid #333;
+            border-right: 2px solid #222;
+            color: #888;
+            cursor: pointer;
+            box-shadow: 0 -3px 8px rgba(0,0,0,0.6);
+            transition: all 0.1s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .w-btn:hover {
+            background: #222;
+        }
+
+        .w-btn:active, .w-btn.active {
+            height: 25px;
+            margin-top: 10px;
+            background: #111;
+            border-top: 1px solid #222;
+            box-shadow: none;
+            color: var(--accent-cyan);
+            padding-bottom: 5px;
+        }
+
+        .w-btn.w-stop:active, .w-btn.w-stop.active {
+            color: #ff3366;
+        }
+
+        /* Cuerpo del Walkman */
+        .walkman-body {
+            padding: 30px;
+            background: linear-gradient(135deg, #2a2a2e, #1a1a1c);
+            border-radius: 10px;
+            position: relative;
+            border: 1px solid #111;
+            z-index: 10;
+        }
+
+        .walkman-brand {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-style: italic;
+            color: #555;
+            font-size: 22px;
+            margin-bottom: 20px;
+            text-shadow: -1px -1px 0 rgba(0,0,0,0.8), 1px 1px 0 rgba(255,255,255,0.1);
+            letter-spacing: 2px;
+        }
+
+        .battery-led {
+            position: absolute;
+            top: 35px;
+            right: 30px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #111, #222);
-            border: 12px solid #0a0a0a;
-            box-shadow: 0 0 40px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0,0,0,1);
+            background: #4a0000;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8);
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .battery-led.on {
+            background: #ff3333;
+            box-shadow: 0 0 15px #ff3333, inset 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .led-label {
+            position: absolute;
+            top: 50px;
+            right: 25px;
+            font-size: 8px;
+            color: #666;
+            font-family: sans-serif;
+        }
+
+        /* Ventana transparente */
+        .cassette-window {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 8px;
+            border: 3px solid #111;
+            box-shadow: inset 0 5px 20px rgba(0,0,0,0.9), 0 1px 2px rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+            height: 190px;
+        }
+        .cassette-window::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.03) 100%);
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* --- CASETE --- */
+        .cassette {
+            width: 100%;
+            height: 100%;
+            background: #18181a;
+            border-radius: 5px;
+            position: relative;
+            border: 1px solid #222;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Etiqueta del casete (Estilo TDK Type II) */
+        .cassette-label {
+            width: 92%;
+            height: 125px;
+            background: linear-gradient(to bottom, #d4d4d4, #e5e5e5);
+            border-radius: 4px;
+            position: absolute;
+            top: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1), 0 2px 5px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .cassette-label-top-stripe {
+            width: 100%;
+            height: 25px;
+            background: linear-gradient(90deg, #001a4d, #004d99); /* Estilo TDK */
+            border-bottom: 2px solid #ffd700;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            box-sizing: border-box;
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 1px;
+            font-family: 'Inter', sans-serif;
+            justify-content: space-between;
+        }
+
+        .cassette-cover {
+            position: absolute;
+            top: 32px;
+            right: 8px;
+            width: 35px;
+            height: 35px;
+            object-fit: cover;
+            border: 2px solid #333;
+            border-radius: 2px;
+        }
+
+        .cassette-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #111;
+            width: 100%;
+            text-align: left;
+            margin-top: 8px;
+            padding: 0 55px 0 10px; /* Dejar espacio para la imagen */
+            box-sizing: border-box;
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+        }
+
+        .cassette-artist {
+            font-size: 10px;
+            color: #555;
+            width: 100%;
+            text-align: left;
+            padding: 0 10px;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            margin-top: 2px;
+        }
+
+        /* Píldora transparente central del casete */
+        .cassette-center-window {
+            width: 210px;
+            height: 55px;
+            background: rgba(10,10,10,0.85);
+            border-radius: 30px;
+            margin-top: 5px;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.5);
+            z-index: 10;
+        }
+
+        .tape-measure {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 10px;
+            background: repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 4px);
+            opacity: 0.5;
+        }
+
+        /* Engranajes y cinta */
+        .tape-reel {
+            position: absolute;
+            background: #332b2b; /* Color de cinta magnética */
+            border-radius: 50%;
+            border: 1px solid #111;
+            z-index: 1;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .tape-left {
+            width: 90px;
+            height: 90px;
+            left: -15px;
+            top: -18px;
+            transition: width 0.5s, height 0.5s, left 0.5s, top 0.5s;
+        }
+        
+        .tape-right {
+            width: 45px;
+            height: 45px;
+            right: 5px;
+            top: 5px;
+            transition: width 0.5s, height 0.5s, right 0.5s, top 0.5s;
+        }
+
+        .spool-container {
+            position: relative;
+            width: 32px;
+            height: 32px;
+            z-index: 5;
+        }
+
+        .spool {
+            width: 100%;
+            height: 100%;
+            background: #e0e0e0;
+            border-radius: 50%;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            animation: spin 4s linear infinite;
-            animation-play-state: paused;
-            transition: box-shadow 0.3s ease;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
         }
 
-        .vinyl-record.playing {
-            animation-play-state: running;
-            box-shadow: 0 0 60px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0,0,0,1);
-        }
-
-        .vinyl-record::before {
-            content: '';
-            position: absolute;
-            width: 90%;
-            height: 90%;
+        .spool-inner {
+            width: 16px;
+            height: 16px;
+            background: #111;
             border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.05);
-            pointer-events: none;
-        }
-        .vinyl-record::after {
-            content: '';
-            position: absolute;
-            width: 80%;
-            height: 80%;
-            border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.03);
-            pointer-events: none;
-        }
-
-        .vinyl-center-img {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #111;
             z-index: 2;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8);
         }
 
-        .vinyl-hole {
+        .spool-tooth {
             position: absolute;
-            width: 14px;
-            height: 14px;
-            background: #050505;
-            border-radius: 50%;
-            z-index: 3;
-            border: 1px solid #333;
+            width: 4px;
+            height: 100%;
+            background: #e0e0e0;
+        }
+        .spool-tooth::after {
+            content:'';
+            position: absolute;
+            top: -2px; left: 0;
+            width: 100%; height: 6px;
+            background: #111;
+        }
+        .spool-tooth::before {
+            content:'';
+            position: absolute;
+            bottom: -2px; left: 0;
+            width: 100%; height: 6px;
+            background: #111;
         }
 
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .playing .spool { animation: spin 2s linear infinite; }
 
-        .song-info {
-            margin-top: 40px;
-            text-align: center;
-            width: 100%;
-        }
-
-        .song-title {
-            font-size: 32px;
-            font-weight: 800;
-            margin-bottom: 10px;
-            font-family: 'Outfit', sans-serif;
-        }
-
-        .controls {
+        /* Puente inferior del casete */
+        .cassette-bridge {
+            position: absolute;
+            bottom: 0;
+            width: 75%;
+            height: 35px;
+            background: #222;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
             display: flex;
+            justify-content: space-around;
             align-items: center;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 25px;
+            border-top: 1px solid #444;
+            border-left: 1px solid #333;
+            border-right: 1px solid #333;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
         }
 
-        .play-btn {
-            width: 60px;
-            height: 60px;
+        .screw {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background: var(--text-primary);
-            color: var(--bg-color);
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            background: #111;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.2);
+            position: relative;
         }
-        .play-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(255,255,255,0.4);
+        .screw::after {
+            content: '';
+            position: absolute;
+            width: 60%;
+            height: 1px;
+            background: #333;
+            top: 50%;
+            left: 20%;
+            transform: rotate(45deg);
         }
 
+        /* --- CONTROLES Y PROGRESO --- */
         .progress-container {
             width: 100%;
-            margin-top: 30px;
+            margin-top: 20px;
             display: flex;
             align-items: center;
             gap: 15px;
@@ -185,10 +430,11 @@
         .progress-bar-bg {
             flex: 1;
             height: 6px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
             border-radius: 3px;
             cursor: pointer;
             position: relative;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
         }
 
         .progress-bar-fill {
@@ -197,6 +443,7 @@
             border-radius: 3px;
             width: 0%;
             position: relative;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
         }
 
         .progress-bar-fill::after {
@@ -230,10 +477,10 @@
             font-size: 32px;
             line-height: 1.6;
             font-weight: 800;
-            color: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.15);
             text-align: left;
             transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            padding: 50% 0; /* Padding to allow scrolling from bottom to top */
+            padding: 50% 0; 
             white-space: pre-wrap;
         }
 
@@ -244,24 +491,25 @@
 
         .lyrics-content .line.active {
             color: var(--text-primary);
-            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
             transform: scale(1.02);
         }
         
         .lyrics-content .line.instruction {
-            color: var(--accent-cyan);
+            color: var(--accent-purple);
             font-size: 20px;
-            opacity: 0.6;
+            opacity: 0.8;
             text-transform: uppercase;
             letter-spacing: 2px;
+            text-shadow: none;
         }
 
         .blur-bg {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             z-index: -1;
-            opacity: 0.2;
-            filter: blur(100px);
+            opacity: 0.15;
+            filter: blur(80px);
             background-size: cover;
             background-position: center;
         }
@@ -272,37 +520,97 @@
     <div class="blur-bg" id="blurBg"></div>
 
     <div class="header">
-        <div class="header-title">Rodrix Music Creator</div>
+        <div class="header-title">Rodrix Music Creator <span style="font-size: 12px; color: var(--text-secondary); vertical-align: middle;">Retro Edition</span></div>
         <button onclick="window.close()" style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer; font-size:24px;">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
 
     <div class="main-container">
-        <!-- VINYL SECTION -->
-        <div class="vinyl-container">
-            <div class="vinyl-record" id="vinylRecord">
-                <img src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300" id="vinylImage" class="vinyl-center-img">
-                <div class="vinyl-hole"></div>
+        <!-- WALKMAN SECTION -->
+        <div class="walkman-container">
+            
+            <div class="walkman">
+                <!-- Botones Superiores -->
+                <div class="walkman-buttons">
+                    <button class="w-btn w-rew"><i class="fa-solid fa-backward"></i></button>
+                    <button class="w-btn w-play" id="btnPlay" onclick="togglePlay()"><i class="fa-solid fa-play"></i></button>
+                    <button class="w-btn w-ff"><i class="fa-solid fa-forward"></i></button>
+                    <button class="w-btn w-stop" id="btnStop" onclick="stopPlay()"><i class="fa-solid fa-stop"></i></button>
+                </div>
+                
+                <!-- Cuerpo Principal -->
+                <div class="walkman-body">
+                    <div class="walkman-brand">R-WKM-90</div>
+                    <div class="battery-led" id="batteryLed"></div>
+                    <div class="led-label">OPR / BATT</div>
+                    
+                    <!-- Ventana transparente -->
+                    <div class="cassette-window">
+                        
+                        <!-- El Casete -->
+                        <div class="cassette" id="cassetteObj">
+                            
+                            <!-- Etiqueta -->
+                            <div class="cassette-label">
+                                <div class="cassette-label-top-stripe">
+                                    <span>TDRX</span>
+                                    <span>TYPE II HIGH POSITION</span>
+                                </div>
+                                <div class="cassette-title" id="songTitle">Cargando...</div>
+                                <div class="cassette-artist" id="songGenre">Udio AI</div>
+                                <img src="" id="vinylImage" class="cassette-cover">
+                                
+                                <!-- Píldora Transparente -->
+                                <div class="cassette-center-window">
+                                    
+                                    <div class="tape-reel tape-left" id="tapeLeft"></div>
+                                    <div class="tape-reel tape-right" id="tapeRight"></div>
+                                    
+                                    <div class="tape-measure"></div>
+                                    
+                                    <div class="spool-container">
+                                        <div class="spool">
+                                            <div class="spool-tooth"></div>
+                                            <div class="spool-tooth" style="transform: rotate(60deg);"></div>
+                                            <div class="spool-tooth" style="transform: rotate(120deg);"></div>
+                                            <div class="spool-inner"></div>
+                                        </div>
+                                    </div>
+                                    <div class="spool-container">
+                                        <div class="spool">
+                                            <div class="spool-tooth"></div>
+                                            <div class="spool-tooth" style="transform: rotate(60deg);"></div>
+                                            <div class="spool-tooth" style="transform: rotate(120deg);"></div>
+                                            <div class="spool-inner"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Puente inferior -->
+                            <div class="cassette-bridge">
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <!-- Barra de progreso debajo de la ventana -->
+                    <div class="progress-container">
+                        <span id="currentTime">00:00</span>
+                        <div class="progress-bar-bg" id="progressBarBg" onclick="seekAudio(event)">
+                            <div class="progress-bar-fill" id="progressBarFill"></div>
+                        </div>
+                        <span id="totalTime">00:00</span>
+                    </div>
+
+                </div>
             </div>
             
-            <div class="song-info">
-                <div class="song-title" id="songTitle">Cargando...</div>
-                
-                <div class="progress-container">
-                    <span id="currentTime">00:00</span>
-                    <div class="progress-bar-bg" id="progressBarBg" onclick="seekAudio(event)">
-                        <div class="progress-bar-fill" id="progressBarFill"></div>
-                    </div>
-                    <span id="totalTime">00:00</span>
-                </div>
-
-                <div class="controls">
-                    <button class="play-btn" id="playBtn" onclick="togglePlay()">
-                        <i class="fa-solid fa-play" id="playIcon"></i>
-                    </button>
-                </div>
-            </div>
         </div>
 
         <!-- KARAOKE SECTION -->
@@ -317,9 +625,13 @@
 
     <script>
         const audio = document.getElementById('audioEngine');
-        const playBtn = document.getElementById('playBtn');
-        const playIcon = document.getElementById('playIcon');
-        const vinylRecord = document.getElementById('vinylRecord');
+        const btnPlay = document.getElementById('btnPlay');
+        const btnStop = document.getElementById('btnStop');
+        const batteryLed = document.getElementById('batteryLed');
+        const cassetteObj = document.getElementById('cassetteObj');
+        const tapeLeft = document.getElementById('tapeLeft');
+        const tapeRight = document.getElementById('tapeRight');
+        
         const progressBarFill = document.getElementById('progressBarFill');
         const currentTimeEl = document.getElementById('currentTime');
         const totalTimeEl = document.getElementById('totalTime');
@@ -341,7 +653,7 @@
         function initPlayer() {
             const dataStr = localStorage.getItem('currentPlayerData');
             if (!dataStr) {
-                document.getElementById('songTitle').innerText = "No hay pista cargada";
+                document.getElementById('songTitle').innerText = "No Data";
                 return;
             }
             
@@ -364,7 +676,7 @@
                 lineDiv.className = 'line';
                 lineDiv.innerText = lineText;
                 
-                // Detectar instrucciones como [Chorus]
+                // Detectar instrucciones
                 if (lineText.trim().startsWith('[') && lineText.trim().endsWith(']')) {
                     lineDiv.classList.add('instruction');
                 }
@@ -381,18 +693,25 @@
                 audio.pause();
             }
         }
+        
+        function stopPlay() {
+            audio.pause();
+            audio.currentTime = 0;
+            btnStop.classList.add('active');
+            setTimeout(() => btnStop.classList.remove('active'), 200);
+        }
 
         audio.addEventListener('play', () => {
-            playIcon.classList.remove('fa-play');
-            playIcon.classList.add('fa-pause');
-            vinylRecord.classList.add('playing');
+            btnPlay.classList.add('active');
+            batteryLed.classList.add('on');
+            cassetteObj.classList.add('playing');
             isPlaying = true;
         });
 
         audio.addEventListener('pause', () => {
-            playIcon.classList.remove('fa-pause');
-            playIcon.classList.add('fa-play');
-            vinylRecord.classList.remove('playing');
+            btnPlay.classList.remove('active');
+            batteryLed.classList.remove('on');
+            cassetteObj.classList.remove('playing');
             isPlaying = false;
         });
 
@@ -404,12 +723,28 @@
             const current = audio.currentTime;
             const dur = audio.duration || 1;
             currentTimeEl.innerText = formatTime(current);
-            progressBarFill.style.width = (current / dur * 100) + '%';
+            const progressPct = current / dur;
+            progressBarFill.style.width = (progressPct * 100) + '%';
+            
+            // Tape reel animation logic
+            // Left reel goes from 90px to 30px
+            // Right reel goes from 30px to 90px
+            const leftSize = 90 - (progressPct * 60);
+            const rightSize = 30 + (progressPct * 60);
+            
+            tapeLeft.style.width = leftSize + 'px';
+            tapeLeft.style.height = leftSize + 'px';
+            // Adjust position slightly to keep centered-ish
+            tapeLeft.style.left = (-15 + (progressPct * 30)) + 'px';
+            tapeLeft.style.top = (-18 + (progressPct * 30)) + 'px';
+            
+            tapeRight.style.width = rightSize + 'px';
+            tapeRight.style.height = rightSize + 'px';
+            tapeRight.style.right = (35 - (progressPct * 30)) + 'px';
+            tapeRight.style.top = (35 - (progressPct * 30)) + 'px';
 
-            // Karaoke Sync Logic (Faux-Sync)
+            // Karaoke Sync Logic
             if (totalLines > 0 && dur > 0) {
-                const progressPct = current / dur;
-                // Calculate roughly which line we are on
                 let activeIndex = Math.floor(progressPct * totalLines);
                 if (activeIndex >= totalLines) activeIndex = totalLines - 1;
 
@@ -421,11 +756,9 @@
                     }
                 });
 
-                // Scroll the container so active line is centered
                 if (linesElements[activeIndex]) {
                     const elOffset = linesElements[activeIndex].offsetTop;
                     const halfScreen = lyricsContent.parentElement.clientHeight / 2;
-                    // Apply translate to the whole content container
                     const translateY = -elOffset + halfScreen;
                     lyricsContent.style.transform = `translateY(${translateY}px)`;
                 }
@@ -433,9 +766,9 @@
         });
 
         audio.addEventListener('ended', () => {
-            playIcon.classList.remove('fa-pause');
-            playIcon.classList.add('fa-play');
-            vinylRecord.classList.remove('playing');
+            btnPlay.classList.remove('active');
+            batteryLed.classList.remove('on');
+            cassetteObj.classList.remove('playing');
             isPlaying = false;
             progressBarFill.style.width = '100%';
         });
