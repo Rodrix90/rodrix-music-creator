@@ -487,6 +487,12 @@ async def root():
 async def player():
     return FileResponse('player.html')
 
+@app.get("/walkman.jpg")
+async def walkman_image():
+    if os.path.exists("walkman.jpg"):
+        return FileResponse("walkman.jpg")
+    raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
 @app.get("/api/me")
 async def get_me(current_user: str = Depends(get_current_user)):
     return JSONResponse(content={"email": current_user})
