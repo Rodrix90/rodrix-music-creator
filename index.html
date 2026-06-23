@@ -339,7 +339,8 @@
                                             <div class="settings-text">Audio Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
                                             <span id="audioInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">25%</span>
                                         </div>
-                                        <input type="range" id="audioInfluenceSlider" min="0" max="100" value="25" oninput="document.getElementById('audioInfluenceValueDisplay').innerText = this.value + '%'">
+                                        <input type="range" id="audioInfluenceSlider" min="0" max="100" value="25" oninput="updateAudioInfluence(this.value)">
+                                        <div id="audioInfluenceWarning" style="font-size: 11px; margin-top: 2px; color: #4ade80;">Permite cambiar instrumentos y voces libremente.</div>
                                     </div>
                                 </div>
                             </div>
@@ -753,6 +754,21 @@
             document.getElementById('genderBtn-female').classList.remove('selected');
             document.getElementById('genderBtn-' + gender).classList.add('selected');
             document.getElementById('vocalGenderInput').value = gender;
+        }
+
+        function updateAudioInfluence(val) {
+            document.getElementById('audioInfluenceValueDisplay').innerText = val + '%';
+            const warningEl = document.getElementById('audioInfluenceWarning');
+            if (val < 50) {
+                warningEl.style.color = '#4ade80';
+                warningEl.innerText = 'Permite cambiar instrumentos y voces libremente.';
+            } else if (val < 85) {
+                warningEl.style.color = '#fbbf24';
+                warningEl.innerText = 'Alta clonación. Será muy difícil cambiar al cantante original.';
+            } else {
+                warningEl.style.color = '#ff6b6b';
+                warningEl.innerText = 'Clonación exacta. Ignorará drásticamente los estilos nuevos.';
+            }
         }
 
         // Funciones de UI

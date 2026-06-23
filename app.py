@@ -322,7 +322,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "title": title,
                 "make_instrumental": is_instrumental,
                 "model": model,
-                "custom_mode": True
+                "custom_mode": True,
+                "prompt_strength": round(style_influence / 100.0, 2),
+                "weirdness": round(weirdness / 100.0, 2)
             }
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
