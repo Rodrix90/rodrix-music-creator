@@ -627,6 +627,13 @@
                     tracks.forEach((track, index) => {
                         addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${groupId}-cards`, index + 1);
                     });
+                    
+                    saveRecentGeneration({
+                        groupId: groupId,
+                        titleVal: titleVal,
+                        styleVal: styleVal,
+                        tracks: tracks
+                    });
                 }
 
             } catch (err) {
@@ -735,9 +742,42 @@
         }
 
         function clearGrid() {
-            if (confirm('¿Estás seguro de que quieres borrar de la vista las canciones recientes? (Seguirán en tu Librería)')) {
+            if (confirm('¿Estás seguro de que quieres borrar de la vista las canciones recientes? (Seguirán en tu Librería si las guardaste)')) {
                 document.getElementById('songsGrid').innerHTML = '';
+                localStorage.removeItem('recentGenerations');
             }
+        }
+
+        function saveRecentGeneration(groupData) {
+            let recent = JSON.parse(localStorage.getItem('recentGenerations') || '[]');
+            recent.unshift(groupData);
+            if (recent.length > 20) recent = recent.slice(0, 20); // Guardar hasta 20 grupos recientes
+            localStorage.setItem('recentGenerations', JSON.stringify(recent));
+        }
+
+        function loadRecentGenerations() {
+            let recent = JSON.parse(localStorage.getItem('recentGenerations') || '[]');
+            const grid = document.getElementById('songsGrid');
+            grid.innerHTML = ''; // Clear before load
+            recent.forEach(group => {
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'generation-group';
+                groupContainer.id = group.groupId;
+                
+                groupContainer.innerHTML = `
+                    <div class="group-header">
+                        <div class="group-title">${group.titleVal}</div>
+                        <div class="group-prompt"><i class="fa-solid fa-tags" style="font-size:10px;"></i> ${group.styleVal}</div>
+                    </div>
+                    <div class="group-cards-container" id="${group.groupId}-cards"></div>
+                `;
+                
+                grid.appendChild(groupContainer);
+                
+                group.tracks.forEach((track, index) => {
+                    addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${group.groupId}-cards`, index + 1);
+                });
+            });
         }
 
         function formatTime(seconds) {
@@ -906,6 +946,9 @@
             });
             clearSelection();
         }
+
+        // Cargar recientes al iniciar la página
+        loadRecentGenerations();
     </script>
 </body>
 </html>
