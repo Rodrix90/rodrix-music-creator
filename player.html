@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Player</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.5);
+            --accent-cyan: #00f0ff;
+            --accent-purple: #8a2be2;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 0%, rgba(138, 43, 226, 0.15) 0%, transparent 70%);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            padding: 0 50px 50px;
+            gap: 60px;
+            align-items: center;
+            justify-content: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* --- VINYL SECTION --- */
+        .vinyl-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 500px;
+        }
+
+        .vinyl-record {
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #111, #222);
+            border: 12px solid #0a0a0a;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0,0,0,1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: spin 4s linear infinite;
+            animation-play-state: paused;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .vinyl-record.playing {
+            animation-play-state: running;
+            box-shadow: 0 0 60px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0,0,0,1);
+        }
+
+        .vinyl-record::before {
+            content: '';
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.05);
+            pointer-events: none;
+        }
+        .vinyl-record::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.03);
+            pointer-events: none;
+        }
+
+        .vinyl-center-img {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #111;
+            z-index: 2;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        .vinyl-hole {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #050505;
+            border-radius: 50%;
+            z-index: 3;
+            border: 1px solid #333;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .song-info {
+            margin-top: 40px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .song-title {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 25px;
+        }
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            color: var(--bg-color);
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255,255,255,0.4);
+        }
+
+        .progress-container {
+            width: 100%;
+            margin-top: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-bg {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 3px;
+            width: 0%;
+            position: relative;
+        }
+
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: -4px;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+            display: none;
+        }
+        .progress-bar-bg:hover .progress-bar-fill::after {
+            display: block;
+        }
+
+        /* --- KARAOKE SECTION --- */
+        .lyrics-container {
+            flex: 1;
+            height: 60vh;
+            overflow: hidden;
+            position: relative;
+            padding: 20px 40px;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+
+        .lyrics-content {
+            font-size: 32px;
+            line-height: 1.6;
+            font-weight: 800;
+            color: rgba(255,255,255,0.2);
+            text-align: left;
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            padding: 50% 0; /* Padding to allow scrolling from bottom to top */
+            white-space: pre-wrap;
+        }
+
+        .lyrics-content .line {
+            margin-bottom: 20px;
+            transition: color 0.3s ease, transform 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        .lyrics-content .line.active {
+            color: var(--text-primary);
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+            transform: scale(1.02);
+        }
+        
+        .lyrics-content .line.instruction {
+            color: var(--accent-cyan);
+            font-size: 20px;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .blur-bg {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            opacity: 0.2;
+            filter: blur(100px);
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="blur-bg" id="blurBg"></div>
+
+    <div class="header">
+        <div class="header-title">Rodrix Music Creator</div>
+        <button onclick="window.close()" style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer; font-size:24px;">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <div class="main-container">
+        <!-- VINYL SECTION -->
+        <div class="vinyl-container">
+            <div class="vinyl-record" id="vinylRecord">
+                <img src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300" id="vinylImage" class="vinyl-center-img">
+                <div class="vinyl-hole"></div>
+            </div>
+            
+            <div class="song-info">
+                <div class="song-title" id="songTitle">Cargando...</div>
+                
+                <div class="progress-container">
+                    <span id="currentTime">00:00</span>
+                    <div class="progress-bar-bg" id="progressBarBg" onclick="seekAudio(event)">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <span id="totalTime">00:00</span>
+                </div>
+
+                <div class="controls">
+                    <button class="play-btn" id="playBtn" onclick="togglePlay()">
+                        <i class="fa-solid fa-play" id="playIcon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KARAOKE SECTION -->
+        <div class="lyrics-container">
+            <div class="lyrics-content" id="lyricsContent">
+                <!-- Lyrics lines will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioEngine"></audio>
+
+    <script>
+        const audio = document.getElementById('audioEngine');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const vinylRecord = document.getElementById('vinylRecord');
+        const progressBarFill = document.getElementById('progressBarFill');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+        const lyricsContent = document.getElementById('lyricsContent');
+        const blurBg = document.getElementById('blurBg');
+
+        let isPlaying = false;
+        let linesElements = [];
+        let totalLines = 0;
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+        }
+
+        // Initialize from localStorage
+        function initPlayer() {
+            const dataStr = localStorage.getItem('currentPlayerData');
+            if (!dataStr) {
+                document.getElementById('songTitle').innerText = "No hay pista cargada";
+                return;
+            }
+            
+            const data = JSON.parse(dataStr);
+            document.getElementById('songTitle').innerText = data.title;
+            const imgUrl = data.image_url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300';
+            document.getElementById('vinylImage').src = imgUrl;
+            blurBg.style.backgroundImage = `url('${imgUrl}')`;
+            
+            audio.src = data.audio_url;
+
+            // Render Lyrics
+            const rawLyrics = data.lyrics || "Pista instrumental o sin letra proporcionada.";
+            const linesArray = rawLyrics.split('\\n').filter(l => l.trim() !== '');
+            totalLines = linesArray.length;
+            
+            lyricsContent.innerHTML = '';
+            linesArray.forEach((lineText, index) => {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'line';
+                lineDiv.innerText = lineText;
+                
+                // Detectar instrucciones como [Chorus]
+                if (lineText.trim().startsWith('[') && lineText.trim().endsWith(']')) {
+                    lineDiv.classList.add('instruction');
+                }
+                
+                lyricsContent.appendChild(lineDiv);
+                linesElements.push(lineDiv);
+            });
+        }
+
+        function togglePlay() {
+            if (audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        }
+
+        audio.addEventListener('play', () => {
+            playIcon.classList.remove('fa-play');
+            playIcon.classList.add('fa-pause');
+            vinylRecord.classList.add('playing');
+            isPlaying = true;
+        });
+
+        audio.addEventListener('pause', () => {
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-play');
+            vinylRecord.classList.remove('playing');
+            isPlaying = false;
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            totalTimeEl.innerText = formatTime(audio.duration);
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            const current = audio.currentTime;
+            const dur = audio.duration || 1;
+            currentTimeEl.innerText = formatTime(current);
+            progressBarFill.style.width = (current / dur * 100) + '%';
+
+            // Karaoke Sync Logic (Faux-Sync)
+            if (totalLines > 0 && dur > 0) {
+                const progressPct = current / dur;
+                // Calculate roughly which line we are on
+                let activeIndex = Math.floor(progressPct * totalLines);
+                if (activeIndex >= totalLines) activeIndex = totalLines - 1;
+
+                linesElements.forEach((el, idx) => {
+                    if (idx === activeIndex) {
+                        el.classList.add('active');
+                    } else {
+                        el.classList.remove('active');
+                    }
+                });
+
+                // Scroll the container so active line is centered
+                if (linesElements[activeIndex]) {
+                    const elOffset = linesElements[activeIndex].offsetTop;
+                    const halfScreen = lyricsContent.parentElement.clientHeight / 2;
+                    // Apply translate to the whole content container
+                    const translateY = -elOffset + halfScreen;
+                    lyricsContent.style.transform = `translateY(${translateY}px)`;
+                }
+            }
+        });
+
+        audio.addEventListener('ended', () => {
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-play');
+            vinylRecord.classList.remove('playing');
+            isPlaying = false;
+            progressBarFill.style.width = '100%';
+        });
+
+        function seekAudio(e) {
+            const rect = document.getElementById('progressBarBg').getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            audio.currentTime = pos * audio.duration;
+        }
+
+        // Start
+        initPlayer();
+    </script>
+</body>
+</html>

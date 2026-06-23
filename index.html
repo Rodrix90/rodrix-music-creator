@@ -625,7 +625,7 @@
                     grid.insertBefore(groupContainer, grid.firstChild);
                     
                     tracks.forEach((track, index) => {
-                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${groupId}-cards`, index + 1);
+                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${groupId}-cards`, index + 1, track.lyrics);
                     });
                     
                     saveRecentGeneration({
@@ -649,7 +649,7 @@
             }
         }
 
-        function addSongCardToGrid(id, title, style, audioUrl, imageUrl, targetGridId, versionNum = null) {
+        function addSongCardToGrid(id, title, style, audioUrl, imageUrl, targetGridId, versionNum = null, lyrics = '') {
             if(!audioUrl) return;
             const grid = document.getElementById(targetGridId);
             const card = document.createElement('div');
@@ -666,6 +666,9 @@
                 badgeHtml = '<div class="version-badge" style="background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);">🔥 Versión 2</div>';
             }
             
+            // Clean lyrics for template literal string interpolation
+            const cleanLyrics = (lyrics || '').replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+            
             card.innerHTML = `
                 <input type="checkbox" class="card-checkbox" value="${safeId}" onclick="toggleSelection(event, '${id}')">
                 ${badgeHtml}
@@ -677,6 +680,8 @@
                 <div class="song-meta">
                     <span class="song-genre" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${style || 'Udio'}</span>
                     
+                    <button type="button" onclick="openPremiumPlayer('${title.replace(/'/g, "\\'")}', '${audioUrl}', '${imageUrl}', \`${cleanLyrics}\`)" style="background:transparent; border:none; color:var(--accent-cyan); cursor:pointer; font-size:16px; margin-right:10px; transition: transform 0.2s;" title="Modo Vinilo Premium" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><i class="fa-solid fa-record-vinyl"></i></button>
+
                     <div class="dropdown">
                         <button class="dropbtn" onclick="toggleDropdown(this, event)">
                             <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -728,6 +733,17 @@
             isPlaying = !isPlaying;
         }
 
+        function openPremiumPlayer(title, audioUrl, imageUrl, lyrics) {
+            const data = {
+                title: title,
+                audio_url: audioUrl,
+                image_url: imageUrl,
+                lyrics: lyrics
+            };
+            localStorage.setItem('currentPlayerData', JSON.stringify(data));
+            window.open('/player.html', '_blank');
+        }
+
         audioEngine.addEventListener('timeupdate', () => {
             const ratio = audioEngine.currentTime / audioEngine.duration;
             timelineFill.style.width = (ratio * 100) + '%';
@@ -775,7 +791,7 @@
                 grid.appendChild(groupContainer);
                 
                 group.tracks.forEach((track, index) => {
-                    addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${group.groupId}-cards`, index + 1);
+                    addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${group.groupId}-cards`, index + 1, track.lyrics);
                 });
             });
         }
@@ -855,7 +871,7 @@
                         return;
                     }
                     data.tracks.forEach(track => {
-                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, 'libraryGrid');
+                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, 'libraryGrid', null, track.lyrics);
                     });
                 }
             } catch (err) {

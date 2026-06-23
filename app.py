@@ -434,7 +434,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                             "audio_url": taudio,
                             "image_url": timage,
                             "duration": tduration,
-                            "status": tstatus
+                            "status": tstatus,
+                            "lyrics": t.get("lyrics") or lyrics
                         }
                         final_tracks.append(track_info)
                         add_track_to_library(track_info)
@@ -477,6 +478,14 @@ async def api_delete_from_library(task_id: str, current_user: str = Depends(get_
         raise HTTPException(status_code=404, detail="Track no encontrado")
     save_library(new_library)
     return JSONResponse(content={"status": "success"})
+
+@app.get("/")
+async def root():
+    return FileResponse('index.html')
+
+@app.get("/player.html")
+async def player():
+    return FileResponse('player.html')
 
 @app.get("/api/download/{task_id}/{audio_format}")
 async def download_track_format(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
