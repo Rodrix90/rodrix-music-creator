@@ -57,275 +57,253 @@
             box-sizing: border-box;
         }
 
-        /* --- WALKMAN SECTION --- */
+        /* --- SONY WM-FX32 WALKMAN REPLICA --- */
         .walkman-container {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            max-width: 500px;
             perspective: 1000px;
         }
 
         .walkman {
-            width: 380px;
-            background: #2a2a2e;
-            border-radius: 12px;
-            box-shadow: inset -2px -2px 10px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.9);
+            width: 450px;
+            height: 320px;
+            background: #1a1a1c;
+            border-radius: 20px;
+            border-top-left-radius: 40px; /* Curvatura superior como en la foto */
+            border-top-right-radius: 40px;
+            box-shadow: 
+                inset 2px 5px 15px rgba(255,255,255,0.1), 
+                inset -5px -5px 20px rgba(0,0,0,0.8),
+                0 20px 50px rgba(0,0,0,0.9);
             position: relative;
+            display: flex;
+            transform: rotateX(5deg);
+            border: 2px solid #111;
+        }
+
+        /* Top Button (Play) */
+        .top-button {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 15px;
+            background: #111;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: top 0.1s;
+            z-index: -1;
+        }
+        .top-button:active, .top-button.active {
+            top: -5px;
+        }
+
+        /* LEFT: Radio Dial */
+        .radio-dial {
+            width: 80px;
+            height: 100%;
+            padding: 40px 10px;
+            box-sizing: border-box;
+            display: flex;
+            position: relative;
+        }
+        .dial-window {
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+            border: 1px solid rgba(0,0,0,0.8);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            position: relative;
+            display: flex;
+        }
+        .dial-scale {
+            width: 50%;
+            height: 100%;
+            border-right: 2px solid #555;
+            position: relative;
+        }
+        .dial-text {
+            color: #888;
+            font-size: 10px;
+            font-family: sans-serif;
+            position: absolute;
+            transform: rotate(-90deg);
+            transform-origin: left top;
+        }
+        .dial-fm { bottom: 10px; left: 10px; }
+        .dial-am { bottom: 10px; right: -25px; }
+
+        /* Branding: SONY */
+        .brand-sony {
+            position: absolute;
+            left: 90px;
+            bottom: 40px;
+            color: #ccc;
+            font-family: 'Times New Roman', serif;
+            font-size: 24px;
+            font-weight: bold;
+            transform: rotate(-90deg);
+            transform-origin: left bottom;
+            letter-spacing: 2px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* Branding: WALKMAN */
+        .brand-walkman {
+            position: absolute;
+            right: -60px;
+            bottom: 20px;
+            color: #ccc;
+            font-family: 'Arial', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            transform: rotate(-90deg);
+            transform-origin: left bottom;
+            letter-spacing: 1px;
+        }
+        .brand-walkman span {
+            font-size: 14px;
+            font-weight: normal;
+            margin-left: 10px;
+        }
+
+        /* CENTER: Cassette Window */
+        .center-section {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            transform: rotateX(5deg);
-        }
-
-        /* Botones Mecánicos Arriba */
-        .walkman-buttons {
-            display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 10px 20px 0;
-            margin-bottom: -5px;
-            z-index: 5;
-        }
-
-        .w-btn {
-            width: 60px;
-            height: 35px;
-            background: #1a1a1c;
-            border: none;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-            border-top: 3px solid #444;
-            border-left: 2px solid #333;
-            border-right: 2px solid #222;
-            color: #888;
-            cursor: pointer;
-            box-shadow: 0 -3px 8px rgba(0,0,0,0.6);
-            transition: all 0.1s;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .w-btn:hover {
-            background: #222;
-        }
-
-        .w-btn:active, .w-btn.active {
-            height: 25px;
-            margin-top: 10px;
-            background: #111;
-            border-top: 1px solid #222;
-            box-shadow: none;
-            color: var(--accent-cyan);
-            padding-bottom: 5px;
-        }
-
-        .w-btn.w-stop:active, .w-btn.w-stop.active {
-            color: #ff3366;
-        }
-
-        /* Cuerpo del Walkman */
-        .walkman-body {
-            padding: 30px;
-            background: linear-gradient(135deg, #2a2a2e, #1a1a1c);
-            border-radius: 10px;
             position: relative;
-            border: 1px solid #111;
-            z-index: 10;
+            padding-right: 30px; /* Leave space for Walkman text */
         }
 
-        .walkman-brand {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 800;
-            font-style: italic;
-            color: #555;
-            font-size: 22px;
-            margin-bottom: 20px;
-            text-shadow: -1px -1px 0 rgba(0,0,0,0.8), 1px 1px 0 rgba(255,255,255,0.1);
-            letter-spacing: 2px;
-        }
-
-        .battery-led {
-            position: absolute;
-            top: 35px;
-            right: 30px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #4a0000;
-            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8);
-            transition: background 0.2s, box-shadow 0.2s;
-        }
-        .battery-led.on {
-            background: #ff3333;
-            box-shadow: 0 0 15px #ff3333, inset 1px 1px 2px rgba(255,255,255,0.8);
-        }
-
-        .led-label {
-            position: absolute;
-            top: 50px;
-            right: 25px;
-            font-size: 8px;
-            color: #666;
-            font-family: sans-serif;
-        }
-
-        /* Ventana transparente */
-        .cassette-window {
+        .cassette-window-container {
+            width: 240px;
+            height: 160px;
             background: #0a0a0a;
-            border-radius: 8px;
-            padding: 8px;
-            border: 3px solid #111;
-            box-shadow: inset 0 5px 20px rgba(0,0,0,0.9), 0 1px 2px rgba(255,255,255,0.1);
+            border-radius: 20px;
+            border-top-left-radius: 90px;
+            border-top-right-radius: 90px;
+            border: 2px solid #000;
+            box-shadow: inset 0 5px 20px rgba(0,0,0,0.9), 0 2px 5px rgba(255,255,255,0.1);
             position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow: hidden;
-            height: 190px;
         }
-        .cassette-window::after {
+        .cassette-window-container::after {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.03) 100%);
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.02) 100%);
             pointer-events: none;
             z-index: 50;
         }
 
-        /* --- CASETE --- */
-        .cassette {
+        /* Window Texts */
+        .window-text-top {
+            position: absolute;
+            top: 15px;
             width: 100%;
-            height: 100%;
-            background: #18181a;
+            text-align: center;
+            color: #ccc;
+            font-size: 10px;
+            font-family: sans-serif;
+            z-index: 60;
+            letter-spacing: 1px;
+        }
+        .window-text-bottom {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            color: #666;
+            font-size: 9px;
+            font-family: sans-serif;
+            z-index: 60;
+        }
+
+        /* The Cassette inside */
+        .cassette-inner {
+            width: 220px;
+            height: 140px;
+            background: #222;
             border-radius: 5px;
             position: relative;
-            border: 1px solid #222;
             display: flex;
             justify-content: center;
+            align-items: center;
+            margin-top: 20px; /* push down to align spools */
         }
 
-        /* Etiqueta del casete (Estilo TDK Type II) */
-        .cassette-label {
-            width: 92%;
-            height: 125px;
-            background: linear-gradient(to bottom, #d4d4d4, #e5e5e5);
-            border-radius: 4px;
+        .cassette-sticker {
+            width: 90%;
+            height: 60px;
+            background: #d4d4d4;
             position: absolute;
-            top: 8px;
+            top: 10px;
+            border-radius: 3px;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.1), 0 2px 5px rgba(0,0,0,0.5);
-            overflow: hidden;
+            justify-content: space-between;
+            padding: 5px;
+            box-sizing: border-box;
         }
 
-        .cassette-label-top-stripe {
-            width: 100%;
-            height: 25px;
-            background: linear-gradient(90deg, #001a4d, #004d99); /* Estilo TDK */
-            border-bottom: 2px solid #ffd700;
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            box-sizing: border-box;
-            color: #fff;
-            font-weight: 800;
-            font-size: 14px;
-            letter-spacing: 1px;
-            font-family: 'Inter', sans-serif;
-            justify-content: space-between;
+        .cassette-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #111;
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+            width: 70%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .cassette-cover {
-            position: absolute;
-            top: 32px;
-            right: 8px;
-            width: 35px;
-            height: 35px;
+            width: 45px;
+            height: 45px;
             object-fit: cover;
             border: 2px solid #333;
             border-radius: 2px;
         }
-
-        .cassette-title {
-            font-size: 12px;
-            font-weight: bold;
-            color: #111;
-            width: 100%;
-            text-align: left;
-            margin-top: 8px;
-            padding: 0 55px 0 10px; /* Dejar espacio para la imagen */
-            box-sizing: border-box;
-            font-family: 'Share Tech Mono', monospace;
-            text-transform: uppercase;
-        }
-
-        .cassette-artist {
-            font-size: 10px;
-            color: #555;
-            width: 100%;
-            text-align: left;
-            padding: 0 10px;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-            margin-top: 2px;
-        }
-
-        /* Píldora transparente central del casete */
-        .cassette-center-window {
-            width: 210px;
-            height: 55px;
-            background: rgba(10,10,10,0.85);
-            border-radius: 30px;
-            margin-top: 5px;
-            position: relative;
+        
+        .spool-area {
+            width: 180px;
+            height: 50px;
+            background: rgba(0,0,0,0.8);
+            border-radius: 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 15px;
             box-sizing: border-box;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.5);
-            z-index: 10;
-        }
-
-        .tape-measure {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px;
-            height: 10px;
-            background: repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 4px);
-            opacity: 0.5;
+            top: 40px;
         }
 
         /* Engranajes y cinta */
         .tape-reel {
             position: absolute;
-            background: #332b2b; /* Color de cinta magnética */
+            background: #332b2b;
             border-radius: 50%;
             border: 1px solid #111;
             z-index: 1;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
         
-        .tape-left {
-            width: 90px;
-            height: 90px;
-            left: -15px;
-            top: -18px;
-            transition: width 0.5s, height 0.5s, left 0.5s, top 0.5s;
-        }
-        
-        .tape-right {
-            width: 45px;
-            height: 45px;
-            right: 5px;
-            top: 5px;
-            transition: width 0.5s, height 0.5s, right 0.5s, top 0.5s;
-        }
+        .tape-left { width: 70px; height: 70px; left: -10px; top: -10px; transition: all 0.5s; }
+        .tape-right { width: 40px; height: 40px; right: 5px; top: 5px; transition: all 0.5s; }
 
         .spool-container {
             position: relative;
@@ -337,89 +315,27 @@
         .spool {
             width: 100%;
             height: 100%;
-            background: #e0e0e0;
+            background: #fff;
             border-radius: 50%;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
         }
 
-        .spool-inner {
-            width: 16px;
-            height: 16px;
-            background: #111;
-            border-radius: 50%;
-            z-index: 2;
-        }
-
-        .spool-tooth {
-            position: absolute;
-            width: 4px;
-            height: 100%;
-            background: #e0e0e0;
-        }
-        .spool-tooth::after {
-            content:'';
-            position: absolute;
-            top: -2px; left: 0;
-            width: 100%; height: 6px;
-            background: #111;
-        }
-        .spool-tooth::before {
-            content:'';
-            position: absolute;
-            bottom: -2px; left: 0;
-            width: 100%; height: 6px;
-            background: #111;
-        }
+        .spool-inner { width: 14px; height: 14px; background: #111; border-radius: 50%; z-index: 2; }
+        .spool-tooth { position: absolute; width: 4px; height: 100%; background: #fff; }
+        .spool-tooth::after { content:''; position: absolute; top: -2px; left: 0; width: 100%; height: 5px; background: #111; }
+        .spool-tooth::before { content:''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 5px; background: #111; }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        
         .playing .spool { animation: spin 2s linear infinite; }
-
-        /* Puente inferior del casete */
-        .cassette-bridge {
-            position: absolute;
-            bottom: 0;
-            width: 75%;
-            height: 35px;
-            background: #222;
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid #444;
-            border-left: 1px solid #333;
-            border-right: 1px solid #333;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
-        }
-
-        .screw {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #111;
-            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.2);
-            position: relative;
-        }
-        .screw::after {
-            content: '';
-            position: absolute;
-            width: 60%;
-            height: 1px;
-            background: #333;
-            top: 50%;
-            left: 20%;
-            transform: rotate(45deg);
-        }
 
         /* --- CONTROLES Y PROGRESO --- */
         .progress-container {
             width: 100%;
-            margin-top: 20px;
+            margin-top: 30px;
             display: flex;
             align-items: center;
             gap: 15px;
@@ -444,22 +360,6 @@
             width: 0%;
             position: relative;
             box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
-        }
-
-        .progress-bar-fill::after {
-            content: '';
-            position: absolute;
-            right: -5px;
-            top: -4px;
-            width: 14px;
-            height: 14px;
-            background: #fff;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
-            display: none;
-        }
-        .progress-bar-bg:hover .progress-bar-fill::after {
-            display: block;
         }
 
         /* --- KARAOKE SECTION --- */
@@ -501,7 +401,6 @@
             opacity: 0.8;
             text-transform: uppercase;
             letter-spacing: 2px;
-            text-shadow: none;
         }
 
         .blur-bg {
@@ -530,76 +429,62 @@
         <!-- WALKMAN SECTION -->
         <div class="walkman-container">
             
-            <div class="walkman">
-                <!-- Botones Superiores -->
-                <div class="walkman-buttons">
-                    <button class="w-btn w-rew"><i class="fa-solid fa-backward"></i></button>
-                    <button class="w-btn w-play" id="btnPlay" onclick="togglePlay()"><i class="fa-solid fa-play"></i></button>
-                    <button class="w-btn w-ff"><i class="fa-solid fa-forward"></i></button>
-                    <button class="w-btn w-stop" id="btnStop" onclick="stopPlay()"><i class="fa-solid fa-stop"></i></button>
-                </div>
+            <div class="walkman" id="cassetteObj">
                 
-                <!-- Cuerpo Principal -->
-                <div class="walkman-body">
-                    <div class="walkman-brand">R-WKM-90</div>
-                    <div class="battery-led" id="batteryLed"></div>
-                    <div class="led-label">OPR / BATT</div>
-                    
-                    <!-- Ventana transparente -->
-                    <div class="cassette-window">
-                        
-                        <!-- El Casete -->
-                        <div class="cassette" id="cassetteObj">
-                            
-                            <!-- Etiqueta -->
-                            <div class="cassette-label">
-                                <div class="cassette-label-top-stripe">
-                                    <span>TDRX</span>
-                                    <span>TYPE II HIGH POSITION</span>
-                                </div>
-                                <div class="cassette-title" id="songTitle">Cargando...</div>
-                                <div class="cassette-artist" id="songGenre">Udio AI</div>
-                                <img src="" id="vinylImage" class="cassette-cover">
-                                
-                                <!-- Píldora Transparente -->
-                                <div class="cassette-center-window">
-                                    
-                                    <div class="tape-reel tape-left" id="tapeLeft"></div>
-                                    <div class="tape-reel tape-right" id="tapeRight"></div>
-                                    
-                                    <div class="tape-measure"></div>
-                                    
-                                    <div class="spool-container">
-                                        <div class="spool">
-                                            <div class="spool-tooth"></div>
-                                            <div class="spool-tooth" style="transform: rotate(60deg);"></div>
-                                            <div class="spool-tooth" style="transform: rotate(120deg);"></div>
-                                            <div class="spool-inner"></div>
-                                        </div>
-                                    </div>
-                                    <div class="spool-container">
-                                        <div class="spool">
-                                            <div class="spool-tooth"></div>
-                                            <div class="spool-tooth" style="transform: rotate(60deg);"></div>
-                                            <div class="spool-tooth" style="transform: rotate(120deg);"></div>
-                                            <div class="spool-inner"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="top-button" id="btnPlay" onclick="togglePlay()" title="Play / Pause"></div>
+                
+                <!-- Radio Dial (Izquierda) -->
+                <div class="radio-dial">
+                    <div class="dial-window">
+                        <div class="dial-scale"></div>
+                        <div class="dial-text dial-fm">FM 88 92 96 100 104 108 MHz</div>
+                        <div class="dial-text dial-am">AM 5.3 6 7 8 10 12 14 17 kHz</div>
+                    </div>
+                </div>
 
-                            <!-- Puente inferior -->
-                            <div class="cassette-bridge">
-                                <div class="screw"></div>
-                                <div class="screw"></div>
-                                <div class="screw"></div>
-                                <div class="screw"></div>
+                <div class="brand-sony">SONY</div>
+
+                <div class="center-section">
+                    
+                    <!-- Cassette Window -->
+                    <div class="cassette-window-container">
+                        <div class="window-text-top">◁ AUTO REVERSE ▷</div>
+                        <div class="window-text-bottom">ANTI-ROLLING MECHANISM</div>
+                        
+                        <!-- Cassette Inside -->
+                        <div class="cassette-inner">
+                            <div class="cassette-sticker">
+                                <div class="cassette-title" id="songTitle">Cargando...</div>
+                                <img src="" id="vinylImage" class="cassette-cover">
+                            </div>
+                            
+                            <!-- Spools and Tape -->
+                            <div class="spool-area">
+                                <div class="tape-reel tape-left" id="tapeLeft"></div>
+                                <div class="tape-reel tape-right" id="tapeRight"></div>
+                                
+                                <div class="spool-container">
+                                    <div class="spool">
+                                        <div class="spool-tooth"></div>
+                                        <div class="spool-tooth" style="transform: rotate(60deg);"></div>
+                                        <div class="spool-tooth" style="transform: rotate(120deg);"></div>
+                                        <div class="spool-inner"></div>
+                                    </div>
+                                </div>
+                                <div class="spool-container">
+                                    <div class="spool">
+                                        <div class="spool-tooth"></div>
+                                        <div class="spool-tooth" style="transform: rotate(60deg);"></div>
+                                        <div class="spool-tooth" style="transform: rotate(120deg);"></div>
+                                        <div class="spool-inner"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                     </div>
-                    
-                    <!-- Barra de progreso debajo de la ventana -->
+
+                    <!-- Progreso -->
                     <div class="progress-container">
                         <span id="currentTime">00:00</span>
                         <div class="progress-bar-bg" id="progressBarBg" onclick="seekAudio(event)">
@@ -609,6 +494,9 @@
                     </div>
 
                 </div>
+
+                <div class="brand-walkman">WALKMAN <span>FM/AM</span></div>
+                
             </div>
             
         </div>
@@ -626,8 +514,6 @@
     <script>
         const audio = document.getElementById('audioEngine');
         const btnPlay = document.getElementById('btnPlay');
-        const btnStop = document.getElementById('btnStop');
-        const batteryLed = document.getElementById('batteryLed');
         const cassetteObj = document.getElementById('cassetteObj');
         const tapeLeft = document.getElementById('tapeLeft');
         const tapeRight = document.getElementById('tapeRight');
@@ -660,7 +546,9 @@
             const data = JSON.parse(dataStr);
             document.getElementById('songTitle').innerText = data.title;
             const imgUrl = data.image_url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300';
-            document.getElementById('vinylImage').src = imgUrl;
+            
+            const vinylImg = document.getElementById('vinylImage');
+            if (vinylImg) vinylImg.src = imgUrl;
             blurBg.style.backgroundImage = `url('${imgUrl}')`;
             
             audio.src = data.audio_url;
@@ -693,24 +581,15 @@
                 audio.pause();
             }
         }
-        
-        function stopPlay() {
-            audio.pause();
-            audio.currentTime = 0;
-            btnStop.classList.add('active');
-            setTimeout(() => btnStop.classList.remove('active'), 200);
-        }
 
         audio.addEventListener('play', () => {
             btnPlay.classList.add('active');
-            batteryLed.classList.add('on');
             cassetteObj.classList.add('playing');
             isPlaying = true;
         });
 
         audio.addEventListener('pause', () => {
             btnPlay.classList.remove('active');
-            batteryLed.classList.remove('on');
             cassetteObj.classList.remove('playing');
             isPlaying = false;
         });
