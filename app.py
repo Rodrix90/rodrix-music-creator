@@ -79,20 +79,20 @@ def obfuscate_lyrics(text: str) -> str:
         
     return "\n".join(processed_lines)
 
-async def upload_to_tmpfiles_async(file_path: str) -> str | None:
-    url = "https://tmpfiles.org/api/v1/upload"
+async def upload_to_catbox_async(file_path: str) -> str | None:
+    url = "https://catbox.moe/user/api.php"
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             with open(file_path, 'rb') as f:
-                files = {'file': f}
-                response = await client.post(url, files=files)
+                data = {'reqtype': 'fileupload'}
+                files = {'fileToUpload': f}
+                response = await client.post(url, data=data, files=files)
             if response.status_code == 200:
-                resp_json = response.json()
-                uploaded_url = resp_json.get("data", {}).get("url")
-                if uploaded_url:
-                    return uploaded_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
+                uploaded_url = response.text.strip()
+                if uploaded_url.startswith("http"):
+                    return uploaded_url
     except Exception as e:
-        print("Error subiendo a Tmpfiles:", e)
+        print("Error subiendo a Catbox:", e)
     return None
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
@@ -277,10 +277,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
                 
             log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
-            upload_url = await upload_to_tmpfiles_async(target_upload_file)
-            
+            upload_url = await upload_to_catbox_async(target_upload_file)
             if not upload_url:
-                log_msg("ERROR: Fallo al subir el audio a servidor temporal.")
+                log_msg("ERROR: No se pudo subir el archivo de audio a Catbox.")
                 raise Exception("Fallo al subir el audio a servidor temporal.")
             log_msg(f"Audio subido exitosamente a: {upload_url}")
             
