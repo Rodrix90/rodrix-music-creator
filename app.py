@@ -95,6 +95,21 @@ async def upload_to_catbox_async(file_path: str) -> str | None:
         print("Error subiendo a Catbox:", e)
     return None
 
+async def upload_to_uguu_async(file_path: str) -> str | None:
+    url = "https://uguu.se/upload.php"
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            with open(file_path, 'rb') as f:
+                files = {'files[]': f}
+                response = await client.post(url, files=files)
+            if response.status_code == 200:
+                resp_json = response.json()
+                if resp_json.get("success") and resp_json.get("files"):
+                    return resp_json["files"][0]["url"]
+    except Exception as e:
+        print("Error subiendo a Uguu:", e)
+    return None
+
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_cmd = [
         "ffmpeg",
@@ -297,9 +312,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
                 
             log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
-            upload_url = await upload_to_catbox_async(target_upload_file)
+            upload_url = await upload_to_uguu_async(target_upload_file)
             if not upload_url:
-                log_msg("ERROR: No se pudo subir el archivo de audio a Catbox.")
+                log_msg("ERROR: No se pudo subir el archivo de audio a Uguu.")
                 raise Exception("Fallo al subir el audio a servidor temporal.")
             log_msg(f"Audio subido exitosamente a: {upload_url}")
             
