@@ -330,120 +330,131 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if exclude_styles.strip():
                 payload["negative_tags"] = exclude_styles.strip()
 
-        log_msg(f"Submitting request to {url_generate}...")
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(url_generate, json=payload, headers=headers)
-            
-            if r.status_code == 402:
-                raise Exception("No hay créditos suficientes en la API de Udio (Status 402).")
-            elif r.status_code != 200:
-                raise Exception(f"Error de API HTTP {r.status_code}: {r.text}")
-
-            resp_json = r.json()
-            work_id = resp_json.get("workId") or resp_json.get("id")
-            
-            if not work_id:
-                data_block = resp_json.get("data", {})
-                if isinstance(data_block, dict):
-                    work_id = data_block.get("task_id")
-                if not work_id:
-                    raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
-
-            log_msg(f"Task successfully queued. ID: {work_id}")
-            
-            tracks = []
-            for i in range(120):
-                if TASKS.get(task_id, {}).get("status") == "CANCELLED":
-                    log_msg("Generación abortada por el usuario.")
-                    break
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                log_msg(f"Submitting request to {url_generate} (Attempt {attempt+1}/{max_retries})...")
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    r = await client.post(url_generate, json=payload, headers=headers)
                     
-                if upload_url:
-                    r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
-                else:
-                    r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
+                    if r.status_code == 402:
+                        raise Exception("No hay créditos suficientes en la API de Udio (Status 402).")
+                    elif r.status_code != 200:
+                        raise Exception(f"Error de API HTTP {r.status_code}: {r.text}")
+        
+                    resp_json = r.json()
+                    work_id = resp_json.get("workId") or resp_json.get("id")
                     
-                if r_status.status_code == 200:
-                    status_json = r_status.json()
-                    error_msg = "La generación falló internamente."
+                    if not work_id:
+                        data_block = resp_json.get("data", {})
+                        if isinstance(data_block, dict):
+                            work_id = data_block.get("task_id")
+                        if not work_id:
+                            raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
+        
+                    log_msg(f"Task successfully queued. ID: {work_id}")
                     
-                    if upload_url:
-                        raw_data = status_json.get("data", {})
-                        status = raw_data.get("type", "") or raw_data.get("status", "")
-                        response_array = raw_data.get("response_data", [])
-                        if status.upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = response_array if isinstance(response_array, list) else [response_array]
-                            log_msg("Generación completada exitosamente.")
+                    tracks = []
+                    for i in range(120):
+                        if TASKS.get(task_id, {}).get("status") == "CANCELLED":
+                            log_msg("Generación abortada por el usuario.")
                             break
-                        elif status.upper() in ["FAILED", "ERROR"]:
-                            if isinstance(response_array, list) and len(response_array) > 0:
-                                error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
-                            raise Exception(f"API Error: {error_msg}")
-                    else:
-                        if isinstance(status_json, list):
-                            data = status_json
-                            status = data[0].get("status", "") if len(data) > 0 else ""
-                        else:
-                            status = status_json.get("status", "")
-                            raw_data = status_json.get("data", {})
                             
-                            if isinstance(raw_data, dict):
-                                if not status:
-                                    status = raw_data.get("type", "") or raw_data.get("status", "")
+                        if upload_url:
+                            r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
+                        else:
+                            r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
+                            
+                        if r_status.status_code == 200:
+                            status_json = r_status.json()
+                            error_msg = "La generación falló internamente."
+                            
+                            if upload_url:
+                                raw_data = status_json.get("data", {})
+                                status = raw_data.get("type", "") or raw_data.get("status", "")
                                 response_array = raw_data.get("response_data", [])
-                                if isinstance(response_array, list) and len(response_array) > 0:
-                                    data = response_array
-                                    if response_array[0].get("fail_message"):
-                                        error_msg = response_array[0].get("fail_message")
-                                else:
-                                    data = [raw_data]
+                                if status.upper() in ["SUCCESS", "COMPLETED"]:
+                                    tracks = response_array if isinstance(response_array, list) else [response_array]
+                                    log_msg("Generación completada exitosamente.")
+                                    break
+                                elif status.upper() in ["FAILED", "ERROR"]:
+                                    if isinstance(response_array, list) and len(response_array) > 0:
+                                        error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
+                                    raise Exception(f"API Error: {error_msg}")
                             else:
-                                data = raw_data if isinstance(raw_data, list) else []
-
-                        if status.upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = data
-                            log_msg("Generación completada exitosamente.")
-                            break
-                        elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = data
-                            log_msg("Generación completada exitosamente.")
-                            break
-                        elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
-                            raise Exception(f"API Error: {error_msg}")
-
-                log_msg(f"Polling (Attempt {i+1}): Status Code={r_status.status_code} | JSON={str(r_status.text)[:250]}")
-                await asyncio.sleep(5)
-
-            if not tracks:
-                raise Exception("Tiempo de espera agotado. La tarea no finalizó a tiempo.")
-
-            final_tracks = []
-            for t in tracks:
-                if isinstance(t, dict):
-                    tid = t.get("id") or t.get("task_id")
-                    ttitle = t.get("title", title)
-                    taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
-                    timage = t.get("image_url") or t.get("image_path")
-                    tduration = t.get("duration", 0)
-                    tstatus = t.get("status", "SUCCESS")
-                    
-                    if taudio:
-                        track_info = {
-                            "id": tid,
-                            "title": ttitle,
-                            "audio_url": taudio,
-                            "image_url": timage,
-                            "duration": tduration,
-                            "status": tstatus,
-                            "lyrics": t.get("lyrics") or lyrics
-                        }
-                        final_tracks.append(track_info)
-                        add_track_to_library(track_info)
-                        log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid})")
-
-            save_local_log()
-            TASKS[task_id]["tracks"] = final_tracks
-            TASKS[task_id]["status"] = "COMPLETED"
-
+                                if isinstance(status_json, list):
+                                    data = status_json
+                                    status = data[0].get("status", "") if len(data) > 0 else ""
+                                else:
+                                    status = status_json.get("status", "")
+                                    raw_data = status_json.get("data", {})
+                                    
+                                    if isinstance(raw_data, dict):
+                                        if not status:
+                                            status = raw_data.get("type", "") or raw_data.get("status", "")
+                                        response_array = raw_data.get("response_data", [])
+                                        if isinstance(response_array, list) and len(response_array) > 0:
+                                            data = response_array
+                                            if response_array[0].get("fail_message"):
+                                                error_msg = response_array[0].get("fail_message")
+                                        else:
+                                            data = [raw_data]
+                                    else:
+                                        data = raw_data if isinstance(raw_data, list) else []
+        
+                                if status.upper() in ["SUCCESS", "COMPLETED"]:
+                                    tracks = data
+                                    log_msg("Generación completada exitosamente.")
+                                    break
+                                elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
+                                    tracks = data
+                                    log_msg("Generación completada exitosamente.")
+                                    break
+                                elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
+                                    raise Exception(f"API Error: {error_msg}")
+        
+                        log_msg(f"Polling (Attempt {i+1}): Status Code={r_status.status_code} | JSON={str(r_status.text)[:250]}")
+                        await asyncio.sleep(5)
+        
+                    if not tracks:
+                        raise Exception("Tiempo de espera agotado. La tarea no finalizó a tiempo.")
+        
+                    final_tracks = []
+                    for t in tracks:
+                        if isinstance(t, dict):
+                            tid = t.get("id") or t.get("task_id")
+                            ttitle = t.get("title", title)
+                            taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
+                            timage = t.get("image_url") or t.get("image_path")
+                            tduration = t.get("duration", 0)
+                            tstatus = t.get("status", "SUCCESS")
+                            
+                            if taudio:
+                                track_info = {
+                                    "id": tid,
+                                    "title": ttitle,
+                                    "audio_url": taudio,
+                                    "image_url": timage,
+                                    "duration": tduration,
+                                    "status": tstatus,
+                                    "lyrics": t.get("lyrics") or lyrics
+                                }
+                                final_tracks.append(track_info)
+                                add_track_to_library(track_info)
+                                log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid})")
+        
+                    save_local_log()
+                    TASKS[task_id]["tracks"] = final_tracks
+                    TASKS[task_id]["status"] = "COMPLETED"
+        
+                break
+            except Exception as e:
+                if "Internal Error" in str(e) and attempt < max_retries - 1:
+                    log_msg(f"Udio API Error Interno. Reintentando automaticamente en 15 segundos...")
+                    import asyncio
+                    await asyncio.sleep(15)
+                else:
+                    raise e
     except Exception as e:
         log_msg(f"ERROR: {str(e)}")
         save_local_log()
