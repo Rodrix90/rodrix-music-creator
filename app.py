@@ -558,6 +558,10 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
     title = track.get("title", "Rodrix_Track")
     safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
     
+    if audio_format == "mp3":
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=audio_url)
+    
     temp_mp3 = f"temp_dl_{uuid.uuid4().hex}.mp3"
     temp_out = f"temp_out_{uuid.uuid4().hex}.{audio_format}"
     
