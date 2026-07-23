@@ -217,6 +217,26 @@ async def cancel_task(task_id: str):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Task no encontrada")
 
+
+async def make_permanent_url(original_url: str) -> str:
+    if not original_url or "catbox.moe" in original_url:
+        return original_url
+    try:
+        import uuid, os
+        temp_file = f"temp_reupload_{uuid.uuid4().hex}.mp3"
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            r = await client.get(original_url)
+            if r.status_code == 200:
+                with open(temp_file, "wb") as f:
+                    f.write(r.content)
+                new_url = await upload_to_catbox_async(temp_file)
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                return new_url or original_url
+    except Exception as e:
+        print(f"Error re-uploading to catbox: {e}")
+    return original_url
+
 async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model):
     def log_msg(msg):
         import datetime
@@ -430,10 +450,12 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                             tstatus = t.get("status", "SUCCESS")
                             
                             if taudio:
+                                log_msg(f"Asegurando enlace permanente para {ttitle}...")
+                                taudio_perm = await make_permanent_url(taudio)
                                 track_info = {
                                     "id": tid,
                                     "title": ttitle,
-                                    "audio_url": taudio,
+                                    "audio_url": taudio_perm,
                                     "image_url": timage,
                                     "duration": tduration,
                                     "status": tstatus,
