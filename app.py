@@ -280,9 +280,13 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
     final_lyrics = lyrics if not is_instrumental else "[Instrumental]"
     if is_instrumental:
         style = style + ", instrumental, no vocals"
-    elif bypass_copyright and final_lyrics:
-        final_lyrics = "[Vocals in Spanish]\n" + obfuscate_lyrics(final_lyrics)
-        style = style + ", spanish vocals"
+    else:
+        style = style + ", latin american vocals, argentine, mexican, no spain accent"
+        prefix = "[Vocals in Latin American Spanish, Argentine or Mexican accent]\n"
+        if bypass_copyright and final_lyrics:
+            final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
+        elif final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
+            final_lyrics = prefix + final_lyrics
         
     upload_url = None
     temp_file_path = None
