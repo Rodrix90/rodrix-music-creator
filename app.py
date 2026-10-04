@@ -281,8 +281,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
     if is_instrumental:
         style = style + ", instrumental, no vocals"
     else:
-        style = style + ", latin american vocals, argentine, mexican, no spain accent"
-        prefix = "[Vocals in Latin American Spanish, Argentine or Mexican accent]\n"
+        style = style + ", latin american vocals, mexican, no spain accent"
+        prefix = "[Vocals in Mexican Spanish accent]\n"
         if bypass_copyright and final_lyrics:
             final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
         elif final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
@@ -327,11 +327,79 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     try: os.remove(p)
                     except: pass
                     
+        # ----------
+        # Helper: expand known instrument/effect keywords into richer descriptions
+        # ----------
+        def enrich_style(style_str: str) -> str:
+            """Add detailed descriptors for common instrument/effect keywords."""
+            mapping = {
+                "stratocaster": "Fender Stratocaster electric guitar",
+                "dw": "DW premium drum kit",
+                "tama": "TAMA metal progressive kit, metallic power, precise tuning, energetic",
+                "ludwig": "Ludwig classic rock kit, deep warm powerful tone",
+                "flanger": "flanger effect",
+                "chorus": "chorus effect",
+                "stereo wide": "stereo wide professional studio mix",
+                "fender telecaster": "Fender Telecaster electric guitar, bright crisp, country‑rock tone",
+                "gibson les paul": "Gibson Les Paul solid‑body guitar, thick warm sustain",
+                "marcos witt piano": "bright acoustic piano, Rhodes‑style electric piano, reverb ambience",
+                "yamaha keyboard": "Yamaha synth/keyboard, rich pads, clean piano patches",
+                "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
+                "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
+                "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
+            }
+            parts = [p.strip() for p in style_str.split(",") if p.strip()]
+            enriched_parts = []
+            for p in parts:
+                enriched_parts.append(p)
+                key = p.lower()
+                if key in mapping:
+                    enriched_parts.append(mapping[key])
+            return ", ".join(enriched_parts)
+
+        # ----------
+        # Helper: expand known vocal artist keywords into richer descriptions
+        # ----------
+        def enrich_voice(style_str: str) -> str:
+            """Add tags for known vocal artists."""
+            voice_map = {
+                "luis miguel": "latin male romantic",
+                "cristian castro": "latin male pop",
+                "phil collings": "rock male gritty",
+                "freddie mercury": "rock male high-energy",
+                "omar farías": "latin christian male",
+                "elías álvarez": "latin christian male",
+                "steve green": "tenor lyrical light, flexible, A2-B4 range",
+                "david phelps": "rock male powerful",
+                "cuarteto de voz masculina": "male choir classic",
+                "filarmónica": "SATB choir",
+                "orquesta": "SATB choir",
+                "laura pausini": "pop female lyrical",
+                "christina aguilera": "pop female powerhouse",
+                "mariah carey": "pop female high-range",
+                "celine dion": "pop female operatic",
+            }
+            parts = [p.strip() for p in style_str.split(",") if p.strip()]
+            enriched_parts = []
+            for p in parts:
+                enriched_parts.append(p)
+                key = p.lower()
+                if key in voice_map:
+                    enriched_parts.append(voice_map[key])
+            return ", ".join(enriched_parts)
+
+        style = enrich_style(style)
+        style = enrich_voice(style)
+        # Ensure the final style always forces a Mexican/Latin American Spanish accent
+        if "latin american vocals" not in style.lower():
+            style = style + ", latin american vocals, mexican, no spain accent"
+        # ----------
+
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
             url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
             url_status = "https://udioapi.pro/api/v2/upload-cover/status"
-            
+
             payload = {
                 "upload_url": upload_url,
                 "model": model,

@@ -1,979 +1,488 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rodrix Music Creator V3.0 - Udio Engine</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        :root {
-            --bg-base: #0b0b0f;
-            --bg-sidebar: #121218;
-            --bg-panel: rgba(24, 24, 34, 0.6);
-            --border-color: rgba(255, 255, 255, 0.06);
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --accent-cyan: #00f0ff;
-            --gradient-primary: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
-            --gradient-glow: linear-gradient(135deg, rgba(0,122,204,0.15) 0%, rgba(157,78,237,0.15) 100%);
-            --transition-speed: 0.3s;
-        }
-        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-base); color: var(--text-primary); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        .app-container { display: flex; flex: 1; height: calc(100vh - 80px); overflow: hidden; }
-        
-        .sidebar { width: 240px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; z-index: 10; }
-        .logo-container { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-        .logo-icon { font-size: 20px; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 8px rgba(0, 122, 204, 0.6)); }
-        .logo-text { font-size: 18px; font-weight: 700; background: linear-gradient(to right, #ffffff, #9ca3af); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        /* User Profile in Sidebar */
-        .sidebar-user-profile { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 24px; }
-        .sidebar-user-profile .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; flex-shrink: 0; }
-        .sidebar-user-profile .user-email { font-size: 12px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
-        .sidebar-user-profile .logout-btn { color: var(--text-secondary); cursor: pointer; transition: color 0.2s; font-size: 12px; }
-        .sidebar-user-profile .logout-btn:hover { color: #ff6b6b; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rodrix Music Creator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0F0F17; --side:#1F1F2E; --card:#2C2C3A; --border:#3A3A4D;
+  --accent:#5A67D8; --accent-dark:#3540A3; --ok:#34D399; --danger:#F87171;
+  --text:#E0E0E6; --muted:#9A9AB0; --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;background:var(--bg);color:var(--text);overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+.app{display:grid;grid-template-columns:250px 1fr 360px;height:100vh}
 
-        .nav-menu { display: flex; flex-direction: column; gap: 6px; list-style: none; flex-grow: 1; }
-        .nav-item a { display: flex; align-items: center; gap: 12px; padding: 10px 14px; color: var(--text-secondary); text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 8px; transition: all var(--transition-speed); }
-        .nav-item.active a { color: var(--text-primary); background: var(--gradient-glow); border-left: 3px solid var(--accent-cyan); }
-        .nav-item i { font-size: 16px; width: 20px; text-align: center; }
-        
-        .main-content { flex: 1; background-color: var(--bg-base); padding: 20px 24px; overflow-y: auto; position: relative; }
-        .main-content::-webkit-scrollbar { width: 8px; }
-        .main-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.08); border-radius: 4px; }
-        
-        .tab-view { display: flex; flex-direction: column; gap: 16px; width: 100%; animation: fade-in 0.3s ease-in-out; min-width: 0; }
-        
-        /* Dashboard Grid Layout */
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; min-width: 0; }
-        .dashboard-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-        .dashboard-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-        .dashboard-bottom { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
-        
-        .top-row-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        
-        .panel-box { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-        .panel-title { font-size: 16px; font-weight: 600; background: linear-gradient(to right, #ffffff, #d1d5db); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; }
-        
-        #errorBanner { display: none; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 12px; color: #ff6b6b; font-size: 13px; margin-bottom: 20px; font-weight: 500; align-items: center; gap: 8px; line-height: 1.4; }
-        
-        .form-group { display: flex; flex-direction: column; gap: 6px; flex-grow: 1; }
-        .form-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        input[type="text"], textarea { background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 13px; color: var(--text-primary); outline: none; transition: all var(--transition-speed); width: 100%; }
-        input[type="text"]:focus, textarea:focus { border-color: var(--accent-cyan); background-color: rgba(255, 255, 255, 0.05); }
-        textarea.style-input { height: 100%; min-height: 90px; resize: none; }
-        textarea.lyrics-input { height: 100%; min-height: 90px; resize: none; }
-        
-        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-cyan); cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5); }
-        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 2px; }
-        
-        .submit-btn { background: var(--gradient-primary); border: none; border-radius: 8px; padding: 14px; color: white; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all var(--transition-speed); width: 100%; }
-        .submit-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0, 122, 204, 0.4); }
-        .submit-btn:disabled { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); cursor: not-allowed; transform: none; box-shadow: none; }
-        .settings-box { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
-        .settings-box-top { display: flex; justify-content: space-between; align-items: center; }
-        .settings-text { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-        
-        .toggle-group { display: flex; gap: 8px; }
-        .toggle-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 13px; font-family: inherit; font-weight: 500; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; background: rgba(255,255,255,0.03); }
-        .toggle-btn.selected { color: var(--accent-cyan); background: rgba(0,240,255,0.1); }
-        
-        .pipeline-container { background: var(--bg-panel); backdrop-filter: blur(16px); border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 16px; display: none; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.2); margin-top: 16px; }
-        .pipeline-title { font-size: 14px; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; }
-        
-        .songs-grid { display: flex; flex-direction: column; gap: 24px; }
-        .songs-grid.compact { max-height: 500px; overflow-y: auto; padding-right: 8px; }
-        .songs-grid.compact::-webkit-scrollbar { width: 6px; }
-        .songs-grid.compact::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 3px; }
-        
-        /* Generation Groups */
-        .generation-group { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px; animation: fade-in 0.4s ease-out; min-width: 0; }
-        .group-header { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; min-width: 0; }
-        .group-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .group-prompt { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .group-cards-container { display: flex; flex-direction: column; gap: 8px; }
-        
-        select option { background-color: #1e1e24; color: var(--text-primary); }
-        
-        .song-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all var(--transition-speed); position: relative; min-width: 0; overflow: visible; }
-        .song-card:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); z-index: 5; }
-        
-        .song-card.list-view { flex-direction: row; align-items: center; padding: 8px 12px; gap: 16px; border-radius: 8px; }
-        .song-card.playing-active { border-color: var(--accent-cyan); background: rgba(0, 240, 255, 0.05); box-shadow: 0 0 20px rgba(0, 240, 255, 0.3); }
-        .song-card.list-view:hover { transform: translateY(-2px); }
-        .song-card.list-view .song-cover-container { width: 44px; height: 44px; border-radius: 6px; flex-shrink: 0; }
-        .song-card.list-view .song-title { flex-grow: 1; font-size: 14px; margin-bottom: 0; }
-        .song-card.list-view .song-meta { display: flex; gap: 16px; width: auto; align-items: center; }
-        .song-card.list-view .song-meta .song-genre { display: none; } /* Hide genre in list to save space */
-        .song-card.list-view .version-badge { position: static; box-shadow: none; padding: 2px 6px; font-size: 10px; margin-right: auto; }
-        .song-card.list-view .card-checkbox { position: static; margin-right: 0; display: block; opacity: 0.5; }
-        .song-card.list-view:hover .card-checkbox, .song-card.list-view .card-checkbox:checked { opacity: 1; }
+/* ---------- SIDEBAR ---------- */
+.sidebar{background:var(--side);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 14px}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:28px;padding:0 6px}
+.logo-icon{width:38px;height:38px;border-radius:10px;background:var(--accent);display:grid;place-items:center;font-size:22px;color:#fff;flex-shrink:0;box-shadow:0 4px 14px rgba(90,103,216,.45)}
+.logo-text{font-weight:700;font-size:15px;line-height:1.2}
+.nav{list-style:none;display:flex;flex-direction:column;gap:4px}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;color:var(--text);text-decoration:none;border-left:4px solid transparent;border-radius:0 8px 8px 0;transition:.2s;font-weight:500}
+.nav a i{font-size:20px}
+.nav a:hover{background:rgba(255,255,255,.05)}
+.nav a.active{background:var(--accent-dark);border-left-color:var(--accent);color:#fff}
+.side-foot{margin-top:auto;padding:12px 6px 0;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.side-foot a{color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center}
+.side-foot a:hover{color:var(--text)}
+.user-mail{word-break:break-all}
 
-        
-        /* Version Badge */
-        .version-badge { position: absolute; top: -10px; left: -10px; background: var(--gradient-primary); color: white; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 8px; z-index: 5; box-shadow: 0 4px 10px rgba(0,122,204,0.3); letter-spacing: 0.5px; text-transform: uppercase; }
-        
-        .song-cover-container { width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative; background: #1f1f2e; cursor: pointer; }
-        .song-cover { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-        .song-card:hover .song-cover { transform: scale(1.05); }
-        .cover-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity var(--transition-speed); }
-        .song-card:hover .cover-overlay { opacity: 1; }
-        .play-btn-circle { width: 48px; height: 48px; border-radius: 50%; background: var(--gradient-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; border: none; cursor: pointer; }
-        .song-title { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-        .song-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); }
-        
-        /* 3-Dot Menu */
-        .dropdown { position: relative; display: inline-block; }
-        .dropbtn { background: transparent; color: var(--text-secondary); border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 4px; }
-        .dropbtn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-        .dropdown-content { display: none; position: absolute; right: 0; bottom: 100%; margin-bottom: 4px; background-color: #1e1e24; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5); z-index: 100; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden; }
-        .dropdown-content a { color: var(--text-primary); padding: 10px 16px; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; transition: background 0.2s; }
-        .dropdown-content a:hover { background-color: rgba(255,255,255,0.05); color: var(--accent-cyan); }
-        .dropdown-content a.danger:hover { background-color: rgba(255,68,68,0.1); color: #ff6b6b; }
-        .show { display: block; }
-        
-        .footer-player { height: 80px; background-color: var(--bg-sidebar); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: relative; z-index: 20; }
-        .footer-left { display: flex; align-items: center; gap: 16px; width: 30%; }
-        .now-playing-vinyl { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle, #2d2d3a 30%, #000 60%); border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; }
-        .now-playing-vinyl i { color: rgba(255, 255, 255, 0.4); font-size: 16px; }
-        .now-playing-details { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-        .now-playing-title { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .now-playing-style { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .footer-middle { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 40%; }
-        .player-buttons { display: flex; align-items: center; gap: 20px; }
-        .player-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
-        .player-btn.btn-play-pause { width: 36px; height: 36px; border-radius: 50%; background-color: var(--text-primary); color: var(--bg-base); display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        .player-progress-bar { display: flex; align-items: center; gap: 12px; width: 100%; }
-        .time-display { font-size: 11px; color: var(--text-secondary); min-width: 35px; }
-        .track-timeline { flex-grow: 1; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; cursor: pointer; position: relative; }
-        .track-timeline-fill { height: 100%; background: var(--gradient-primary); border-radius: 2px; width: 0%; position: relative; }
-        
-        /* Top Navigation / User Profile */
-        .top-navbar { display: flex; justify-content: flex-end; padding-bottom: 24px; }
-        .user-profile-btn { background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
-        .user-profile-btn:hover { background: rgba(255,255,255,0.05); }
-        .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
-        
-        /* Checkboxes and Bulk Bar */
-        .card-checkbox { position: absolute; top: 8px; left: 8px; z-index: 10; width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-cyan); display: none; }
-        .song-card:hover .card-checkbox, .card-checkbox:checked { display: block; }
-        
-        .bulk-action-bar { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: #1e1e24; border: 1px solid var(--border-color); border-radius: 30px; padding: 12px 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .bulk-action-bar.show { bottom: 100px; }
-        .bulk-text { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-        .bulk-btn { background: rgba(255,255,255,0.05); border: none; color: var(--text-primary); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
-        .bulk-btn:hover { background: rgba(255,255,255,0.1); }
-        .bulk-btn.danger:hover { background: rgba(255,68,68,0.15); color: #ff6b6b; }
+/* ---------- CENTER ---------- */
+.center{overflow-y:auto;padding:28px 32px 60px}
+.center-inner{max-width:900px;margin:0 auto}
+.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
+.page-head h1{font-size:20px;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);padding:5px 12px;border-radius:99px}
+.badge .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.badge.off{color:var(--danger);background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35)}
+.badge.off .dot{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:20px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.field{display:flex;flex-direction:column;gap:8px}
+.label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+textarea,input[type=text],select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font:inherit;transition:.2s;resize:vertical}
+textarea:focus,input[type=text]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(90,103,216,.25)}
+::placeholder{color:#6B6B80}
+#styleInput{min-height:110px;border-color:var(--accent);background:linear-gradient(180deg,rgba(90,103,216,.08),var(--bg))}
+#lyricsInput{min-height:200px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.check{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px}
 
-        @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+/* slider */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;background:#3A3A4D;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#7C8BFF;border:2px solid #fff;box-shadow:0 0 12px 3px rgba(124,139,255,.7);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#7C8BFF;border:2px solid #fff;box-shadow:0 0 12px 3px rgba(124,139,255,.7);cursor:pointer}
+.val{color:var(--text);font-weight:600;letter-spacing:0}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:9px;font-size:12px;font-weight:600;transition:.2s}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* advanced */
+details.adv{border:1px solid var(--border);border-radius:var(--radius);padding:0}
+details.adv summary{padding:13px 16px;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);list-style:none;display:flex;align-items:center;gap:8px}
+details.adv summary::-webkit-details-marker{display:none}
+details.adv[open] summary{border-bottom:1px solid var(--border)}
+.adv-body{padding:16px;display:flex;flex-direction:column;gap:18px}
+.file-row{display:flex;gap:8px;align-items:center}
+.file-row input[type=file]{flex:1;color:var(--muted);font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px}
+.icon-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--muted);display:grid;place-items:center;font-size:17px;transition:.2s;flex-shrink:0}
+.icon-btn:hover{color:var(--text);border-color:var(--accent)}
+.icon-btn.del:hover{color:var(--danger);border-color:var(--danger)}
+
+/* actions */
+.actions{display:flex;gap:10px}
+.btn-main{flex:1;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:15px;font-weight:800;font-size:14px;letter-spacing:.12em;text-transform:uppercase;box-shadow:0 8px 24px rgba(90,103,216,.5);display:flex;gap:10px;align-items:center;justify-content:center;transition:.2s}
+.btn-main:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-main:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-sec{background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);padding:0 16px;font-size:18px}
+.btn-sec:hover{color:var(--text)}
+.btn-stop{background:rgba(248,113,113,.12);color:var(--danger);border-color:rgba(248,113,113,.4)}
+.progress-wrap{display:none;flex-direction:column;gap:8px}
+.progress-top{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.progress{height:6px;background:#E0E0E6;border-radius:99px;overflow:hidden}
+.progress>div{height:100%;width:0;background:var(--accent);transition:width .6s ease}
+.console{background:#000;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-family:'Consolas','Courier New',monospace;font-size:12px;color:#8DF0C0;height:140px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.console .err{color:var(--danger)}
+.console .dim{color:#6B7280}
+
+/* ---------- LIBRARY ---------- */
+.library{background:var(--side);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.lib-head{padding:20px 18px 12px;display:flex;align-items:center;justify-content:space-between}
+.lib-head h2{font-size:16px;font-weight:700}
+.lib-list{flex:1;overflow-y:auto;padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:13px}
+.track{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;gap:12px;transition:.2s}
+.track:hover{border-color:var(--accent)}
+.track.playing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 6px 20px rgba(90,103,216,.25)}
+.thumb{width:64px;height:64px;border-radius:10px;background:linear-gradient(135deg,#3540A3,#7C3AED);flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden;position:relative}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.thumb .bar{width:4px;border-radius:2px;background:linear-gradient(180deg,#fff,#A5B4FC);height:30%;position:relative;z-index:1}
+.track.playing .bar{animation:wave 1s ease-in-out infinite}
+.bar:nth-child(2){animation-delay:.1s!important;height:60%}.bar:nth-child(3){animation-delay:.25s!important;height:85%}
+.bar:nth-child(4){animation-delay:.15s!important;height:50%}.bar:nth-child(5){animation-delay:.3s!important;height:70%}
+.bar:nth-child(6){animation-delay:.05s!important;height:40%}
+@keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.2)}}
+.t-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.t-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.tag{background:rgba(90,103,216,.18);color:#A5B4FC;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600}
+.t-actions{display:flex;gap:6px;align-items:center;margin-top:auto;position:relative}
+.btn-play{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;display:flex;gap:5px;align-items:center}
+.btn-play:hover{filter:brightness(1.15)}
+.t-actions .icon-btn{width:30px;height:30px;font-size:15px}
+.menu{display:none;position:absolute;bottom:36px;right:0;background:var(--side);border:1px solid var(--border);border-radius:8px;overflow:hidden;z-index:5;min-width:100px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.menu.open{display:block}
+.menu a{display:block;padding:8px 14px;color:var(--text);text-decoration:none;font-size:12px}
+.menu a:hover{background:var(--accent-dark)}
+.player{border-top:1px solid var(--border);padding:12px 16px;display:none;flex-direction:column;gap:6px;background:#181826}
+.player.show{display:flex}
+.player .pt{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player audio{width:100%;height:34px}
+
+.mobile-tabs{display:none}
+
+/* ---------- RESPONSIVE ---------- */
+@media(max-width:1100px){
+  .app{grid-template-columns:72px 1fr 320px}
+  .logo-text,.nav a span,.side-foot span{display:none}
+  .nav a{justify-content:center;padding:12px 0;border-left-width:4px}
+  .logo{justify-content:center}
+}
+@media(max-width:760px){
+  body{overflow:auto}
+  .app{display:flex;flex-direction:column;height:auto;min-height:100vh}
+  .sidebar{flex-direction:row;align-items:center;padding:10px 14px;border-right:none;border-bottom:1px solid var(--border)}
+  .logo{margin:0}
+  .nav{flex-direction:row;margin-left:auto}
+  .side-foot{display:none}
+  .center{padding:18px 14px 30px;overflow:visible}
+  .grid2{grid-template-columns:1fr}
+  .library{border-left:none;border-top:1px solid var(--border);min-height:400px}
+  .mobile-tabs{display:flex}
+}
+</style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- SIDEBAR NAVEGACION -->
-        <aside class="sidebar">
-            <div>
-                <div class="logo-container">
-                    <i class="fa-solid fa-compact-disc logo-icon"></i>
-                    <span class="logo-text">Rodrix Udio V3</span>
-                </div>
-                
-                <div class="sidebar-user-profile">
-                    <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
-                    <span class="user-email">{{USER_EMAIL}}</span>
-                    <a href="/api/logout" class="logout-btn" title="Cerrar Sesión"><i class="fa-solid fa-right-from-bracket"></i></a>
-                </div>
+<div class="app">
 
-                <ul class="nav-menu">
-                    <li class="nav-item active" id="nav-crear"><a href="#" onclick="switchTab('crear')"><i class="fa-solid fa-music"></i><span>Creaciones</span></a></li>
-                    <li class="nav-item" id="nav-libreria"><a href="#" onclick="switchTab('libreria')"><i class="fa-solid fa-book-open"></i><span>Librería</span></a></li>
-                </ul>
-            </div>
-        </aside>
-
-        <!-- MAIN AREA -->
-        <main class="main-content">
-
-            <!-- TAB 1: CREACIONES (DASHBOARD) -->
-            <div class="tab-view" id="crearView">
-                <form id="generatorForm" onsubmit="handleSubmit(event)">
-                    <div class="dashboard-grid">
-                        
-                        <!-- COLUMNA IZQUIERDA -->
-                        <div class="dashboard-left">
-                            <div class="top-row-split" style="flex-grow: 1;">
-                                <div class="panel-box">
-                                    <div class="panel-title">
-                                        Letra
-                                        <div style="display:flex; align-items:center; gap:6px;">
-                                            <input type="checkbox" id="instrumentalCheckbox" style="accent-color: var(--accent-cyan); width: 14px; height: 14px; cursor: pointer;">
-                                            <span style="font-size: 10px; font-weight: normal; color:var(--text-secondary); cursor: pointer; text-transform: uppercase;">Instrumental</span>
-                                        </div>
-                                    </div>
-                                    <textarea class="lyrics-input" id="lyricsInput" placeholder="[Verse] Escribe aquí..."></textarea>
-                                </div>
-                                <div class="panel-box">
-                                    <div class="panel-title">Estilo / Tags</div>
-                                    <textarea class="style-input" id="styleInput" placeholder="Ej: pop, rock, symphonic metal, female vocals" required></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="panel-box">
-                                <div class="panel-title" style="margin-bottom:0;">Título Base</div>
-                                <input type="text" id="titleInput" placeholder="Ej: Himno Épico" required>
-                            </div>
-
-                            <div class="panel-box" style="flex-direction: row; align-items: center; gap: 15px;">
-                                <div style="flex-grow: 1;">
-                                    <div class="panel-title" style="margin-bottom:0; font-size:14px;">Carga Archivo Audio</div>
-                                    <span style="font-size: 11px; color:var(--text-secondary);">Para Udio Extend / Remix</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <input type="file" id="audioInput" accept="audio/*" style="width: auto; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px; color: var(--text-primary); cursor: pointer; font-size: 12px;">
-                                    <button type="button" onclick="document.getElementById('audioInput').value = '';" style="background: rgba(255,255,255,0.05); border: none; color: var(--text-secondary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Quitar audio">
-                                        <i class="fa-solid fa-xmark"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="panel-box">
-                                <div class="adv-row form-full-width" style="flex-direction: row; align-items: center; background: transparent; padding:0;">
-                                    <i class="fa-solid fa-scissors" style="color:var(--text-secondary); font-size: 13px; margin-right: 10px;"></i>
-                                    <input type="text" id="excludeStylesInput" placeholder="Exclude styles" style="background:transparent; border:none; color:var(--text-primary); font-size:13px; width:100%; outline:none; padding:0;">
-                                </div>
-                            </div>
-
-
-                            <!-- BOTTOM SUBMIT MOVED TO LEFT COLUMN TO SAVE SPACE -->
-                            <div class="dashboard-bottom">
-                                <div id="errorBanner">
-                                    <i class="fa-solid fa-triangle-exclamation"></i>
-                                    <span id="errorBannerText">Error</span>
-                                </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <button type="submit" class="submit-btn" id="submitBtn">
-                                        <i class="fa-solid fa-bolt"></i>
-                                        <span>Generar con Udio API</span>
-                                    </button>
-                                    <button type="button" class="submit-btn" onclick="clearForm()" style="background: rgba(255,255,255,0.05); width: auto; padding: 0 16px; color: var(--text-secondary);" title="Limpiar todo (Audio, Letra, Prompt)">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
-                                <div class="pipeline-container" id="pipelineContainer" style="flex-direction: column; align-items: stretch; padding: 16px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                        <div class="pipeline-title"><i class="fa-solid fa-gears fa-spin"></i> <span id="pipelineStatus" style="font-size: 12px;">Conectando...</span></div>
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <span id="progressPercentage" style="font-size: 13px; font-weight: 700; color: var(--accent-cyan);">0%</span>
-                                            <button type="button" class="submit-btn" id="cancelBtn" onclick="cancelGeneration()" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; padding: 4px 12px; font-size: 12px; width: auto; min-width: 0;" title="Cancelar generación">
-                                                <i class="fa-solid fa-stop"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div style="width: 100%; height: 6px; background: rgba(0, 240, 255, 0.1); border-radius: 3px; overflow: hidden;">
-                                        <div id="progressBarFill" style="height: 100%; width: 0%; background: var(--gradient-primary); transition: width 1s linear;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- COLUMNA DERECHA -->
-                        <div class="dashboard-right">
-                            <div class="panel-box">
-                                <div class="panel-title">
-                                    Opciones Avanzadas
-                                    <div class="form-group" style="flex-direction: row; align-items: center; gap: 6px; background: rgba(255, 68, 68, 0.05); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 68, 68, 0.2); margin: 0;">
-                                        <input type="checkbox" id="bypassCopyrightCheckbox" style="accent-color: #ff4444; width: 14px; height: 14px; cursor: pointer;" checked>
-                                        <label for="bypassCopyrightCheckbox" style="font-size: 10px; font-weight: 700; color: #ff6b6b; cursor: pointer; text-transform: uppercase;">🔥 Anti-Copyright</label>
-                                    </div>
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 12px;">
-                                    
-                                    <!-- Modelo de IA -->
-                                    <div class="settings-box form-full-width" style="flex-direction: row; align-items: center; justify-content: space-between;">
-                                        <div class="settings-text">Modelo <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
-                                        <select id="modelInput" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; color: var(--text-primary); cursor: pointer; font-size: 12px; outline: none; width: 180px;">
-                                            <option value="chirp-v4-5">Chirp v4.5 (10cr)</option>
-                                            <option value="chirp-v4-5-plus">Chirp v4.5+ (10cr)</option>
-                                            <option value="chirp-v5">Chirp v5 (12cr)</option>
-                                            <option value="chirp-v5-5">Chirp v5.5 (12cr)</option>
-                                            <option value="chirp-v4">Chirp v4 (8cr)</option>
-                                            <option value="chirp-v3-5">Chirp v3.5 (5cr)</option>
-                                        </select>
-                                    </div>
-                                    <!-- Vocal Gender -->
-                                    <div class="settings-box form-full-width" style="flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-                                        <div class="settings-text">Vocal Gender <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
-                                        <div class="toggle-group">
-                                            <button type="button" class="toggle-btn selected" id="genderBtn-random" onclick="selectGender('random')">Random</button>
-                                            <button type="button" class="toggle-btn" id="genderBtn-male" onclick="selectGender('male')">Male</button>
-                                            <button type="button" class="toggle-btn" id="genderBtn-female" onclick="selectGender('female')">Female</button>
-                                        </div>
-                                        <input type="hidden" id="vocalGenderInput" value="random">
-                                    </div>
-                                    
-                                    <!-- Weirdness -->
-                                    <div class="settings-box">
-                                        <div class="settings-box-top">
-                                            <div class="settings-text">Weirdness <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
-                                            <span id="weirdnessValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">50%</span>
-                                        </div>
-                                        <input type="range" id="weirdnessSlider" min="0" max="100" value="50" oninput="document.getElementById('weirdnessValueDisplay').innerText = this.value + '%'">
-                                    </div>
-                                    
-                                    <!-- Style Influence -->
-                                    <div class="settings-box">
-                                        <div class="settings-box-top">
-                                            <div class="settings-text">Style Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
-                                            <span id="styleInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">50%</span>
-                                        </div>
-                                        <input type="range" id="styleInfluenceSlider" min="0" max="100" value="50" oninput="document.getElementById('styleInfluenceValueDisplay').innerText = this.value + '%'">
-                                    </div>
-                                    
-                                    <!-- Audio Influence -->
-                                    <div class="settings-box">
-                                        <div class="settings-box-top">
-                                            <div class="settings-text">Audio Influence <i class="fa-solid fa-circle-info" style="font-size:10px; opacity:0.5;"></i></div>
-                                            <span id="audioInfluenceValueDisplay" style="color:var(--text-primary); font-size:13px; font-weight:600;">25%</span>
-                                        </div>
-                                        <input type="range" id="audioInfluenceSlider" min="0" max="100" value="25" oninput="updateAudioInfluence(this.value)">
-                                        <div id="audioInfluenceWarning" style="font-size: 11px; margin-top: 2px; color: #4ade80;">Permite cambiar instrumentos y voces libremente.</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="panel-box" style="flex-grow: 1;">
-                                <div class="panel-title">
-                                    Audios Transformados
-                                    <button type="button" class="player-btn" onclick="clearGrid()" title="Limpiar" style="color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
-                                <div class="songs-grid compact" id="songsGrid" style="max-height: calc(100vh - 360px);">
-                                    <!-- Generations go here -->
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </form>
-            </div>
-
-            <!-- TAB 2: LIBRERIA -->
-            <div class="tab-view" id="libreriaView" style="display: none;">
-                <div class="panel-box" style="flex-grow: 1;">
-                    <div class="panel-title" style="margin-bottom: 24px; font-size: 20px;">
-                        Mi Librería de Pistas
-                        <button class="player-btn" onclick="loadLibrary()" title="Actualizar" style="color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 6px; font-size: 14px;">
-                            <i class="fa-solid fa-rotate-right"></i> Refrescar
-                        </button>
-                    </div>
-                    <div class="songs-grid" id="libraryGrid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-                        <!-- Library Items -->
-                    </div>
-                </div>
-            </div>
-
-        </main>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon"><i class="ph ph-music-notes"></i></div>
+      <div class="logo-text">Rodrix Music Creator</div>
     </div>
-
-    <!-- GLOBAL PLAYER FOOTER -->
-    <footer class="footer-player">
-        <div class="footer-left">
-            <div class="now-playing-vinyl" id="vinylIcon"><i class="fa-solid fa-music"></i></div>
-            <div class="now-playing-details">
-                <div class="now-playing-title" id="playerTrackTitle">Sin Pista Activa</div>
-                <div class="now-playing-style" id="playerTrackStyle">-</div>
-            </div>
-        </div>
-        <div class="footer-middle">
-            <div class="player-buttons">
-                <button class="player-btn btn-play-pause" onclick="togglePlayPause()"><i class="fa-solid fa-play" id="playPauseIcon"></i></button>
-            </div>
-            <div class="player-progress-bar">
-                <span class="time-display" id="currentTime">00:00</span>
-                <div class="track-timeline" id="timeline" onclick="handleTimelineClick(event)">
-                    <div class="track-timeline-fill" id="timelineFill"></div>
-                </div>
-                <span class="time-display" id="totalTime">00:00</span>
-            </div>
-        </div>
-        <div class="footer-right" style="display: flex; align-items: center; gap: 10px; width: 30%; justify-content: flex-end;">
-            <i class="fa-solid fa-volume-high" style="color: var(--text-secondary); font-size: 14px;" id="volumeIcon"></i>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" oninput="document.getElementById('audioEngine').volume = this.value; document.getElementById('volumeIcon').className = this.value == 0 ? 'fa-solid fa-volume-xmark' : (this.value < 0.5 ? 'fa-solid fa-volume-low' : 'fa-solid fa-volume-high');" style="width: 100px; accent-color: var(--accent-cyan); cursor: pointer;">
-        </div>
-    </footer>
-
-    <audio id="audioEngine" style="display:none;"></audio>
-
-    <!-- BULK ACTION BAR -->
-    <div class="bulk-action-bar" id="bulkActionBar">
-        <span class="bulk-text" id="bulkText">0 seleccionadas</span>
-        <button class="bulk-btn" onclick="bulkDownload()"><i class="fa-solid fa-download"></i> MP3</button>
-        <button class="bulk-btn danger" onclick="bulkDelete()"><i class="fa-solid fa-trash"></i> Borrar</button>
-        <button class="bulk-btn" onclick="clearSelection()" style="padding: 8px; border-radius: 50%;"><i class="fa-solid fa-xmark"></i></button>
+    <ul class="nav">
+      <li><a href="#" class="active" id="nav-crear"><i class="ph ph-plus-circle"></i><span>Crear canción</span></a></li>
+      <li><a href="#" id="nav-libreria"><i class="ph ph-books"></i><span>Librería</span></a></li>
+      <li><a href="#" id="nav-ajustes"><i class="ph ph-sliders-horizontal"></i><span>Ajustes</span></a></li>
+      <li><a href="#" id="nav-ayuda"><i class="ph ph-question"></i><span>Ayuda</span></a></li>
+    </ul>
+    <div class="side-foot">
+      <span class="user-mail">{{USER_EMAIL}}</span>
+      <a href="/api/logout"><i class="ph ph-sign-out"></i><span>Cerrar sesión</span></a>
     </div>
+  </aside>
 
-    <script>
-        const errorBanner = document.getElementById('errorBanner');
-        const errorBannerText = document.getElementById('errorBannerText');
-        const submitBtn = document.getElementById('submitBtn');
-        const pipelineContainer = document.getElementById('pipelineContainer');
-        const pipelineStatus = document.getElementById('pipelineStatus');
-        const audioEngine = document.getElementById('audioEngine');
-        const playPauseIcon = document.getElementById('playPauseIcon');
-        const timelineFill = document.getElementById('timelineFill');
+  <!-- CENTER -->
+  <main class="center">
+    <div class="center-inner">
+      <div class="page-head">
+        <h1>Panel de Creación</h1>
+        <span class="badge" id="serverBadge"><span class="dot"></span><span id="serverText">Servidor Online</span></span>
+      </div>
 
-        let isPlaying = false;
-        let currentTaskId = null;
+      <form class="form-card" id="genForm" autocomplete="off">
+        <div class="field">
+          <label class="label" for="styleInput">Prompt de estilo y voz</label>
+          <textarea id="styleInput" required placeholder="Describe todo aquí: Voz como Luis Miguel, estilo pop energético mexicano, con guitarras eléctricas Stratocaster y mucho flanger..."></textarea>
+        </div>
 
-        async function cancelGeneration() {
-            if (currentTaskId) {
-                try {
-                    await fetch(`/api/task/${currentTaskId}`, { method: 'DELETE' });
-                } catch(e) { console.error("Error al cancelar", e); }
-            }
-        }
+        <div class="field">
+          <label class="label" for="lyricsInput">
+            <span>Letra</span>
+            <span class="check"><input type="checkbox" id="instrumental"> Instrumental</span>
+          </label>
+          <textarea id="lyricsInput" placeholder="[Verse]&#10;Escribe aquí tu letra..."></textarea>
+        </div>
 
-        // Cierra los menús desplegables si el usuario hace clic fuera de ellos
-        window.onclick = function(event) {
-            if (!event.target.matches('.dropbtn') && !event.target.matches('.fa-ellipsis-vertical')) {
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
-                }
-            }
-        }
+        <div class="grid2">
+          <div class="field">
+            <label class="label" for="titleInput">Título</label>
+            <input type="text" id="titleInput" required placeholder="Ej: Himno Épico">
+          </div>
+          <div class="field">
+            <label class="label" for="modelInput">IA Model</label>
+            <select id="modelInput">
+              <option value="chirp-v4-5" selected>chirp-v4-5 (10 cr)</option>
+              <option value="chirp-v4-5-plus">chirp-v4-5-plus (10 cr)</option>
+              <option value="chirp-v5">chirp-v5 (12 cr)</option>
+              <option value="chirp-v5-5">chirp-v5-5 (12 cr)</option>
+              <option value="chirp-v4">chirp-v4 (8 cr)</option>
+              <option value="chirp-v3-5">chirp-v3-5 (5 cr)</option>
+            </select>
+          </div>
+        </div>
 
-        function toggleDropdown(buttonElement, event) {
-            event.stopPropagation();
-            var dropdowns = document.getElementsByClassName("dropdown-content");
-            var myDropdown = buttonElement.nextElementSibling;
-            for (var i = 0; i < dropdowns.length; i++) {
-                if (dropdowns[i] !== myDropdown) {
-                    dropdowns[i].classList.remove('show');
-                }
-            }
-            if (myDropdown) {
-                myDropdown.classList.toggle("show");
-            }
-        }
+        <div class="field">
+          <div class="label"><span>Control vocal</span></div>
+          <div class="seg" id="genderSeg">
+            <button type="button" data-g="random" class="on">Aleatoria</button>
+            <button type="button" data-g="male">Masculina</button>
+            <button type="button" data-g="female">Femenina</button>
+          </div>
+        </div>
 
-        let progressInterval = null;
+        <div class="field">
+          <label class="label"><span>Weirdness</span><span class="val" id="wVal">50%</span></label>
+          <input type="range" id="weirdness" min="0" max="100" value="50">
+        </div>
 
-        function startProgressBar() {
-            let progress = 0;
-            const progressBarFill = document.getElementById('progressBarFill');
-            const progressPercentage = document.getElementById('progressPercentage');
-            const pipelineStatus = document.getElementById('pipelineStatus');
-            
-            progressBarFill.style.width = '0%';
-            progressPercentage.innerText = '0%';
-            pipelineStatus.innerText = "Subiendo y analizando...";
+        <details class="adv" id="advanced">
+          <summary><i class="ph ph-gear"></i> Opciones avanzadas</summary>
+          <div class="adv-body">
+            <div class="field">
+              <label class="label"><span>Style Influence</span><span class="val" id="siVal">50%</span></label>
+              <input type="range" id="styleInfluence" min="0" max="100" value="50">
+            </div>
+            <div class="field">
+              <label class="label"><span>Audio Influence</span><span class="val" id="aiVal">25%</span></label>
+              <input type="range" id="audioInfluence" min="0" max="100" value="25">
+            </div>
+            <div class="field">
+              <label class="label">Audio de referencia (Extend / Remix)</label>
+              <div class="file-row">
+                <input type="file" id="audioInput" accept="audio/*">
+                <button type="button" class="icon-btn" id="clearAudio" title="Quitar audio"><i class="ph ph-x"></i></button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="excludeInput">Excluir estilos</label>
+              <input type="text" id="excludeInput" placeholder="Ej: autotune, trap">
+            </div>
+            <label class="check"><input type="checkbox" id="bypass" checked> Anti-Copyright</label>
+          </div>
+        </details>
 
-            if (progressInterval) clearInterval(progressInterval);
-            
-            progressInterval = setInterval(() => {
-                // Udio takes about 120-150 seconds. We'll animate up to 99% over 120 seconds.
-                // That's roughly 0.83% per second. Let's do 1% per 1.2s
-                progress += 0.8;
-                if (progress > 99) progress = 99;
-                
-                progressBarFill.style.width = progress + '%';
-                progressPercentage.innerText = Math.floor(progress) + '%';
-                
-                if (progress > 30 && progress < 60) pipelineStatus.innerText = "Generando voces e instrumentos...";
-                if (progress >= 60 && progress < 90) pipelineStatus.innerText = "Sintetizando alta calidad...";
-                if (progress >= 90) pipelineStatus.innerText = "Finalizando render...";
-                
-            }, 1000);
-        }
+        <div class="actions">
+          <button type="submit" class="btn-main" id="submitBtn"><i class="ph ph-sparkle"></i> Generar canción</button>
+          <button type="button" class="btn-sec btn-stop" id="cancelBtn" title="Cancelar" style="display:none"><i class="ph ph-stop"></i></button>
+          <button type="button" class="btn-sec" id="clearBtn" title="Limpiar formulario"><i class="ph ph-trash"></i></button>
+        </div>
 
-        function stopProgressBar(success) {
-            if (progressInterval) clearInterval(progressInterval);
-            const progressBarFill = document.getElementById('progressBarFill');
-            const progressPercentage = document.getElementById('progressPercentage');
-            const pipelineStatus = document.getElementById('pipelineStatus');
-            
-            if (success) {
-                progressBarFill.style.width = '100%';
-                progressBarFill.style.background = 'var(--gradient-primary)';
-                progressPercentage.innerText = '100%';
-                pipelineStatus.innerText = "¡Completado!";
-            } else {
-                progressBarFill.style.background = '#ff4444';
-                progressPercentage.innerText = 'Error';
-                pipelineStatus.innerText = "¡Falló la generación!";
-            }
-        }
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-top"><span id="progressText">Iniciando...</span><span id="progressPct">0%</span></div>
+          <div class="progress"><div id="progressFill"></div></div>
+        </div>
 
-        async function handleSubmit(event) {
-            event.preventDefault();
-            errorBanner.style.display = 'none';
-            submitBtn.style.display = 'none';
-            pipelineContainer.style.display = 'flex';
-            
-            startProgressBar();
+        <div class="field">
+          <div class="label"><span>Consola</span></div>
+          <div class="console" id="console"><span class="dim">Esperando generación...</span></div>
+        </div>
+      </form>
+    </div>
+  </main>
 
-            const titleVal = document.getElementById('titleInput').value;
-            const styleVal = document.getElementById('styleInput').value;
+  <!-- LIBRARY -->
+  <aside class="library" id="library">
+    <div class="lib-head">
+      <h2>Mi Librería</h2>
+      <button class="icon-btn" id="refreshLib" title="Actualizar"><i class="ph ph-arrows-clockwise"></i></button>
+    </div>
+    <div class="lib-list" id="libList"><div class="empty">Cargando...</div></div>
+    <div class="player" id="player">
+      <div class="pt" id="playerTitle">-</div>
+      <audio id="audio" controls></audio>
+    </div>
+  </aside>
+</div>
 
-            const formData = new FormData();
-            formData.append('style', styleVal);
-            formData.append('lyrics', document.getElementById('instrumentalCheckbox').checked ? '[Instrumental]' : document.getElementById('lyricsInput').value);
-            formData.append('title', titleVal);
-            formData.append('include_lyrics', !document.getElementById('instrumentalCheckbox').checked);
-            formData.append('bypass_copyright', document.getElementById('bypassCopyrightCheckbox').checked);
-            formData.append('exclude_styles', document.getElementById('excludeStylesInput').value);
-            formData.append('vocal_gender', document.getElementById('vocalGenderInput').value);
-            formData.append('weirdness', document.getElementById('weirdnessSlider').value);
-            formData.append('style_influence', document.getElementById('styleInfluenceSlider').value);
-            formData.append('audio_influence', document.getElementById('audioInfluenceSlider').value);
-            formData.append('model', document.getElementById('modelInput').value);
-            
-            const audioInput = document.getElementById('audioInput');
-            if (audioInput && audioInput.files.length > 0) {
-                formData.append('audio', audioInput.files[0]);
-            }
-            
-            try {
-                const initResponse = await fetch('/api/transform', { method: 'POST', body: formData });
-                const initData = await initResponse.json();
-                
-                if (!initResponse.ok) {
-                    throw new Error(initData.detail || 'Error en el backend al iniciar tarea.');
-                }
-                
-                const taskId = initData.task_id;
-                currentTaskId = taskId;
-                
-                // Bucle de polling
-                let data = null;
-                while (true) {
-                    await new Promise(r => setTimeout(r, 4000));
-                    const statusResponse = await fetch(`/api/status/${taskId}?t=${Date.now()}`);
-                    if (!statusResponse.ok) {
-                        if (statusResponse.status === 404) {
-                            throw new Error("La tarea no se encontró. El servidor puede haberse reiniciado.");
-                        }
-                        continue;
-                    }
-                    
-                    data = await statusResponse.json();
-                    if (data.status === 'CANCELLED') {
-                        throw new Error("Generación cancelada por el usuario.");
-                    }
-                    if (data.status === 'COMPLETED' || data.status === 'ERROR') {
-                        break;
-                    }
-                }
-                
-                // Descargar logs automáticamente si están disponibles
-                if (data.logs) {
-                    const blob = new Blob([data.logs], { type: 'text/plain' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = `log_udio_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                }
-                
-                if (data.status === 'ERROR') {
-                    if (data.logs) {
-                        const blob = new Blob([data.logs], { type: 'text/plain' });
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = url;
-                        a.download = `log_udio_ERROR_${taskId}.txt`;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                    }
-                    throw new Error(data.detail || 'La tarea falló internamente.');
-                }
+<script>
+const $ = id => document.getElementById(id);
+let currentTask = null, pollTimer = null, progressTimer = null, progress = 0;
+let currentTrackId = null;
 
-                stopProgressBar(true);
+/* ---------- UI helpers ---------- */
+function bindRange(id, outId){ $(id).addEventListener('input', e => $(outId).textContent = e.target.value + '%'); }
+bindRange('weirdness','wVal'); bindRange('styleInfluence','siVal'); bindRange('audioInfluence','aiVal');
 
-                const tracks = data.tracks || [];
-                if (tracks.length > 0) {
-                    // Create Generation Group
-                    const grid = document.getElementById('songsGrid');
-                    const groupId = 'group-' + Date.now();
-                    
-                    const groupContainer = document.createElement('div');
-                    groupContainer.className = 'generation-group';
-                    groupContainer.id = groupId;
-                    
-                    groupContainer.innerHTML = `
-                        <div class="group-header">
-                            <div class="group-title">${titleVal}</div>
-                            <div class="group-prompt"><i class="fa-solid fa-tags" style="font-size:10px;"></i> ${styleVal}</div>
-                        </div>
-                        <div class="group-cards-container" id="${groupId}-cards"></div>
-                    `;
-                    
-                    grid.insertBefore(groupContainer, grid.firstChild);
-                    
-                    tracks.forEach((track, index) => {
-                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${groupId}-cards`, index + 1, track.lyrics);
-                    });
-                    
-                    saveRecentGeneration({
-                        groupId: groupId,
-                        titleVal: titleVal,
-                        styleVal: styleVal,
-                        tracks: tracks
-                    });
-                }
+let gender = 'random';
+document.querySelectorAll('#genderSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#genderSeg button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); gender = b.dataset.g;
+}));
 
-            } catch (err) {
-                console.error(err);
-                stopProgressBar(false);
-                errorBannerText.innerText = err.message;
-                errorBanner.style.display = 'flex';
-            } finally {
-                setTimeout(() => {
-                    submitBtn.style.display = 'flex';
-                    pipelineContainer.style.display = 'none';
-                }, 1500);
-            }
-        }
+$('instrumental').addEventListener('change', e => {
+  $('lyricsInput').disabled = e.target.checked;
+  $('lyricsInput').style.opacity = e.target.checked ? .4 : 1;
+});
+$('clearAudio').addEventListener('click', () => $('audioInput').value = '');
+$('clearBtn').addEventListener('click', () => {
+  ['styleInput','lyricsInput','titleInput','excludeInput'].forEach(i => $(i).value = '');
+  $('audioInput').value = '';
+});
 
-        function addSongCardToGrid(id, title, style, audioUrl, imageUrl, targetGridId, versionNum = null, lyrics = '') {
-            if(!audioUrl) return;
-            const grid = document.getElementById(targetGridId);
-            const card = document.createElement('div');
-            const isList = targetGridId !== 'libraryGrid';
-            card.className = isList ? 'song-card list-view' : 'song-card';
-            card.id = 'card-' + id;
-            
-            const safeId = id.replace(/[^a-zA-Z0-9]/g, '');
-            
-            let badgeHtml = '';
-            if (versionNum === 1) {
-                badgeHtml = '<div class="version-badge">✨ Versión 1</div>';
-            } else if (versionNum === 2) {
-                badgeHtml = '<div class="version-badge" style="background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);">🔥 Versión 2</div>';
-            }
-            
-            window.tracksMap = window.tracksMap || {};
-            window.tracksMap[id] = { title: title, audio_url: audioUrl, image_url: imageUrl, lyrics: lyrics };
-            
-            card.innerHTML = `
-                <input type="checkbox" class="card-checkbox" value="${safeId}" onclick="toggleSelection(event, '${id}')">
-                ${badgeHtml}
-                <div class="song-cover-container" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}', '${id}')">
-                    <img src="${imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300'}" class="song-cover">
-                    <div class="cover-overlay"><button class="play-btn-circle"><i class="fa-solid fa-play"></i></button></div>
-                </div>
-                <div class="song-title" onclick="playMockSong('${title.replace(/'/g, "\\'")}', '${style ? style.replace(/'/g, "\\'") : 'Udio Track'}', '${audioUrl}', '${id}')">${title}</div>
-                <div class="song-meta">
-                    <span class="song-genre" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${style || 'Udio'}</span>
-                    
-                    <button type="button" onclick="openPremiumPlayerFromMap('${id}')" style="background:transparent; border:none; color:var(--accent-cyan); cursor:pointer; font-size:16px; margin-right:10px; transition: transform 0.2s;" title="Modo Vinilo Premium" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><i class="fa-solid fa-record-vinyl"></i></button>
+/* navegación */
+function setActive(id){ document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active')); $(id).classList.add('active'); }
+$('nav-crear').onclick = e => { e.preventDefault(); setActive('nav-crear'); document.querySelector('.center').scrollTo({top:0,behavior:'smooth'}); };
+$('nav-libreria').onclick = e => { e.preventDefault(); setActive('nav-libreria'); loadLibrary(); $('library').scrollIntoView({behavior:'smooth'}); };
+$('nav-ajustes').onclick = e => { e.preventDefault(); setActive('nav-ajustes'); $('advanced').open = true; $('advanced').scrollIntoView({behavior:'smooth',block:'center'}); };
+$('nav-ayuda').onclick = e => { e.preventDefault(); setActive('nav-ayuda');
+  alert('Cómo usar Rodrix Music Creator:\n\n1. Escribe en "Prompt de estilo y voz" la voz, el estilo, los instrumentos y efectos.\n2. Pega la letra (o marca Instrumental).\n3. Pon un título y pulsa "Generar canción".\n4. Tu canción aparecerá en la Librería a la derecha: Escuchar, Descargar (MP3/WAV/FLAC) o Eliminar.'); };
 
-                    <div class="dropdown">
-                        <button class="dropbtn" onclick="toggleDropdown(this, event)">
-                            <i class="fa-solid fa-ellipsis-vertical"></i>
-                        </button>
-                        <div id="dropdown-${safeId}" class="dropdown-content">
-                            <a href="/api/download/${id}/mp3" onclick="event.stopPropagation()"><i class="fa-solid fa-file-audio"></i> MP3 (Original)</a>
-                            <a href="/api/download/${id}/wav" onclick="event.stopPropagation()"><i class="fa-solid fa-file-waveform"></i> WAV (Lossless)</a>
-                            <a href="/api/download/${id}/flac" onclick="event.stopPropagation()"><i class="fa-solid fa-compact-disc"></i> FLAC (HQ)</a>
-                            <a href="#" onclick="event.stopPropagation(); shareTrack('${audioUrl}')"><i class="fa-solid fa-share-nodes"></i> Copiar Enlace</a>
-                            <a href="#" class="danger" onclick="event.stopPropagation(); deleteTrack('${id}')"><i class="fa-solid fa-trash"></i> Borrar</a>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            if (targetGridId === 'songsGrid') {
-                grid.insertBefore(card, grid.firstChild);
-            } else {
-                grid.appendChild(card);
-            }
-        }
+/* consola */
+function logLine(text, cls){
+  const c = $('console');
+  if (c.querySelector('.dim')) c.innerHTML = '';
+  const s = document.createElement('div'); if (cls) s.className = cls; s.textContent = text; c.appendChild(s);
+  c.scrollTop = c.scrollHeight;
+}
+function renderLogs(text){
+  const c = $('console'); c.innerHTML = '';
+  (text || '').split('\n').filter(Boolean).forEach(l => {
+    const s = document.createElement('div');
+    if (/ERROR|FALLO/i.test(l)) s.className = 'err';
+    s.textContent = l; c.appendChild(s);
+  });
+  c.scrollTop = c.scrollHeight;
+}
 
-        function shareTrack(url) {
-            navigator.clipboard.writeText(url).then(() => {
-                alert("Enlace copiado al portapapeles.");
-            }).catch(err => {
-                console.error("No se pudo copiar: ", err);
-            });
-        }
+/* progreso */
+function setProgress(p, txt){
+  progress = Math.min(100, p);
+  $('progressFill').style.width = progress + '%';
+  $('progressPct').textContent = Math.round(progress) + '%';
+  if (txt) $('progressText').textContent = txt;
+}
+function startProgress(){
+  $('progressWrap').style.display = 'flex'; setProgress(3, 'Enviando solicitud...');
+  clearInterval(progressTimer);
+  progressTimer = setInterval(() => { if (progress < 92) setProgress(progress + (92 - progress) * 0.025, 'Generando música...'); }, 1000);
+}
+function stopProgress(ok, txt){
+  clearInterval(progressTimer);
+  setProgress(ok ? 100 : progress, txt);
+  setTimeout(() => { $('progressWrap').style.display = 'none'; }, 3500);
+}
+function setBusy(b){
+  $('submitBtn').disabled = b;
+  $('cancelBtn').style.display = b ? 'block' : 'none';
+}
 
-        function playMockSong(title, style, url, id = null) {
-            document.getElementById('playerTrackTitle').innerText = title;
-            document.getElementById('playerTrackStyle').innerText = style;
-            audioEngine.src = url;
-            audioEngine.play();
-            isPlaying = true;
-            playPauseIcon.className = 'fa-solid fa-pause';
-            
-            document.querySelectorAll('.song-card').forEach(card => card.classList.remove('playing-active'));
-            if (id) {
-                document.querySelectorAll('#card-' + id).forEach(card => card.classList.add('playing-active'));
-            }
-        }
+/* ---------- Generar ---------- */
+$('genForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData();
+  const instr = $('instrumental').checked;
+  fd.append('style', $('styleInput').value.trim());
+  fd.append('lyrics', instr ? '[Instrumental]' : $('lyricsInput').value);
+  fd.append('title', $('titleInput').value.trim());
+  fd.append('include_lyrics', !instr);
+  fd.append('bypass_copyright', $('bypass').checked);
+  fd.append('exclude_styles', $('excludeInput').value);
+  fd.append('vocal_gender', gender);
+  fd.append('weirdness', $('weirdness').value);
+  fd.append('style_influence', $('styleInfluence').value);
+  fd.append('audio_influence', $('audioInfluence').value);
+  fd.append('model', $('modelInput').value);
+  if ($('audioInput').files[0]) fd.append('audio', $('audioInput').files[0]);
 
-        function togglePlayPause() {
-            if (!audioEngine.src) return;
-            if (isPlaying) { audioEngine.pause(); playPauseIcon.className = 'fa-solid fa-play'; }
-            else { audioEngine.play(); playPauseIcon.className = 'fa-solid fa-pause'; }
-            isPlaying = !isPlaying;
-        }
+  $('console').innerHTML = '';
+  setBusy(true); startProgress();
+  logLine('Enviando solicitud al servidor...');
+  try {
+    const r = await fetch('/api/transform', { method:'POST', body: fd });
+    if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
+    if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.detail || ('HTTP ' + r.status)); }
+    const j = await r.json();
+    currentTask = j.task_id;
+    pollTimer = setInterval(poll, 3000); poll();
+  } catch (err) {
+    logLine('ERROR: ' + err.message, 'err');
+    stopProgress(false, 'Error'); setBusy(false);
+  }
+});
 
-        function openPremiumPlayerFromMap(id) {
-            const data = window.tracksMap && window.tracksMap[id];
-            if (!data) return;
-            localStorage.setItem('currentPlayerData', JSON.stringify(data));
-            window.open('/player.html', '_blank');
-        }
+async function poll(){
+  if (!currentTask) return;
+  try {
+    const r = await fetch('/api/status/' + currentTask);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const t = await r.json();
+    renderLogs(t.logs);
+    if (t.status === 'COMPLETED') {
+      finish(); stopProgress(true, '¡Canción lista!'); await loadLibrary();
+    } else if (t.status === 'ERROR') {
+      finish(); logLine('ERROR: ' + (t.detail || 'falló la generación'), 'err'); stopProgress(false, 'Error');
+    } else if (t.status === 'CANCELLED') {
+      finish(); stopProgress(false, 'Cancelado');
+    }
+  } catch (err) { /* reintenta en el siguiente ciclo */ }
+}
+function finish(){ clearInterval(pollTimer); currentTask = null; setBusy(false); }
 
-        audioEngine.addEventListener('timeupdate', () => {
-            const ratio = audioEngine.currentTime / audioEngine.duration;
-            timelineFill.style.width = (ratio * 100) + '%';
-            document.getElementById('currentTime').innerText = formatTime(audioEngine.currentTime);
-            document.getElementById('totalTime').innerText = formatTime(audioEngine.duration || 0);
-        });
+$('cancelBtn').addEventListener('click', async () => {
+  if (!currentTask) return;
+  await fetch('/api/task/' + currentTask, { method:'DELETE' }).catch(()=>{});
+  logLine('Cancelando...');
+});
 
-        function handleTimelineClick(e) {
-            const rect = document.getElementById('timeline').getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            audioEngine.currentTime = pos * audioEngine.duration;
-        }
+/* ---------- Librería ---------- */
+function fmtDur(s){ s = Math.round(+s || 0); return s ? Math.floor(s/60) + ':' + String(s%60).padStart(2,'0') : '--:--'; }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-        function clearGrid() {
-            if (confirm('¿Estás seguro de que quieres borrar de la vista las canciones recientes? (Seguirán en tu Librería si las guardaste)')) {
-                document.getElementById('songsGrid').innerHTML = '';
-                localStorage.removeItem('recentGenerations');
-            }
-        }
+async function loadLibrary(){
+  try {
+    const r = await fetch('/api/library');
+    if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
+    const j = await r.json();
+    setServer(true);
+    renderLibrary(j.tracks || []);
+  } catch (e) { setServer(false); $('libList').innerHTML = '<div class="empty">No se pudo cargar la librería.</div>'; }
+}
+function setServer(ok){
+  $('serverBadge').classList.toggle('off', !ok);
+  $('serverText').textContent = ok ? 'Servidor Online' : 'Servidor Offline';
+}
+function renderLibrary(tracks){
+  const l = $('libList');
+  if (!tracks.length) { l.innerHTML = '<div class="empty">Aún no hay pistas. ¡Crea tu primera canción!</div>'; return; }
+  l.innerHTML = tracks.map(t => `
+    <div class="track ${t.id === currentTrackId ? 'playing' : ''}" data-id="${esc(t.id)}">
+      <div class="thumb">${t.image_url ? `<img src="${esc(t.image_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
+      <div class="t-info">
+        <div class="t-title" title="${esc(t.title)}">${esc(t.title)}</div>
+        <div class="t-meta"><span>${fmtDur(t.duration)}</span><span class="tag">Premium</span>${/instrumental/i.test(t.title) ? '<span class="tag">Instrumental</span>' : ''}</div>
+        <div class="t-actions">
+          <button class="btn-play" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
+          <button class="icon-btn" data-act="dl" title="Descargar"><i class="ph ph-download-simple"></i></button>
+          <button class="icon-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
+          <div class="menu">
+            <a href="/api/download/${encodeURIComponent(t.id)}/mp3" target="_blank">MP3</a>
+            <a href="/api/download/${encodeURIComponent(t.id)}/wav" target="_blank">WAV</a>
+            <a href="/api/download/${encodeURIComponent(t.id)}/flac" target="_blank">FLAC</a>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+  l._tracks = tracks;
+}
 
-        function saveRecentGeneration(groupData) {
-            let recent = JSON.parse(localStorage.getItem('recentGenerations') || '[]');
-            recent.unshift(groupData);
-            if (recent.length > 20) recent = recent.slice(0, 20); // Guardar hasta 20 grupos recientes
-            localStorage.setItem('recentGenerations', JSON.stringify(recent));
-        }
+$('libList').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) { return; }
+  const card = btn.closest('.track'); const id = card.dataset.id;
+  const act = btn.dataset.act;
+  if (act === 'play') {
+    const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
+    currentTrackId = id;
+    $('audio').src = t.audio_url; $('audio').play().catch(()=>{});
+    $('playerTitle').textContent = t.title; $('player').classList.add('show');
+    document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === id));
+  } else if (act === 'dl') {
+    const m = card.querySelector('.menu');
+    document.querySelectorAll('.menu.open').forEach(x => { if (x !== m) x.classList.remove('open'); });
+    m.classList.toggle('open'); e.stopPropagation();
+  } else if (act === 'del') {
+    if (!confirm('¿Eliminar esta pista de la librería?')) return;
+    const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });
+    if (r.ok) { if (id === currentTrackId) { $('audio').pause(); $('player').classList.remove('show'); currentTrackId = null; } loadLibrary(); }
+  }
+});
+document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(x => x.classList.remove('open')));
+$('audio').addEventListener('ended', () => document.querySelectorAll('.track.playing').forEach(c => c.classList.remove('playing')));
+$('audio').addEventListener('pause', () => document.querySelectorAll('.track.playing').forEach(c => c.classList.remove('playing')));
+$('audio').addEventListener('play', () => document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === currentTrackId)));
+$('refreshLib').addEventListener('click', loadLibrary);
 
-        function loadRecentGenerations() {
-            let recent = JSON.parse(localStorage.getItem('recentGenerations') || '[]');
-            const grid = document.getElementById('songsGrid');
-            grid.innerHTML = ''; // Clear before load
-            recent.forEach(group => {
-                const groupContainer = document.createElement('div');
-                groupContainer.className = 'generation-group';
-                groupContainer.id = group.groupId;
-                
-                groupContainer.innerHTML = `
-                    <div class="group-header">
-                        <div class="group-title">${group.titleVal}</div>
-                        <div class="group-prompt"><i class="fa-solid fa-tags" style="font-size:10px;"></i> ${group.styleVal}</div>
-                    </div>
-                    <div class="group-cards-container" id="${group.groupId}-cards"></div>
-                `;
-                
-                grid.appendChild(groupContainer);
-                
-                group.tracks.forEach((track, index) => {
-                    addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, `${group.groupId}-cards`, index + 1, track.lyrics);
-                });
-            });
-        }
-
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return "00:00";
-            const m = Math.floor(seconds / 60);
-            const s = Math.floor(seconds % 60);
-            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-        }
-
-        // --- FUNCIONES ADV OPTIONS ---
-        function selectGender(gender) {
-            document.getElementById('genderBtn-random').classList.remove('selected');
-            document.getElementById('genderBtn-male').classList.remove('selected');
-            document.getElementById('genderBtn-female').classList.remove('selected');
-            document.getElementById('genderBtn-' + gender).classList.add('selected');
-            document.getElementById('vocalGenderInput').value = gender;
-        }
-
-        function updateAudioInfluence(val) {
-            document.getElementById('audioInfluenceValueDisplay').innerText = val + '%';
-            const warningEl = document.getElementById('audioInfluenceWarning');
-            if (val < 50) {
-                warningEl.style.color = '#4ade80';
-                warningEl.innerText = 'Permite cambiar instrumentos y voces libremente.';
-            } else if (val < 85) {
-                warningEl.style.color = '#fbbf24';
-                warningEl.innerText = 'Alta clonación. Será muy difícil cambiar al cantante original.';
-            } else {
-                warningEl.style.color = '#ff6b6b';
-                warningEl.innerText = 'Clonación exacta. Ignorará drásticamente los estilos nuevos.';
-            }
-        }
-
-        // Funciones de UI
-        function clearForm() {
-            document.getElementById('generatorForm').reset();
-            selectGender('random');
-            document.getElementById('weirdnessValueDisplay').innerText = '50%';
-            document.getElementById('styleInfluenceValueDisplay').innerText = '50%';
-            document.getElementById('audioInfluenceValueDisplay').innerText = '25%';
-        }
-
-        // --- SISTEMA DE PESTAÑAS ---
-        function switchTab(tabId) {
-            document.getElementById('nav-crear').classList.remove('active');
-            document.getElementById('nav-libreria').classList.remove('active');
-            document.getElementById('crearView').style.display = 'none';
-            document.getElementById('libreriaView').style.display = 'none';
-
-            document.getElementById('nav-' + tabId).classList.add('active');
-            document.getElementById(tabId + 'View').style.display = 'flex';
-
-            if (tabId === 'libreria') {
-                loadLibrary();
-            }
-        }
-
-        // --- SISTEMA DE LIBRERÍA ---
-        async function loadLibrary() {
-            const libraryGrid = document.getElementById('libraryGrid');
-            
-            // As the library view is just a simple grid, we use grid layout
-            libraryGrid.style.display = 'grid';
-            libraryGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
-            libraryGrid.style.gap = '20px';
-            
-            libraryGrid.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1 / -1;">Cargando librería...</p>';
-            try {
-                const response = await fetch('/api/library');
-                const data = await response.json();
-                if (data.status === 'success') {
-                    libraryGrid.innerHTML = '';
-                    if (data.tracks.length === 0) {
-                        libraryGrid.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1 / -1;">No tienes pistas guardadas en tu librería aún.</p>';
-                        return;
-                    }
-                    data.tracks.forEach(track => {
-                        addSongCardToGrid(track.id, track.title, track.tags, track.audio_url, track.image_url, 'libraryGrid', null, track.lyrics);
-                    });
-                }
-            } catch (err) {
-                console.error("Error al cargar la librería", err);
-                libraryGrid.innerHTML = '<p style="color:#ff6b6b; grid-column: 1 / -1;">Error al cargar la librería.</p>';
-            }
-        }
-
-        async function deleteTrack(trackId) {
-            if (!confirm("¿Estás seguro de que quieres eliminar esta pista? Se borrará de la librería y no podrás recuperarla.")) return;
-            
-            try {
-                const response = await fetch('/api/library/' + trackId, { method: 'DELETE' });
-                const data = await response.json();
-                if (data.status === 'success') {
-                    // Remover de la vista
-                    const cardList = document.querySelectorAll('#card-' + trackId);
-                    cardList.forEach(c => c.remove());
-                    // Remove from selection if it was selected
-                    if (selectedTracks.has(trackId)) {
-                        selectedTracks.delete(trackId);
-                        updateBulkActionBar();
-                    }
-                } else {
-                    alert("No se pudo eliminar: " + (data.detail || "Error desconocido"));
-                }
-            } catch (err) {
-                console.error("Error al borrar", err);
-                alert("Error al intentar borrar la pista.");
-            }
-        }
-
-        // --- BULK SELECTION LOGIC ---
-        let selectedTracks = new Set();
-        
-        function toggleSelection(event, id) {
-            event.stopPropagation();
-            if (event.target.checked) {
-                selectedTracks.add(id);
-            } else {
-                selectedTracks.delete(id);
-            }
-            updateBulkActionBar();
-        }
-
-        function updateBulkActionBar() {
-            const bar = document.getElementById('bulkActionBar');
-            const text = document.getElementById('bulkText');
-            if (selectedTracks.size > 0) {
-                text.innerText = selectedTracks.size + (selectedTracks.size === 1 ? ' seleccionada' : ' seleccionadas');
-                bar.classList.add('show');
-            } else {
-                bar.classList.remove('show');
-            }
-        }
-
-        function clearSelection() {
-            selectedTracks.clear();
-            document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
-            updateBulkActionBar();
-        }
-
-        async function bulkDelete() {
-            if (!confirm(`¿Estás seguro de borrar definitivamente ${selectedTracks.size} pistas?`)) return;
-            const idsToDelete = Array.from(selectedTracks);
-            for (const id of idsToDelete) {
-                try {
-                    await fetch('/api/library/' + id, { method: 'DELETE' });
-                    document.querySelectorAll('#card-' + id).forEach(c => c.remove());
-                } catch(e) { console.error("Error deleting", id, e); }
-            }
-            clearSelection();
-        }
-
-        function bulkDownload() {
-            if (selectedTracks.size > 5) {
-                if(!confirm(`Estás a punto de descargar ${selectedTracks.size} canciones al mismo tiempo. Esto puede trabar tu navegador. ¿Continuar?`)) return;
-            }
-            selectedTracks.forEach(id => {
-                const url = `/api/download/${id}/mp3`;
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => a.remove(), 200);
-            });
-            clearSelection();
-        }
-
-        // Cargar recientes al iniciar la página
-        loadRecentGenerations();
-
-        // Cargar usuario actual
-        fetch('/api/me')
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.email) {
-                    const emailSpan = document.querySelector('.user-email');
-                    if (emailSpan) {
-                        emailSpan.innerText = data.email;
-                    }
-                }
-            })
-            .catch(err => console.error("Error fetching user email:", err));
-    </script>
+loadLibrary();
+</script>
 </body>
 </html>
