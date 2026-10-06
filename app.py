@@ -313,7 +313,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 if fext:
                     ext = fext
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
-            bypassed_file_path = f"bypassed_{uuid.uuid4().hex}{ext}"
+            bypassed_file_path = f"bypassed_{uuid.uuid4().hex}.mp3"
             
             with open(temp_file_path, "wb") as f:
                 f.write(audio_content)
