@@ -427,6 +427,21 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         style = enrich_style(style)
         style = enrich_voice(style)
 
+        # Clean structural tags from style string (they belong in lyrics, not style)
+        style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
+        style = re.sub(r',\s*,+', ',', style).strip(' ,')
+
+        # Detect Christian / Worship / Devotional context for genre anchoring
+        is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian"])
+        is_fast_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "alabanza rapida", "alabanza rápida"])
+
+        if is_fast_pentecostal:
+            genre_anchor = "fast joyful pentecostal praise choir, upbeat Christian worship, lively tempo, straight rhythm"
+        elif is_worship:
+            genre_anchor = "sacred Christian worship hymn, church acoustic, straight 4/4 rhythm"
+        else:
+            genre_anchor = ""
+
         # Vocal styling in style prompt:
         if is_instrumental:
             if "instrumental" not in style.lower():
@@ -435,9 +450,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if "mexican" in style.lower() or "mexicano" in style.lower():
                 vocal_tag = "mexican spanish vocals"
             elif "coro" in style.lower() or "choir" in style.lower():
-                vocal_tag = "congregational choir, church choir, natural latin spanish vocals"
+                vocal_tag = "congregational choir, church choir, natural Spanish singing"
             else:
-                vocal_tag = "spanish vocals, clear natural latin american pronunciation, no castilian lisp"
+                vocal_tag = "clear natural Spanish vocals, neutral tone, no castilian lisp"
             
             if "spanish vocals" not in style.lower() and "choir" not in style.lower():
                 style = f"{style}, {vocal_tag}"
@@ -446,20 +461,29 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         # Rigorous Style Exclusion (Negative Prompting)
         # ----------
         neg_final_str = ""
+        key_bans_str = ""
         if exclude_styles and exclude_styles.strip():
             raw_excl = [x.strip() for x in re.split(r'[,;\n]+', exclude_styles) if x.strip()]
             
             synonym_map = {
-                "cumbia": ["cumbia", "ritmo cumbia", "grupero", "norteño", "accordion cumbia"],
-                "latin ritmics": ["latin dance rhythms", "tropical rhythm", "reggaeton beat", "dembow", "cumbia"],
-                "ritmos latinos": ["latin dance rhythms", "tropical rhythm", "reggaeton beat", "dembow", "cumbia"],
-                "salsa": ["salsa", "salsa horns", "latin brass"],
+                "cumbia": ["cumbia", "ritmo cumbia", "grupero", "norteño", "accordion", "guiro", "cumbia sonidera"],
+                "norteño": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
+                "norteno": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
+                "regional mexicano": ["regional mexican", "accordion", "bajo sexto", "corrido", "banda", "ranchera", "mariachi", "sierreño"],
+                "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "bronco style", "accordion"],
+                "mexican": ["regional mexican", "norteño", "grupero", "ranchera", "mariachi", "accordion"],
+                "grupero": ["grupero", "onda grupera", "balada grupera", "bronco style", "cumbia grupera", "los bukis"],
+                "bronco": ["bronco style", "grupero", "cumbia grupera", "norteño", "accordion"],
+                "latin ritmics": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
+                "ritmos latinos": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
+                "salsa": ["salsa", "salsa horns", "latin brass", "montuno"],
                 "bachata": ["bachata", "bachata bongo", "bongo beat"],
                 "autotune": ["autotune", "pitch correction", "robotic voice", "vocoder"],
-                "distortion": ["heavy distortion", "fuzz", "distorted guitar"],
-                "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "bronco style"],
-                "mexican": ["regional mexican", "norteño", "grupero", "ranchera", "mariachi"],
-                "bronco": ["grupero", "bronco style", "cumbia grupera", "norteño"],
+                "distortion": ["heavy distortion", "fuzz", "distorted guitar", "metal tone"],
+                "fuzz": ["fuzz guitar", "heavy distortion"],
+                "heavy metal": ["heavy metal", "screaming vocals", "metal drums"],
+                "electronics drums": ["electronic drums", "synth drums", "808 drums", "drum machine"],
+                "electronic drums": ["electronic drums", "synth drums", "808 drums", "drum machine"],
                 "reggaeton": ["reggaeton", "dembow beat", "urban latin"],
                 "trap": ["trap beat", "808 sub bass trap", "hi-hat rolls trap"],
             }
@@ -475,10 +499,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         neg_tags_list.append(syn)
                         style = re.sub(rf'\b{re.escape(syn)}\b', '', style, flags=re.IGNORECASE)
 
-            # Clean up style punctuation
-            style = re.sub(r',\s*,+', ',', style).strip(' ,')
-
-            # Deduplicate
+            # Deduplicate negative tags
             seen = set()
             dedup_neg = []
             for t in neg_tags_list:
@@ -487,17 +508,29 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     seen.add(tl)
                     dedup_neg.append(t)
 
-            # Build rigid negative directives
-            # 1. Direct "no ..." tags in the style description:
-            no_directives = [f"no {t}" for t in dedup_neg[:8]]
-            style = f"{style}, {', '.join(no_directives)}, [Avoid: {', '.join(dedup_neg[:10])}]"
-            
+            # Build direct key bans that MUST be front-loaded in style (e.g. no accordion, no cumbia, no norteño)
+            critical_instruments = ["accordion", "bajo sexto", "cumbia", "norteño", "corrido", "grupero", "polka", "distortion", "autotune"]
+            active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
+            if active_critical:
+                key_bans_str = ", ".join(active_critical)
+
+            # Combine style: Anchor + Style + Front-loaded bans
+            combined_parts = [p for p in [genre_anchor, style, key_bans_str] if p]
+            style = ", ".join(combined_parts)
+            style = re.sub(r',\s*,+', ',', style).strip(' ,')
+
             # 2. Bracket exclusion meta at top of prompt/lyrics:
-            exclude_header = f"[Exclude: {', '.join(dedup_neg[:10])}]\n"
+            exclude_header = f"[Exclude: {', '.join(dedup_neg[:12])}]\n"
+            if genre_anchor:
+                exclude_header += f"[Genre: {genre_anchor}]\n"
             final_lyrics = exclude_header + final_lyrics
             
             neg_final_str = ", ".join(dedup_neg)
             log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
+        else:
+            if genre_anchor:
+                style = f"{genre_anchor}, {style}"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
