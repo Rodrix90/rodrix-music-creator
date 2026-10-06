@@ -628,8 +628,32 @@ async def walkman_image():
 async def get_me(current_user: str = Depends(get_current_user)):
     return JSONResponse(content={"email": current_user})
 
+def build_master_filter(width: float, eq: str, loud: str) -> str:
+    """Construye la cadena de filtros FFmpeg de masterización (valores validados)."""
+    filters = []
+    # Ecualización
+    if eq == "warm":
+        filters.append("lowshelf=f=120:g=2.5,highshelf=f=9000:g=-1.5")
+    elif eq == "bright":
+        filters.append("highshelf=f=8000:g=3,lowshelf=f=100:g=-1")
+    elif eq == "vocal":
+        filters.append("equalizer=f=3000:t=q:w=1:g=2,highpass=f=30")
+    elif eq == "bass":
+        filters.append("lowshelf=f=100:g=4")
+    # Ancho estéreo (1.0 = original, >1 = más ancho)
+    width = max(1.0, min(width, 2.5))
+    if width > 1.0:
+        filters.append(f"extrastereo=m={width:.2f}")
+    # Compresión + loudness
+    if loud in ("streaming", "loud"):
+        target = -14 if loud == "streaming" else -9
+        filters.append("acompressor=threshold=-18dB:ratio=3:attack=20:release=250")
+        filters.append(f"loudnorm=I={target}:TP=-1.0:LRA=11")
+        filters.append("alimiter=limit=0.95")
+    return ",".join(filters)
+
 @app.get("/api/download/{task_id}/{audio_format}")
-async def download_track_format(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
+async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none", current_user: str = Depends(get_current_user)):
     if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
         
@@ -642,14 +666,21 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
     audio_url = track.get("audio_url")
     title = track.get("title", "Rodrix_Track")
     safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+    master_filter = build_master_filter(width, eq, loud)
     
-    if audio_format == "mp3":
+    if audio_format == "mp3" and not master_filter:
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url=audio_url)
     
     temp_mp3 = f"temp_dl_{uuid.uuid4().hex}.mp3"
     temp_out = f"temp_out_{uuid.uuid4().hex}.{audio_format}"
     
+    def cleanup_files(files):
+        for file in files:
+            if os.path.exists(file):
+                try: os.remove(file)
+                except: pass
+
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             r = await client.get(audio_url)
@@ -659,32 +690,31 @@ async def download_track_format(task_id: str, audio_format: str, current_user: s
                 f.write(r.content)
                 
         ffmpeg_cmd = ["ffmpeg", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
+        if master_filter:
+            ffmpeg_cmd.extend(["-af", master_filter])
         if audio_format == "wav":
             ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
         elif audio_format == "flac":
-            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8"])
+            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8", "-ar", "44100"])
         elif audio_format == "mp3":
             ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100"])
             
         ffmpeg_cmd.append(temp_out)
         try:
-            subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as pe:
             raise Exception(f"FFmpeg Error: {pe.stderr}")
         
-        from fastapi.background import BackgroundTasks
-        def cleanup_files(files):
-            for file in files:
-                if os.path.exists(file):
-                    try: os.remove(file)
-                    except: pass
-                    
+        from starlette.background import BackgroundTask
+        suffix = "_master" if master_filter else ""
         return FileResponse(
             path=temp_out, 
-            filename=f"{safe_title}.{audio_format}", 
-            media_type=f"audio/{audio_format}"
+            filename=f"{safe_title}{suffix}.{audio_format}", 
+            media_type=f"audio/{audio_format}",
+            background=BackgroundTask(cleanup_files, [temp_mp3, temp_out])
         )
     except Exception as e:
+        cleanup_files([temp_mp3, temp_out])
         print(f"Error descargando formato: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
