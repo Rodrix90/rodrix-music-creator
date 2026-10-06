@@ -194,6 +194,7 @@ async def transform_audio(
     style_influence: int = Form(50),
     audio_influence: int = Form(25),
     model: str = Form("chirp-v4-5"),
+    pronunciation: str = Form(""),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
@@ -213,7 +214,7 @@ async def transform_audio(
         run_transform_task,
         task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
         include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-        style_influence, audio_influence, model
+        style_influence, audio_influence, model, pronunciation
     )
     
     return {"status": "started", "task_id": task_id}
@@ -252,7 +253,7 @@ async def make_permanent_url(original_url: str) -> str:
         print(f"Error re-uploading to catbox: {e}")
     return original_url
 
-async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model):
+async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation=""):
     def log_msg(msg):
         import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
@@ -278,14 +279,26 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         title = f"{title} (Instrumental)"
     
     final_lyrics = lyrics if not is_instrumental else "[Instrumental]"
+
+    # Correcciones de pronunciación: una por línea con formato "palabra=como suena"
+    if pronunciation.strip() and not is_instrumental and final_lyrics:
+        import re
+        for rule in pronunciation.splitlines():
+            if "=" not in rule:
+                continue
+            word, sound = [x.strip() for x in rule.split("=", 1)]
+            if word and sound:
+                final_lyrics = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", sound, final_lyrics, flags=re.IGNORECASE)
+                log_msg(f"Pronunciación: '{word}' -> '{sound}'")
+
     if is_instrumental:
         style = style + ", instrumental, no vocals"
     else:
         style = style + ", latin american vocals, mexican, no spain accent"
         prefix = "[Vocals in Mexican Spanish accent]\n"
-        if bypass_copyright and final_lyrics:
-            final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
-        elif final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
+        # La letra ya NO se ofusca con caracteres invisibles: degradaba la pronunciación.
+        # El Anti-Copyright actúa sobre el audio de referencia (FFmpeg).
+        if final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
             final_lyrics = prefix + final_lyrics
         
     upload_url = None

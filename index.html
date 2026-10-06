@@ -193,6 +193,11 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <textarea id="lyricsInput" placeholder="[Verse]&#10;Escribe aquí tu letra..."></textarea>
         </div>
 
+        <div class="field">
+          <label class="label" for="pronInput"><span>Pronunciación (opcional)</span></label>
+          <textarea id="pronInput" style="min-height:70px" placeholder="Una por línea: palabra=como suena&#10;Ej: humillado=humiyado"></textarea>
+        </div>
+
         <div class="grid2">
           <div class="field">
             <label class="label" for="titleInput">Título</label>
@@ -201,9 +206,9 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <div class="field">
             <label class="label" for="modelInput">IA Model</label>
             <select id="modelInput">
-              <option value="chirp-v4-5" selected>chirp-v4-5 (10 cr)</option>
+              <option value="chirp-v4-5">chirp-v4-5 (10 cr)</option>
               <option value="chirp-v4-5-plus">chirp-v4-5-plus (10 cr)</option>
-              <option value="chirp-v5">chirp-v5 (12 cr)</option>
+              <option value="chirp-v5" selected>chirp-v5 (12 cr)</option>
               <option value="chirp-v5-5">chirp-v5-5 (12 cr)</option>
               <option value="chirp-v4">chirp-v4 (8 cr)</option>
               <option value="chirp-v3-5">chirp-v3-5 (5 cr)</option>
@@ -221,8 +226,8 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </div>
 
         <div class="field">
-          <label class="label"><span>Weirdness</span><span class="val" id="wVal">50%</span></label>
-          <input type="range" id="weirdness" min="0" max="100" value="50">
+          <label class="label"><span>Weirdness</span><span class="val" id="wVal">25%</span></label>
+          <input type="range" id="weirdness" min="0" max="100" value="25">
         </div>
 
         <details class="adv" id="advanced">
@@ -305,7 +310,7 @@ $('instrumental').addEventListener('change', e => {
 });
 $('clearAudio').addEventListener('click', () => $('audioInput').value = '');
 $('clearBtn').addEventListener('click', () => {
-  ['styleInput','lyricsInput','titleInput','excludeInput'].forEach(i => $(i).value = '');
+  ['styleInput','lyricsInput','titleInput','excludeInput','pronInput'].forEach(i => $(i).value = '');
   $('audioInput').value = '';
 });
 
@@ -372,6 +377,7 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('style_influence', $('styleInfluence').value);
   fd.append('audio_influence', $('audioInfluence').value);
   fd.append('model', $('modelInput').value);
+  fd.append('pronunciation', $('pronInput').value);
   if ($('audioInput').files[0]) fd.append('audio', $('audioInput').files[0]);
 
   $('console').innerHTML = '';
