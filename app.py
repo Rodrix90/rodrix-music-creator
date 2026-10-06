@@ -236,24 +236,45 @@ async def cancel_task(task_id: str):
     raise HTTPException(status_code=404, detail="Task no encontrada")
 
 
-async def make_permanent_url(original_url: str) -> str:
-    if not original_url or "catbox.moe" in original_url:
-        return original_url
+TRACKS_DIR = "tracks_storage"
+os.makedirs(TRACKS_DIR, exist_ok=True)
+
+async def cache_track_audio(task_id: str, remote_url: str) -> str:
+    """Download audio when fresh and cache locally so it never expires and serves reliably."""
+    if not remote_url:
+        return remote_url
+    local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+        return f"/api/audio_file/{task_id}"
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "*/*"
+    }
     try:
-        import uuid, os
-        temp_file = f"temp_reupload_{uuid.uuid4().hex}.mp3"
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            r = await client.get(original_url)
-            if r.status_code == 200:
-                with open(temp_file, "wb") as f:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True, headers=headers) as client:
+            r = await client.get(remote_url)
+            if r.status_code == 200 and len(r.content) > 1000:
+                with open(local_path, "wb") as f:
                     f.write(r.content)
-                new_url = await upload_to_catbox_async(temp_file)
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-                return new_url or original_url
+                return f"/api/audio_file/{task_id}"
     except Exception as e:
-        print(f"Error re-uploading to catbox: {e}")
-    return original_url
+        print(f"Aviso al cachear audio localmente: {e}")
+    return remote_url
+
+@app.get("/api/audio_file/{task_id}")
+async def serve_cached_audio(task_id: str):
+    local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+        return FileResponse(path=local_path, media_type="audio/mpeg")
+    library = load_library()
+    track = next((t for t in library if t.get("id") == task_id), None)
+    if track:
+        url = track.get("raw_audio_url") or track.get("audio_url")
+        if url and url.startswith("http"):
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=url)
+    raise HTTPException(status_code=404, detail="Audio no disponible")
 
 async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation="", obfuscate=False):
     def log_msg(msg):
@@ -680,12 +701,13 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                             tstatus = t.get("status", "SUCCESS")
                             
                             if taudio:
-                                log_msg(f"Asegurando enlace permanente para {ttitle}...")
-                                taudio_perm = await make_permanent_url(taudio)
+                                log_msg(f"Guardando copia permanente para {ttitle}...")
+                                taudio_cached = await cache_track_audio(tid, taudio)
                                 track_info = {
                                     "id": tid,
                                     "title": ttitle,
-                                    "audio_url": taudio_perm,
+                                    "audio_url": taudio_cached,
+                                    "raw_audio_url": taudio,
                                     "image_url": timage,
                                     "duration": tduration,
                                     "status": tstatus,
@@ -770,57 +792,96 @@ async def save_dictionary(request: Request, current_user: str = Depends(get_curr
         f.write(content)
     return JSONResponse(content={"status": "success"})
 
+async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_file: str) -> str:
+    """Returns a local file path to the audio file, cached if available, or downloaded."""
+    local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+        return local_path
+        
+    urls_to_try = []
+    if track.get("raw_audio_url"):
+        urls_to_try.append(track["raw_audio_url"])
+    if track.get("audio_url"):
+        if track["audio_url"].startswith("http"):
+            urls_to_try.append(track["audio_url"])
+            
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "*/*"
+    }
+    
+    last_err = None
+    for url in urls_to_try:
+        try:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True, headers=headers) as client:
+                r = await client.get(url)
+                if r.status_code == 200 and len(r.content) > 1000:
+                    with open(local_path, "wb") as f:
+                        f.write(r.content)
+                    return local_path
+        except Exception as e:
+            last_err = e
+            try:
+                import urllib.request
+                def fetch_u():
+                    req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=60) as resp:
+                        return resp.read()
+                data = await asyncio.to_thread(fetch_u)
+                if len(data) > 1000:
+                    with open(local_path, "wb") as f:
+                        f.write(data)
+                    return local_path
+            except Exception as e2:
+                last_err = e2
+                
+    raise HTTPException(status_code=500, detail=f"No se pudo descargar el audio original: {last_err or 'enlace no disponible'}")
+
 @app.get("/api/stems/{task_id}/{stem_type}")
 async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depends(get_current_user)):
     if stem_type not in ["vocals", "instrumental"]:
         raise HTTPException(status_code=400, detail="Tipo de stem no válido")
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
-    if not track or not track.get("audio_url"):
-        raise HTTPException(status_code=404, detail="Track no encontrado")
+    if not track:
+        raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
     
-    audio_url = track.get("audio_url")
     title = track.get("title", "Rodrix_Track")
-    safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+    safe_title = "".join([c for c in title if c.isalnum() or c in ' -_']).strip() or "track"
     
-    temp_in = f"temp_stem_in_{uuid.uuid4().hex}.mp3"
-    temp_out = f"temp_stem_out_{uuid.uuid4().hex}.mp3"
+    temp_stem_out = f"temp_stem_out_{uuid.uuid4().hex}.mp3"
     
     def cleanup_files(files):
         for f in files:
-            if os.path.exists(f):
+            if f and os.path.exists(f) and not f.startswith(TRACKS_DIR):
                 try: os.remove(f)
                 except: pass
 
     try:
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            r = await client.get(audio_url)
-            if r.status_code != 200:
-                raise HTTPException(status_code=500, detail="No se pudo descargar el audio original")
-            with open(temp_in, "wb") as f:
-                f.write(r.content)
-                
+        source_audio_file = await get_or_download_audio_file(task_id, track, "")
+        
         # Separación de stems con técnicas avanzadas de M/S y EQ
         if stem_type == "vocals":
-            # Aislar centro estéreo donde está la voz principal y recortar extremos
             stem_filter = "stereotools=mlev=1.6:slev=0.015625,equalizer=f=2500:t=q:w=1:g=3,highpass=f=180,lowpass=f=7500"
         else:
-            # Aislar lados estéreo (eliminar voz central)
             stem_filter = "stereotools=mlev=0.015625:slev=1.5"
             
-        ffmpeg_cmd = ["ffmpeg", "-y", "-i", temp_in, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_out]
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_stem_out]
         await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         from starlette.background import BackgroundTask
         return FileResponse(
-            path=temp_out,
+            path=temp_stem_out,
             filename=f"{safe_title}_{stem_type}.mp3",
-            media_type="audio/mp3",
+            media_type="audio/mpeg",
             headers={"Content-Disposition": f'attachment; filename="{safe_title}_{stem_type}.mp3"'},
-            background=BackgroundTask(cleanup_files, [temp_in, temp_out])
+            background=BackgroundTask(cleanup_files, [temp_stem_out])
         )
+    except HTTPException:
+        cleanup_files([temp_stem_out])
+        raise
     except Exception as e:
-        cleanup_files([temp_in, temp_out])
+        cleanup_files([temp_stem_out])
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
@@ -885,37 +946,35 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
-    
-    if not track or not track.get("audio_url"):
+    if not track:
         raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
         
-    audio_url = track.get("audio_url")
     title = track.get("title", "Rodrix_Track")
-    safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+    safe_title = "".join([c for c in title if c.isalnum() or c in ' -_']).strip() or "track"
     master_filter = build_master_filter(width, eq, loud)
     
-    if audio_format == "mp3" and not master_filter:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=audio_url)
-    
-    temp_mp3 = f"temp_dl_{uuid.uuid4().hex}.mp3"
-    temp_out = f"temp_out_{uuid.uuid4().hex}.{audio_format}"
+    temp_out = f"temp_dl_out_{uuid.uuid4().hex}.{audio_format}"
     
     def cleanup_files(files):
-        for file in files:
-            if os.path.exists(file):
-                try: os.remove(file)
+        for f in files:
+            if f and os.path.exists(f) and not f.startswith(TRACKS_DIR):
+                try: os.remove(f)
                 except: pass
 
     try:
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            r = await client.get(audio_url)
-            if r.status_code != 200:
-                raise HTTPException(status_code=500, detail="No se pudo descargar el audio original")
-            with open(temp_mp3, "wb") as f:
-                f.write(r.content)
-                
-        ffmpeg_cmd = ["ffmpeg", "-y", "-i", temp_mp3, "-map_metadata", "-1"]
+        source_audio_file = await get_or_download_audio_file(task_id, track, "")
+        
+        # If MP3 with no mastering filters: return source directly as an attachment!
+        if audio_format == "mp3" and not master_filter:
+            return FileResponse(
+                path=source_audio_file,
+                filename=f"{safe_title}.mp3",
+                media_type="audio/mpeg",
+                headers={"Content-Disposition": f'attachment; filename="{safe_title}.mp3"'}
+            )
+            
+        # Process with FFmpeg
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", source_audio_file, "-map_metadata", "-1"]
         if master_filter:
             ffmpeg_cmd.extend(["-af", master_filter])
         if audio_format == "wav":
@@ -930,7 +989,7 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as pe:
             raise Exception(f"FFmpeg Error: {pe.stderr}")
-        
+            
         from starlette.background import BackgroundTask
         suffix = "_master" if master_filter else ""
         return FileResponse(
@@ -938,10 +997,13 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             filename=f"{safe_title}{suffix}.{audio_format}", 
             media_type=f"audio/{audio_format}",
             headers={"Content-Disposition": f'attachment; filename="{safe_title}{suffix}.{audio_format}"'},
-            background=BackgroundTask(cleanup_files, [temp_mp3, temp_out])
+            background=BackgroundTask(cleanup_files, [temp_out])
         )
+    except HTTPException:
+        cleanup_files([temp_out])
+        raise
     except Exception as e:
-        cleanup_files([temp_mp3, temp_out])
+        cleanup_files([temp_out])
         print(f"Error descargando formato: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -637,19 +637,58 @@ function playTrack(t) {
   document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === t.id));
 }
 
+async function triggerAudioDownload(url, defaultFilename) {
+  logLine(`Iniciando descarga de "${defaultFilename}"...`);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      const msg = errJson.detail || `Error HTTP ${res.status}`;
+      logLine(`ERROR al descargar: ${msg}`, 'err');
+      alert(`No se pudo descargar el archivo:\n${msg}`);
+      return;
+    }
+    const cType = res.headers.get('content-type') || '';
+    if (cType.includes('application/json')) {
+      const errJson = await res.json().catch(() => ({}));
+      logLine(`ERROR del servidor: ${errJson.detail || 'Respuesta inválida'}`, 'err');
+      alert(`Error del servidor: ${errJson.detail || 'Respuesta inválida'}`);
+      return;
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const tempLink = document.createElement('a');
+    tempLink.href = blobUrl;
+    
+    const disposition = res.headers.get('content-disposition');
+    let filename = defaultFilename;
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) filename = match[1];
+    }
+    
+    tempLink.download = filename;
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    document.body.removeChild(tempLink);
+    URL.revokeObjectURL(blobUrl);
+    logLine(`¡Descarga de "${filename}" finalizada con éxito!`);
+  } catch(err) {
+    logLine(`ERROR de descarga: ${err.message}`, 'err');
+    alert(`Error de descarga: ${err.message}`);
+  }
+}
+
 $('libList').addEventListener('click', async e => {
   const stem = e.target.closest('a[data-stem]');
   if (stem) {
     e.preventDefault();
     const taskId = stem.dataset.id;
     const stemType = stem.dataset.stem;
+    const card = stem.closest('.track');
+    const trackTitle = card ? card.querySelector('.t-title').textContent : 'cancion';
     const dlUrl = '/api/stems/' + encodeURIComponent(taskId) + '/' + stemType;
-    const tempLink = document.createElement('a');
-    tempLink.href = dlUrl;
-    tempLink.setAttribute('download', '');
-    document.body.appendChild(tempLink);
-    tempLink.click();
-    document.body.removeChild(tempLink);
+    triggerAudioDownload(dlUrl, `${trackTitle}_${stemType}.mp3`);
     return;
   }
 
@@ -810,14 +849,13 @@ document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('clic
 $('libList').addEventListener('click', e => {
   const a = e.target.closest('a[data-dl]'); if (!a) return;
   e.preventDefault();
+  const id = a.dataset.id;
+  const format = a.dataset.dl;
+  const card = a.closest('.track');
+  const trackTitle = card ? card.querySelector('.t-title').textContent : 'cancion';
   const q = new URLSearchParams({ width: $('mWidth').value, eq: $('mEq').value, loud: $('mLoud').value });
-  const dlUrl = '/api/download/' + encodeURIComponent(a.dataset.id) + '/' + a.dataset.dl + '?' + q.toString();
-  const tempLink = document.createElement('a');
-  tempLink.href = dlUrl;
-  tempLink.setAttribute('download', '');
-  document.body.appendChild(tempLink);
-  tempLink.click();
-  document.body.removeChild(tempLink);
+  const dlUrl = '/api/download/' + encodeURIComponent(id) + '/' + format + '?' + q.toString();
+  triggerAudioDownload(dlUrl, `${trackTitle}.${format}`);
 });
 
 loadLibrary();
