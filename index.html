@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
 <style>
 :root{
   --bg:#0F0F17; --side:#1F1F2E; --card:#2C2C3A; --border:#3A3A4D;
@@ -194,7 +195,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </div>
 
         <div class="field">
-          <label class="label" for="pronInput"><span>Pronunciación (opcional)</span></label>
+          <div class="label">
+            <label for="pronInput">Pronunciación fonética</label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn-sec" id="syncDictBtn" style="padding:2px 8px;font-size:11px;border-radius:6px;height:auto" title="Cargar diccionario guardado"><i class="ph ph-arrows-clockwise"></i> Cargar</button>
+              <button type="button" class="btn-sec" id="saveDictBtn" style="padding:2px 8px;font-size:11px;border-radius:6px;height:auto;color:var(--ok);border-color:rgba(52,211,153,.35)" title="Guardar cambios en el diccionario global"><i class="ph ph-floppy-disk"></i> Guardar Diccionario</button>
+            </div>
+          </div>
           <textarea id="pronInput" style="min-height:70px" placeholder="Una por línea: palabra=como suena&#10;Ej: humillado=humiyado"></textarea>
         </div>
 
@@ -338,8 +345,20 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     </div>
     <div class="lib-list" id="libList"><div class="empty">Cargando...</div></div>
     <div class="player" id="player">
-      <div class="pt" id="playerTitle">-</div>
-      <audio id="audio" controls></audio>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+        <div class="pt" id="playerTitle" style="font-size:12px;font-weight:700">-</div>
+        <div id="playerTimer" style="font-size:11px;color:var(--muted);font-family:monospace">0:00 / 0:00</div>
+      </div>
+      <div id="waveform" style="width:100%;height:46px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,0.3);cursor:pointer"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <button type="button" class="btn-play" id="wsPlayPauseBtn" style="padding:4px 10px;font-size:11px">
+          <i class="ph ph-play" id="wsPlayIcon"></i> <span id="wsPlayText">Play</span>
+        </button>
+        <div style="flex:1"></div>
+        <i class="ph ph-speaker-high" style="color:var(--muted);font-size:15px"></i>
+        <input type="range" id="wsVolume" min="0" max="1" step="0.05" value="0.9" style="width:65px;height:4px">
+      </div>
+      <audio id="audio" style="display:none"></audio>
     </div>
   </aside>
 </div>
@@ -506,12 +525,18 @@ function renderLibrary(tracks){
         <div class="t-meta"><span>${fmtDur(t.duration)}</span><span class="tag">Premium</span>${/instrumental/i.test(t.title) ? '<span class="tag">Instrumental</span>' : ''}</div>
         <div class="t-actions">
           <button class="btn-play" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
+          <button class="icon-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
           <button class="icon-btn" data-act="dl" title="Descargar"><i class="ph ph-download-simple"></i></button>
           <button class="icon-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
           <div class="menu">
-            <a href="#" data-dl="mp3" data-id="${esc(t.id)}">MP3</a>
-            <a href="#" data-dl="wav" data-id="${esc(t.id)}">WAV</a>
-            <a href="#" data-dl="flac" data-id="${esc(t.id)}">FLAC</a>
+            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Formatos Master</div>
+            <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> MP3 (Master)</a>
+            <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> WAV (Studio)</a>
+            <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
+            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
+            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Stems Pro</div>
+            <a href="#" data-stem="vocals" data-id="${esc(t.id)}"><i class="ph ph-microphone"></i> Voz aislada</a>
+            <a href="#" data-stem="instrumental" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> Instrumental</a>
           </div>
         </div>
       </div>
@@ -519,17 +544,154 @@ function renderLibrary(tracks){
   l._tracks = tracks;
 }
 
+let wavesurfer = null;
+
+function initWaveSurfer() {
+  if (typeof WaveSurfer === 'undefined') return;
+  if (wavesurfer) {
+    try { wavesurfer.destroy(); } catch(e){}
+  }
+  wavesurfer = WaveSurfer.create({
+    container: '#waveform',
+    waveColor: '#5A67D8',
+    progressColor: '#A5B4FC',
+    cursorColor: '#FFFFFF',
+    cursorWidth: 2,
+    barWidth: 2,
+    barGap: 2,
+    barRadius: 2,
+    height: 46,
+    normalize: true
+  });
+
+  wavesurfer.on('play', () => {
+    $('wsPlayIcon').className = 'ph ph-pause';
+    $('wsPlayText').textContent = 'Pausa';
+    document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === currentTrackId));
+  });
+
+  wavesurfer.on('pause', () => {
+    $('wsPlayIcon').className = 'ph ph-play';
+    $('wsPlayText').textContent = 'Play';
+    document.querySelectorAll('.track.playing').forEach(c => c.classList.remove('playing'));
+  });
+
+  wavesurfer.on('finish', () => {
+    $('wsPlayIcon').className = 'ph ph-play';
+    $('wsPlayText').textContent = 'Play';
+    document.querySelectorAll('.track.playing').forEach(c => c.classList.remove('playing'));
+  });
+
+  wavesurfer.on('timeupdate', (currentTime) => {
+    const dur = wavesurfer.getDuration() || 0;
+    $('playerTimer').textContent = `${fmtDur(currentTime)} / ${fmtDur(dur)}`;
+  });
+
+  wavesurfer.on('error', (err) => {
+    console.warn('WaveSurfer fallback:', err);
+    $('audio').src = wavesurfer._currentUrl || '';
+    $('audio').style.display = 'block';
+    $('audio').play().catch(()=>{});
+  });
+
+  $('wsPlayPauseBtn').onclick = () => {
+    if (wavesurfer) wavesurfer.playPause();
+  };
+
+  $('wsVolume').oninput = (e) => {
+    if (wavesurfer) wavesurfer.setVolume(parseFloat(e.target.value));
+  };
+}
+
+function playTrack(t) {
+  currentTrackId = t.id;
+  $('playerTitle').textContent = t.title;
+  $('player').classList.add('show');
+  const url = previewUrl(t);
+  
+  if (!wavesurfer && typeof WaveSurfer !== 'undefined') {
+    initWaveSurfer();
+  }
+  
+  if (wavesurfer) {
+    wavesurfer._currentUrl = url;
+    $('audio').style.display = 'none';
+    wavesurfer.load(url);
+    wavesurfer.once('ready', () => {
+      wavesurfer.play().catch(()=>{});
+    });
+  } else {
+    $('audio').style.display = 'block';
+    $('audio').src = url;
+    $('audio').play().catch(()=>{});
+  }
+  document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === t.id));
+}
+
 $('libList').addEventListener('click', async e => {
+  const stem = e.target.closest('a[data-stem]');
+  if (stem) {
+    e.preventDefault();
+    const taskId = stem.dataset.id;
+    const stemType = stem.dataset.stem;
+    const dlUrl = '/api/stems/' + encodeURIComponent(taskId) + '/' + stemType;
+    const tempLink = document.createElement('a');
+    tempLink.href = dlUrl;
+    tempLink.setAttribute('download', '');
+    document.body.appendChild(tempLink);
+    tempLink.click();
+    document.body.removeChild(tempLink);
+    return;
+  }
+
   const btn = e.target.closest('[data-act]');
   if (!btn) { return; }
   const card = btn.closest('.track'); const id = card.dataset.id;
   const act = btn.dataset.act;
+
   if (act === 'play') {
     const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
-    currentTrackId = id;
-    $('audio').src = previewUrl(t); $('audio').play().catch(()=>{});
-    $('playerTitle').textContent = t.title; $('player').classList.add('show');
-    document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === id));
+    playTrack(t);
+  } else if (act === 'reuse') {
+    const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
+    if (t.title) $('titleInput').value = t.title;
+    if (t.style) $('styleInput').value = t.style;
+    if (t.lyrics) {
+      if (t.lyrics === '[Instrumental]') {
+        $('instrumental').checked = true;
+        $('lyricsInput').disabled = true;
+        $('lyricsInput').style.opacity = .4;
+        $('lyricsInput').value = '';
+      } else {
+        $('instrumental').checked = false;
+        $('lyricsInput').disabled = false;
+        $('lyricsInput').style.opacity = 1;
+        $('lyricsInput').value = t.lyrics;
+      }
+    }
+    if (t.model) $('modelInput').value = t.model;
+    if (t.vocal_gender) {
+      gender = t.vocal_gender;
+      document.querySelectorAll('#genderSeg button').forEach(b => b.classList.toggle('on', b.dataset.g === gender));
+    }
+    if (t.weirdness !== undefined) {
+      $('weirdness').value = t.weirdness;
+      $('wVal').textContent = t.weirdness + '%';
+    }
+    if (t.style_influence !== undefined) {
+      $('styleInfluence').value = t.style_influence;
+      $('siVal').textContent = t.style_influence + '%';
+    }
+    if (t.audio_influence !== undefined) {
+      $('audioInfluence').value = t.audio_influence;
+      $('aiVal').textContent = t.audio_influence + '%';
+    }
+    if (t.pronunciation !== undefined && t.pronunciation) $('pronInput').value = t.pronunciation;
+    if (t.obfuscate !== undefined) $('obfuscate').checked = !!t.obfuscate;
+    
+    setActive('nav-crear');
+    document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
+    logLine(`Parámetros del himno "${t.title}" cargados en el formulario.`);
   } else if (act === 'dl') {
     const m = card.querySelector('.menu');
     document.querySelectorAll('.menu.open').forEach(x => { if (x !== m) x.classList.remove('open'); });
@@ -537,14 +699,62 @@ $('libList').addEventListener('click', async e => {
   } else if (act === 'del') {
     if (!confirm('¿Eliminar esta pista de la librería?')) return;
     const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });
-    if (r.ok) { if (id === currentTrackId) { $('audio').pause(); $('player').classList.remove('show'); currentTrackId = null; } loadLibrary(); }
+    if (r.ok) {
+      if (id === currentTrackId) {
+        if (wavesurfer) wavesurfer.stop();
+        $('audio').pause();
+        $('player').classList.remove('show');
+        currentTrackId = null;
+      }
+      loadLibrary();
+    }
   }
 });
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(x => x.classList.remove('open')));
-$('audio').addEventListener('ended', () => document.querySelectorAll('.track.playing').forEach(c => c.classList.remove('playing')));
-$('audio').addEventListener('pause', () => document.querySelectorAll('.track.playing').forEach(c => c.classList.remove('playing')));
-$('audio').addEventListener('play', () => document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === currentTrackId)));
 $('refreshLib').addEventListener('click', loadLibrary);
+
+/* ---------- Diccionario de Pronunciación ---------- */
+async function loadDictionary(){
+  try {
+    const r = await fetch('/api/dictionary');
+    if (r.ok) {
+      const j = await r.json();
+      if (j.content && !$('pronInput').value.trim()) {
+        $('pronInput').value = j.content;
+      }
+    }
+  } catch(e){}
+}
+
+$('saveDictBtn').addEventListener('click', async () => {
+  const content = $('pronInput').value;
+  try {
+    const r = await fetch('/api/dictionary', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ content })
+    });
+    if (r.ok) {
+      alert('¡Diccionario guardado permanentemente en el servidor!');
+      logLine('Diccionario de pronunciación guardado exitosamente.');
+    } else {
+      alert('Error al guardar el diccionario.');
+    }
+  } catch (e) {
+    alert('Error de conexión al guardar el diccionario.');
+  }
+});
+
+$('syncDictBtn').addEventListener('click', async () => {
+  try {
+    const r = await fetch('/api/dictionary');
+    if (r.ok) {
+      const j = await r.json();
+      $('pronInput').value = j.content || '';
+      logLine('Diccionario cargado desde el servidor.');
+    }
+  } catch(e){ alert('Error al cargar.'); }
+});
 
 /* ---------- Masterización (se aplica al descargar) ---------- */
 const masterIds = ['mWidth','mEq','mLoud'];
@@ -584,6 +794,7 @@ $('libList').addEventListener('click', e => {
 });
 
 loadLibrary();
+loadDictionary();
 </script>
 </body>
 </html>

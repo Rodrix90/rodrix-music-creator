@@ -564,7 +564,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                                     "image_url": timage,
                                     "duration": tduration,
                                     "status": tstatus,
-                                    "lyrics": t.get("lyrics") or lyrics
+                                    "lyrics": t.get("lyrics") or lyrics,
+                                    "style": style,
+                                    "model": model,
+                                    "vocal_gender": vocal_gender,
+                                    "weirdness": weirdness,
+                                    "style_influence": style_influence,
+                                    "audio_influence": audio_influence,
+                                    "pronunciation": pronunciation,
+                                    "obfuscate": obfuscate
                                 }
                                 final_tracks.append(track_info)
                                 add_track_to_library(track_info)
@@ -614,6 +622,80 @@ async def api_delete_from_library(task_id: str, current_user: str = Depends(get_
         raise HTTPException(status_code=404, detail="Track no encontrado")
     save_library(new_library)
     return JSONResponse(content={"status": "success"})
+
+DICTIONARY_FILE = "dictionary.txt"
+
+@app.get("/api/dictionary")
+async def get_dictionary(current_user: str = Depends(get_current_user)):
+    content = ""
+    if os.path.exists(DICTIONARY_FILE):
+        try:
+            with open(DICTIONARY_FILE, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception:
+            content = ""
+    return JSONResponse(content={"status": "success", "content": content})
+
+@app.post("/api/dictionary")
+async def save_dictionary(request: Request, current_user: str = Depends(get_current_user)):
+    data = await request.json()
+    content = data.get("content", "")
+    with open(DICTIONARY_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    return JSONResponse(content={"status": "success"})
+
+@app.get("/api/stems/{task_id}/{stem_type}")
+async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depends(get_current_user)):
+    if stem_type not in ["vocals", "instrumental"]:
+        raise HTTPException(status_code=400, detail="Tipo de stem no válido")
+    library = load_library()
+    track = next((t for t in library if t.get("id") == task_id), None)
+    if not track or not track.get("audio_url"):
+        raise HTTPException(status_code=404, detail="Track no encontrado")
+    
+    audio_url = track.get("audio_url")
+    title = track.get("title", "Rodrix_Track")
+    safe_title = "".join([c for c in title if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+    
+    temp_in = f"temp_stem_in_{uuid.uuid4().hex}.mp3"
+    temp_out = f"temp_stem_out_{uuid.uuid4().hex}.mp3"
+    
+    def cleanup_files(files):
+        for f in files:
+            if os.path.exists(f):
+                try: os.remove(f)
+                except: pass
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            r = await client.get(audio_url)
+            if r.status_code != 200:
+                raise HTTPException(status_code=500, detail="No se pudo descargar el audio original")
+            with open(temp_in, "wb") as f:
+                f.write(r.content)
+                
+        # Separación de stems con técnicas avanzadas de M/S y EQ
+        if stem_type == "vocals":
+            # Aislar centro estéreo donde está la voz principal y recortar extremos
+            stem_filter = "stereotools=mlev=1.6:slev=0.015625,equalizer=f=2500:t=q:w=1:g=3,highpass=f=180,lowpass=f=7500"
+        else:
+            # Aislar lados estéreo (eliminar voz central)
+            stem_filter = "stereotools=mlev=0.015625:slev=1.5"
+            
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", temp_in, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_out]
+        await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        from starlette.background import BackgroundTask
+        return FileResponse(
+            path=temp_out,
+            filename=f"{safe_title}_{stem_type}.mp3",
+            media_type="audio/mp3",
+            headers={"Content-Disposition": f'attachment; filename="{safe_title}_{stem_type}.mp3"'},
+            background=BackgroundTask(cleanup_files, [temp_in, temp_out])
+        )
+    except Exception as e:
+        cleanup_files([temp_in, temp_out])
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 async def root():
