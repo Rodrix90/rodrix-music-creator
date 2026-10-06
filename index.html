@@ -507,7 +507,7 @@ $('libList').addEventListener('click', async e => {
   if (act === 'play') {
     const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
     currentTrackId = id;
-    $('audio').src = t.audio_url; $('audio').play().catch(()=>{});
+    $('audio').src = previewUrl(t); $('audio').play().catch(()=>{});
     $('playerTitle').textContent = t.title; $('player').classList.add('show');
     document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === id));
   } else if (act === 'dl') {
@@ -530,6 +530,11 @@ $('refreshLib').addEventListener('click', loadLibrary);
 const masterIds = ['mWidth','mEq','mLoud'];
 function saveMaster(){ localStorage.setItem('rodrixMaster', JSON.stringify({w:$('mWidth').value, eq:$('mEq').value, loud:$('mLoud').value})); }
 function updateWidthLabel(){ const v = +$('mWidth').value; $('mWidthVal').textContent = v <= 1 ? 'Original' : 'x' + v.toFixed(1); }
+function previewUrl(t){
+  if (+$('mWidth').value <= 1 && $('mEq').value === 'none' && $('mLoud').value === 'none') return t.audio_url;
+  const q = new URLSearchParams({ width: $('mWidth').value, eq: $('mEq').value, loud: $('mLoud').value });
+  return '/api/download/' + encodeURIComponent(t.id) + '/mp3?' + q.toString();
+}
 try { const s = JSON.parse(localStorage.getItem('rodrixMaster') || '{}');
   if (s.w) $('mWidth').value = s.w; if (s.eq) $('mEq').value = s.eq; if (s.loud) $('mLoud').value = s.loud; } catch(e){}
 updateWidthLabel();
