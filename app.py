@@ -113,6 +113,7 @@ async def upload_to_uguu_async(file_path: str) -> str | None:
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_cmd = [
         "ffmpeg",
+        "-threads", "1",
         "-y",
         "-i", input_path,
         "-vn",
@@ -179,6 +180,13 @@ def add_track_to_library(track_info):
 
 TASKS = {}
 
+def prune_tasks():
+    global TASKS
+    if len(TASKS) > 30:
+        keys_to_remove = list(TASKS.keys())[:-25]
+        for k in keys_to_remove:
+            TASKS.pop(k, None)
+
 @app.post("/api/transform")
 async def transform_audio(
     background_tasks: BackgroundTasks,
@@ -201,6 +209,8 @@ async def transform_audio(
 ):
     if not UDIO_API_KEY:
         raise HTTPException(status_code=400, detail="Falta UDIO_API_KEY")
+
+    prune_tasks()
 
     audio_content = None
     audio_filename = None
@@ -240,7 +250,7 @@ TRACKS_DIR = "tracks_storage"
 os.makedirs(TRACKS_DIR, exist_ok=True)
 
 async def cache_track_audio(task_id: str, remote_url: str) -> str:
-    """Download audio when fresh and cache locally so it never expires and serves reliably."""
+    """Download audio when fresh and cache locally so it never expires and serves reliably (streamed in chunks to save RAM)."""
     if not remote_url:
         return remote_url
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
@@ -253,11 +263,13 @@ async def cache_track_audio(task_id: str, remote_url: str) -> str:
     }
     try:
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True, headers=headers) as client:
-            r = await client.get(remote_url)
-            if r.status_code == 200 and len(r.content) > 1000:
-                with open(local_path, "wb") as f:
-                    f.write(r.content)
-                return f"/api/audio_file/{task_id}"
+            async with client.stream("GET", remote_url) as resp:
+                if resp.status_code == 200:
+                    with open(local_path, "wb") as f:
+                        async for chunk in resp.aiter_bytes(65536):
+                            f.write(chunk)
+                    if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+                        return f"/api/audio_file/{task_id}"
     except Exception as e:
         print(f"Aviso al cachear audio localmente: {e}")
     return remote_url
@@ -742,6 +754,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         save_local_log()
         TASKS[task_id]["detail"] = str(e)
         TASKS[task_id]["status"] = "ERROR"
+    finally:
+        import gc
+        gc.collect()
 
 @app.get("/api/latest-logs")
 async def get_latest_logs():
@@ -814,11 +829,13 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
     for url in urls_to_try:
         try:
             async with httpx.AsyncClient(timeout=60.0, follow_redirects=True, headers=headers) as client:
-                r = await client.get(url)
-                if r.status_code == 200 and len(r.content) > 1000:
-                    with open(local_path, "wb") as f:
-                        f.write(r.content)
-                    return local_path
+                async with client.stream("GET", url) as resp:
+                    if resp.status_code == 200:
+                        with open(local_path, "wb") as f:
+                            async for chunk in resp.aiter_bytes(65536):
+                                f.write(chunk)
+                        if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+                            return local_path
         except Exception as e:
             last_err = e
             try:
@@ -826,11 +843,14 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
                 def fetch_u():
                     req = urllib.request.Request(url, headers=headers)
                     with urllib.request.urlopen(req, timeout=60) as resp:
-                        return resp.read()
-                data = await asyncio.to_thread(fetch_u)
-                if len(data) > 1000:
-                    with open(local_path, "wb") as f:
-                        f.write(data)
+                        with open(local_path, "wb") as out_f:
+                            while True:
+                                chunk = resp.read(65536)
+                                if not chunk:
+                                    break
+                                out_f.write(chunk)
+                await asyncio.to_thread(fetch_u)
+                if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
                     return local_path
             except Exception as e2:
                 last_err = e2
@@ -856,6 +876,8 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
             if f and os.path.exists(f) and not f.startswith(TRACKS_DIR):
                 try: os.remove(f)
                 except: pass
+        import gc
+        gc.collect()
 
     try:
         source_audio_file = await get_or_download_audio_file(task_id, track, "")
@@ -866,7 +888,7 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
         else:
             stem_filter = "stereotools=mlev=0.015625:slev=1.5"
             
-        ffmpeg_cmd = ["ffmpeg", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_stem_out]
+        ffmpeg_cmd = ["ffmpeg", "-threads", "1", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_stem_out]
         await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         from starlette.background import BackgroundTask
@@ -960,6 +982,8 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             if f and os.path.exists(f) and not f.startswith(TRACKS_DIR):
                 try: os.remove(f)
                 except: pass
+        import gc
+        gc.collect()
 
     try:
         source_audio_file = await get_or_download_audio_file(task_id, track, "")
@@ -974,13 +998,13 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             )
             
         # Process with FFmpeg
-        ffmpeg_cmd = ["ffmpeg", "-y", "-i", source_audio_file, "-map_metadata", "-1"]
+        ffmpeg_cmd = ["ffmpeg", "-threads", "1", "-y", "-i", source_audio_file, "-map_metadata", "-1"]
         if master_filter:
             ffmpeg_cmd.extend(["-af", master_filter])
         if audio_format == "wav":
             ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
         elif audio_format == "flac":
-            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8", "-ar", "44100"])
+            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "5", "-ar", "44100"])
         elif audio_format == "mp3":
             ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100"])
             
@@ -1075,4 +1099,4 @@ async def api_logout(request: Request):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False, workers=1)
