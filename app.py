@@ -417,33 +417,35 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
             for p in parts:
-                enriched_parts.append(p)
                 key = p.lower()
                 if key in mapping:
                     enriched_parts.append(mapping[key])
+                else:
+                    enriched_parts.append(p)
             return ", ".join(enriched_parts)
 
         # ----------
-        # Helper: expand known vocal artist keywords into richer descriptions
+        # Helper: expand known vocal artist keywords into richer descriptions (REPLACING the artist name)
         # ----------
         def enrich_voice(style_str: str) -> str:
-            """Add tags for known vocal artists."""
+            """Add tags for known vocal artists and replace real names so Udio doesn't reject them."""
             voice_map = {
-                "luis miguel": "latin male romantic",
-                "cristian castro": "latin male pop",
-                "phil collings": "rock male gritty",
-                "freddie mercury": "rock male high-energy",
-                "omar farías": "latin christian male",
-                "elías álvarez": "latin christian male",
-                "steve green": "tenor lyrical light, flexible, A2-B4 range",
-                "david phelps": "rock male powerful",
+                "luis miguel": "smooth latin romantic male tenor",
+                "cristian castro": "bright soaring latin pop male tenor",
+                "phil collings": "1980s pop rock, gated reverb drums, emotive adult contemporary male vocals",
+                "phil collins": "1980s pop rock, gated reverb drums, emotive adult contemporary male vocals",
+                "freddie mercury": "operatic theatrical rock male tenor",
+                "omar farías": "latin christian male tenor",
+                "elías álvarez": "latin christian male tenor",
+                "steve green": "inspirational classical Christian tenor, lyrical light flexible A2-B4 range",
+                "david phelps": "powerful soaring gospel tenor",
                 "cuarteto de voz masculina": "male choir classic",
                 "filarmónica": "SATB choir",
                 "orquesta": "SATB choir",
-                "laura pausini": "pop female lyrical",
-                "christina aguilera": "pop female powerhouse",
-                "mariah carey": "pop female high-range",
-                "celine dion": "pop female operatic",
+                "laura pausini": "passionate Italian pop female lyrical",
+                "christina aguilera": "powerhouse pop soul female vocals",
+                "mariah carey": "virtuosic pop female high-range",
+                "celine dion": "dramatic operatic pop female belting",
                 "coro pentecostal": "congregational choir, multi-voice church choir, joyful unison vocals",
                 "coros pentecostales": "congregational choir, multi-voice church choir, joyful unison vocals",
                 "coro": "congregational choir, multi-voice vocal ensemble",
@@ -451,14 +453,58 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
             for p in parts:
-                enriched_parts.append(p)
                 key = p.lower()
                 if key in voice_map:
                     enriched_parts.append(voice_map[key])
+                else:
+                    enriched_parts.append(p)
             return ", ".join(enriched_parts)
+
+        def sanitize_artist_names(style_str: str) -> str:
+            """Translates banned artist/band names into allowed sonic/production descriptors to comply with Udio policy."""
+            artist_translations = {
+                r"\bphil\s+collin[s|g]s?\b": "1980s pop rock, gated reverb drums, dramatic dynamic tom fills, emotive adult contemporary",
+                r"\bluis\s+miguel\b": "smooth latin romantic pop, big band brass, emotive male tenor, polished studio production",
+                r"\bcristian\s+castro\b": "dramatic latin pop ballad, bright soaring male tenor vocals, orchestral pop",
+                r"\bfreddie\s+mercury\b": "operatic theatrical rock, powerhouse male tenor, dramatic dynamic range",
+                r"\bmarcos\s+witt\b": "contemporary Christian worship, bright acoustic grand piano, warm devotional praise vocals",
+                r"\bsteve\s+green\b": "inspirational classical Christian tenor, lyrical vocal tone, orchestral hymn",
+                r"\bdavid\s+phelps\b": "powerful gospel tenor, soaring operatic vocal range, dramatic gospel praise",
+                r"\blaura\s+pausini\b": "passionate Italian pop ballad, emotional lyrical female vocals",
+                r"\bchristina\s+aguilera\b": "powerhouse pop soul female vocals, wide vocal range, expressive melisma",
+                r"\bmariah\s+carey\b": "virtuosic pop R&B female vocals, whistle register, lush vocal harmonies",
+                r"\bceline\s+dion\b": "dramatic operatic pop ballad, powerhouse belting female vocals",
+                r"\bhillsong(\s+worship|\s+united)?\b": "modern congregational anthemic worship, ambient delay electric guitars, driving drums",
+                r"\belevation(\s+worship)?\b": "contemporary arena worship, big drum swells, driving bass, anthemic chorus",
+                r"\bbethel(\s+music)?\b": "atmospheric Christian worship, intimate acoustic build, lush ambient synth pads",
+                r"\bbeatles\b": "1960s British invasion pop rock, vintage vocal harmonies, classic jangle guitar",
+                r"\bqueen\b": "operatic stadium rock, layered vocal harmonies, Brian May style guitar harmonies",
+                r"\bcoldplay\b": "anthemic post-Britpop, echoing grand piano, soaring stadium rock vocals",
+                r"\bu2\b": "post-punk stadium rock, dotted-eighth rhythmic delay guitar, soaring vocal delivery",
+                r"\bmichael\s+jackson\b": "80s dance pop funk, crisp rhythmic drums, percussive vocal accents",
+                r"\bwhitney\s+houston\b": "gospel-infused pop powerhouse female vocals, soaring resonant belt",
+                r"\bstevie\s+wonder\b": "70s classic soul funk, clavinet, soulful expressive male vocals",
+                r"\belton\s+john\b": "70s piano pop rock, driving acoustic grand piano, theatrical vocal delivery",
+                r"\bmarcelo\s+patrono\b": "acoustic Christian worship, warm intimate guitar, devotional vocals",
+                r"\bcoalo\s+zamorano\b": "upbeat latin Christian gospel pop, energetic brass, joyful worship",
+                r"\bjesus\s+adrian\s+romero\b": "intimate acoustic Christian worship, nylon guitar, warm devotional baritone",
+                r"\bdanilo\s+montero\b": "congregational Christian praise, uplifting pop worship, bright electric guitars",
+                r"\bjuan\s+luis\s+guerra\b": "bachata and merengue latin fusion, rich horn arrangements, poetic vocals",
+                r"\bbronco\b": "grupero band, regional mexican romantic cumbia ballad",
+                r"\blos\s+bukis\b": "grupero ballad, 80s synthesizer grupero ballad",
+            }
+            cleaned = style_str
+            for pattern, replacement in artist_translations.items():
+                match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+                if match:
+                    found_name = match.group(0)
+                    log_msg(f"Filtro de artista Udio: Reemplazando '{found_name}' por descriptores sónicos permitidos para evitar rechazo de la API.")
+                    cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+            return cleaned
 
         style = enrich_style(style)
         style = enrich_voice(style)
+        style = sanitize_artist_names(style)
 
         # Clean structural tags from style string (they belong in lyrics, not style)
         style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
