@@ -700,7 +700,7 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
                 except: pass
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(audio_url)
             if r.status_code != 200:
                 raise HTTPException(status_code=500, detail="No se pudo descargar el audio original")
@@ -729,6 +729,7 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             path=temp_out, 
             filename=f"{safe_title}{suffix}.{audio_format}", 
             media_type=f"audio/{audio_format}",
+            headers={"Content-Disposition": f'attachment; filename="{safe_title}{suffix}.{audio_format}"'},
             background=BackgroundTask(cleanup_files, [temp_mp3, temp_out])
         )
     except Exception as e:

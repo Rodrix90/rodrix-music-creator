@@ -551,9 +551,7 @@ const masterIds = ['mWidth','mEq','mLoud'];
 function saveMaster(){ localStorage.setItem('rodrixMaster', JSON.stringify({w:$('mWidth').value, eq:$('mEq').value, loud:$('mLoud').value})); }
 function updateWidthLabel(){ const v = +$('mWidth').value; $('mWidthVal').textContent = v <= 1 ? 'Original' : 'x' + v.toFixed(1); }
 function previewUrl(t){
-  if (+$('mWidth').value <= 1 && $('mEq').value === 'none' && $('mLoud').value === 'none') return t.audio_url;
-  const q = new URLSearchParams({ width: $('mWidth').value, eq: $('mEq').value, loud: $('mLoud').value });
-  return '/api/download/' + encodeURIComponent(t.id) + '/mp3?' + q.toString();
+  return t.audio_url || '';
 }
 try { const s = JSON.parse(localStorage.getItem('rodrixMaster') || '{}');
   if (s.w) $('mWidth').value = s.w; if (s.eq) $('mEq').value = s.eq; if (s.loud) $('mLoud').value = s.loud; } catch(e){}
@@ -576,7 +574,13 @@ $('libList').addEventListener('click', e => {
   const a = e.target.closest('a[data-dl]'); if (!a) return;
   e.preventDefault();
   const q = new URLSearchParams({ width: $('mWidth').value, eq: $('mEq').value, loud: $('mLoud').value });
-  window.open('/api/download/' + encodeURIComponent(a.dataset.id) + '/' + a.dataset.dl + '?' + q.toString(), '_blank');
+  const dlUrl = '/api/download/' + encodeURIComponent(a.dataset.id) + '/' + a.dataset.dl + '?' + q.toString();
+  const tempLink = document.createElement('a');
+  tempLink.href = dlUrl;
+  tempLink.setAttribute('download', '');
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  document.body.removeChild(tempLink);
 });
 
 loadLibrary();
