@@ -256,8 +256,17 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               </div>
             </div>
             <div class="field">
-              <label class="label" for="excludeInput">Excluir estilos</label>
-              <input type="text" id="excludeInput" placeholder="Ej: autotune, trap">
+              <div class="label">
+                <label for="excludeInput">Excluir estilos / Negative Tags (Filtro Estricto)</label>
+              </div>
+              <input type="text" id="excludeInput" placeholder="Ej: autotune, distortion, cumbia, latin ritmics, salsa, bachata, bronco">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+                <button type="button" class="btn-sec btn-quick-excl" data-excl="cumbia, latin ritmics, salsa, bachata, grupero" style="padding:3px 8px;font-size:11px;border-radius:6px">+ Cumbia / Ritmos Latinos</button>
+                <button type="button" class="btn-sec btn-quick-excl" data-excl="bronco, regional mexicano, grupero, norteño" style="padding:3px 8px;font-size:11px;border-radius:6px">+ Bronco / Norteño / Tex-Mex</button>
+                <button type="button" class="btn-sec btn-quick-excl" data-excl="autotune, vocoder, pitch correction" style="padding:3px 8px;font-size:11px;border-radius:6px">+ Autotune</button>
+                <button type="button" class="btn-sec btn-quick-excl" data-excl="distortion, fuzz, heavy metal" style="padding:3px 8px;font-size:11px;border-radius:6px">+ Distorsión excesiva</button>
+                <button type="button" class="btn-sec btn-quick-excl" data-excl="reggaeton, dembow, trap" style="padding:3px 8px;font-size:11px;border-radius:6px">+ Reggaetón / Urbano</button>
+              </div>
             </div>
             <label class="check"><input type="checkbox" id="bypass" checked> Anti-Copyright (audio de referencia)</label>
             <label class="check" title="Si la API rechaza la letra por 'copyrighted material', activá esto. Puede empeorar la pronunciación."><input type="checkbox" id="obfuscate"> Ofuscar letra (si la API la rechaza por copyright)</label>
@@ -688,6 +697,7 @@ $('libList').addEventListener('click', async e => {
     }
     if (t.pronunciation !== undefined && t.pronunciation) $('pronInput').value = t.pronunciation;
     if (t.obfuscate !== undefined) $('obfuscate').checked = !!t.obfuscate;
+    if (t.exclude_styles !== undefined) $('excludeInput').value = t.exclude_styles;
     
     setActive('nav-crear');
     document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
@@ -712,6 +722,23 @@ $('libList').addEventListener('click', async e => {
 });
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(x => x.classList.remove('open')));
 $('refreshLib').addEventListener('click', loadLibrary);
+
+/* ---------- Botones rápidos de exclusión de estilos ---------- */
+document.querySelectorAll('.btn-quick-excl').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = btn.dataset.excl;
+    const current = $('excludeInput').value.trim();
+    if (!current) {
+      $('excludeInput').value = val;
+    } else {
+      const items = current.split(',').map(s => s.trim()).filter(Boolean);
+      val.split(',').map(s => s.trim()).filter(Boolean).forEach(newItem => {
+        if (!items.includes(newItem)) items.push(newItem);
+      });
+      $('excludeInput').value = items.join(', ');
+    }
+  });
+});
 
 /* ---------- Diccionario de Pronunciación ---------- */
 async function loadDictionary(){

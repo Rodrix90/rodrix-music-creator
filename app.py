@@ -294,16 +294,22 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 log_msg(f"Pronunciación: '{word}' -> '{sound}'")
 
     if is_instrumental:
-        style = style + ", instrumental, no vocals"
+        final_lyrics = "[Instrumental]"
     else:
-        style = style + ", latin american vocals, mexican, no spain accent"
-        prefix = "[Vocals in Mexican Spanish accent]\n"
+        # Determine prefix and vocal accent without forcing regional Mexican genre
+        if "mexican" in style.lower() or "mexicano" in style.lower():
+            prefix = "[Language: Spanish]\n[Vocals: Mexican Spanish accent]\n"
+        elif "coro" in style.lower() or "choir" in style.lower():
+            prefix = "[Language: Spanish]\n[Vocals: Congregational church choir, natural Latin Spanish vocals]\n"
+        else:
+            prefix = "[Language: Spanish]\n[Vocals: Natural Latin American Spanish, clear tone, no castilian lisp]\n"
+        
         # Ofuscar la letra con caracteres invisibles solo si el usuario lo pide (evita el filtro
         # de copyright de la API, pero puede empeorar la pronunciación).
         if obfuscate and final_lyrics:
             log_msg("Ofuscando letra para evitar detección de copyright...")
             final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
-        elif final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
+        elif final_lyrics and not final_lyrics.strip().startswith("[Language") and not final_lyrics.strip().startswith("[Vocals"):
             final_lyrics = prefix + final_lyrics
         
     upload_url = None
@@ -365,6 +371,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
+                "coro pentecostal": "fast pentecostal Christian praise choir, upbeat joyful congregational worship, live acoustic drums, punchy electric bass, clean rhythm electric guitar, high tempo 135 bpm",
+                "coros pentecostales": "fast pentecostal Christian praise choir, upbeat joyful congregational worship, live acoustic drums, punchy electric bass, clean rhythm electric guitar, high tempo 135 bpm",
+                "pentecostal": "fast pentecostal praise, lively joyful congregational worship, live drums, bass guitar, rhythm guitar",
+                "avivamiento": "energetic revival praise, joyful congregational choir, fast tempo, live drums, bass, rhythm guitar",
+                "coros de avivamiento": "energetic revival praise, joyful congregational choir, fast tempo, live drums, bass, rhythm guitar",
+                "alabanza rapida": "fast joyful Christian praise, driving tempo, live acoustic drums, bass, rhythm electric guitar",
+                "alabanza rápida": "fast joyful Christian praise, driving tempo, live acoustic drums, bass, rhythm electric guitar",
+                "guitarra bajo bateria": "rhythm electric guitar and acoustic guitar, driving electric bass guitar, energetic live acoustic drums",
+                "guitarra bajo batería": "rhythm electric guitar and acoustic guitar, driving electric bass guitar, energetic live acoustic drums",
             }
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
@@ -396,6 +411,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "christina aguilera": "pop female powerhouse",
                 "mariah carey": "pop female high-range",
                 "celine dion": "pop female operatic",
+                "coro pentecostal": "congregational choir, multi-voice church choir, joyful unison vocals",
+                "coros pentecostales": "congregational choir, multi-voice church choir, joyful unison vocals",
+                "coro": "congregational choir, multi-voice vocal ensemble",
             }
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
@@ -408,10 +426,78 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
 
         style = enrich_style(style)
         style = enrich_voice(style)
-        # Ensure the final style always forces a Mexican/Latin American Spanish accent
-        if "latin american vocals" not in style.lower():
-            style = style + ", latin american vocals, mexican, no spain accent"
+
+        # Vocal styling in style prompt:
+        if is_instrumental:
+            if "instrumental" not in style.lower():
+                style = style + ", instrumental, no vocals"
+        else:
+            if "mexican" in style.lower() or "mexicano" in style.lower():
+                vocal_tag = "mexican spanish vocals"
+            elif "coro" in style.lower() or "choir" in style.lower():
+                vocal_tag = "congregational choir, church choir, natural latin spanish vocals"
+            else:
+                vocal_tag = "spanish vocals, clear natural latin american pronunciation, no castilian lisp"
+            
+            if "spanish vocals" not in style.lower() and "choir" not in style.lower():
+                style = f"{style}, {vocal_tag}"
+
         # ----------
+        # Rigorous Style Exclusion (Negative Prompting)
+        # ----------
+        neg_final_str = ""
+        if exclude_styles and exclude_styles.strip():
+            raw_excl = [x.strip() for x in re.split(r'[,;\n]+', exclude_styles) if x.strip()]
+            
+            synonym_map = {
+                "cumbia": ["cumbia", "ritmo cumbia", "grupero", "norteño", "accordion cumbia"],
+                "latin ritmics": ["latin dance rhythms", "tropical rhythm", "reggaeton beat", "dembow", "cumbia"],
+                "ritmos latinos": ["latin dance rhythms", "tropical rhythm", "reggaeton beat", "dembow", "cumbia"],
+                "salsa": ["salsa", "salsa horns", "latin brass"],
+                "bachata": ["bachata", "bachata bongo", "bongo beat"],
+                "autotune": ["autotune", "pitch correction", "robotic voice", "vocoder"],
+                "distortion": ["heavy distortion", "fuzz", "distorted guitar"],
+                "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "bronco style"],
+                "mexican": ["regional mexican", "norteño", "grupero", "ranchera", "mariachi"],
+                "bronco": ["grupero", "bronco style", "cumbia grupera", "norteño"],
+                "reggaeton": ["reggaeton", "dembow beat", "urban latin"],
+                "trap": ["trap beat", "808 sub bass trap", "hi-hat rolls trap"],
+            }
+            
+            neg_tags_list = []
+            for item in raw_excl:
+                neg_tags_list.append(item)
+                # Strip directly from style if it matches
+                style = re.sub(rf'\b{re.escape(item)}\b', '', style, flags=re.IGNORECASE)
+                key = item.lower()
+                if key in synonym_map:
+                    for syn in synonym_map[key]:
+                        neg_tags_list.append(syn)
+                        style = re.sub(rf'\b{re.escape(syn)}\b', '', style, flags=re.IGNORECASE)
+
+            # Clean up style punctuation
+            style = re.sub(r',\s*,+', ',', style).strip(' ,')
+
+            # Deduplicate
+            seen = set()
+            dedup_neg = []
+            for t in neg_tags_list:
+                tl = t.lower()
+                if tl not in seen:
+                    seen.add(tl)
+                    dedup_neg.append(t)
+
+            # Build rigid negative directives
+            # 1. Direct "no ..." tags in the style description:
+            no_directives = [f"no {t}" for t in dedup_neg[:8]]
+            style = f"{style}, {', '.join(no_directives)}, [Avoid: {', '.join(dedup_neg[:10])}]"
+            
+            # 2. Bracket exclusion meta at top of prompt/lyrics:
+            exclude_header = f"[Exclude: {', '.join(dedup_neg[:10])}]\n"
+            final_lyrics = exclude_header + final_lyrics
+            
+            neg_final_str = ", ".join(dedup_neg)
+            log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
 
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
@@ -432,8 +518,11 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             }
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
-            if exclude_styles.strip():
-                payload["negative_tags"] = exclude_styles.strip()
+            if neg_final_str:
+                payload["negative_tags"] = neg_final_str
+                payload["negative_prompt"] = neg_final_str
+                payload["exclude_styles"] = neg_final_str
+                payload["excluded_tags"] = neg_final_str
         else:
             log_msg("Usando endpoint estándar Generate")
             url_generate = "https://udioapi.pro/api/generate"
@@ -452,8 +541,11 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             }
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
-            if exclude_styles.strip():
-                payload["negative_tags"] = exclude_styles.strip()
+            if neg_final_str:
+                payload["negative_tags"] = neg_final_str
+                payload["negative_prompt"] = neg_final_str
+                payload["exclude_styles"] = neg_final_str
+                payload["excluded_tags"] = neg_final_str
 
         max_retries = 3
         for attempt in range(max_retries):
@@ -572,7 +664,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                                     "style_influence": style_influence,
                                     "audio_influence": audio_influence,
                                     "pronunciation": pronunciation,
-                                    "obfuscate": obfuscate
+                                    "obfuscate": obfuscate,
+                                    "exclude_styles": exclude_styles
                                 }
                                 final_tracks.append(track_info)
                                 add_track_to_library(track_info)
