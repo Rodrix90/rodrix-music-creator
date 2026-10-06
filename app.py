@@ -196,6 +196,7 @@ async def transform_audio(
     audio_influence: int = Form(25),
     model: str = Form("chirp-v4-5"),
     pronunciation: str = Form(""),
+    obfuscate: bool = Form(False),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
@@ -215,7 +216,7 @@ async def transform_audio(
         run_transform_task,
         task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
         include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-        style_influence, audio_influence, model, pronunciation
+        style_influence, audio_influence, model, pronunciation, obfuscate
     )
     
     return {"status": "started", "task_id": task_id}
@@ -254,7 +255,7 @@ async def make_permanent_url(original_url: str) -> str:
         print(f"Error re-uploading to catbox: {e}")
     return original_url
 
-async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation=""):
+async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation="", obfuscate=False):
     def log_msg(msg):
         import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
@@ -297,9 +298,12 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
     else:
         style = style + ", latin american vocals, mexican, no spain accent"
         prefix = "[Vocals in Mexican Spanish accent]\n"
-        # La letra ya NO se ofusca con caracteres invisibles: degradaba la pronunciación.
-        # El Anti-Copyright actúa sobre el audio de referencia (FFmpeg).
-        if final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
+        # Ofuscar la letra con caracteres invisibles solo si el usuario lo pide (evita el filtro
+        # de copyright de la API, pero puede empeorar la pronunciación).
+        if obfuscate and final_lyrics:
+            log_msg("Ofuscando letra para evitar detección de copyright...")
+            final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
+        elif final_lyrics and not final_lyrics.strip().startswith("[Vocals"):
             final_lyrics = prefix + final_lyrics
         
     upload_url = None
@@ -632,23 +636,36 @@ async def get_me(current_user: str = Depends(get_current_user)):
 def build_master_filter(width: float, eq: str, loud: str) -> str:
     """Construye la cadena de filtros FFmpeg de masterización (valores validados)."""
     filters = []
-    # Ecualización
-    if eq == "warm":
-        filters.append("lowshelf=f=120:g=2.5,highshelf=f=9000:g=-1.5")
-    elif eq == "bright":
-        filters.append("highshelf=f=8000:g=3,lowshelf=f=100:g=-1")
-    elif eq == "vocal":
-        filters.append("equalizer=f=3000:t=q:w=1:g=2,highpass=f=30")
-    elif eq == "bass":
-        filters.append("lowshelf=f=100:g=4")
+    # Ecualización (curvas de estudio)
+    eq_presets = {
+        "warm":    "lowshelf=f=120:g=2.5,highshelf=f=9000:g=-1.5",
+        "bright":  "highshelf=f=8000:g=3,lowshelf=f=100:g=-1",
+        "air":     "highshelf=f=12000:g=2.5",
+        "vocal":   "equalizer=f=3000:t=q:w=1:g=2,highpass=f=30",
+        "bass":    "lowshelf=f=100:g=4",
+        "smile":   "lowshelf=f=80:g=3,equalizer=f=900:t=q:w=0.8:g=-2,highshelf=f=10000:g=3",
+        "clarity": "highpass=f=30,equalizer=f=250:t=q:w=1.2:g=-3,equalizer=f=5000:t=q:w=1:g=1.5",
+        "deess":   "equalizer=f=7000:t=q:w=2:g=-3.5",
+        "lowcut":  "highpass=f=80",
+        "radio":   "highpass=f=100,equalizer=f=2500:t=q:w=1:g=3,lowpass=f=12000",
+        "vintage": "lowshelf=f=100:g=2,highshelf=f=10000:g=-3,lowpass=f=14000",
+        "smooth":  "equalizer=f=4500:t=q:w=1.2:g=-2.5,highshelf=f=10000:g=-2",
+    }
+    if eq in eq_presets:
+        filters.append(eq_presets[eq])
     # Ancho estéreo (1.0 = original, >1 = más ancho)
     width = max(1.0, min(width, 2.5))
     if width > 1.0:
         filters.append(f"extrastereo=m={width:.2f}")
-    # Compresión + loudness
-    if loud in ("streaming", "loud"):
-        target = -14 if loud == "streaming" else -9
-        filters.append("acompressor=threshold=-18dB:ratio=3:attack=20:release=250")
+    # Compresión + loudness de estudio
+    loud_presets = {
+        "dynamic":    (-16, "acompressor=threshold=-20dB:ratio=2:attack=30:release=300"),
+        "commercial": (-11, "acompressor=threshold=-18dB:ratio=3:attack=20:release=250"),
+        "loud":       (-9,  "acompressor=threshold=-18dB:ratio=4:attack=15:release=200"),
+    }
+    if loud in loud_presets:
+        target, comp = loud_presets[loud]
+        filters.append(comp)
         filters.append(f"loudnorm=I={target}:TP=-1.0:LRA=11")
         filters.append("alimiter=limit=0.95")
     return ",".join(filters)
