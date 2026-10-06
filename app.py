@@ -115,6 +115,7 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         "ffmpeg",
         "-y",
         "-i", input_path,
+        "-vn",
         "-t", "120",
         "-map_metadata", "-1",
         "-af", "aformat=channel_layouts=mono,asetrate=44100*1.12,aresample=44100,atempo=0.892,flanger=delay=7:depth=7:regen=20:width=80:speed=2,vibrato=f=4.0:d=0.4,compand=attacks=0:points=-80/-80|-15/-15|0/-15|20/-15",
