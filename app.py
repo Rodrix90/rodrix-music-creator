@@ -1,4 +1,6 @@
 import os
+import re
+import gc
 import hmac
 import hashlib
 import httpx
@@ -317,7 +319,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
 
     # Correcciones de pronunciación: una por línea con formato "palabra=como suena"
     if pronunciation.strip() and not is_instrumental and final_lyrics:
-        import re
         for rule in pronunciation.splitlines():
             if "=" not in rule:
                 continue
