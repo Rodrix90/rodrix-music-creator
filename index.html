@@ -119,9 +119,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .btn-play{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;display:flex;gap:5px;align-items:center}
 .btn-play:hover{filter:brightness(1.15)}
 .t-actions .icon-btn{width:30px;height:30px;font-size:15px}
-.menu{display:none;position:absolute;bottom:36px;right:0;background:var(--side);border:1px solid var(--border);border-radius:8px;overflow:hidden;z-index:5;min-width:100px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.menu{display:none;position:absolute;top:36px;right:0;background:var(--side);border:1px solid var(--border);border-radius:8px;overflow:hidden;z-index:1000;min-width:175px;box-shadow:0 10px 30px rgba(0,0,0,.7)}
 .menu.open{display:block}
-.menu a{display:block;padding:8px 14px;color:var(--text);text-decoration:none;font-size:12px}
+.menu.open-up{top:auto;bottom:36px}
+.menu a{display:block;padding:8px 14px;color:var(--text);text-decoration:none;font-size:12px;white-space:nowrap}
 .menu a:hover{background:var(--accent-dark)}
 .player{border-top:1px solid var(--border);padding:12px 16px;display:none;flex-direction:column;gap:6px;background:#181826}
 .player.show{display:flex}
@@ -638,7 +639,9 @@ function playTrack(t) {
 }
 
 async function triggerAudioDownload(url, defaultFilename) {
-  logLine(`Iniciando descarga de "${defaultFilename}"...`);
+  logLine(`Preparando descarga de "${defaultFilename}" (procesando audio)...`);
+  const originalCursor = document.body.style.cursor;
+  document.body.style.cursor = 'wait';
   try {
     const res = await fetch(url);
     if (!res.ok) {
@@ -670,12 +673,28 @@ async function triggerAudioDownload(url, defaultFilename) {
     tempLink.download = filename;
     document.body.appendChild(tempLink);
     tempLink.click();
-    document.body.removeChild(tempLink);
-    URL.revokeObjectURL(blobUrl);
-    logLine(`¡Descarga de "${filename}" finalizada con éxito!`);
+    
+    // Defer revocation so browser download manager has time to complete streaming
+    setTimeout(() => {
+      try {
+        if (tempLink.parentNode) document.body.removeChild(tempLink);
+        URL.revokeObjectURL(blobUrl);
+      } catch(e) {}
+    }, 60000);
+    
+    logLine(`¡Descarga de "${filename}" iniciada con éxito!`);
   } catch(err) {
-    logLine(`ERROR de descarga: ${err.message}`, 'err');
-    alert(`Error de descarga: ${err.message}`);
+    logLine(`Aviso en fetch: ${err.message}. Intentando enlace directo...`);
+    const fallbackLink = document.createElement('a');
+    fallbackLink.href = url;
+    fallbackLink.download = defaultFilename;
+    document.body.appendChild(fallbackLink);
+    fallbackLink.click();
+    setTimeout(() => {
+      try { if (fallbackLink.parentNode) document.body.removeChild(fallbackLink); } catch(e){}
+    }, 10000);
+  } finally {
+    document.body.style.cursor = originalCursor;
   }
 }
 
@@ -744,7 +763,22 @@ $('libList').addEventListener('click', async e => {
   } else if (act === 'dl') {
     const m = card.querySelector('.menu');
     document.querySelectorAll('.menu.open').forEach(x => { if (x !== m) x.classList.remove('open'); });
-    m.classList.toggle('open'); e.stopPropagation();
+    
+    // Check available vertical space inside libList
+    const listRect = $('libList').getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    const spaceBelow = listRect.bottom - btnRect.bottom;
+    const spaceAbove = btnRect.top - listRect.top;
+    
+    // If not enough space below (<240px) and plenty of space above (>240px), open upwards.
+    // Otherwise open downwards so the top items (MP3 & WAV) are NEVER cut off!
+    if (spaceBelow < 240 && spaceAbove > 240) {
+      m.classList.add('open-up');
+    } else {
+      m.classList.remove('open-up');
+    }
+    m.classList.toggle('open');
+    e.stopPropagation();
   } else if (act === 'del') {
     if (!confirm('¿Eliminar esta pista de la librería?')) return;
     const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });

@@ -363,15 +363,18 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             with open(temp_file_path, "wb") as f:
                 f.write(audio_content)
                 
-            log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
-            bypass_result = await asyncio.to_thread(bypass_audio_fingerprint, temp_file_path, bypassed_file_path)
-            
-            if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
-                target_upload_file = bypassed_file_path
-                log_msg("FFmpeg terminó exitosamente. Usando audio modificado.")
+            if bypass_copyright:
+                log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
+                bypass_result = await asyncio.to_thread(bypass_audio_fingerprint, temp_file_path, bypassed_file_path)
+                if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
+                    target_upload_file = bypassed_file_path
+                    log_msg("FFmpeg terminó exitosamente. Usando audio modificado.")
+                else:
+                    target_upload_file = temp_file_path
+                    log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
             else:
                 target_upload_file = temp_file_path
-                log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
+                log_msg("Usando audio original limpio (sin modulación de huella acústica).")
                 
             log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
             upload_url = await upload_to_uguu_async(target_upload_file)
@@ -405,15 +408,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "fast pentecostal Christian praise choir, upbeat joyful congregational worship, live acoustic drums, punchy electric bass, clean rhythm electric guitar, high tempo 135 bpm",
-                "coros pentecostales": "fast pentecostal Christian praise choir, upbeat joyful congregational worship, live acoustic drums, punchy electric bass, clean rhythm electric guitar, high tempo 135 bpm",
-                "pentecostal": "fast pentecostal praise, lively joyful congregational worship, live drums, bass guitar, rhythm guitar",
-                "avivamiento": "energetic revival praise, joyful congregational choir, fast tempo, live drums, bass, rhythm guitar",
-                "coros de avivamiento": "energetic revival praise, joyful congregational choir, fast tempo, live drums, bass, rhythm guitar",
-                "alabanza rapida": "fast joyful Christian praise, driving tempo, live acoustic drums, bass, rhythm electric guitar",
-                "alabanza rápida": "fast joyful Christian praise, driving tempo, live acoustic drums, bass, rhythm electric guitar",
-                "guitarra bajo bateria": "rhythm electric guitar and acoustic guitar, driving electric bass guitar, energetic live acoustic drums",
-                "guitarra bajo batería": "rhythm electric guitar and acoustic guitar, driving electric bass guitar, energetic live acoustic drums",
+                "coro pentecostal": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship",
+                "coros pentecostales": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship",
+                "pentecostal": "fast upbeat pentecostal praise, straight 4/4 live drum kit, punchy bass guitar, rhythm guitar, energetic congregational worship, fast tempo 135 bpm",
+                "avivamiento": "energetic revival praise, straight 4/4 live drums with snare backbeat, driving bass guitar, rhythm guitar, fast tempo 135 bpm",
+                "coros de avivamiento": "energetic revival praise, straight 4/4 live drums with snare backbeat, driving bass guitar, rhythm guitar, fast tempo 135 bpm",
+                "alabanza rapida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
+                "alabanza rápida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
+                "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat",
+                "guitarra bajo batería": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat",
             }
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
@@ -632,29 +635,30 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
             if neg_final_str:
+                payload["tags"] = neg_final_str
                 payload["negative_tags"] = neg_final_str
                 payload["negative_prompt"] = neg_final_str
                 payload["exclude_styles"] = neg_final_str
                 payload["excluded_tags"] = neg_final_str
         else:
-            log_msg("Usando endpoint estándar Generate")
-            url_generate = "https://udioapi.pro/api/generate"
-            url_status = "https://udioapi.pro/api/feed"
+            log_msg("Usando endpoint V2 Generate")
+            url_generate = "https://udioapi.pro/api/v2/generate"
+            url_status = "https://udioapi.pro/api/v2/feed"
             
             payload = {
-                "prompt": style,
-                "lyrics": final_lyrics,
-                "tags": style,
+                "custom_mode": True,
+                "prompt": final_lyrics,
+                "style": style,
                 "title": title,
                 "make_instrumental": is_instrumental,
                 "model": model,
-                "custom_mode": True,
-                "prompt_strength": round(style_influence / 100.0, 2),
-                "weirdness": round(weirdness / 100.0, 2)
+                "style_weight": round(style_influence / 100.0, 2),
+                "weirdness_constraint": round(weirdness / 100.0, 2)
             }
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
             if neg_final_str:
+                payload["tags"] = neg_final_str
                 payload["negative_tags"] = neg_final_str
                 payload["negative_prompt"] = neg_final_str
                 payload["exclude_styles"] = neg_final_str
@@ -911,8 +915,20 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
     if not track:
+        for task in TASKS.values():
+            for t in task.get("tracks", []):
+                if t.get("id") == task_id:
+                    track = t
+                    break
+            if track:
+                break
+    if not track:
+        local_check = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+        if os.path.exists(local_check):
+            track = {"id": task_id, "title": "Rodrix_Track", "audio_url": f"/api/audio_file/{task_id}"}
+    if not track:
         raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
-    
+
     title = track.get("title", "Rodrix_Track")
     safe_title = "".join([c for c in title if c.isalnum() or c in ' -_']).strip() or "track"
     
@@ -1016,8 +1032,20 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
     if not track:
+        for task in TASKS.values():
+            for t in task.get("tracks", []):
+                if t.get("id") == task_id:
+                    track = t
+                    break
+            if track:
+                break
+    if not track:
+        local_check = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+        if os.path.exists(local_check):
+            track = {"id": task_id, "title": "Rodrix_Track", "audio_url": f"/api/audio_file/{task_id}"}
+    if not track:
         raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
-        
+
     title = track.get("title", "Rodrix_Track")
     safe_title = "".join([c for c in title if c.isalnum() or c in ' -_']).strip() or "track"
     master_filter = build_master_filter(width, eq, loud)
