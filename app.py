@@ -1321,6 +1321,20 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         print(f"Error descargando formato: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/me")
+async def get_me(request: Request):
+    user = request.session.get('user')
+    if not user:
+        return {"logged_in": False, "name": "Usuario", "email": ""}
+    email = user.get('email', '')
+    name = user.get('name') or user.get('given_name')
+    if not name and email:
+        name = email.split('@')[0].capitalize()
+    if not name:
+        name = "Rodrigo"
+    picture = user.get('picture', '')
+    return {"logged_in": True, "name": name, "email": email, "picture": picture}
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_spa(request: Request):
     user = request.session.get('user')
@@ -1331,11 +1345,18 @@ async def serve_spa(request: Request):
     if email != "rodryandy@gmail.com":
         return RedirectResponse(url="/login?error=Correo%20No%20Autorizado")
         
+    real_name = user.get('name') or user.get('given_name')
+    if not real_name and email:
+        real_name = email.split('@')[0].capitalize()
+    if not real_name:
+        real_name = "Rodrigo"
+
     index_path = os.path.join(os.getcwd(), "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             html = f.read()
-            html = html.replace("{{USER_EMAIL}}", email if email else "Usuario")
+            html = html.replace("{{USER_NAME}}", real_name)
+            html = html.replace("{{USER_EMAIL}}", email if email else "")
             return html
     return "<h3>index.html not found.</h3>"
 

@@ -205,7 +205,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
       <li><a href="#" id="nav-ayuda"><i class="ph ph-question"></i><span>Ayuda</span></a></li>
     </ul>
     <div class="side-foot">
-      <span class="user-mail">{{USER_EMAIL}}</span>
+      <div style="display:flex;align-items:center;gap:9px;min-width:0">
+        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden" id="userAvatar">R</div>
+        <div style="display:flex;flex-direction:column;min-width:0;line-height:1.2">
+          <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{USER_NAME}}</span>
+          <span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userEmailDisplay">{{USER_EMAIL}}</span>
+        </div>
+      </div>
       <a href="/api/logout"><i class="ph ph-sign-out"></i><span>Cerrar sesión</span></a>
     </div>
   </aside>
@@ -1537,8 +1543,34 @@ $('libList').addEventListener('click', e => {
   triggerAudioDownload(dlUrl, `${trackTitle}.${format}`);
 });
 
+async function loadUserInfo() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.name) {
+        const el = $('userNameDisplay');
+        if (el) el.textContent = data.name;
+        const av = $('userAvatar');
+        if (av) {
+          if (data.picture) {
+            av.innerHTML = `<img src="${esc(data.picture)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`;
+          } else {
+            av.textContent = data.name.charAt(0).toUpperCase();
+          }
+        }
+      }
+      if (data.email) {
+        const elEmail = $('userEmailDisplay');
+        if (elEmail) elEmail.textContent = data.email;
+      }
+    }
+  } catch(e){}
+}
+
 loadLibrary();
 loadDictionary();
+loadUserInfo();
 </script>
 </body>
 </html>
