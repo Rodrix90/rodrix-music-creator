@@ -1414,64 +1414,20 @@ function playTrack(t) {
   document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === t.id));
 }
 
-async function triggerAudioDownload(url, defaultFilename) {
-  logLine(`Preparando descarga de "${defaultFilename}" (procesando audio)...`);
-  const originalCursor = document.body.style.cursor;
-  document.body.style.cursor = 'wait';
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      const msg = errJson.detail || `Error HTTP ${res.status}`;
-      logLine(`ERROR al descargar: ${msg}`, 'err');
-      alert(`No se pudo descargar el archivo:\n${msg}`);
-      return;
-    }
-    const cType = res.headers.get('content-type') || '';
-    if (cType.includes('application/json')) {
-      const errJson = await res.json().catch(() => ({}));
-      logLine(`ERROR del servidor: ${errJson.detail || 'Respuesta inválida'}`, 'err');
-      alert(`Error del servidor: ${errJson.detail || 'Respuesta inválida'}`);
-      return;
-    }
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const tempLink = document.createElement('a');
-    tempLink.href = blobUrl;
-    
-    const disposition = res.headers.get('content-disposition');
-    let filename = defaultFilename;
-    if (disposition && disposition.includes('filename=')) {
-      const match = disposition.match(/filename="?([^";]+)"?/);
-      if (match && match[1]) filename = match[1];
-    }
-    
-    tempLink.download = filename;
-    document.body.appendChild(tempLink);
-    tempLink.click();
-    
-    // Defer revocation so browser download manager has time to complete streaming
-    setTimeout(() => {
-      try {
-        if (tempLink.parentNode) document.body.removeChild(tempLink);
-        URL.revokeObjectURL(blobUrl);
-      } catch(e) {}
-    }, 60000);
-    
-    logLine(`¡Descarga de "${filename}" iniciada con éxito!`);
-  } catch(err) {
-    logLine(`Aviso en fetch: ${err.message}. Intentando enlace directo...`);
-    const fallbackLink = document.createElement('a');
-    fallbackLink.href = url;
-    fallbackLink.download = defaultFilename;
-    document.body.appendChild(fallbackLink);
-    fallbackLink.click();
-    setTimeout(() => {
-      try { if (fallbackLink.parentNode) document.body.removeChild(fallbackLink); } catch(e){}
-    }, 10000);
-  } finally {
-    document.body.style.cursor = originalCursor;
+function triggerAudioDownload(url, defaultFilename) {
+  logLine(`Iniciando descarga directa de "${defaultFilename}"...`);
+  const link = document.createElement('a');
+  link.href = url;
+  if (defaultFilename) {
+    link.setAttribute('download', defaultFilename);
   }
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  
+  setTimeout(() => {
+    try { if (link.parentNode) document.body.removeChild(link); } catch(e){}
+  }, 3000);
 }
 
 $('libList').addEventListener('click', async e => {

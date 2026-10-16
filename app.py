@@ -333,42 +333,35 @@ async def run_voiceover_task(
             log_msg("Aplicando corte de retumbos (80 Hz), eliminación de acartonamiento y anti-siseo...")
             v_filters.append("highpass=f=80")
             v_filters.append("equalizer=f=320:width_type=o:width=1.3:g=-3.0")
-            v_filters.append("lowpass=f=16000")
 
         if eq_profile in ["pro_studio", "clarity"]:
-            log_msg("Aplicando ecualización de consola de estudio profesional (cuerpo analógico, presencia e inteligibilidad)...")
+            log_msg("Aplicando ecualización de consola de estudio profesional (cuerpo, presencia e inteligibilidad)...")
             v_filters.append("equalizer=f=180:width_type=o:width=1.2:g=2.0")
-            v_filters.append("equalizer=f=3600:width_type=o:width=1.2:g=3.2")
-            v_filters.append("equalizer=f=6800:width_type=q:width=2.5:g=-2.2")
-            v_filters.append("equalizer=f=11000:width_type=o:width=1.4:g=2.2")
+            v_filters.append("equalizer=f=3600:width_type=o:width=1.2:g=3.0")
+            v_filters.append("treble=g=2.2:f=10000")
         elif eq_profile == "warm":
             log_msg("Aplicando ecualización cálida pastoral (cuerpo redondo y graves suaves)...")
             v_filters.append("equalizer=f=160:width_type=o:width=1.2:g=2.8")
             v_filters.append("equalizer=f=2800:width_type=o:width=1.2:g=1.8")
-            v_filters.append("equalizer=f=10000:width_type=o:width=1.5:g=1.5")
+            v_filters.append("treble=g=1.5:f=9000")
         elif eq_profile == "gentle":
             log_msg("Aplicando ecualización íntima devocional...")
             v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=1.5")
             v_filters.append("equalizer=f=3000:width_type=o:width=1.0:g=1.5")
-            v_filters.append("equalizer=f=6000:width_type=q:width=2.0:g=-2.0")
 
-        if compression:
+        if compression or leveling:
             log_msg("Aplicando compresión óptica de estudio (estilo LA-2A: nivelación transparente y solidez vocal)...")
-            v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=15:release=220:makeup=2dB")
-
-        if leveling:
-            log_msg("Optimizando rango dinámico transparente...")
-            v_filters.append("speechnorm=e=3:r=0.0002:l=1")
+            v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=15:release=200:makeup=2.5dB")
 
         if vocal_reverb == "plate":
             log_msg("Agregando sutil reverb de estudio (Plate cálida: dimensión y aire sin tapar la voz)...")
-            v_filters.append("aecho=0.88:0.65:25|48|72:0.20|0.14|0.08")
+            v_filters.append("aecho=0.88:0.60:28|56:0.18|0.10")
         elif vocal_reverb == "hall":
             log_msg("Agregando reverb devocional (Hall suave y envolvente)...")
-            v_filters.append("aecho=0.84:0.70:35|70|115:0.28|0.18|0.10")
+            v_filters.append("aecho=0.84:0.65:35|70:0.25|0.12")
 
         # Limitador final true-peak para evitar saturación digital
-        v_filters.append("alimiter=limit=-1.0dB:attack=5:release=50")
+        v_filters.append("alimiter=limit=-1.0dB")
 
         voice_filter_str = ",".join(v_filters) if v_filters else "anull"
 
@@ -410,6 +403,8 @@ async def run_voiceover_task(
                 "-stream_loop", "-1", "-i", bg_file,
                 "-filter_complex", filter_complex,
                 "-map", "[out]",
+                "-t", f"{voice_dur:.2f}",
+                "-threads", "0",
                 "-c:a", "libmp3lame", "-b:a", "320k",
                 out_path
             ]
@@ -419,6 +414,8 @@ async def run_voiceover_task(
                 "ffmpeg", "-y",
                 "-i", temp_voice,
                 "-af", voice_filter_str,
+                "-t", f"{voice_dur:.2f}",
+                "-threads", "0",
                 "-c:a", "libmp3lame", "-b:a", "320k",
                 out_path
             ]
@@ -432,11 +429,20 @@ async def run_voiceover_task(
 
         log_msg("¡Predicación procesada y masterizada con éxito!")
         
+        # Subir copia de respaldo a la nube
+        cloud_backup = None
+        try:
+            cloud_backup = await upload_to_catbox_async(out_path)
+            if not cloud_backup:
+                cloud_backup = await upload_to_uguu_async(out_path)
+        except Exception:
+            pass
+
         track_info = {
             "id": task_id,
             "title": f"🎙️ {title}",
             "audio_url": f"/api/audio_file/{task_id}",
-            "raw_audio_url": f"/api/audio_file/{task_id}",
+            "raw_audio_url": cloud_backup or f"/api/audio_file/{task_id}",
             "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338A169'/%3E%3Ccircle cx='32' cy='24' r='10' fill='%23fff' opacity='0.9'/%3E%3Crect x='30' y='34' width='4' height='14' fill='%23fff'/%3E%3Cpath d='M22 48 L42 48' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M18 24 C18 34 46 34 46 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E",
             "duration": round(voice_dur),
             "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1186,7 +1192,7 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
     raise HTTPException(status_code=500, detail=f"No se pudo descargar el audio original: {last_err or 'enlace no disponible'}")
 
 @app.get("/api/stems/{task_id}/{stem_type}")
-async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depends(get_current_user)):
+async def get_stem_audio(task_id: str, stem_type: str):
     if stem_type not in ["vocals", "instrumental"]:
         raise HTTPException(status_code=400, detail="Tipo de stem no válido")
     library = load_library()
@@ -1207,7 +1213,9 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
         raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
 
     title = track.get("title", "Rodrix_Track")
-    safe_title = "".join([c for c in title if c.isalnum() or c in ' -_']).strip() or "track"
+    import unicodedata
+    clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
+    safe_title = "".join([c for c in clean_ascii if c.isalnum() or c in ' -_']).strip() or "track"
     
     temp_stem_out = f"temp_stem_out_{uuid.uuid4().hex}.mp3"
     
@@ -1228,7 +1236,7 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
         else:
             stem_filter = "stereotools=mlev=0.015625:slev=1.5"
             
-        ffmpeg_cmd = ["ffmpeg", "-threads", "1", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_stem_out]
+        ffmpeg_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_stem_out]
         await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         from starlette.background import BackgroundTask
@@ -1236,7 +1244,6 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
             path=temp_stem_out,
             filename=f"{safe_title}_{stem_type}.mp3",
             media_type="audio/mpeg",
-            headers={"Content-Disposition": f'attachment; filename="{safe_title}_{stem_type}.mp3"'},
             background=BackgroundTask(cleanup_files, [temp_stem_out])
         )
     except HTTPException:
@@ -1302,7 +1309,7 @@ def build_master_filter(width: float, eq: str, loud: str) -> str:
     return ",".join(filters)
 
 @app.get("/api/download/{task_id}/{audio_format}")
-async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none", current_user: str = Depends(get_current_user)):
+async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none"):
     if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
         
@@ -1347,12 +1354,11 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             return FileResponse(
                 path=source_audio_file,
                 filename=f"{safe_title}.mp3",
-                media_type="audio/mpeg",
-                headers={"Content-Disposition": f'attachment; filename="{safe_title}.mp3"'}
+                media_type="audio/mpeg"
             )
             
-        # Process with FFmpeg
-        ffmpeg_cmd = ["ffmpeg", "-threads", "1", "-y", "-i", source_audio_file, "-map_metadata", "-1"]
+        # Process with FFmpeg at maximum speed with multithreading
+        ffmpeg_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-map_metadata", "-1"]
         if master_filter:
             ffmpeg_cmd.extend(["-af", master_filter])
         if audio_format == "wav":
@@ -1374,7 +1380,6 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             path=temp_out, 
             filename=f"{safe_title}{suffix}.{audio_format}", 
             media_type=f"audio/{audio_format}",
-            headers={"Content-Disposition": f'attachment; filename="{safe_title}{suffix}.{audio_format}"'},
             background=BackgroundTask(cleanup_files, [temp_out])
         )
     except HTTPException:
@@ -1391,11 +1396,20 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
         raise HTTPException(status_code=400, detail="Formato no soportado")
     
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    library = load_library()
+    track = next((t for t in library if t.get("id") == task_id), None)
+    
+    # Si no está en disco local, intentar descargarlo del backup de nube
+    if not os.path.exists(local_path) or os.path.getsize(local_path) < 1000:
+        if track:
+            try:
+                local_path = await get_or_download_audio_file(task_id, track, "")
+            except Exception:
+                pass
+
     if not os.path.exists(local_path) or os.path.getsize(local_path) < 1000:
         raise HTTPException(status_code=404, detail="El audio de la predicación no se encuentra en el servidor.")
     
-    library = load_library()
-    track = next((t for t in library if t.get("id") == task_id), None)
     title = track.get("title", "Predicacion_Pastoral") if track else "Predicacion_Pastoral"
     import unicodedata
     clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
@@ -1405,12 +1419,11 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
         return FileResponse(
             path=local_path,
             filename=f"{safe_title}.mp3",
-            media_type="audio/mpeg",
-            headers={"Content-Disposition": f'attachment; filename="{safe_title}.mp3"'}
+            media_type="audio/mpeg"
         )
     elif audio_format == "wav":
         temp_wav = f"temp_vo_{uuid.uuid4().hex}.wav"
-        cmd = ["ffmpeg", "-threads", "1", "-y", "-i", local_path, "-c:a", "pcm_s16le", "-ar", "44100", temp_wav]
+        cmd = ["ffmpeg", "-threads", "0", "-y", "-i", local_path, "-c:a", "pcm_s16le", "-ar", "44100", temp_wav]
         await asyncio.to_thread(subprocess.run, cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         from starlette.background import BackgroundTask
         def rm_temp():
@@ -1421,7 +1434,6 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
             path=temp_wav,
             filename=f"{safe_title}.wav",
             media_type="audio/wav",
-            headers={"Content-Disposition": f'attachment; filename="{safe_title}.wav"'},
             background=BackgroundTask(rm_temp)
         )
 
