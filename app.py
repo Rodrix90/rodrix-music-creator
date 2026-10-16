@@ -262,6 +262,9 @@ async def process_voiceover(
     custom_bg: UploadFile = File(None),
     bg_volume: float = Form(0.12),
     ducking: bool = Form(True),
+    mic_profile: str = Form("behringer_tm1"),
+    interface_profile: str = Form("umc404hd"),
+    plugin_profile: str = Form("izotope_vea"),
     eq_profile: str = Form("pro_studio"),
     vocal_reverb: str = Form("plate"),
     compression: bool = Form(True),
@@ -288,7 +291,8 @@ async def process_voiceover(
         task_id, voice_bytes, voice_filename, title, bg_choice,
         custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
         eq_profile, noise_reduction, leveling,
-        vocal_reverb, compression
+        vocal_reverb, compression,
+        mic_profile, interface_profile, plugin_profile
     )
     
     return {"status": "started", "task_id": task_id}
@@ -297,7 +301,8 @@ async def run_voiceover_task(
     task_id, voice_bytes, voice_filename, title, bg_choice,
     custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
     eq_profile, noise_reduction, leveling,
-    vocal_reverb="plate", compression=True
+    vocal_reverb="plate", compression=True,
+    mic_profile="behringer_tm1", interface_profile="umc404hd", plugin_profile="izotope_vea"
 ):
     def log_msg(msg):
         import datetime
@@ -327,32 +332,64 @@ async def run_voiceover_task(
             voice_dur = 60.0
         log_msg(f"Audio del pastor detectado: {voice_dur:.1f} segundos.")
 
-        # Build professional vocal processing chain (Console EQ + LA-2A Compression + Subtle Studio Reverb)
+        # Build professional vocal processing chain (Behringer TM1 + UMC404HD + iZotope VEA + Reverb)
         v_filters = []
-        if noise_reduction:
-            log_msg("Aplicando corte de retumbos (80 Hz), eliminación de acartonamiento y anti-siseo...")
+        
+        # 1. INTERFAZ (Behringer UMC404HD Preamps MIDAS)
+        if interface_profile == "umc404hd":
+            log_msg("Activando emulación de interfaz Behringer U-Phoria UMC404HD (Preamps MIDAS 192kHz/24-bit)...")
+            v_filters.append("highpass=f=75")
+        else:
             v_filters.append("highpass=f=80")
-            v_filters.append("equalizer=f=320:width_type=o:width=1.3:g=-3.0")
 
-        if eq_profile in ["pro_studio", "clarity"]:
-            log_msg("Aplicando ecualización de consola de estudio profesional (cuerpo, presencia e inteligibilidad)...")
-            v_filters.append("equalizer=f=180:width_type=o:width=1.2:g=2.0")
-            v_filters.append("equalizer=f=3600:width_type=o:width=1.2:g=3.0")
-            v_filters.append("treble=g=2.2:f=10000")
-        elif eq_profile == "warm":
-            log_msg("Aplicando ecualización cálida pastoral (cuerpo redondo y graves suaves)...")
-            v_filters.append("equalizer=f=160:width_type=o:width=1.2:g=2.8")
-            v_filters.append("equalizer=f=2800:width_type=o:width=1.2:g=1.8")
-            v_filters.append("treble=g=1.5:f=9000")
-        elif eq_profile == "gentle":
-            log_msg("Aplicando ecualización íntima devocional...")
+        # 2. MICRÓFONO (Behringer TM1 Condensador 1\" Gold-Sputtered)
+        if mic_profile == "behringer_tm1":
+            log_msg("Aplicando respuesta de micrófono Behringer TM1 (cápsula 1\" dorada, calidez y presencia nítida)...")
+            v_filters.append("equalizer=f=180:width_type=o:width=1.2:g=1.8")
+            v_filters.append("equalizer=f=4200:width_type=o:width=1.2:g=2.8")
+            v_filters.append("treble=g=2.0:f=11000")
+        elif mic_profile == "shure_sm7b":
+            log_msg("Aplicando respuesta de micrófono Shure SM7B (cuerpo broadcast y proximidad)...")
+            v_filters.append("equalizer=f=220:width_type=o:width=1.2:g=2.5")
+            v_filters.append("equalizer=f=3200:width_type=o:width=1.2:g=2.2")
+        elif mic_profile == "neumann_u87":
+            log_msg("Aplicando respuesta de micrófono Neumann U87 (brillo sedoso y definición de estudio)...")
             v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=1.5")
-            v_filters.append("equalizer=f=3000:width_type=o:width=1.0:g=1.5")
+            v_filters.append("equalizer=f=5000:width_type=o:width=1.2:g=3.0")
+            v_filters.append("treble=g=2.5:f=12000")
 
-        if compression or leveling:
-            log_msg("Aplicando compresión óptica de estudio (estilo LA-2A: nivelación transparente y solidez vocal)...")
-            v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=15:release=200:makeup=2.5dB")
+        # 3. PLUGIN & PROCESAMIENTO IA (iZotope VEA)
+        if plugin_profile == "izotope_vea":
+            log_msg("Procesando con iZotope VEA (Voice Enhancement Assistant):")
+            if noise_reduction:
+                log_msg("  • iZotope VEA [CLEAN]: Eliminando acartonamiento, ruido de sala y siseo...")
+                v_filters.append("equalizer=f=320:width_type=o:width=1.3:g=-3.2")
+            
+            log_msg("  • iZotope VEA [SHAPE]: Modelado tonal y contorno vocal transparente...")
+            v_filters.append("equalizer=f=3500:width_type=o:width=1.4:g=2.6")
+            
+            if compression or leveling:
+                log_msg("  • iZotope VEA [BOOST]: Compresión óptica y nivelación transparente (voz sólida)...")
+                v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=15:release=200:makeup=2.5dB")
+        elif plugin_profile == "neve_channel":
+            log_msg("Procesando con Neve 1073 Channel Strip...")
+            v_filters.append("equalizer=f=160:width_type=o:width=1.2:g=2.5")
+            v_filters.append("equalizer=f=3600:width_type=o:width=1.2:g=2.8")
+            if compression:
+                v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=20:release=220:makeup=2.0dB")
+        elif plugin_profile == "ssl_vocal":
+            log_msg("Procesando con SSL 4000 Vocal Strip...")
+            v_filters.append("equalizer=f=380:width_type=o:width=1.4:g=-2.5")
+            v_filters.append("equalizer=f=4000:width_type=o:width=1.2:g=3.2")
+            if compression:
+                v_filters.append("acompressor=threshold=-16dB:ratio=3.5:attack=10:release=180:makeup=2.2dB")
+        else:
+            if noise_reduction:
+                v_filters.append("equalizer=f=320:width_type=o:width=1.3:g=-2.5")
+            if compression:
+                v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=15:release=200:makeup=2.0dB")
 
+        # 4. REVERB VOCAL DE ESTUDIO
         if vocal_reverb == "plate":
             log_msg("Agregando sutil reverb de estudio (Plate cálida: dimensión y aire sin tapar la voz)...")
             v_filters.append("aecho=0.88:0.60:28|56:0.18|0.10")
@@ -360,7 +397,7 @@ async def run_voiceover_task(
             log_msg("Agregando reverb devocional (Hall suave y envolvente)...")
             v_filters.append("aecho=0.84:0.65:35|70:0.25|0.12")
 
-        # Limitador final true-peak para evitar saturación digital
+        # 5. LIMITADOR TRUE-PEAK FINAL
         v_filters.append("alimiter=limit=-1.0dB")
 
         voice_filter_str = ",".join(v_filters) if v_filters else "anull"

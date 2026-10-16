@@ -327,6 +327,17 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                     </div>
                     <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
+                  <div class="gear-card" data-gear="yamaha tf5">
+                    <div class="gear-thumb">
+                      <img src="/assets/gear/yamaha_tf5.jpg" alt="Yamaha TF5">
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Yamaha TF5</div>
+                      <div class="gear-model">Consola Digital 48 Ch</div>
+                      <div class="gear-sound">Preamps D-PRE y mezcla moderna</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
                 </div>
               </div>
 
@@ -717,17 +728,36 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <!-- Cadena de Grabación y Masterización Vocal de Estudio -->
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px">
             <div class="field">
-              <label class="label" for="voEqProfile">🎛️ Consola & Ecualización Profesional</label>
-              <select id="voEqProfile">
-                <option value="pro_studio" selected>Consola de Estudio Neve/SSL (Cuerpo, Claridad y De-Box) [Recomendado]</option>
-                <option value="clarity">Máxima Presencia & Articulación (Audios lejanos)</option>
-                <option value="warm">Calidez Pastoral & Cuerpo Redondo (Voz profunda)</option>
-                <option value="gentle">Voz Íntima & Suave Devocional</option>
-                <option value="none">Sin Ecualización (Plano)</option>
+              <label class="label" for="voMicProfile">🎤 Micrófono de Locución</label>
+              <select id="voMicProfile">
+                <option value="behringer_tm1" selected>Behringer TM1 (Cápsula 1" Bañada en Oro, Ultra-Bajo Ruido) [Recomendado]</option>
+                <option value="shure_sm7b">Shure SM7B (Dinámico Broadcast, Cuerpo y Proximidad)</option>
+                <option value="neumann_u87">Neumann U87 (Estudio High-End, Agudos Sedosos)</option>
+                <option value="standard">Micrófono Estándar / Celular</option>
               </select>
             </div>
             <div class="field">
-              <label class="label" for="voReverbProfile">✨ Reverb Vocal de Estudio</label>
+              <label class="label" for="voInterfaceProfile">🔌 Placa de Audio / Interfaz</label>
+              <select id="voInterfaceProfile">
+                <option value="umc404hd" selected>Behringer U-Phoria UMC404HD (Preamps MIDAS 192kHz/24-bit) [Recomendado]</option>
+                <option value="focusrite_scarlett">Focusrite Scarlett 2i2 (Preamp Transparente)</option>
+                <option value="direct">Entrada Directa / Grabador Portátil</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px">
+            <div class="field">
+              <label class="label" for="voPluginProfile">✨ Plugin & Procesador IA</label>
+              <select id="voPluginProfile">
+                <option value="izotope_vea" selected>iZotope VEA (Voice Enhancement Assistant: Clean + Shape + Boost IA) [Recomendado]</option>
+                <option value="neve_channel">Neve 1073 Channel Strip (Calidez Analógica)</option>
+                <option value="ssl_vocal">SSL 4000 Vocal Strip (Punch y Articulación)</option>
+                <option value="none">Sin Plugin (Lineal)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="voReverbProfile">🎛️ Reverb Vocal de Estudio</label>
               <select id="voReverbProfile">
                 <option value="plate" selected>Plate Cálida de Estudio (Sutil, dimensión y aire) [Recomendado]</option>
                 <option value="hall">Hall Devocional (Espacio amplio para oración)</option>
@@ -735,11 +765,12 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               </select>
             </div>
           </div>
+
           <div class="field" style="margin-bottom:14px">
-            <label class="label">🎚️ Dinámica y Procesamiento de Micrófono Profesional</label>
+            <label class="label">🎚️ Dinámica y Procesamiento Quirúrgico</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding-top:4px">
-              <label class="check"><input type="checkbox" id="voCompression" checked> Compresión Óptica (Estilo LA-2A, voz sólida y pareja)</label>
-              <label class="check"><input type="checkbox" id="voNoise" checked> Filtro Quirúrgico (Anti-golpes, caja y siseo)</label>
+              <label class="check"><input type="checkbox" id="voCompression" checked> iZotope VEA Boost (Compresión Óptica Vocal estilo LA-2A)</label>
+              <label class="check"><input type="checkbox" id="voNoise" checked> iZotope VEA Clean (Filtro anti-golpes, caja y siseo)</label>
               <label class="check"><input type="checkbox" id="voLeveling" checked> Nivelador Dinámico Inteligente</label>
             </div>
           </div>
@@ -1106,7 +1137,10 @@ $('voiceoverForm').addEventListener('submit', async e => {
   fd.append('bg_choice', selectedBg);
   fd.append('bg_volume', (+$('voBgVol').value / 100).toFixed(2));
   fd.append('ducking', $('voDucking').checked);
-  fd.append('eq_profile', $('voEqProfile').value);
+  fd.append('mic_profile', $('voMicProfile').value);
+  fd.append('interface_profile', $('voInterfaceProfile').value);
+  fd.append('plugin_profile', $('voPluginProfile').value);
+  fd.append('eq_profile', 'pro_studio');
   fd.append('vocal_reverb', $('voReverbProfile').value);
   fd.append('compression', $('voCompression').checked);
   fd.append('noise_reduction', $('voNoise').checked);
