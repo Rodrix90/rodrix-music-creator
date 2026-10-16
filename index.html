@@ -769,21 +769,29 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <div class="field" style="margin-bottom:14px">
             <label class="label">🎚️ Dinámica, Supresión de Ruido y Espacialización</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding-top:4px">
-              <label class="check"><input type="checkbox" id="voNoise" checked> 🔇 Supresor Limpio de Ruido (Sin artefactos)</label>
-              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Óptica Suave (Estilo LA-2A, sin saturar)</label>
-              <label class="check"><input type="checkbox" id="voLeveling" checked> 🎚️ Nivelador Dinámico Transparente (Volumen parejo)</label>
-              <label class="check"><input type="checkbox" id="voStereoWide"> 🎧 Apertura Estéreo Suave (Desactivada por defecto para voz sólida)</label>
+              <label class="check"><input type="checkbox" id="voNoise" checked> 🔇 Supresor Limpio de Ruido (Expansor suave anti-siseo)</label>
+              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Broadcast Pro (Cuerpo y presencia)</label>
+              <label class="check"><input type="checkbox" id="voLeveling" checked> 🔊 Maximizador Spotify Podcast (-14 LUFS Ganancia Pro)</label>
+              <label class="check"><input type="checkbox" id="voStereoWide"> 🎧 Apertura Estéreo Suave (Desactivada por defecto para voz sólida al centro)</label>
             </div>
           </div>
 
           <!-- Música de fondo ambiental -->
           <div class="field">
             <div class="label">
-              <span>2. Música de Fondo Ambiental (Ministración & Oración)</span>
-              <span style="font-size:10px;text-transform:none;color:var(--muted)">Muy suave, acompaña por debajo</span>
+              <span>2. Música de Fondo Ambiental (Ministración & Oración - Opcional)</span>
+              <span style="font-size:10px;text-transform:none;color:var(--muted)">Selecciona una si deseas acompañamiento</span>
             </div>
             <div class="ambient-grid" id="ambientGrid">
-              <div class="ambient-card active" data-bg="rhodes_pad">
+              <div class="ambient-card active" data-bg="none">
+                <div class="ambient-icon" style="color:var(--primary);background:rgba(255,255,255,0.05)"><i class="ph ph-microphone"></i></div>
+                <div class="ambient-info">
+                  <div class="ambient-title">Sin Música (Pura Voz Spotify)</div>
+                  <div class="ambient-sub">Solo voz limpia, restaurada y maximizada [Predeterminado]</div>
+                </div>
+                <div class="ambient-btn"><i class="ph ph-check"></i></div>
+              </div>
+              <div class="ambient-card" data-bg="rhodes_pad">
                 <div class="ambient-icon"><i class="ph ph-piano-keys"></i></div>
                 <div class="ambient-info">
                   <div class="ambient-title">Piano Rhodes & Pad Celestial</div>
@@ -815,14 +823,6 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 </div>
                 <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
-              <div class="ambient-card" data-bg="none">
-                <div class="ambient-icon" style="color:var(--muted);background:rgba(255,255,255,0.05)"><i class="ph ph-prohibit"></i></div>
-                <div class="ambient-info">
-                  <div class="ambient-title">Sin Música de Fondo</div>
-                  <div class="ambient-sub">Solo voz limpia y restaurada</div>
-                </div>
-                <div class="ambient-btn"><i class="ph ph-check"></i></div>
-              </div>
             </div>
           </div>
 
@@ -835,7 +835,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           </div>
 
           <!-- Controles de mezcla de fondo -->
-          <div class="grid2" id="voMixControls">
+          <div class="grid2" id="voMixControls" style="display:none">
             <div class="field">
               <label class="label"><span>Volumen de la Música de Fondo</span><span class="val" id="voBgVolVal">12% (Muy Suave)</span></label>
               <input type="range" id="voBgVol" min="5" max="35" value="12">
@@ -1081,7 +1081,7 @@ $('applyGearBtn').addEventListener('click', () => {
 });
 
 /* ---------- VOZ EN OFF & PREDICACIÓN ---------- */
-let selectedBg = 'rhodes_pad';
+let selectedBg = 'none';
 document.querySelectorAll('.ambient-card').forEach(card => {
   card.addEventListener('click', () => {
     document.querySelectorAll('.ambient-card').forEach(c => c.classList.remove('active'));

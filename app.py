@@ -258,7 +258,7 @@ async def process_voiceover(
     background_tasks: BackgroundTasks,
     voice_audio: UploadFile = File(...),
     title: str = Form("Predicación Pastoral"),
-    bg_choice: str = Form("rhodes_pad"),
+    bg_choice: str = Form("none"),
     custom_bg: UploadFile = File(None),
     bg_volume: float = Form(0.12),
     ducking: bool = Form(True),
@@ -266,11 +266,11 @@ async def process_voiceover(
     interface_profile: str = Form("umc404hd"),
     plugin_profile: str = Form("izotope_vea"),
     eq_profile: str = Form("pro_studio"),
-    vocal_reverb: str = Form("plate"),
+    vocal_reverb: str = Form("none"),
     compression: bool = Form(True),
     noise_reduction: bool = Form(True),
     leveling: bool = Form(True),
-    stereo_wide: bool = Form(True),
+    stereo_wide: bool = Form(False),
     current_user: str = Depends(get_current_user)
 ):
     prune_tasks()
@@ -410,9 +410,9 @@ async def run_voiceover_task(
     task_id, voice_bytes, voice_filename, title, bg_choice,
     custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
     eq_profile, noise_reduction, leveling,
-    vocal_reverb="plate", compression=True,
+    vocal_reverb="none", compression=True,
     mic_profile="behringer_tm1", interface_profile="umc404hd", plugin_profile="izotope_vea",
-    stereo_wide=True
+    stereo_wide=False
 ):
     def log_msg(msg):
         import datetime
