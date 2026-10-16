@@ -533,39 +533,42 @@ async def run_voiceover_task(
 
         export_duration = voice_dur
         if bg_file and os.path.exists(bg_file):
+            bed_vol = max(0.04, min(0.09, bg_volume))
             if radio_structure == "radio_show":
                 intro_sec = 2.5
                 outro_sec = 3.5
                 total_dur = voice_dur + intro_sec + outro_sec
-                intro_vol = min(0.35, max(0.18, bg_volume * 3.2))
-                log_msg(f"Estructura Predicación de Radio: Intro musical {intro_sec}s ➔ Voz con colchón de radio (Auto-Ducking) ➔ Cierre triunfal {outro_sec}s...")
+                intro_vol = 0.16
+                speech_end = intro_sec + voice_dur
+                fade_out_start = total_dur - 2.5
+                
+                log_msg(f"Estructura Predicación de Radio: Intro musical {intro_sec}s (16%) ➔ Descenso a colchón suave ({int(bed_vol*100)}%) ➔ Voz al 100% (-14 LUFS) ➔ Cierre triunfal {outro_sec}s...")
+                
+                vol_expr = (
+                    f"if(lt(t,2.0),{intro_vol:.2f},"
+                    f"if(lt(t,{intro_sec:.2f}),{intro_vol:.2f}-({intro_vol:.2f}-{bed_vol:.2f})*(t-2.0)/0.5,"
+                    f"if(lt(t,{speech_end:.2f}),{bed_vol:.2f},"
+                    f"if(lt(t,{speech_end + 1.0:.2f}),{bed_vol:.2f}+({intro_vol:.2f}-{bed_vol:.2f})*(t-{speech_end:.2f})/1.0,"
+                    f"{intro_vol:.2f}))))"
+                )
                 
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},adelay=2500|2500,apad=pad_dur={outro_sec + 1.0:.1f},asplit=2[v_main][v_sc];"
-                    f"[1:a]atrim=0:{total_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,volume={intro_vol:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={total_dur - 2.5:.2f}:d=2.5[bg_vol];"
-                    f"[bg_vol][v_sc]sidechaincompress=threshold=0.05:ratio=4.5:attack=40:release=700[bg_ducked];"
-                    f"[v_main][bg_ducked]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
-                    f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
+                    f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,adelay=2500|2500,apad=pad_dur={outro_sec + 1.0:.1f}[v_ready];"
+                    f"[1:a]atrim=0:{total_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,"
+                    f"volume='{vol_expr}':eval=frame,afade=t=in:st=0:d=0.5,afade=t=out:st={fade_out_start:.2f}:d=2.5[bg_ready];"
+                    f"[v_ready][bg_ready]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
+                    f"[mixed]alimiter=limit=-1.0dB[out]"
                 )
                 export_duration = total_dur
             else:
-                log_msg(f"Estructura Podcast Continuo: Música de fondo desde el inicio ({int(bg_volume*100)}%), sin intro ni cierre extendido...")
+                log_msg(f"Estructura Podcast Continuo: Voz al 100% (-14 LUFS) y música de fondo suave ({int(bed_vol*100)}%)...")
                 fade_start = max(0.5, voice_dur - 2.5)
-                if ducking:
-                    filter_complex = (
-                        f"[0:a]{voice_filter_str},asplit=2[v_main][v_sc];"
-                        f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
-                        f"[bg_vol][v_sc]sidechaincompress=threshold=0.06:ratio=4:attack=50:release=700[bg_ducked];"
-                        f"[v_main][bg_ducked]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
-                        f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
-                    )
-                else:
-                    filter_complex = (
-                        f"[0:a]{voice_filter_str}[v_main];"
-                        f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
-                        f"[v_main][bg_vol]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
-                        f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
-                    )
+                filter_complex = (
+                    f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7[v_ready];"
+                    f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bed_vol:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_ready];"
+                    f"[v_ready][bg_ready]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
+                    f"[mixed]alimiter=limit=-1.0dB[out]"
+                )
                 export_duration = voice_dur
 
             safe_bitrate = calculate_safe_mp3_bitrate(export_duration)
