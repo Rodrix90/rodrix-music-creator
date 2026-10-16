@@ -535,25 +535,25 @@ async def run_voiceover_task(
         if bg_file and os.path.exists(bg_file):
             bed_vol = max(0.04, min(0.09, bg_volume))
             if radio_structure == "radio_show":
-                intro_sec = 2.5
-                outro_sec = 3.5
+                intro_sec = 5.0
+                outro_sec = 4.0
                 total_dur = voice_dur + intro_sec + outro_sec
-                intro_vol = 0.16
+                intro_vol = 0.30
                 speech_end = intro_sec + voice_dur
                 fade_out_start = total_dur - 2.5
                 
-                log_msg(f"Estructura Predicación de Radio: Intro musical {intro_sec}s (16%) ➔ Descenso a colchón suave ({int(bed_vol*100)}%) ➔ Voz al 100% (-14 LUFS) ➔ Cierre triunfal {outro_sec}s...")
+                log_msg(f"Estructura Predicación de Radio: Intro musical {intro_sec}s (30% volumen) ➔ Baja justo al empezar la voz al colchón suave ({int(bed_vol*100)}%) ➔ Cierre triunfal {outro_sec}s...")
                 
                 vol_expr = (
-                    f"if(lt(t,2.0),{intro_vol:.2f},"
-                    f"if(lt(t,{intro_sec:.2f}),{intro_vol:.2f}-({intro_vol:.2f}-{bed_vol:.2f})*(t-2.0)/0.5,"
+                    f"if(lt(t,4.2),{intro_vol:.2f},"
+                    f"if(lt(t,{intro_sec:.2f}),{intro_vol:.2f}-({intro_vol:.2f}-{bed_vol:.2f})*(t-4.2)/0.8,"
                     f"if(lt(t,{speech_end:.2f}),{bed_vol:.2f},"
                     f"if(lt(t,{speech_end + 1.0:.2f}),{bed_vol:.2f}+({intro_vol:.2f}-{bed_vol:.2f})*(t-{speech_end:.2f})/1.0,"
                     f"{intro_vol:.2f}))))"
                 )
                 
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,adelay=2500|2500,apad=pad_dur={outro_sec + 1.0:.1f}[v_ready];"
+                    f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,adelay=5000|5000,apad=pad_dur={outro_sec + 1.0:.1f}[v_ready];"
                     f"[1:a]atrim=0:{total_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,"
                     f"volume='{vol_expr}':eval=frame,afade=t=in:st=0:d=0.5,afade=t=out:st={fade_out_start:.2f}:d=2.5[bg_ready];"
                     f"[v_ready][bg_ready]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
