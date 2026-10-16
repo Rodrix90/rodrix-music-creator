@@ -447,80 +447,62 @@ async def run_voiceover_task(
         log_msg(f"Optimizando tamaño para WhatsApp (< 15 MB): Bitrate adaptativo a {safe_bitrate}...")
 
         # =====================================================================
-        # CADENA DE PROCESAMIENTO VOCAL DE ESTUDIO DE BROADCAST
+        # CADENA DE PROCESAMIENTO VOCAL CRISTALINA Y TRANSPARENTE (Cero Saturación)
         # =====================================================================
         v_filters = []
         
-        # 1. SUPRESIÓN QUIRÚRGICA DE RUIDO BLANCO Y SISEO (FFT Spectral Denoise + Gate)
-        if noise_reduction:
-            log_msg("Aplicando supresor FFT de ruido blanco y siseo de preamps (afftdn + compuerta)...")
-            v_filters.append("afftdn=nr=14:nf=-28:tn=1")
-            v_filters.append("agate=threshold=-34dB:ratio=2.2:attack=15:release=160:range=-20dB")
-
-        # 2. INTERFAZ & PREAMPS (Corte pasa-altos de retumbos)
+        # 1. INTERFAZ & PREAMPS (Corte limpio de ruidos subsónicos y retumbos de mesa)
         if interface_profile == "umc404hd":
-            log_msg("Emulando Behringer UMC404HD: Preamps MIDAS (corte 75Hz + rango dinámico)...")
+            log_msg("Emulando Behringer UMC404HD: Preamps MIDAS (corte 75Hz + headroom limpio)...")
             v_filters.append("highpass=f=75:width_type=q:w=0.7")
         else:
             v_filters.append("highpass=f=80:width_type=q:w=0.7")
 
-        # 3. ECUALIZACIÓN PROFESIONAL DE LOCUCIÓN (Cuerpo, Claridad, De-Box y Aire)
-        log_msg("Aplicando ecualización de estudio (Cuerpo 180Hz, De-box 340Hz, Articulación 3.6kHz, Aire 11.5kHz)...")
-        # Cuerpo y calidez pastoral (pecho)
-        v_filters.append("equalizer=f=180:width_type=o:width=1.1:g=3.4")
-        # Limpieza de sala acartonada y resonancia de caja
-        v_filters.append("equalizer=f=340:width_type=o:width=1.3:g=-3.8")
-        # Articulación e inteligibilidad bíblica
-        v_filters.append("equalizer=f=3600:width_type=o:width=1.2:g=3.8")
-        # De-Esser anti-siseo estridente
-        v_filters.append("equalizer=f=6800:width_type=o:width=1.8:g=-2.8")
-        # Brillo y aire de condensador
-        v_filters.append("treble=g=3.0:f=11500")
+        # 2. SUPRESIÓN LIMPIA DE RUIDO Y SISEO (Expansor suave y anti-siseo, sin artefactos robóticos)
+        if noise_reduction:
+            log_msg("Aplicando reducción de ruido limpia (expansor acústico suave y filtro anti-siseo sin distorsión)...")
+            v_filters.append("agate=threshold=-42dB:ratio=1.5:attack=10:release=220:range=-12dB")
+            v_filters.append("lowpass=f=15500")
 
-        # Ajuste tonal según perfil de micrófono
+        # 3. ECUALIZACIÓN ACÚSTICA TRANSPARENTE (Calidez natural, claridad y brillo cristalino)
+        # Ajustes conservadores y musicales (+/- 1 a 1.5 dB) para evitar saturación y preservar la voz natural
+        log_msg("Aplicando ecualización transparente (cuerpo 200Hz, limpieza de sala 450Hz, articulación 3.5kHz, brillo 10.5kHz)...")
+        v_filters.append("equalizer=f=200:width_type=o:width=1.0:g=1.2")
+        v_filters.append("equalizer=f=450:width_type=o:width=1.2:g=-1.8")
+        v_filters.append("equalizer=f=3500:width_type=o:width=1.2:g=1.5")
+        v_filters.append("treble=g=1.2:f=10500")
+
+        # Ajuste sutil según perfil de micrófono
         if mic_profile == "behringer_tm1":
-            log_msg("Añadiendo cápsula Behringer TM1 dorada: calidez de proximidad y agudos cristalinos...")
-            v_filters.append("equalizer=f=220:width_type=o:width=1.2:g=1.5")
-            v_filters.append("equalizer=f=4500:width_type=o:width=1.2:g=1.8")
+            log_msg("Añadiendo perfil Behringer TM1: brillo cristalino suave y definición...")
+            v_filters.append("equalizer=f=4800:width_type=o:width=1.2:g=1.0")
         elif mic_profile == "shure_sm7b":
-            log_msg("Añadiendo perfil Shure SM7B: presencia broadcast y graves robustos...")
-            v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=2.2")
-            v_filters.append("equalizer=f=3000:width_type=o:width=1.2:g=2.0")
+            log_msg("Añadiendo perfil Shure SM7B: calidez de proximidad broadcast...")
+            v_filters.append("equalizer=f=250:width_type=o:width=1.2:g=1.2")
         elif mic_profile == "neumann_u87":
-            log_msg("Añadiendo perfil Neumann U87: agudos sedosos y balance high-end...")
-            v_filters.append("equalizer=f=5000:width_type=o:width=1.2:g=2.5")
-            v_filters.append("treble=g=1.8:f=12000")
+            log_msg("Añadiendo perfil Neumann U87: agudos sedosos high-end...")
+            v_filters.append("treble=g=1.0:f=12000")
 
-        # 4. COMPRESIÓN BROADCAST REAL & NIVELACIÓN DINÁMICA
-        if leveling:
-            log_msg("Nivelando dinámica de habla para volumen parejo (Speech-Norm inteligente)...")
-            v_filters.append("speechnorm=e=4:r=0.0001:l=1")
+        # 4. COMPRESIÓN ÓPTICA BROADCAST (Estilo LA-2A - Cero distorsión, voz nivelada y presente)
+        if compression or leveling:
+            log_msg("Aplicando compresión óptica suave estilo LA-2A (nivelación transparente sin saturar)...")
+            v_filters.append("acompressor=threshold=-18dB:ratio=2.5:attack=20:release=200:makeup=1.5dB")
 
-        if compression:
-            log_msg("Aplicando compresión vocal broadcast de 2 etapas (Pegada + Nivelación óptica estilo LA-2A)...")
-            # Etapa 1: Control de picos y ataque
-            v_filters.append("acompressor=threshold=-21dB:ratio=3.5:attack=8:release=120:makeup=3.5dB")
-            # Etapa 2: Sustentación y cuerpo vocal parejo
-            v_filters.append("acompressor=threshold=-15dB:ratio=2.5:attack=25:release=280:makeup=2.5dB")
-
-        # 5. ESPACIALIZACIÓN STEREO WIDE 3D
+        # 5. IMAGEN ESTÉREO Y ESPACIALIZACIÓN (100% coherente en fase, centro sólido)
+        v_filters.append("aformat=channel_layouts=stereo:sample_rates=44100")
         if stereo_wide:
-            log_msg("Ampliando imagen estéreo vocal (Stereo Wide 3D inmersivo)...")
-            v_filters.append("aformat=channel_layouts=stereo:sample_rates=44100")
-            v_filters.append("stereowiden=delay=16:feedback=0.25:crossfeed=0.22:drymix=0.88")
-            v_filters.append("extrastereo=m=1.22")
-        else:
-            v_filters.append("aformat=channel_layouts=stereo:sample_rates=44100")
+            log_msg("Aplicando sutil apertura estéreo envolvente (sin desfase)...")
+            v_filters.append("extrastereo=m=1.08")
 
-        # 6. REVERB VOCAL DE ESTUDIO DIFUSA (Lush Plate / Hall, SIN efecto de eco repetitivo)
+        # 6. REVERB VOCAL DE ESTUDIO (Solo si se solicita, difusa y muy sutil)
         if vocal_reverb == "plate":
-            log_msg("Agregando reverb Plate de estudio (sedosa, difusa y envolvente, sin eco)...")
-            v_filters.append("aecho=0.82:0.55:18|27|38|54|73|95:0.25|0.20|0.15|0.12|0.08|0.05")
+            log_msg("Agregando toque muy sutil de Plate de estudio (aire y dimensión ligera)...")
+            v_filters.append("aecho=0.94:0.12:40|75:0.10|0.05")
         elif vocal_reverb == "hall":
-            log_msg("Agregando reverb Hall devocional (espacio amplio y cálido para ministración)...")
-            v_filters.append("aecho=0.80:0.60:25|42|67|98|135|180:0.28|0.22|0.16|0.12|0.09|0.06")
+            log_msg("Agregando reverb Hall devocional (espacio cálido)...")
+            v_filters.append("aecho=0.90:0.18:60|120:0.12|0.06")
 
-        # 7. LIMITADOR TRUE-PEAK FINAL DE BROADCAST
+        # 7. LIMITADOR TRUE-PEAK FINAL (Protección sin aplastamiento)
         v_filters.append("alimiter=limit=-1.0dB")
 
         voice_filter_str = ",".join(v_filters) if v_filters else "anull"

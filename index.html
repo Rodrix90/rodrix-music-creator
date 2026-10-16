@@ -759,9 +759,9 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <div class="field">
               <label class="label" for="voReverbProfile">🎛️ Reverb Vocal de Estudio</label>
               <select id="voReverbProfile">
-                <option value="plate" selected>Plate Cálida de Estudio (Sutil, dimensión y aire) [Recomendado]</option>
+                <option value="none" selected>Sin Reverb (Voz 100% directa, pura y cristalina) [Recomendado]</option>
+                <option value="plate">Plate Cálida de Estudio (Sutil dimensión y aire natural)</option>
                 <option value="hall">Hall Devocional (Espacio amplio para oración)</option>
-                <option value="none">Sin Reverb (Voz seca)</option>
               </select>
             </div>
           </div>
@@ -769,10 +769,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <div class="field" style="margin-bottom:14px">
             <label class="label">🎚️ Dinámica, Supresión de Ruido y Espacialización</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding-top:4px">
-              <label class="check"><input type="checkbox" id="voNoise" checked> 🔇 Supresor de Ruido Blanco & Siseo (FFT Denoise)</label>
-              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Broadcast Pro (Cuerpo y pegada)</label>
-              <label class="check"><input type="checkbox" id="voLeveling" checked> 🎚️ Nivelador Dinámico Inteligente (Volumen parejo)</label>
-              <label class="check"><input type="checkbox" id="voStereoWide" checked> 🎧 Stereo Wide 3D (Voz amplia y envolvente)</label>
+              <label class="check"><input type="checkbox" id="voNoise" checked> 🔇 Supresor Limpio de Ruido (Sin artefactos)</label>
+              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Óptica Suave (Estilo LA-2A, sin saturar)</label>
+              <label class="check"><input type="checkbox" id="voLeveling" checked> 🎚️ Nivelador Dinámico Transparente (Volumen parejo)</label>
+              <label class="check"><input type="checkbox" id="voStereoWide"> 🎧 Apertura Estéreo Suave (Desactivada por defecto para voz sólida)</label>
             </div>
           </div>
 
