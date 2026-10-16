@@ -464,34 +464,37 @@ async def run_voiceover_task(
             v_filters.append("agate=threshold=-42dB:ratio=1.5:attack=10:release=220:range=-10dB")
             v_filters.append("lowpass=f=16000")
 
-        # 3. ECUALIZACIÓN VOCAL PODCAST SPOTIFY (Voz íntima, cálida, nítida y cristalina)
-        log_msg("Aplicando ecualización estilo podcast Spotify (cuerpo 180Hz, claridad sin sala 400Hz, articulación 3.4kHz, aire 11kHz)...")
-        # Cuerpo y presencia íntima de locutor (pecho cálido)
-        v_filters.append("equalizer=f=180:width_type=o:width=1.0:g=1.8")
-        # Limpieza de resonancia acartonada de habitación/celular
-        v_filters.append("equalizer=f=400:width_type=o:width=1.2:g=-2.2")
-        # Articulación e inteligibilidad nítida (cada palabra clara)
-        v_filters.append("equalizer=f=3400:width_type=o:width=1.2:g=2.2")
-        # De-Esser anti-siseo suave en frecuencias estridentes
-        v_filters.append("equalizer=f=6800:width_type=o:width=1.5:g=-2.0")
-        # Aire y brillo de estudio
-        v_filters.append("treble=g=1.5:f=11000")
+        # 3. TRANSFORMACIÓN TONAL ESTUDIO / PODCAST SPOTIFY
+        log_msg("Modelando curva tonal broadcast (Cuerpo de micrófono de estudio, eliminación de sonido a celular y brillo pro)...")
+        # Cuerpo y presencia de gran diafragma (pecho cálido que no tiene el celular)
+        v_filters.append("equalizer=f=160:width_type=o:width=1.0:g=3.2")
+        # Extracción quirúrgica del sonido acartonado y plástico del celular
+        v_filters.append("equalizer=f=420:width_type=o:width=1.2:g=-3.5")
+        # Articulación, pegada y presencia de locutor al frente
+        v_filters.append("equalizer=f=3200:width_type=o:width=1.2:g=3.0")
+        # De-Esser suave anti-siseo en frecuencias estridentes
+        v_filters.append("equalizer=f=6500:width_type=o:width=1.4:g=-2.5")
+        # Aire sedoso de condensador (quitar el velo opaco del celular)
+        v_filters.append("treble=g=3.0:f=10500")
 
         # Ajuste por perfil de micrófono
         if mic_profile == "behringer_tm1":
             log_msg("Añadiendo perfil Behringer TM1 dorada: agudos nítidos de estudio...")
-            v_filters.append("equalizer=f=4800:width_type=o:width=1.2:g=1.2")
+            v_filters.append("equalizer=f=4800:width_type=o:width=1.2:g=1.5")
         elif mic_profile == "shure_sm7b":
             log_msg("Añadiendo perfil Shure SM7B: cuerpo broadcast robusto...")
-            v_filters.append("equalizer=f=220:width_type=o:width=1.2:g=1.5")
+            v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=1.8")
         elif mic_profile == "neumann_u87":
             log_msg("Añadiendo perfil Neumann U87: agudos high-end sedosos...")
-            v_filters.append("treble=g=1.2:f=12000")
+            v_filters.append("treble=g=1.8:f=12000")
 
-        # 4. COMPRESIÓN VOCAL BROADCAST (Pegada y nivelación en el bolsillo)
+        # 4. COMPRESIÓN VOCAL & NIVELACIÓN REAL DE CELULAR (2 Etapas: Nivelador + Control de Picos)
         if compression or leveling:
-            log_msg("Aplicando compresión broadcast suave (dinámica controlada y pareja)...")
-            v_filters.append("acompressor=threshold=-19dB:ratio=2.5:attack=20:release=180:makeup=2.0dB")
+            log_msg("Aplicando nivelación vocal de 2 etapas (eleva el volumen del celular a primer plano)...")
+            # Etapa 1: Nivelador dinámico (atrapa la voz lejana del celular a -26dB y la trae al frente con +4.5dB)
+            v_filters.append("acompressor=threshold=-26dB:ratio=3:attack=15:release=250:makeup=4.5dB")
+            # Etapa 2: Control musical de picos (evita saturación en gritos o énfasis)
+            v_filters.append("acompressor=threshold=-12dB:ratio=4:attack=5:release=100")
 
         # 5. REVERB VOCAL DE ESTUDIO (Solo si se solicita explícitamente)
         if vocal_reverb == "plate":
