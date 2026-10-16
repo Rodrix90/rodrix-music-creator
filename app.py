@@ -1737,6 +1737,18 @@ async def admin_toggle_user(request: Request, current_user: str = Depends(get_cu
     save_users(users)
     return {"status": "success", "user": users[target_email]}
 
+@app.get("/download-app")
+@app.get("/api/download/apk")
+async def download_apk():
+    apk_path = os.path.join(os.getcwd(), "Rodrix_Music_Creator.apk")
+    if os.path.exists(apk_path):
+        return FileResponse(
+            path=apk_path,
+            filename="Rodrix_Music_Creator.apk",
+            media_type="application/vnd.android.package-archive"
+        )
+    raise HTTPException(status_code=404, detail="APK no encontrado")
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_spa(request: Request):
     user = request.session.get('user')
