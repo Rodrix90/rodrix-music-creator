@@ -1143,11 +1143,10 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
         return local_path
         
     urls_to_try = []
-    if track.get("raw_audio_url"):
+    if track.get("raw_audio_url") and str(track["raw_audio_url"]).startswith("http"):
         urls_to_try.append(track["raw_audio_url"])
-    if track.get("audio_url"):
-        if track["audio_url"].startswith("http"):
-            urls_to_try.append(track["audio_url"])
+    if track.get("audio_url") and str(track["audio_url"]).startswith("http") and track["audio_url"] not in urls_to_try:
+        urls_to_try.append(track["audio_url"])
             
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -1325,7 +1324,9 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         raise HTTPException(status_code=404, detail="Track no encontrado en la librería")
 
     title = track.get("title", "Rodrix_Track")
-    safe_title = "".join([c for c in title if c.isalnum() or c in ' -_']).strip() or "track"
+    import unicodedata
+    clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
+    safe_title = "".join([c for c in clean_ascii if c.isalnum() or c in ' -_']).strip() or "track"
     master_filter = build_master_filter(width, eq, loud)
     
     temp_out = f"temp_dl_out_{uuid.uuid4().hex}.{audio_format}"
@@ -1383,6 +1384,46 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         cleanup_files([temp_out])
         print(f"Error descargando formato: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/download_voiceover/{task_id}/{audio_format}")
+async def download_voiceover_direct(task_id: str, audio_format: str):
+    if audio_format not in ["mp3", "wav"]:
+        raise HTTPException(status_code=400, detail="Formato no soportado")
+    
+    local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    if not os.path.exists(local_path) or os.path.getsize(local_path) < 1000:
+        raise HTTPException(status_code=404, detail="El audio de la predicación no se encuentra en el servidor.")
+    
+    library = load_library()
+    track = next((t for t in library if t.get("id") == task_id), None)
+    title = track.get("title", "Predicacion_Pastoral") if track else "Predicacion_Pastoral"
+    import unicodedata
+    clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
+    safe_title = "".join([c for c in clean_ascii if c.isalnum() or c in ' -_']).strip() or "predicacion_pastoral"
+
+    if audio_format == "mp3":
+        return FileResponse(
+            path=local_path,
+            filename=f"{safe_title}.mp3",
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": f'attachment; filename="{safe_title}.mp3"'}
+        )
+    elif audio_format == "wav":
+        temp_wav = f"temp_vo_{uuid.uuid4().hex}.wav"
+        cmd = ["ffmpeg", "-threads", "1", "-y", "-i", local_path, "-c:a", "pcm_s16le", "-ar", "44100", temp_wav]
+        await asyncio.to_thread(subprocess.run, cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        from starlette.background import BackgroundTask
+        def rm_temp():
+            if os.path.exists(temp_wav):
+                try: os.remove(temp_wav)
+                except: pass
+        return FileResponse(
+            path=temp_wav,
+            filename=f"{safe_title}.wav",
+            media_type="audio/wav",
+            headers={"Content-Disposition": f'attachment; filename="{safe_title}.wav"'},
+            background=BackgroundTask(rm_temp)
+        )
 
 @app.get("/api/me")
 async def get_me(request: Request):
