@@ -146,45 +146,57 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   .nav{flex-direction:row;margin-left:auto}
   .side-foot{display:none}
   .center{padding:18px 14px 30px;overflow:visible}
-  .grid2{grid-template-columns:1fr}
-/* ---------- PRESETS DE CULTO & GEAR ---------- */
-.preset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:6px}
-.preset-card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.25));border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;gap:5px;text-align:left}
-.preset-card:hover{border-color:var(--accent);background:rgba(90,103,216,.14);transform:translateY(-1px)}
-.preset-card.active{border-color:var(--accent);background:rgba(90,103,216,.24);box-shadow:0 0 16px rgba(90,103,216,.35)}
-.preset-head{display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px;color:var(--text)}
-.preset-desc{font-size:11px;color:var(--muted);line-height:1.35}
-.preset-tag{display:inline-block;margin-top:2px;font-size:9.5px;font-weight:700;color:var(--ok);background:rgba(52,211,153,.12);padding:2px 7px;border-radius:4px;align-self:flex-start}
+  .library{border-left:none;border-top:1px solid var(--border);min-height:400px}
+  .mobile-tabs{display:flex}
+}
 
-/* Studio Gear Rack */
-.gear-section{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-.gear-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#A5B4FC;display:flex;align-items:center;gap:6px}
-.gear-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:8px}
-.gear-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:.2s;user-select:none}
-.gear-card:hover{border-color:var(--accent);background:rgba(90,103,216,.1);transform:translateY(-1px)}
-.gear-card.active{border-color:var(--accent);background:rgba(90,103,216,.22);box-shadow:0 0 12px rgba(90,103,216,.4)}
-.gear-thumb{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#12121c,#1c1c2e);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,.6)}
-.gear-thumb svg{width:40px;height:40px}
+/* ---------- PRESETS DE CULTO & LITURGIA ---------- */
+.preset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:6px 0 14px}
+.preset-card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.3));border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;gap:8px;position:relative}
+.preset-card:hover{border-color:var(--accent);background:rgba(90,103,216,.14);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.preset-card.active{border-color:var(--accent);background:rgba(90,103,216,.24);box-shadow:0 0 16px rgba(90,103,216,.4)}
+.preset-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.preset-title{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:var(--text)}
+.preset-title i{font-size:17px;color:#A5B4FC}
+.btn-preset-use{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 11px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:.2s;box-shadow:0 2px 8px rgba(90,103,216,.4)}
+.btn-preset-use:hover{filter:brightness(1.15);transform:scale(1.03)}
+.preset-card.active .btn-preset-use{background:var(--ok);color:#064E3B}
+.preset-desc{font-size:11px;color:var(--muted);line-height:1.4}
+.preset-tag{display:inline-block;font-size:10px;font-weight:600;color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.25);padding:2px 8px;border-radius:99px;align-self:flex-start}
+
+/* ---------- STUDIO GEAR RACK ---------- */
+.gear-section{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.gear-title{font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#A5B4FC;display:flex;align-items:center;gap:8px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.05)}
+.gear-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:10px}
+.gear-card{background:#181824;border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.2s;user-select:none;position:relative}
+.gear-card:hover{border-color:var(--accent);background:rgba(90,103,216,.12);transform:translateY(-1px)}
+.gear-card.active{border-color:var(--accent);background:rgba(90,103,216,.25);box-shadow:0 0 14px rgba(90,103,216,.4)}
+.gear-thumb{width:46px !important;height:46px !important;min-width:46px !important;max-width:46px !important;border-radius:8px;background:#12121c;border:1px solid rgba(255,255,255,.1);display:flex !important;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.gear-thumb svg{width:38px !important;height:38px !important;max-width:38px !important;max-height:38px !important;display:block}
 .gear-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
-.gear-name{font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gear-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gear-model{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gear-sound{font-size:9.5px;font-weight:600;color:#8DF0C0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gear-check{margin-left:auto;font-size:15px;color:var(--accent);opacity:0;transition:.2s}
-.gear-card.active .gear-check{opacity:1}
-.rack-summary{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.btn-gear-toggle{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);display:grid;place-items:center;font-size:13px;flex-shrink:0;transition:.2s}
+.gear-card:hover .btn-gear-toggle{border-color:var(--accent);color:var(--text)}
+.gear-card.active .btn-gear-toggle{background:var(--accent);border-color:var(--accent);color:#fff}
+.rack-summary{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
-/* Voz en Off / Ambient */
-.ambient-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
-.ambient-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px}
-.ambient-card:hover{border-color:var(--ok);background:rgba(52,211,153,.08);transform:translateY(-1px)}
-.ambient-card.active{border-color:var(--ok);background:rgba(52,211,153,.18);box-shadow:0 0 14px rgba(52,211,153,.3)}
-.ambient-icon{width:40px;height:40px;border-radius:8px;background:rgba(52,211,153,.15);display:grid;place-items:center;font-size:20px;color:var(--ok);flex-shrink:0}
+/* ---------- VOZ EN OFF & MINISTRACIÓN ---------- */
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:24px 20px;text-align:center;cursor:pointer;background:rgba(0,0,0,.25);transition:.2s;display:flex;flex-direction:column;align-items:center;gap:10px}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--ok);background:rgba(52,211,153,.08)}
+.drop-zone i{font-size:36px;color:var(--ok)}
+.drop-zone-btn{background:rgba(52,211,153,.15);color:var(--ok);border:1px solid rgba(52,211,153,.35);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;pointer-events:none}
+.ambient-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.ambient-card{background:#181824;border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px;user-select:none}
+.ambient-card:hover{border-color:var(--ok);background:rgba(52,211,153,.1);transform:translateY(-1px)}
+.ambient-card.active{border-color:var(--ok);background:rgba(52,211,153,.2);box-shadow:0 0 14px rgba(52,211,153,.35)}
+.ambient-icon{width:42px;height:42px;border-radius:8px;background:rgba(52,211,153,.15);display:grid;place-items:center;font-size:22px;color:var(--ok);flex-shrink:0}
 .ambient-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .ambient-title{font-size:12px;font-weight:700;color:var(--text)}
 .ambient-sub{font-size:10px;color:var(--muted)}
-.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:22px;text-align:center;cursor:pointer;background:rgba(0,0,0,.2);transition:.2s;display:flex;flex-direction:column;align-items:center;gap:8px}
-.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(90,103,216,.08)}
-.drop-zone i{font-size:32px;color:#A5B4FC}
+.ambient-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);display:grid;place-items:center;font-size:13px;flex-shrink:0;transition:.2s}
+.ambient-card.active .ambient-btn{background:var(--ok);border-color:var(--ok);color:#064E3B}
 .view-panel{display:flex;flex-direction:column;gap:18px}
 </style>
 </head>
@@ -208,8 +220,8 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
       <div style="display:flex;align-items:center;gap:9px;min-width:0">
         <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden" id="userAvatar">R</div>
         <div style="display:flex;flex-direction:column;min-width:0;line-height:1.2">
-          <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{USER_NAME}}</span>
-          <span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userEmailDisplay">{{USER_EMAIL}}</span>
+          <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rodrigo</span>
+          <span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userEmailDisplay">rodryandy@gmail.com</span>
         </div>
       </div>
       <a href="/api/logout"><i class="ph ph-sign-out"></i><span>Cerrar sesión</span></a>
@@ -235,22 +247,34 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             </div>
             <div class="preset-grid" id="presetGrid">
               <div class="preset-card" data-preset="pentecostal">
-                <div class="preset-head"><i class="ph ph-fire"></i><span>Coro Pentecostal</span></div>
-                <div class="preset-desc">Avivamiento rápido 135 BPM, palmas, batería 4/4 con caja marcada, bajo en corcheas.</div>
+                <div class="preset-head">
+                  <div class="preset-title"><i class="ph ph-fire"></i><span>Coro Pentecostal</span></div>
+                  <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
+                </div>
+                <div class="preset-desc">Avivamiento rápido 135 BPM, palmas congregacionales, batería 4/4 con caja en 2 y 4, bajo en corcheas.</div>
                 <span class="preset-tag">Sin cumbia • 135 BPM</span>
               </div>
               <div class="preset-card" data-preset="adoracion">
-                <div class="preset-head"><i class="ph ph-hands-praying"></i><span>Adoración Íntima</span></div>
+                <div class="preset-head">
+                  <div class="preset-title"><i class="ph ph-hands-praying"></i><span>Adoración Íntima</span></div>
+                  <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
+                </div>
                 <div class="preset-desc">Oración 68 BPM, piano Rhodes, guitarras atmosféricas shimmer, cuerdas suaves.</div>
                 <span class="preset-tag">Devocional • 68 BPM</span>
               </div>
               <div class="preset-card" data-preset="himno">
-                <div class="preset-head"><i class="ph ph-church"></i><span>Himno Solemne</span></div>
+                <div class="preset-head">
+                  <div class="preset-title"><i class="ph ph-church"></i><span>Himno Solemne</span></div>
+                  <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
+                </div>
                 <div class="preset-desc">Liturgia sacra, órgano majestuoso, orquesta sinfónica, cuarteto vocal SATB a 4 voces.</div>
                 <span class="preset-tag">Solemne • 78 BPM</span>
               </div>
               <div class="preset-card" data-preset="juvenil">
-                <div class="preset-head"><i class="ph ph-guitar"></i><span>Alabanza Juvenil</span></div>
+                <div class="preset-head">
+                  <div class="preset-title"><i class="ph ph-guitar"></i><span>Alabanza Juvenil</span></div>
+                  <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
+                </div>
                 <div class="preset-desc">Pop/Rock Hillsong & Elevation 125 BPM, batería punchy, overdrive cálido, sintes.</div>
                 <span class="preset-tag">Pop/Rock • 125 BPM</span>
               </div>
@@ -267,47 +291,47 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="console">
                   <div class="gear-card" data-gear="neve 8048">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C2430"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#2E3C4E" stroke="#485B75"/><rect x="7" y="7" width="13" height="8" rx="2" fill="#FFE8A3"/><rect x="24" y="7" width="13" height="8" rx="2" fill="#FFE8A3"/><line x1="12" y1="13" x2="16" y2="9" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><line x1="29" y1="13" x2="33" y2="9" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><circle cx="13" cy="22" r="4.5" fill="#C53030" stroke="#9B2C2C"/><circle cx="24" cy="22" r="3.5" fill="#3182CE"/><circle cx="33" cy="22" r="3.5" fill="#3182CE"/><circle cx="13" cy="32" r="3.5" fill="#3182CE"/><circle cx="24" cy="32" r="3.5" fill="#718096"/><circle cx="33" cy="32" r="3.5" fill="#718096"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C2430"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#2E3C4E" stroke="#485B75"/><rect x="7" y="7" width="13" height="8" rx="2" fill="#FFE8A3"/><rect x="24" y="7" width="13" height="8" rx="2" fill="#FFE8A3"/><line x1="12" y1="13" x2="16" y2="9" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><line x1="29" y1="13" x2="33" y2="9" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><circle cx="13" cy="22" r="4.5" fill="#C53030" stroke="#9B2C2C"/><circle cx="24" cy="22" r="3.5" fill="#3182CE"/><circle cx="33" cy="22" r="3.5" fill="#3182CE"/><circle cx="13" cy="32" r="3.5" fill="#3182CE"/><circle cx="24" cy="32" r="3.5" fill="#718096"/><circle cx="33" cy="32" r="3.5" fill="#718096"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Neve 8048 / 1073</div>
                       <div class="gear-model">Preamp Británico Vintage</div>
                       <div class="gear-sound">Calidez y graves sedosos</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="ssl 4000 e/g">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#121217"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#202028" stroke="#3D3D4E"/><rect x="7" y="7" width="6" height="30" rx="1.5" fill="#0D0D12"/><rect x="8" y="9" width="4" height="3" fill="#E53E3E" rx="0.5"/><rect x="8" y="13" width="4" height="3" fill="#ECC94B" rx="0.5"/><rect x="8" y="17" width="4" height="3" fill="#48BB78" rx="0.5"/><rect x="8" y="21" width="4" height="3" fill="#48BB78" rx="0.5"/><circle cx="20" cy="11" r="3.5" fill="#E53E3E"/><circle cx="30" cy="11" r="3.5" fill="#38A169"/><circle cx="20" cy="20" r="3.5" fill="#3182CE"/><circle cx="30" cy="20" r="3.5" fill="#DD6B20"/><line x1="25" y1="26" x2="25" y2="37" stroke="#4A5568" stroke-width="1.5"/><rect x="22" y="29" width="6" height="4" rx="1" fill="#E2E8F0"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#121217"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#202028" stroke="#3D3D4E"/><rect x="7" y="7" width="6" height="30" rx="1.5" fill="#0D0D12"/><rect x="8" y="9" width="4" height="3" fill="#E53E3E" rx="0.5"/><rect x="8" y="13" width="4" height="3" fill="#ECC94B" rx="0.5"/><rect x="8" y="17" width="4" height="3" fill="#48BB78" rx="0.5"/><rect x="8" y="21" width="4" height="3" fill="#48BB78" rx="0.5"/><circle cx="20" cy="11" r="3.5" fill="#E53E3E"/><circle cx="30" cy="11" r="3.5" fill="#38A169"/><circle cx="20" cy="20" r="3.5" fill="#3182CE"/><circle cx="30" cy="20" r="3.5" fill="#DD6B20"/><line x1="25" y1="26" x2="25" y2="37" stroke="#4A5568" stroke-width="1.5"/><rect x="22" y="29" width="6" height="4" rx="1" fill="#E2E8F0"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">SSL 4000 E/G</div>
                       <div class="gear-model">Solid State Logic</div>
                       <div class="gear-sound">Punch y transitorios nítidos</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="api 1608">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141E28"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#2B3E50" stroke="#466582"/><rect x="7" y="7" width="30" height="9" rx="2" fill="#E2E8F0" stroke="#718096" stroke-width="0.8"/><line x1="12" y1="14" x2="22" y2="9" stroke="#C53030" stroke-width="1.2" stroke-linecap="round"/><circle cx="14" cy="24" r="4.5" fill="#1A202C"/><circle cx="14" cy="24" r="2.8" fill="#3182CE"/><circle cx="29" cy="24" r="4.5" fill="#1A202C"/><circle cx="29" cy="24" r="2.8" fill="#3182CE"/><circle cx="11" cy="34" r="2" fill="#E53E3E"/><circle cx="18" cy="34" r="2" fill="#ECC94B"/><circle cx="25" cy="34" r="2" fill="#48BB78"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141E28"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#2B3E50" stroke="#466582"/><rect x="7" y="7" width="30" height="9" rx="2" fill="#E2E8F0" stroke="#718096" stroke-width="0.8"/><line x1="12" y1="14" x2="22" y2="9" stroke="#C53030" stroke-width="1.2" stroke-linecap="round"/><circle cx="14" cy="24" r="4.5" fill="#1A202C"/><circle cx="14" cy="24" r="2.8" fill="#3182CE"/><circle cx="29" cy="24" r="4.5" fill="#1A202C"/><circle cx="29" cy="24" r="2.8" fill="#3182CE"/><circle cx="11" cy="34" r="2" fill="#E53E3E"/><circle cx="18" cy="34" r="2" fill="#ECC94B"/><circle cx="25" cy="34" r="2" fill="#48BB78"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">API 1608 / 312</div>
                       <div class="gear-model">Rock Americano Clásico</div>
                       <div class="gear-sound">Medios presentes y garra</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="abbey road tg12345">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#171C20"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#3A444C" stroke="#5C6B75"/><circle cx="22" cy="15" r="9" fill="#F7FAFC" stroke="#718096"/><line x1="22" y1="19" x2="26" y2="10" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="30" r="5" fill="#1A202C" stroke="#CBD5E0" stroke-width="0.8"/><circle cx="32" cy="30" r="5" fill="#1A202C" stroke="#CBD5E0" stroke-width="0.8"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#171C20"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#3A444C" stroke="#5C6B75"/><circle cx="22" cy="15" r="9" fill="#F7FAFC" stroke="#718096"/><line x1="22" y1="19" x2="26" y2="10" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="30" r="5" fill="#1A202C" stroke="#CBD5E0" stroke-width="0.8"/><circle cx="32" cy="30" r="5" fill="#1A202C" stroke="#CBD5E0" stroke-width="0.8"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Abbey Road TG12345</div>
                       <div class="gear-model">Consola a Válvulas EMI</div>
                       <div class="gear-sound">Saturación analógica '60s</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                 </div>
               </div>
@@ -318,36 +342,36 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="drums">
                   <div class="gear-card" data-gear="dw collector's maple">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1814"/><ellipse cx="10" cy="13" rx="8" ry="2.5" fill="#ECC94B" stroke="#D69E2E"/><ellipse cx="34" cy="12" rx="8" ry="2.5" fill="#ECC94B" stroke="#D69E2E"/><ellipse cx="16" cy="18" rx="6" ry="2.5" fill="#ED8936"/><rect x="10" y="18" width="12" height="6" fill="#C05621" rx="1"/><ellipse cx="28" cy="18" rx="6" ry="2.5" fill="#ED8936"/><rect x="22" y="18" width="12" height="6" fill="#C05621" rx="1"/><ellipse cx="9" cy="27" rx="6" ry="2.5" fill="#E2E8F0"/><circle cx="26" cy="31" r="10" fill="#DD6B20" stroke="#7B341E" stroke-width="1.5"/><circle cx="26" cy="31" r="8" fill="#F7FAFC"/><circle cx="30" cy="33" r="2.2" fill="#1A202C"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1814"/><ellipse cx="10" cy="13" rx="8" ry="2.5" fill="#ECC94B" stroke="#D69E2E"/><ellipse cx="34" cy="12" rx="8" ry="2.5" fill="#ECC94B" stroke="#D69E2E"/><ellipse cx="16" cy="18" rx="6" ry="2.5" fill="#ED8936"/><rect x="10" y="18" width="12" height="6" fill="#C05621" rx="1"/><ellipse cx="28" cy="18" rx="6" ry="2.5" fill="#ED8936"/><rect x="22" y="18" width="12" height="6" fill="#C05621" rx="1"/><ellipse cx="9" cy="27" rx="6" ry="2.5" fill="#E2E8F0"/><circle cx="26" cy="31" r="10" fill="#DD6B20" stroke="#7B341E" stroke-width="1.5"/><circle cx="26" cy="31" r="8" fill="#F7FAFC"/><circle cx="30" cy="33" r="2.2" fill="#1A202C"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">DW Collector's Maple</div>
                       <div class="gear-model">Arce Puro Personalizado</div>
                       <div class="gear-sound">Estándar de Alabanza</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="ludwig classic 70s">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181A1C"/><ellipse cx="11" cy="13" rx="8" ry="2.5" fill="#ECC94B"/><ellipse cx="33" cy="13" rx="8" ry="2.5" fill="#ECC94B"/><rect x="16" y="17" width="12" height="6" fill="#A0AEC0" rx="1"/><rect x="6" y="25" width="11" height="6" fill="#CBD5E0" stroke="#718096" rx="1"/><circle cx="26" cy="30" r="10.5" fill="#718096" stroke="#4A5568" stroke-width="1.5"/><circle cx="26" cy="30" r="8.5" fill="#E2E8F0"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181A1C"/><ellipse cx="11" cy="13" rx="8" ry="2.5" fill="#ECC94B"/><ellipse cx="33" cy="13" rx="8" ry="2.5" fill="#ECC94B"/><rect x="16" y="17" width="12" height="6" fill="#A0AEC0" rx="1"/><rect x="6" y="25" width="11" height="6" fill="#CBD5E0" stroke="#718096" rx="1"/><circle cx="26" cy="30" r="10.5" fill="#718096" stroke="#4A5568" stroke-width="1.5"/><circle cx="26" cy="30" r="8.5" fill="#E2E8F0"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Ludwig Classic Vintage</div>
                       <div class="gear-model">Serie 1970s Silver Sparkle</div>
                       <div class="gear-sound">Caja profunda y tono cálido</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="yamaha recording custom">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141416"/><ellipse cx="11" cy="12" rx="8" ry="2.5" fill="#ECC94B"/><ellipse cx="33" cy="12" rx="8" ry="2.5" fill="#ECC94B"/><rect x="16" y="16" width="12" height="6" fill="#1A202C" rx="1"/><circle cx="25" cy="30" r="10.5" fill="#1A202C" stroke="#2D3748" stroke-width="1.5"/><circle cx="25" cy="30" r="8.5" fill="#2D3748"/><circle cx="29" cy="32" r="2" fill="#000"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141416"/><ellipse cx="11" cy="12" rx="8" ry="2.5" fill="#ECC94B"/><ellipse cx="33" cy="12" rx="8" ry="2.5" fill="#ECC94B"/><rect x="16" y="16" width="12" height="6" fill="#1A202C" rx="1"/><circle cx="25" cy="30" r="10.5" fill="#1A202C" stroke="#2D3748" stroke-width="1.5"/><circle cx="25" cy="30" r="8.5" fill="#2D3748"/><circle cx="29" cy="32" r="2" fill="#000"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Yamaha Recording Custom</div>
                       <div class="gear-model">Abedul Japonés High-Gloss</div>
                       <div class="gear-sound">Ataque limpio y controlado</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                 </div>
               </div>
@@ -358,47 +382,47 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="bass">
                   <div class="gear-card" data-gear="fender jazz bass 1975">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1B1714"/><path d="M14 18 C14 12 26 12 26 18 C26 23 30 26 29 34 C28 39 12 40 11 34 C10 27 14 24 14 18 Z" fill="#C05621"/><ellipse cx="20" cy="30" rx="5" ry="7" fill="#ECC94B"/><path d="M14 23 C16 22 23 23 23 27 C23 31 16 33 14 30 Z" fill="#742A2A"/><rect x="18" y="27" width="5" height="1.8" fill="#1A202C"/><rect x="18" y="31" width="5" height="1.8" fill="#1A202C"/><rect x="18" y="4" width="4" height="15" fill="#ECC94B"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1B1714"/><path d="M14 18 C14 12 26 12 26 18 C26 23 30 26 29 34 C28 39 12 40 11 34 C10 27 14 24 14 18 Z" fill="#C05621"/><ellipse cx="20" cy="30" rx="5" ry="7" fill="#ECC94B"/><path d="M14 23 C16 22 23 23 23 27 C23 31 16 33 14 30 Z" fill="#742A2A"/><rect x="18" y="27" width="5" height="1.8" fill="#1A202C"/><rect x="18" y="31" width="5" height="1.8" fill="#1A202C"/><rect x="18" y="4" width="4" height="15" fill="#ECC94B"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Jazz Bass 1975</div>
                       <div class="gear-model">Pastillas Single-Coil</div>
                       <div class="gear-sound">Brillo melódico y ataque</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="fender precision 1962">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1819"/><path d="M14 17 C13 12 27 12 27 18 C27 24 30 27 28 35 C27 40 13 40 12 35 C11 28 14 24 14 17 Z" fill="#E2E8F0"/><path d="M14 22 C17 21 24 23 24 28 C23 33 16 34 14 31 Z" fill="#9B2C2C"/><rect x="17" y="27" width="3.5" height="2" fill="#1A202C"/><rect x="19.5" y="29.5" width="3.5" height="2" fill="#1A202C"/><rect x="18" y="4" width="4" height="14" fill="#D69E2E"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1819"/><path d="M14 17 C13 12 27 12 27 18 C27 24 30 27 28 35 C27 40 13 40 12 35 C11 28 14 24 14 17 Z" fill="#E2E8F0"/><path d="M14 22 C17 21 24 23 24 28 C23 33 16 34 14 31 Z" fill="#9B2C2C"/><rect x="17" y="27" width="3.5" height="2" fill="#1A202C"/><rect x="19.5" y="29.5" width="3.5" height="2" fill="#1A202C"/><rect x="18" y="4" width="4" height="14" fill="#D69E2E"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Precision 1962</div>
                       <div class="gear-model">Classic Vintage P-Bass</div>
                       <div class="gear-sound">Graves redondos y sólidos</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="music man stingray">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#16171A"/><path d="M14 18 C14 13 26 13 26 18 C26 24 29 27 28 35 C27 40 13 40 12 35 C11 28 14 24 14 18 Z" fill="#4A5568"/><ellipse cx="19" cy="24" rx="4" ry="6" fill="#1A202C"/><rect x="17" y="29" width="7" height="4" fill="#1A202C" rx="1"/><rect x="18" y="4" width="4" height="14" fill="#ECC94B"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#16171A"/><path d="M14 18 C14 13 26 13 26 18 C26 24 29 27 28 35 C27 40 13 40 12 35 C11 28 14 24 14 18 Z" fill="#4A5568"/><ellipse cx="19" cy="24" rx="4" ry="6" fill="#1A202C"/><rect x="17" y="29" width="7" height="4" fill="#1A202C" rx="1"/><rect x="18" y="4" width="4" height="14" fill="#ECC94B"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Music Man StingRay</div>
                       <div class="gear-model">Humbucker Activo</div>
                       <div class="gear-sound">Pegada potente y slap</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="contrabajo acustico">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181512"/><path d="M16 17 C13 20 13 22 17 24 C13 27 12 33 15 37 C18 41 26 41 29 37 C32 33 31 27 27 24 C31 22 31 20 28 17 C25 14 19 14 16 17 Z" fill="#7B341E"/><rect x="21" y="7" width="2" height="12" fill="#1A202C"/><circle cx="22" cy="5" r="2.5" fill="#7B341E"/><rect x="20" y="29" width="4" height="1.5" fill="#D69E2E"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181512"/><path d="M16 17 C13 20 13 22 17 24 C13 27 12 33 15 37 C18 41 26 41 29 37 C32 33 31 27 27 24 C31 22 31 20 28 17 C25 14 19 14 16 17 Z" fill="#7B341E"/><rect x="21" y="7" width="2" height="12" fill="#1A202C"/><circle cx="22" cy="5" r="2.5" fill="#7B341E"/><rect x="20" y="29" width="4" height="1.5" fill="#D69E2E"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Contrabajo Acústico</div>
                       <div class="gear-model">Upright Double Bass</div>
                       <div class="gear-sound">Madera profunda y resonante</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                 </div>
               </div>
@@ -409,47 +433,47 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="keys">
                   <div class="gear-card" data-gear="yamaha cfx grand">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141416"/><path d="M9 14 L9 32 L34 32 L34 22 C34 16 28 14 20 14 Z" fill="#1A202C" stroke="#4A5568"/><path d="M12 17 L12 28 L30 28 L30 23 C30 18 25 17 19 17 Z" fill="#D69E2E"/><rect x="9" y="32" width="25" height="5" fill="#F7FAFC"/><rect x="12" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="15" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="19" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="22" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="25" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="29" y="32" width="1.5" height="3" fill="#1A202C"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141416"/><path d="M9 14 L9 32 L34 32 L34 22 C34 16 28 14 20 14 Z" fill="#1A202C" stroke="#4A5568"/><path d="M12 17 L12 28 L30 28 L30 23 C30 18 25 17 19 17 Z" fill="#D69E2E"/><rect x="9" y="32" width="25" height="5" fill="#F7FAFC"/><rect x="12" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="15" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="19" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="22" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="25" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="29" y="32" width="1.5" height="3" fill="#1A202C"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Yamaha CFX Grand</div>
                       <div class="gear-model">Piano de Cola de Concierto</div>
                       <div class="gear-sound">Brillo y majestuosidad</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="fender rhodes mark i">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#18181C"/><path d="M6 14 C6 11 38 11 38 14 L38 23 L6 23 Z" fill="#2D3748"/><rect x="6" y="21" width="32" height="6" fill="#CBD5E0"/><circle cx="10" cy="24" r="1.5" fill="#1A202C"/><circle cx="14" cy="24" r="1.5" fill="#1A202C"/><rect x="6" y="27" width="32" height="7" fill="#F7FAFC"/><rect x="9" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="13" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="18" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="22" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="26" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="31" y="27" width="1.8" height="4" fill="#1A202C"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#18181C"/><path d="M6 14 C6 11 38 11 38 14 L38 23 L6 23 Z" fill="#2D3748"/><rect x="6" y="21" width="32" height="6" fill="#CBD5E0"/><circle cx="10" cy="24" r="1.5" fill="#1A202C"/><circle cx="14" cy="24" r="1.5" fill="#1A202C"/><rect x="6" y="27" width="32" height="7" fill="#F7FAFC"/><rect x="9" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="13" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="18" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="22" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="26" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="31" y="27" width="1.8" height="4" fill="#1A202C"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Rhodes Mark I</div>
                       <div class="gear-model">Piano Eléctrico 1973</div>
                       <div class="gear-sound">Tono campana de adoración</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="hammond b3 + leslie">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1A1512"/><rect x="4" y="9" width="22" height="26" rx="2" fill="#7B341E"/><rect x="6" y="16" width="18" height="4" fill="#F7FAFC"/><rect x="6" y="22" width="18" height="4" fill="#F7FAFC"/><rect x="28" y="9" width="12" height="26" rx="2" fill="#9C4221"/><line x1="30" y1="14" x2="38" y2="14" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="18" x2="38" y2="18" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="26" x2="38" y2="26" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="30" x2="38" y2="30" stroke="#2D1A0E" stroke-width="1.5"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1A1512"/><rect x="4" y="9" width="22" height="26" rx="2" fill="#7B341E"/><rect x="6" y="16" width="18" height="4" fill="#F7FAFC"/><rect x="6" y="22" width="18" height="4" fill="#F7FAFC"/><rect x="28" y="9" width="12" height="26" rx="2" fill="#9C4221"/><line x1="30" y1="14" x2="38" y2="14" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="18" x2="38" y2="18" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="26" x2="38" y2="26" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="30" x2="38" y2="30" stroke="#2D1A0E" stroke-width="1.5"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Hammond B3 + Leslie</div>
                       <div class="gear-model">Órgano & Bocina Giratoria</div>
                       <div class="gear-sound">Fervor pentecostal y gospel</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="roland juno-106">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#121318"/><rect x="4" y="9" width="36" height="26" rx="2" fill="#1A202C" stroke="#2B6CB0"/><line x1="5" y1="12" x2="39" y2="12" stroke="#3182CE" stroke-width="1.5"/><circle cx="8" cy="18" r="1.2" fill="#E53E3E"/><circle cx="12" cy="16" r="1.2" fill="#ECC94B"/><circle cx="16" cy="19" r="1.2" fill="#3182CE"/><circle cx="20" cy="17" r="1.2" fill="#38A169"/><rect x="5" y="24" width="34" height="10" fill="#F7FAFC"/><rect x="8" y="24" width="2" height="6" fill="#1A202C"/><rect x="13" y="24" width="2" height="6" fill="#1A202C"/><rect x="19" y="24" width="2" height="6" fill="#1A202C"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#121318"/><rect x="4" y="9" width="36" height="26" rx="2" fill="#1A202C" stroke="#2B6CB0"/><line x1="5" y1="12" x2="39" y2="12" stroke="#3182CE" stroke-width="1.5"/><circle cx="8" cy="18" r="1.2" fill="#E53E3E"/><circle cx="12" cy="16" r="1.2" fill="#ECC94B"/><circle cx="16" cy="19" r="1.2" fill="#3182CE"/><circle cx="20" cy="17" r="1.2" fill="#38A169"/><rect x="5" y="24" width="34" height="10" fill="#F7FAFC"/><rect x="8" y="24" width="2" height="6" fill="#1A202C"/><rect x="13" y="24" width="2" height="6" fill="#1A202C"/><rect x="19" y="24" width="2" height="6" fill="#1A202C"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Roland Juno-106</div>
                       <div class="gear-model">Sintetizador Analógico Polifónico</div>
                       <div class="gear-sound">Pads celestiales envolventes</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                 </div>
               </div>
@@ -460,36 +484,36 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="guitar">
                   <div class="gear-card" data-gear="stratocaster">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1A1817"/><path d="M14 16 C12 10 26 10 24 16 C24 21 28 25 27 34 C26 39 12 40 11 34 C10 27 14 23 14 16 Z" fill="#C05621"/><ellipse cx="19" cy="28" rx="5" ry="7" fill="#ECC94B"/><path d="M14 20 C16 19 22 20 22 25 C22 29 15 31 13 28 Z" fill="#F7FAFC"/><rect x="16" y="23" width="5" height="1.5" fill="#1A202C"/><rect x="16" y="26" width="5" height="1.5" fill="#1A202C"/><rect x="16" y="29" width="5" height="1.5" fill="#1A202C"/><rect x="17.5" y="4" width="3" height="13" fill="#ECC94B"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1A1817"/><path d="M14 16 C12 10 26 10 24 16 C24 21 28 25 27 34 C26 39 12 40 11 34 C10 27 14 23 14 16 Z" fill="#C05621"/><ellipse cx="19" cy="28" rx="5" ry="7" fill="#ECC94B"/><path d="M14 20 C16 19 22 20 22 25 C22 29 15 31 13 28 Z" fill="#F7FAFC"/><rect x="16" y="23" width="5" height="1.5" fill="#1A202C"/><rect x="16" y="26" width="5" height="1.5" fill="#1A202C"/><rect x="16" y="29" width="5" height="1.5" fill="#1A202C"/><rect x="17.5" y="4" width="3" height="13" fill="#ECC94B"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Stratocaster</div>
                       <div class="gear-model">Clean & Chorus Cristalino</div>
                       <div class="gear-sound">Arpegios brillantes</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="gibson les paul">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1615"/><path d="M16 17 C13 19 14 22 17 24 C14 27 12 33 15 37 C18 41 26 41 29 37 C32 33 30 27 27 24 C27 20 26 18 22 17 Z" fill="#DD6B20"/><circle cx="21" cy="28" r="6" fill="#ECC94B"/><rect x="18" y="23" width="6" height="3" fill="#CBD5E0" rx="0.5"/><rect x="18" y="28" width="6" height="3" fill="#CBD5E0" rx="0.5"/><rect x="19.5" y="4" width="3" height="14" fill="#7B341E"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1615"/><path d="M16 17 C13 19 14 22 17 24 C14 27 12 33 15 37 C18 41 26 41 29 37 C32 33 30 27 27 24 C27 20 26 18 22 17 Z" fill="#DD6B20"/><circle cx="21" cy="28" r="6" fill="#ECC94B"/><rect x="18" y="23" width="6" height="3" fill="#CBD5E0" rx="0.5"/><rect x="18" y="28" width="6" height="3" fill="#CBD5E0" rx="0.5"/><rect x="19.5" y="4" width="3" height="14" fill="#7B341E"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Gibson Les Paul</div>
                       <div class="gear-model">Humbuckers PAF & Overdrive</div>
                       <div class="gear-sound">Sustain y solos cálidos</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                   <div class="gear-card" data-gear="martin d-28 acustica">
                     <div class="gear-thumb">
-                      <svg viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181513"/><path d="M16 17 C14 20 14 22 17 24 C13 27 12 33 15 37 C18 41 26 41 29 37 C32 33 31 27 27 24 C30 22 30 20 28 17 C25 15 19 15 16 17 Z" fill="#ED8936"/><circle cx="22" cy="24" r="3.5" fill="#1A202C"/><rect x="19" y="31" width="6" height="2" fill="#2D1A0E"/><rect x="20.5" y="4" width="3" height="14" fill="#7B341E"/></svg>
+                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181513"/><path d="M16 17 C14 20 14 22 17 24 C13 27 12 33 15 37 C18 41 26 41 29 37 C32 33 31 27 27 24 C30 22 30 20 28 17 C25 15 19 15 16 17 Z" fill="#ED8936"/><circle cx="22" cy="24" r="3.5" fill="#1A202C"/><rect x="19" y="31" width="6" height="2" fill="#2D1A0E"/><rect x="20.5" y="4" width="3" height="14" fill="#7B341E"/></svg>
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Martin D-28 Acústica</div>
                       <div class="gear-model">Dreadnought Sitka & Palosanto</div>
                       <div class="gear-sound">Rasgueo acústico con cuerpo</div>
                     </div>
-                    <i class="ph ph-check-circle-fill gear-check"></i>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
                 </div>
               </div>
@@ -665,7 +689,8 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <div class="adv-body" style="padding:12px">
             <div class="console" id="console"><span class="dim">Esperando generación...</span></div>
           </div>
-        </form>
+        </details>
+      </form>
       </div>
 
       <!-- VISTA 2: VOZ EN OFF / PREDICACIÓN -->
@@ -683,8 +708,9 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <label class="label" for="voAudioInput">1. Audio del Pastor (Grabadora Samsung, MP3, M4A, WAV)</label>
             <div class="drop-zone" id="voDropZone">
               <i class="ph ph-microphone"></i>
-              <div style="font-weight:600;font-size:13px" id="voFileName">Haz clic para seleccionar o arrastra el audio del pastor aquí</div>
-              <div style="font-size:11px;color:var(--muted)">Soporta .m4a (Samsung Voice), .mp3, .wav, .aac, .ogg</div>
+              <div style="font-weight:700;font-size:14px" id="voFileName">Selecciona o arrastra el audio del pastor aquí</div>
+              <div style="font-size:11.5px;color:var(--muted)">Grabadora Samsung (.m4a), WhatsApp, MP3, WAV, AAC</div>
+              <div class="drop-zone-btn"><i class="ph ph-folder-open"></i> Elegir Grabación de Celular</div>
               <input type="file" id="voAudioInput" accept="audio/*,.m4a,.aac,.wav,.mp3,.ogg,.flac" style="display:none" required>
             </div>
           </div>
@@ -727,6 +753,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="ambient-title">Piano Rhodes & Pad Celestial</div>
                   <div class="ambient-sub">Devocional cálido, tono campana suave</div>
                 </div>
+                <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
               <div class="ambient-card" data-bg="strings_intimate">
                 <div class="ambient-icon"><i class="ph ph-wave-sine"></i></div>
@@ -734,6 +761,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="ambient-title">Cuerdas Suaves & Atmósfera</div>
                   <div class="ambient-sub">Oración íntima, cuerdas orquestales sutiles</div>
                 </div>
+                <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
               <div class="ambient-card" data-bg="piano_shimmer">
                 <div class="ambient-icon"><i class="ph ph-sparkle"></i></div>
@@ -741,6 +769,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="ambient-title">Piano Acústico & Shimmer</div>
                   <div class="ambient-sub">Reverencia y armonías celestiales</div>
                 </div>
+                <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
               <div class="ambient-card" data-bg="custom">
                 <div class="ambient-icon"><i class="ph ph-upload-simple"></i></div>
@@ -748,6 +777,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="ambient-title">Subir Pista Propia</div>
                   <div class="ambient-sub">Usa cualquier instrumental que tengas</div>
                 </div>
+                <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
               <div class="ambient-card" data-bg="none">
                 <div class="ambient-icon" style="color:var(--muted);background:rgba(255,255,255,0.05)"><i class="ph ph-prohibit"></i></div>
@@ -755,6 +785,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="ambient-title">Sin Música de Fondo</div>
                   <div class="ambient-sub">Solo voz limpia y restaurada</div>
                 </div>
+                <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
             </div>
           </div>
@@ -896,8 +927,14 @@ const WORSHIP_PRESETS = {
 
 document.querySelectorAll('.preset-card').forEach(card => {
   card.addEventListener('click', () => {
-    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.preset-card').forEach(c => {
+      c.classList.remove('active');
+      const b = c.querySelector('.btn-preset-use');
+      if (b) b.innerHTML = '<i class="ph ph-lightning"></i> Cargar';
+    });
     card.classList.add('active');
+    const b = card.querySelector('.btn-preset-use');
+    if (b) b.innerHTML = '<i class="ph ph-check"></i> Activo';
     const p = WORSHIP_PRESETS[card.dataset.preset];
     if (p) {
       $('styleInput').value = p.style;
@@ -915,13 +952,19 @@ document.querySelectorAll('.gear-card').forEach(card => {
     if (card.classList.contains('active')) {
       card.classList.remove('active');
       activeGear.delete(card.dataset.gear);
+      const icon = card.querySelector('.btn-gear-toggle i');
+      if (icon) icon.className = 'ph ph-plus';
     } else {
       parentGrid.querySelectorAll('.gear-card').forEach(c => {
         c.classList.remove('active');
         activeGear.delete(c.dataset.gear);
+        const icon = c.querySelector('.btn-gear-toggle i');
+        if (icon) icon.className = 'ph ph-plus';
       });
       card.classList.add('active');
       activeGear.add(card.dataset.gear);
+      const icon = card.querySelector('.btn-gear-toggle i');
+      if (icon) icon.className = 'ph ph-check';
     }
     const arr = Array.from(activeGear);
     $('rackChainText').textContent = arr.length ? arr.map(g => g.toUpperCase()).join(' + ') : 'Ningún hardware seleccionado';
