@@ -15,3 +15,4 @@ temp_*/
 *.mp3
 *.wav
 ffmpeg.exe
+!assets/ambient/*.mp3

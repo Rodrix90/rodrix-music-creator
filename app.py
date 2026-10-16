@@ -247,6 +247,186 @@ async def cancel_task(task_id: str):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Task no encontrada")
 
+@app.post("/api/process_voiceover")
+async def process_voiceover(
+    background_tasks: BackgroundTasks,
+    voice_audio: UploadFile = File(...),
+    title: str = Form("Predicación Pastoral"),
+    bg_choice: str = Form("rhodes_pad"),
+    custom_bg: UploadFile = File(None),
+    bg_volume: float = Form(0.12),
+    ducking: bool = Form(True),
+    eq_profile: str = Form("clarity"),
+    noise_reduction: bool = Form(True),
+    leveling: bool = Form(True),
+    current_user: str = Depends(get_current_user)
+):
+    prune_tasks()
+    
+    voice_bytes = await voice_audio.read()
+    voice_filename = voice_audio.filename or "pastor_audio.mp3"
+    
+    custom_bg_bytes = None
+    custom_bg_filename = None
+    if custom_bg and bg_choice == "custom":
+        custom_bg_bytes = await custom_bg.read()
+        custom_bg_filename = custom_bg.filename
+        
+    task_id = str(uuid.uuid4())
+    TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
+    
+    background_tasks.add_task(
+        run_voiceover_task,
+        task_id, voice_bytes, voice_filename, title, bg_choice,
+        custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
+        eq_profile, noise_reduction, leveling
+    )
+    
+    return {"status": "started", "task_id": task_id}
+
+async def run_voiceover_task(
+    task_id, voice_bytes, voice_filename, title, bg_choice,
+    custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
+    eq_profile, noise_reduction, leveling
+):
+    def log_msg(msg):
+        import datetime
+        timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+        line = f"[{timestamp}] {msg}"
+        print(line, flush=True)
+        TASKS[task_id]["logs"] += line + "\n"
+
+    temp_files = []
+    try:
+        log_msg("Iniciando restauración y edición de voz pastoral...")
+        ext = os.path.splitext(voice_filename)[1] or ".mp3"
+        temp_voice = f"temp_voice_{task_id}{ext}"
+        temp_files.append(temp_voice)
+        with open(temp_voice, "wb") as f:
+            f.write(voice_bytes)
+            
+        # Get voice duration via ffprobe
+        probe_cmd = [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", temp_voice
+        ]
+        proc = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            voice_dur = float(proc.stdout.strip())
+        except Exception:
+            voice_dur = 60.0
+        log_msg(f"Audio del pastor detectado: {voice_dur:.1f} segundos.")
+
+        # Build voice processing filter
+        v_filters = []
+        if noise_reduction:
+            log_msg("Aplicando corte de retumbos (85 Hz) y anti-siseo de celular...")
+            v_filters.append("highpass=f=85")
+            v_filters.append("equalizer=f=360:width_type=o:width=1.5:g=-3.5")
+            v_filters.append("lowpass=f=15500")
+
+        if eq_profile == "clarity":
+            log_msg("Aplicando ecualización de presencia e inteligibilidad bíblica...")
+            v_filters.append("equalizer=f=3400:width_type=o:width=1.2:g=3.2")
+            v_filters.append("equalizer=f=10500:width_type=o:width=1.5:g=2.0")
+        elif eq_profile == "warm":
+            log_msg("Aplicando ecualización cálida y redonda...")
+            v_filters.append("equalizer=f=180:width_type=o:width=1.2:g=2.2")
+            v_filters.append("equalizer=f=3000:width_type=o:width=1.5:g=1.5")
+        elif eq_profile == "gentle":
+            log_msg("Aplicando ecualización suave devocional...")
+            v_filters.append("equalizer=f=2800:width_type=o:width=1.0:g=1.8")
+
+        if leveling:
+            log_msg("Nivelando dinámica de habla (Speech-Norm)...")
+            v_filters.append("speechnorm=e=4:r=0.0001:l=1")
+
+        voice_filter_str = ",".join(v_filters) if v_filters else "anull"
+
+        out_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+
+        bg_file = None
+        if bg_choice in ["rhodes_pad", "strings_intimate", "piano_shimmer"]:
+            candidate = f"assets/ambient/{bg_choice}.mp3"
+            if os.path.exists(candidate):
+                bg_file = candidate
+        elif bg_choice == "custom" and custom_bg_bytes:
+            bg_ext = os.path.splitext(custom_bg_filename or ".mp3")[1] or ".mp3"
+            custom_path = f"temp_bg_{task_id}{bg_ext}"
+            temp_files.append(custom_path)
+            with open(custom_path, "wb") as f:
+                f.write(custom_bg_bytes)
+            bg_file = custom_path
+
+        if bg_file and os.path.exists(bg_file):
+            log_msg(f"Mezclando música de fondo ambiental muy suave (volumen {int(bg_volume*100)}%)...")
+            fade_start = max(0.5, voice_dur - 2.5)
+            if ducking:
+                log_msg("Activando atenuación inteligente (Auto-Ducking) para ministración...")
+                filter_complex = (
+                    f"[0:a]{voice_filter_str}[v_clean];"
+                    f"[1:a]volume={bg_volume},afade=t=out:st={fade_start}:d=2.5[bg_vol];"
+                    f"[bg_vol][v_clean]sidechaincompress=threshold=0.07:ratio=4:attack=50:release=700[bg_ducked];"
+                    f"[v_clean][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2[out]"
+                )
+            else:
+                filter_complex = (
+                    f"[0:a]{voice_filter_str}[v_clean];"
+                    f"[1:a]volume={bg_volume},afade=t=out:st={fade_start}:d=2.5[bg_vol];"
+                    f"[v_clean][bg_vol]amix=inputs=2:duration=first:dropout_transition=2[out]"
+                )
+            ffmpeg_cmd = [
+                "ffmpeg", "-y",
+                "-i", temp_voice,
+                "-stream_loop", "-1", "-i", bg_file,
+                "-filter_complex", filter_complex,
+                "-map", "[out]",
+                "-c:a", "libmp3lame", "-b:a", "320k",
+                out_path
+            ]
+        else:
+            log_msg("Sin música de fondo. Exportando voz restaurada y masterizada...")
+            ffmpeg_cmd = [
+                "ffmpeg", "-y",
+                "-i", temp_voice,
+                "-af", voice_filter_str,
+                "-c:a", "libmp3lame", "-b:a", "320k",
+                out_path
+            ]
+
+        proc = await asyncio.to_thread(subprocess.run, ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if proc.returncode != 0:
+            log_msg(f"ERROR FFmpeg: {proc.stderr[:300]}")
+            raise Exception("Error al procesar el audio con FFmpeg.")
+
+        log_msg("¡Predicación procesada y masterizada con éxito!")
+        
+        track_info = {
+            "id": task_id,
+            "title": f"🎙️ {title}",
+            "audio_url": f"/api/audio_file/{task_id}",
+            "raw_audio_url": f"/api/audio_file/{task_id}",
+            "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338A169'/%3E%3Ccircle cx='32' cy='24' r='10' fill='%23fff' opacity='0.9'/%3E%3Crect x='30' y='34' width='4' height='14' fill='%23fff'/%3E%3Cpath d='M22 48 L42 48' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M18 24 C18 34 46 34 46 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E",
+            "duration": round(voice_dur),
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "tags": ["Voz en Off", "Predicación", "Restauración Vocal"]
+        }
+        add_track_to_library(track_info)
+        TASKS[task_id]["tracks"] = [track_info]
+        TASKS[task_id]["status"] = "COMPLETED"
+
+    except Exception as e:
+        log_msg(f"ERROR: {e}")
+        TASKS[task_id]["status"] = "ERROR"
+        TASKS[task_id]["detail"] = str(e)
+    finally:
+        for f in temp_files:
+            if f and os.path.exists(f):
+                try: os.remove(f)
+                except: pass
+        import gc
+        gc.collect()
+
 
 TRACKS_DIR = "tracks_storage"
 os.makedirs(TRACKS_DIR, exist_ok=True)
@@ -408,15 +588,50 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship",
-                "coros pentecostales": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship",
+                "coro pentecostal": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship, handclaps",
+                "coros pentecostales": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship, handclaps",
                 "pentecostal": "fast upbeat pentecostal praise, straight 4/4 live drum kit, punchy bass guitar, rhythm guitar, energetic congregational worship, fast tempo 135 bpm",
                 "avivamiento": "energetic revival praise, straight 4/4 live drums with snare backbeat, driving bass guitar, rhythm guitar, fast tempo 135 bpm",
                 "coros de avivamiento": "energetic revival praise, straight 4/4 live drums with snare backbeat, driving bass guitar, rhythm guitar, fast tempo 135 bpm",
+                "coro pentecostal de avivamiento": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship, handclaps",
                 "alabanza rapida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
                 "alabanza rápida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
+                "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
+                "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
+                "himno solemne tradicional": "traditional sacred hymn, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo, classical sacred Christian hymn",
+                "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, driving 125 bpm, punchy acoustic rock drum kit with solid backbeat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, dotted eighth-note delay lead guitar riff, modern synth arpeggio, inspiring youth worship leader and anthemic chorus",
                 "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat",
                 "guitarra bajo batería": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat",
+                # Hardware de Estudio y Consolas
+                "neve 8048": "Neve 8048 vintage console, Neve 1073 preamp warm analog saturation, rich low-end and silky smooth high frequencies",
+                "neve 1073": "Neve 1073 vintage preamp, warm British analog console saturation, thick lows and silky highs",
+                "ssl 4000": "Solid State Logic SSL 4000 console mix, crisp transients, punchy drum compression, ultra-clean studio fidelity",
+                "ssl 4000 e/g": "Solid State Logic SSL 4000 console mix, crisp transients, punchy drum compression, ultra-clean studio fidelity",
+                "api 1608": "API 1608 console, discrete op-amp 312 punchy midrange, aggressive transient punch, American rock studio sound",
+                "abbey road tg12345": "Abbey Road TG12345 console, vintage EMI tape saturation, warm tube harmonic distortion",
+                # Baterías Pro
+                "dw collector's": "DW Collector's Series maple drum kit, punchy kick drum, resonant snare with crack, warm balanced toms",
+                "dw collector's maple": "DW Collector's Series maple drum kit, punchy kick drum, resonant snare with crack, warm balanced toms",
+                "ludwig classic 70s": "vintage 1970s Ludwig Classic drum kit, deep warm wooden tone, fat vintage snare with ring",
+                "yamaha recording custom": "Yamaha Recording Custom birch drum kit, clean punchy attack, perfectly controlled studio drum resonance",
+                # Bajos
+                "fender jazz bass 1975": "1975 Fender Jazz Bass with active pickups, growling midrange bite, articulate fingerstyle clarity",
+                "fender precision 1962": "1962 Fender Precision Bass, deep punchy round low-end, classic Motown and vintage rock bass tone",
+                "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
+                "music man stingray": "Music Man StingRay bass, punchy active humbucker, aggressive slap and finger tone, tight sub-bass",
+                "contrabajo acustico": "acoustic upright double bass, warm resonant wooden body, deep woody acoustic pizzicato tone",
+                "contrabajo acústico": "acoustic upright double bass, warm resonant wooden body, deep woody acoustic pizzicato tone",
+                # Teclados y Pianos
+                "yamaha cfx grand": "Yamaha CFX 9-foot concert grand piano, crystal clear brilliant highs, majestic resonant bass, acoustic concert hall reverb",
+                "fender rhodes mark i": "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo, lush neo-soul worship vibe",
+                "rhodes": "vintage Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo",
+                "hammond b3": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, gospel overdrive warmth",
+                "hammond b3 + leslie": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, gospel overdrive warmth",
+                "roland juno-106": "Roland Juno-106 analog polyphonic synthesizer, lush stereo chorus pad, warm atmospheric worship soundscape",
+                # Guitarras
+                "martin d-28": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
+                "martin d-28 acustica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
+                "martin d-28 acústica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
             }
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
