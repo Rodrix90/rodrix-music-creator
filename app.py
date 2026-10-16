@@ -565,7 +565,7 @@ async def run_voiceover_task(
                 fade_start = max(0.5, voice_dur - 2.5)
                 filter_complex = (
                     f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7[v_ready];"
-                    f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bed_vol:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_ready];"
+                    f"[1:a]atrim=0:{voice_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,volume={bed_vol:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_ready];"
                     f"[v_ready][bg_ready]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
                     f"[mixed]alimiter=limit=-1.0dB[out]"
                 )
