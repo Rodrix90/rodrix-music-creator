@@ -192,6 +192,9 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .ambient-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);display:grid;place-items:center;font-size:13px;flex-shrink:0;transition:.2s}
 .ambient-card.active .ambient-btn{background:var(--ok);border-color:var(--ok);color:#064E3B}
 .view-panel{display:flex;flex-direction:column;gap:18px}
+.badge-admin{background:rgba(234,179,8,.15);color:#EAB308;border:1px solid rgba(234,179,8,.35);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
+.badge-active{background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.35);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
+.badge-blocked{background:rgba(239,68,68,.15);color:#EF4444;border:1px solid rgba(239,68,68,.35);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -207,6 +210,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
       <li><a href="#" class="active" id="nav-crear"><i class="ph ph-plus-circle"></i><span>Crear canción</span></a></li>
       <li><a href="#" id="nav-vozenoff"><i class="ph ph-microphone-stage"></i><span>Voz en Off / Predicación</span></a></li>
       <li><a href="#" id="nav-libreria"><i class="ph ph-books"></i><span>Librería</span></a></li>
+      <li id="nav-users-li" style="display:none"><a href="#" id="nav-usuarios"><i class="ph ph-users-three"></i><span>Usuarios</span></a></li>
       <li><a href="#" id="nav-ajustes"><i class="ph ph-sliders-horizontal"></i><span>Ajustes</span></a></li>
       <li><a href="#" id="nav-ayuda"><i class="ph ph-question"></i><span>Ayuda</span></a></li>
     </ul>
@@ -951,6 +955,28 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </div>
       </div>
 
+      <!-- VISTA 4: CONTROL DE USUARIOS (SOLO ADMIN) -->
+      <div id="view-usuarios" class="view-panel" style="display:none">
+        <div class="page-head">
+          <div>
+            <h1>👥 Control de Accesos y Usuarios</h1>
+            <p style="font-size:12px;color:var(--muted);margin-top:4px">Visualiza las cuentas de Google conectadas a tu aplicación y bloquea o habilita su acceso en 1 clic.</p>
+          </div>
+          <button type="button" class="btn-sec" id="refreshUsersBtn"><i class="ph ph-arrows-clockwise"></i> Actualizar</button>
+        </div>
+
+        <div class="form-card" style="padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+            <span style="font-weight:700;font-size:14px">Usuarios Conectados (<span id="userCount">0</span>)</span>
+            <span style="font-size:11px;color:var(--muted)">Tu cuenta de administrador nunca puede ser bloqueada</span>
+          </div>
+
+          <div id="usersList" style="display:flex;flex-direction:column;gap:10px">
+            <div style="color:var(--muted);font-size:13px;padding:12px;text-align:center">Cargando usuarios...</div>
+          </div>
+        </div>
+      </div>
+
     </div> <!-- .center-inner -->
   </main> <!-- .center -->
 </div> <!-- .app -->
@@ -1007,7 +1033,18 @@ $('nav-libreria').onclick = e => {
   loadLibrary();
   document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
 };
-$('nav-ajustes').onclick = e => { e.preventDefault(); setActive('nav-ajustes'); $('view-crear').style.display = 'flex'; $('view-vozenoff').style.display = 'none'; $('view-libreria').style.display = 'none'; $('advanced').open = true; $('advanced').scrollIntoView({behavior:'smooth',block:'center'}); };
+$('nav-usuarios').onclick = e => {
+  e.preventDefault();
+  setActive('nav-usuarios');
+  $('view-crear').style.display = 'none';
+  $('view-vozenoff').style.display = 'none';
+  $('view-libreria').style.display = 'none';
+  $('view-usuarios').style.display = 'flex';
+  loadUsers();
+  document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
+};
+$('refreshUsersBtn').onclick = loadUsers;
+$('nav-ajustes').onclick = e => { e.preventDefault(); setActive('nav-ajustes'); $('view-crear').style.display = 'flex'; $('view-vozenoff').style.display = 'none'; $('view-libreria').style.display = 'none'; $('view-usuarios').style.display = 'none'; $('advanced').open = true; $('advanced').scrollIntoView({behavior:'smooth',block:'center'}); };
 $('nav-ayuda').onclick = e => { e.preventDefault(); setActive('nav-ayuda');
   alert('Cómo usar Rodrix Music Creator:\n\n1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio con fotos reales y genera música con IA.\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, elimina ruidos y retumbos, ecualiza y mezcla música devocional muy suave con auto-ducking.\n3. Librería: Escucha en el reproductor de onda, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.'); };
 
@@ -1698,8 +1735,83 @@ async function loadUserInfo() {
         const elEmail = $('userEmailDisplay');
         if (elEmail) elEmail.textContent = data.email;
       }
+      if (data.is_admin) {
+        if ($('nav-users-li')) $('nav-users-li').style.display = 'block';
+      }
     }
   } catch(e){}
+}
+
+async function loadUsers() {
+  try {
+    const r = await fetch('/api/admin/users');
+    if (!r.ok) return;
+    const data = await r.json();
+    const users = data.users || [];
+    $('userCount').textContent = users.length;
+    const container = $('usersList');
+    if (!users.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px;text-align:center">No hay usuarios registrados aún.</div>';
+      return;
+    }
+    container.innerHTML = users.map(u => {
+      const isBlocked = (u.status === 'blocked');
+      const isAdmin = (u.email === 'rodryandy@gmail.com');
+      const badgeClass = isAdmin ? 'badge-admin' : (isBlocked ? 'badge-blocked' : 'badge-active');
+      const badgeText = isAdmin ? '👑 Administrador' : (isBlocked ? '🚫 Bloqueado' : '✓ Activo');
+      const btnAction = isBlocked ? 'active' : 'blocked';
+      const btnText = isBlocked ? '🔓 Habilitar' : '🔒 Bloquear';
+      const btnColor = isBlocked ? '#22C55E' : '#EF4444';
+      const avatarHtml = u.picture 
+        ? `<img src="${esc(u.picture)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover" alt="">`
+        : `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff">${esc((u.name||u.email||'U')[0].toUpperCase())}</div>`;
+      
+      return `
+        <div class="user-row" style="background:#181824;border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px;min-width:200px">
+            ${avatarHtml}
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px">
+                ${esc(u.name || 'Sin Nombre')}
+                <span class="${badgeClass}">${badgeText}</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--muted)">${esc(u.email)}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px"><i class="ph ph-clock"></i> Último ingreso: ${esc(u.last_login || u.created_at || 'Nunca')}</div>
+            </div>
+          </div>
+          <div>
+            ${isAdmin ? `<span style="font-size:11px;color:var(--muted);font-style:italic">Cuenta Principal</span>` : `
+              <button type="button" class="btn-sec" onclick="toggleUserStatus('${esc(u.email)}', '${btnAction}')" style="border-color:${btnColor};color:${btnColor};font-size:12px;padding:6px 12px;cursor:pointer">
+                ${btnText}
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function toggleUserStatus(email, newStatus) {
+  const actionName = newStatus === 'blocked' ? 'bloquear' : 'habilitar';
+  if (!confirm(`¿Estás seguro de que deseas ${actionName} el acceso a ${email}?`)) return;
+  try {
+    const r = await fetch('/api/admin/toggle_user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, status: newStatus })
+    });
+    if (r.ok) {
+      loadUsers();
+    } else {
+      const err = await r.json();
+      alert(err.detail || 'Error al cambiar estado.');
+    }
+  } catch(e) {
+    alert('Error de conexión.');
+  }
 }
 
 loadLibrary();

@@ -58,15 +58,41 @@ async def startup_event():
         }
     )
 
+USERS_FILE = "users.json"
+ADMIN_EMAIL = "rodryandy@gmail.com"
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_users(users_data):
+    try:
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users_data, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print("Error guardando usuarios:", e)
+
 def get_current_user(request: Request):
     user = request.session.get('user')
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
     
-    email = user.get('email', '')
-    # Whitelist estricta en las llamadas del backend para proteger tus créditos de Udio
-    if email != "rodryandy@gmail.com":
-        raise HTTPException(status_code=403, detail="Tu correo no está en la lista blanca.")
+    email = user.get('email', '').strip().lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="Usuario inválido")
+    
+    if email == ADMIN_EMAIL:
+        return email
+        
+    users = load_users()
+    user_record = users.get(email)
+    if not user_record or user_record.get("status") == "blocked":
+        raise HTTPException(status_code=403, detail="Tu usuario ha sido bloqueado por el administrador.")
     
     return email
 
@@ -1672,15 +1698,44 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
 async def get_me(request: Request):
     user = request.session.get('user')
     if not user:
-        return {"logged_in": False, "name": "Usuario", "email": ""}
-    email = user.get('email', '')
+        return {"logged_in": False, "name": "Usuario", "email": "", "is_admin": False}
+    email = user.get('email', '').strip().lower()
     name = user.get('name') or user.get('given_name')
     if not name and email:
         name = email.split('@')[0].capitalize()
     if not name:
         name = "Rodrigo"
     picture = user.get('picture', '')
-    return {"logged_in": True, "name": name, "email": email, "picture": picture}
+    is_admin = (email == ADMIN_EMAIL)
+    return {"logged_in": True, "name": name, "email": email, "picture": picture, "is_admin": is_admin}
+
+@app.get("/api/admin/users")
+async def admin_get_users(current_user: str = Depends(get_current_user)):
+    if current_user != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede ver los usuarios.")
+    users = load_users()
+    user_list = list(users.values())
+    user_list.sort(key=lambda u: (0 if u.get("email") == ADMIN_EMAIL else 1, u.get("last_login", "")), reverse=False)
+    return {"status": "success", "users": user_list}
+
+@app.post("/api/admin/toggle_user")
+async def admin_toggle_user(request: Request, current_user: str = Depends(get_current_user)):
+    if current_user != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede gestionar usuarios.")
+    data = await request.json()
+    target_email = data.get("email", "").strip().lower()
+    new_status = data.get("status", "active")
+    
+    if target_email == ADMIN_EMAIL:
+        raise HTTPException(status_code=400, detail="No puedes bloquear tu propia cuenta de administrador.")
+        
+    users = load_users()
+    if target_email not in users:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+        
+    users[target_email]["status"] = "blocked" if new_status == "blocked" else "active"
+    save_users(users)
+    return {"status": "success", "user": users[target_email]}
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_spa(request: Request):
@@ -1688,9 +1743,12 @@ async def serve_spa(request: Request):
     if not user:
         return RedirectResponse(url="/login")
         
-    email = user.get('email', '')
-    if email != "rodryandy@gmail.com":
-        return RedirectResponse(url="/login?error=Correo%20No%20Autorizado")
+    email = user.get('email', '').strip().lower()
+    users = load_users()
+    user_record = users.get(email)
+    
+    if email != ADMIN_EMAIL and (not user_record or user_record.get("status") == "blocked"):
+        return RedirectResponse(url="/login?error=Acceso%20Bloqueado:%20Comunícate%20con%20el%20administrador.")
         
     real_name = user.get('name') or user.get('given_name')
     if not real_name and email:
@@ -1711,8 +1769,10 @@ async def serve_spa(request: Request):
 async def serve_login(request: Request):
     user = request.session.get('user')
     if user:
-        email = user.get('email', '')
-        if email == "rodryandy@gmail.com":
+        email = user.get('email', '').strip().lower()
+        users = load_users()
+        user_record = users.get(email)
+        if email == ADMIN_EMAIL or (user_record and user_record.get("status") != "blocked"):
             return RedirectResponse(url="/")
         
     login_path = os.path.join(os.getcwd(), "login.html")
@@ -1732,15 +1792,48 @@ async def login_via_google(request: Request):
 @app.get("/api/auth/callback")
 async def auth_callback(request: Request):
     try:
-        # Quitamos el redirect_uri de los argumentos para evitar el "multiple values"
         token = await oauth.google.authorize_access_token(request)
         user = token.get('userinfo')
         if user:
-            email = user.get('email', '')
-            # Whitelist estricta
-            if email != "rodryandy@gmail.com":
-                return RedirectResponse(url="/login?error=Acceso%20Denegado:%20Correo%20fuera%20de%20la%20lista%20blanca.")
+            email = user.get('email', '').strip().lower()
+            name = user.get('name') or email.split('@')[0].capitalize()
+            picture = user.get('picture', '')
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
+            users = load_users()
+            if email == ADMIN_EMAIL:
+                users[email] = {
+                    "email": email,
+                    "name": name or "Rodrigo",
+                    "picture": picture,
+                    "status": "active",
+                    "role": "admin",
+                    "last_login": now_str,
+                    "created_at": users.get(email, {}).get("created_at", now_str)
+                }
+                save_users(users)
+                request.session['user'] = user
+                return RedirectResponse(url="/")
+            
+            if email in users:
+                user_record = users[email]
+                if user_record.get("status") == "blocked":
+                    return RedirectResponse(url="/login?error=Acceso%20Bloqueado:%20Tu%20usuario%20ha%20sido%20desactivado%20por%20el%20administrador.")
+                user_record["last_login"] = now_str
+                user_record["name"] = name
+                user_record["picture"] = picture
+                users[email] = user_record
+            else:
+                users[email] = {
+                    "email": email,
+                    "name": name,
+                    "picture": picture,
+                    "status": "active",
+                    "role": "user",
+                    "created_at": now_str,
+                    "last_login": now_str
+                }
+            save_users(users)
             request.session['user'] = user
             return RedirectResponse(url="/")
     except Exception as e:
