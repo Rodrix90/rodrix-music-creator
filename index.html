@@ -834,17 +834,31 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             </div>
           </div>
 
-          <!-- Controles de mezcla de fondo -->
-          <div class="grid2" id="voMixControls" style="display:none">
-            <div class="field">
-              <label class="label"><span>Volumen del Colchón Musical</span><span class="val" id="voBgVolVal">7% (Colchón de Radio Recomendado 6-8%)</span></label>
-              <input type="range" id="voBgVol" min="3" max="20" value="7">
+          <!-- Controles de mezcla de fondo y formato de emisión -->
+          <div id="voMixControls" style="display:none;margin-top:10px">
+            <div class="field" style="margin-bottom:12px">
+              <label class="label" for="voRadioStructure">📻 Formato y Estructura de Emisión</label>
+              <select id="voRadioStructure">
+                <option value="radio_show" selected>📻 Predicación de Radio (Intro musical 2.5s ➔ Voz con colchón ➔ Cierre triunfal 3.5s) [Recomendado]</option>
+                <option value="podcast_continuous">🎙️ Podcast Continuo (Música de fondo suave constante de principio a fin, sin intro ni cierre extendido)</option>
+              </select>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">
+                • <b>Predicación de Radio:</b> La música suena con presencia los primeros 2.5s, al empezar a predicar baja a segundo plano, y cuando termina el pastor la música sube con fuerza triunfal y se desvanece suavemente.<br>
+                • <b>Podcast Continuo:</b> La voz y la música suenan juntas desde el segundo 0 y finalizan al unísono.
+              </div>
             </div>
-            <div class="field" style="justify-content:center">
-              <label class="check" title="Baja automáticamente el volumen de la música cuando el pastor habla y la sube en las pausas de silencio.">
-                <input type="checkbox" id="voDucking" checked> <b>Atenuación Inteligente (Auto-Ducking)</b>
-              </label>
-              <div style="font-size:10.5px;color:var(--muted);margin-left:22px;margin-top:2px">La música baja cuando habla y sube suavemente en pausas de silencio.</div>
+
+            <div class="grid2">
+              <div class="field">
+                <label class="label"><span>Volumen del Colchón Musical</span><span class="val" id="voBgVolVal">7% (Colchón de Radio Recomendado 6-8%)</span></label>
+                <input type="range" id="voBgVol" min="3" max="20" value="7">
+              </div>
+              <div class="field" style="justify-content:center">
+                <label class="check" title="Baja automáticamente el volumen de la música cuando el pastor habla y la sube en las pausas de silencio.">
+                  <input type="checkbox" id="voDucking" checked> <b>Atenuación Inteligente (Auto-Ducking)</b>
+                </label>
+                <div style="font-size:10.5px;color:var(--muted);margin-left:22px;margin-top:2px">La música baja cuando habla y sube suavemente en pausas de silencio.</div>
+              </div>
             </div>
           </div>
 
@@ -1088,7 +1102,7 @@ document.querySelectorAll('.ambient-card').forEach(card => {
     card.classList.add('active');
     selectedBg = card.dataset.bg;
     $('voCustomBgField').style.display = selectedBg === 'custom' ? 'block' : 'none';
-    $('voMixControls').style.display = selectedBg === 'none' ? 'none' : 'grid';
+    $('voMixControls').style.display = selectedBg === 'none' ? 'none' : 'block';
   });
 });
 
@@ -1147,6 +1161,7 @@ $('voiceoverForm').addEventListener('submit', async e => {
   fd.append('noise_reduction', $('voNoise').checked);
   fd.append('leveling', $('voLeveling').checked);
   fd.append('stereo_wide', $('voStereoWide').checked);
+  fd.append('radio_structure', $('voRadioStructure').value);
   if (selectedBg === 'custom' && $('voCustomBgInput').files[0]) {
     fd.append('custom_bg', $('voCustomBgInput').files[0]);
   }

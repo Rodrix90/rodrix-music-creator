@@ -271,6 +271,7 @@ async def process_voiceover(
     noise_reduction: bool = Form(True),
     leveling: bool = Form(True),
     stereo_wide: bool = Form(False),
+    radio_structure: str = Form("radio_show"),
     current_user: str = Depends(get_current_user)
 ):
     prune_tasks()
@@ -294,7 +295,7 @@ async def process_voiceover(
         eq_profile, noise_reduction, leveling,
         vocal_reverb, compression,
         mic_profile, interface_profile, plugin_profile,
-        stereo_wide
+        stereo_wide, radio_structure
     )
     
     return {"status": "started", "task_id": task_id}
@@ -412,7 +413,7 @@ async def run_voiceover_task(
     eq_profile, noise_reduction, leveling,
     vocal_reverb="none", compression=True,
     mic_profile="behringer_tm1", interface_profile="umc404hd", plugin_profile="izotope_vea",
-    stereo_wide=False
+    stereo_wide=False, radio_structure="radio_show"
 ):
     def log_msg(msg):
         import datetime
@@ -530,32 +531,51 @@ async def run_voiceover_task(
                 f.write(custom_bg_bytes)
             bg_file = custom_path
 
+        export_duration = voice_dur
         if bg_file and os.path.exists(bg_file):
-            log_msg(f"Mezclando colchón musical de radio (volumen {int(bg_volume*100)}%)...")
-            fade_start = max(0.5, voice_dur - 2.5)
-            if ducking:
-                log_msg("Activando atenuación inteligente de radio (Auto-Ducking)...")
+            if radio_structure == "radio_show":
+                intro_sec = 2.5
+                outro_sec = 3.5
+                total_dur = voice_dur + intro_sec + outro_sec
+                intro_vol = min(0.35, max(0.18, bg_volume * 3.2))
+                log_msg(f"Estructura Predicación de Radio: Intro musical {intro_sec}s ➔ Voz con colchón de radio (Auto-Ducking) ➔ Cierre triunfal {outro_sec}s...")
+                
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},asplit=2[v_main][v_sc];"
-                    f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
-                    f"[bg_vol][v_sc]sidechaincompress=threshold=0.06:ratio=4:attack=50:release=700[bg_ducked];"
-                    f"[v_main][bg_ducked]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
+                    f"[0:a]{voice_filter_str},adelay=2500|2500,apad=pad_dur={outro_sec + 1.0:.1f},asplit=2[v_main][v_sc];"
+                    f"[1:a]atrim=0:{total_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,volume={intro_vol:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={total_dur - 2.5:.2f}:d=2.5[bg_vol];"
+                    f"[bg_vol][v_sc]sidechaincompress=threshold=0.05:ratio=4.5:attack=40:release=700[bg_ducked];"
+                    f"[v_main][bg_ducked]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
                     f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
                 )
+                export_duration = total_dur
             else:
-                filter_complex = (
-                    f"[0:a]{voice_filter_str}[v_main];"
-                    f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
-                    f"[v_main][bg_vol]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
-                    f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
-                )
+                log_msg(f"Estructura Podcast Continuo: Música de fondo desde el inicio ({int(bg_volume*100)}%), sin intro ni cierre extendido...")
+                fade_start = max(0.5, voice_dur - 2.5)
+                if ducking:
+                    filter_complex = (
+                        f"[0:a]{voice_filter_str},asplit=2[v_main][v_sc];"
+                        f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
+                        f"[bg_vol][v_sc]sidechaincompress=threshold=0.06:ratio=4:attack=50:release=700[bg_ducked];"
+                        f"[v_main][bg_ducked]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
+                        f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
+                    )
+                else:
+                    filter_complex = (
+                        f"[0:a]{voice_filter_str}[v_main];"
+                        f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
+                        f"[v_main][bg_vol]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
+                        f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
+                    )
+                export_duration = voice_dur
+
+            safe_bitrate = calculate_safe_mp3_bitrate(export_duration)
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
                 "-i", temp_voice,
                 "-stream_loop", "-1", "-i", bg_file,
                 "-filter_complex", filter_complex,
                 "-map", "[out]",
-                "-t", f"{voice_dur:.2f}",
+                "-t", f"{export_duration:.2f}",
                 "-threads", "0",
                 "-c:a", "libmp3lame", "-b:a", safe_bitrate,
                 out_path
@@ -563,12 +583,14 @@ async def run_voiceover_task(
         else:
             log_msg("Sin música de fondo. Exportando voz de radio online masterizada (-14 LUFS)...")
             master_chain = f"{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB"
+            export_duration = voice_dur
+            safe_bitrate = calculate_safe_mp3_bitrate(export_duration)
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
                 "-i", temp_voice,
                 "-vn",
                 "-af", master_chain,
-                "-t", f"{voice_dur:.2f}",
+                "-t", f"{export_duration:.2f}",
                 "-threads", "0",
                 "-c:a", "libmp3lame", "-b:a", safe_bitrate,
                 out_path
@@ -601,7 +623,7 @@ async def run_voiceover_task(
             "audio_url": f"/api/audio_file/{task_id}",
             "raw_audio_url": cloud_backup or f"/api/audio_file/{task_id}",
             "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338A169'/%3E%3Ccircle cx='32' cy='24' r='10' fill='%23fff' opacity='0.9'/%3E%3Crect x='30' y='34' width='4' height='14' fill='%23fff'/%3E%3Cpath d='M22 48 L42 48' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M18 24 C18 34 46 34 46 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E",
-            "duration": round(voice_dur),
+            "duration": round(export_duration),
             "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "tags": ["Voz en Off", "Predicación", "Restauración Vocal"]
         }
