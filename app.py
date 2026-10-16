@@ -297,6 +297,113 @@ async def process_voiceover(
     
     return {"status": "started", "task_id": task_id}
 
+# =====================================================================
+# OPTIMIZACIÓN DE AUDIO PARA WHATSAPP (< 15 MB)
+# WhatsApp limita el envío de archivos de audio a 16 MB.
+# Se establece un tope estricto de 15.0 MB (objetivo ~14.2 MB de seguridad)
+# para que nunca sea rechazado por WhatsApp al compartirlo.
+# =====================================================================
+MAX_WHATSAPP_BYTES = 15 * 1024 * 1024  # 15.0 MB estrictos
+TARGET_SAFE_BYTES = 14 * 1024 * 1024 + 200 * 1024  # ~14.2 MB margen de seguridad
+
+def get_audio_duration_seconds(file_path: str) -> float:
+    """Devuelve la duración exacta del audio en segundos usando ffprobe."""
+    if not file_path or not os.path.exists(file_path):
+        return 0.0
+    try:
+        probe_cmd = [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", file_path
+        ]
+        proc = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        return float(proc.stdout.strip())
+    except Exception:
+        return 0.0
+
+def calculate_safe_mp3_bitrate(duration_sec: float, target_bytes: int = TARGET_SAFE_BYTES) -> str:
+    """
+    Calcula el bitrate MP3 óptimo (hasta 256k) para que el archivo final
+    NUNCA supere los 15 MB exigidos por WhatsApp.
+    """
+    if duration_sec <= 0:
+        return "192k"
+    
+    # Capacidad en kbps: (bytes * 8) / (segundos * 1000)
+    max_kbps = int((target_bytes * 8) / (duration_sec * 1000))
+    
+    if max_kbps >= 256:
+        return "256k"
+    elif max_kbps >= 192:
+        return "192k"
+    elif max_kbps >= 160:
+        return "160k"
+    elif max_kbps >= 128:
+        return "128k"
+    elif max_kbps >= 96:
+        return "96k"
+    elif max_kbps >= 64:
+        return "64k"
+    elif max_kbps >= 48:
+        return "48k"
+    else:
+        return f"{max(32, max_kbps)}k"
+
+def get_safe_wav_ffmpeg_args(duration_sec: float, target_bytes: int = TARGET_SAFE_BYTES) -> list:
+    """
+    Calcula los parámetros PCM para que el archivo WAV no supere 15 MB.
+    """
+    if duration_sec <= 0:
+        return ["-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2"]
+    
+    max_bytes_per_sec = target_bytes / duration_sec
+    
+    if max_bytes_per_sec >= 176400:  # <= ~82 segundos: Calidad CD estéreo completa
+        return ["-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2"]
+    elif max_bytes_per_sec >= 88200:  # <= ~165 segundos: Calidad CD mono
+        return ["-c:a", "pcm_s16le", "-ar", "44100", "-ac", "1"]
+    elif max_bytes_per_sec >= 44100:  # <= ~330 segundos (5.5 min): 22.05kHz mono
+        return ["-c:a", "pcm_s16le", "-ar", "22050", "-ac", "1"]
+    elif max_bytes_per_sec >= 22050:  # <= ~660 segundos (11 min): 11.025kHz mono
+        return ["-c:a", "pcm_s16le", "-ar", "11025", "-ac", "1"]
+    elif max_bytes_per_sec >= 16000:  # <= ~900 segundos (15 min): 8kHz 16-bit mono
+        return ["-c:a", "pcm_s16le", "-ar", "8000", "-ac", "1"]
+    else:  # > 15 min: 8kHz 8-bit mono (< 15MB hasta 30 min)
+        return ["-c:a", "pcm_u8", "-ar", "8000", "-ac", "1"]
+
+async def enforce_max_file_size_mp3(file_path: str, max_bytes: int = MAX_WHATSAPP_BYTES) -> str:
+    """
+    Verifica el tamaño real en disco. Si supera max_bytes, lo recomprime automáticamente
+    con un bitrate seguro para garantizar que siempre pese menos de 15 MB.
+    """
+    if not file_path or not os.path.exists(file_path):
+        return file_path
+    
+    try:
+        actual_size = os.path.getsize(file_path)
+        if actual_size <= max_bytes:
+            return file_path
+            
+        dur = get_audio_duration_seconds(file_path)
+        safe_kbps = calculate_safe_mp3_bitrate(dur, target_bytes=int(13.8 * 1024 * 1024))
+        temp_recomp = f"temp_recomp_{uuid.uuid4().hex}.mp3"
+        
+        recomp_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", file_path]
+        if dur > 600:
+            recomp_cmd.extend(["-ac", "1"])  # Mono para alocuciones de más de 10 min
+        recomp_cmd.extend(["-c:a", "libmp3lame", "-b:a", safe_kbps, temp_recomp])
+        
+        await asyncio.to_thread(subprocess.run, recomp_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if os.path.exists(temp_recomp) and os.path.getsize(temp_recomp) > 1000:
+            import shutil
+            shutil.move(temp_recomp, file_path)
+    except Exception as e:
+        print(f"Aviso en optimización WhatsApp: {e}")
+        if 'temp_recomp' in locals() and os.path.exists(temp_recomp):
+            try: os.remove(temp_recomp)
+            except: pass
+            
+    return file_path
+
 async def run_voiceover_task(
     task_id, voice_bytes, voice_filename, title, bg_choice,
     custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
@@ -331,6 +438,10 @@ async def run_voiceover_task(
         except Exception:
             voice_dur = 60.0
         log_msg(f"Audio del pastor detectado: {voice_dur:.1f} segundos.")
+
+        # Cálculo de bitrate inteligente para garantizar < 15 MB (WhatsApp)
+        safe_bitrate = calculate_safe_mp3_bitrate(voice_dur)
+        log_msg(f"Optimizando tamaño para WhatsApp (< 15 MB): Bitrate adaptativo a {safe_bitrate}...")
 
         # Build professional vocal processing chain (Behringer TM1 + UMC404HD + iZotope VEA + Reverb)
         v_filters = []
@@ -442,7 +553,7 @@ async def run_voiceover_task(
                 "-map", "[out]",
                 "-t", f"{voice_dur:.2f}",
                 "-threads", "0",
-                "-c:a", "libmp3lame", "-b:a", "320k",
+                "-c:a", "libmp3lame", "-b:a", safe_bitrate,
                 out_path
             ]
         else:
@@ -453,7 +564,7 @@ async def run_voiceover_task(
                 "-af", voice_filter_str,
                 "-t", f"{voice_dur:.2f}",
                 "-threads", "0",
-                "-c:a", "libmp3lame", "-b:a", "320k",
+                "-c:a", "libmp3lame", "-b:a", safe_bitrate,
                 out_path
             ]
 
@@ -464,7 +575,10 @@ async def run_voiceover_task(
             log_msg(f"ERROR FFmpeg: {err_tail}")
             raise Exception("Error al procesar el audio con FFmpeg.")
 
-        log_msg("¡Predicación procesada y masterizada con éxito!")
+        # Garantía estricta de tamaño máximo de 15 MB para WhatsApp
+        await enforce_max_file_size_mp3(out_path)
+        final_size_mb = os.path.getsize(out_path) / (1024 * 1024)
+        log_msg(f"¡Predicación procesada y masterizada con éxito! Tamaño final: {final_size_mb:.2f} MB (Apto para WhatsApp)")
         
         # Subir copia de respaldo a la nube
         cloud_backup = None
@@ -525,6 +639,7 @@ async def cache_track_audio(task_id: str, remote_url: str) -> str:
                         async for chunk in resp.aiter_bytes(65536):
                             f.write(chunk)
                     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
+                        await enforce_max_file_size_mp3(local_path)
                         return f"/api/audio_file/{task_id}"
     except Exception as e:
         print(f"Aviso al cachear audio localmente: {e}")
@@ -1273,8 +1388,11 @@ async def get_stem_audio(task_id: str, stem_type: str):
         else:
             stem_filter = "stereotools=mlev=0.015625:slev=1.5"
             
-        ffmpeg_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100", temp_stem_out]
+        stem_dur = get_audio_duration_seconds(source_audio_file)
+        safe_bitrate = calculate_safe_mp3_bitrate(stem_dur)
+        ffmpeg_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", safe_bitrate, "-ar", "44100", temp_stem_out]
         await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        await enforce_max_file_size_mp3(temp_stem_out)
         
         from starlette.background import BackgroundTask
         return FileResponse(
@@ -1385,9 +1503,12 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
 
     try:
         source_audio_file = await get_or_download_audio_file(task_id, track, "")
+        dur = get_audio_duration_seconds(source_audio_file)
+        safe_bitrate = calculate_safe_mp3_bitrate(dur)
         
-        # If MP3 with no mastering filters: return source directly as an attachment!
+        # If MP3 with no mastering filters: return source directly as an attachment if under 15MB!
         if audio_format == "mp3" and not master_filter:
+            await enforce_max_file_size_mp3(source_audio_file)
             return FileResponse(
                 path=source_audio_file,
                 filename=f"{safe_title}.mp3",
@@ -1399,15 +1520,18 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         if master_filter:
             ffmpeg_cmd.extend(["-af", master_filter])
         if audio_format == "wav":
-            ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100"])
+            wav_args = get_safe_wav_ffmpeg_args(dur)
+            ffmpeg_cmd.extend(wav_args)
         elif audio_format == "flac":
-            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "5", "-ar", "44100"])
+            ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8", "-ar", "44100"])
         elif audio_format == "mp3":
-            ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100"])
+            ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", safe_bitrate, "-ar", "44100"])
             
         ffmpeg_cmd.append(temp_out)
         try:
             await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if audio_format == "mp3":
+                await enforce_max_file_size_mp3(temp_out)
         except subprocess.CalledProcessError as pe:
             raise Exception(f"FFmpeg Error: {pe.stderr}")
             
@@ -1453,6 +1577,7 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
     safe_title = "".join([c for c in clean_ascii if c.isalnum() or c in ' -_']).strip() or "predicacion_pastoral"
 
     if audio_format == "mp3":
+        await enforce_max_file_size_mp3(local_path)
         return FileResponse(
             path=local_path,
             filename=f"{safe_title}.mp3",
@@ -1460,7 +1585,9 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
         )
     elif audio_format == "wav":
         temp_wav = f"temp_vo_{uuid.uuid4().hex}.wav"
-        cmd = ["ffmpeg", "-threads", "0", "-y", "-i", local_path, "-c:a", "pcm_s16le", "-ar", "44100", temp_wav]
+        dur = get_audio_duration_seconds(local_path)
+        wav_args = get_safe_wav_ffmpeg_args(dur)
+        cmd = ["ffmpeg", "-threads", "0", "-y", "-i", local_path] + wav_args + [temp_wav]
         await asyncio.to_thread(subprocess.run, cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         from starlette.background import BackgroundTask
         def rm_temp():

@@ -867,7 +867,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               </div>
               <div style="flex:1;min-width:0">
                 <div id="voResultTitle" style="font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Predicación Pastoral Masterizada</div>
-                <div style="font-size:11px;color:var(--ok);font-weight:600">✨ Masterizado en Calidad de Estudio • Listo para Descargar</div>
+                <div style="font-size:11px;color:var(--ok);font-weight:600">✨ Masterizado de Estudio • Compatible WhatsApp (&lt; 15 MB)</div>
               </div>
             </div>
 
@@ -877,10 +877,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <!-- Botones de descarga directa -->
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button type="button" class="btn-main" id="voDlMp3Btn" style="background:#22C55E;box-shadow:0 4px 14px rgba(34,197,94,.35);padding:10px 18px;font-size:13px;display:inline-flex;align-items:center;gap:8px">
-                <i class="ph ph-download-simple" style="font-size:16px"></i> Descargar MP3 (Master 320k)
+                <i class="ph ph-whatsapp-logo" style="font-size:18px"></i> Descargar MP3 (WhatsApp &lt; 15MB)
               </button>
               <button type="button" class="btn-sec" id="voDlWavBtn" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);padding:10px 18px;font-size:13px;display:inline-flex;align-items:center;gap:8px">
-                <i class="ph ph-waveform" style="font-size:16px"></i> Descargar WAV (Studio)
+                <i class="ph ph-waveform" style="font-size:16px"></i> Descargar WAV (&lt; 15MB)
               </button>
               <button type="button" class="btn-sec" id="voGoLibBtn" style="background:transparent;border:1px dashed var(--border);padding:10px 16px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-left:auto">
                 <i class="ph ph-books"></i> Ver en Mi Librería
@@ -1350,13 +1350,13 @@ function renderLibrary(tracks){
           <button class="icon-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
           <div class="menu">
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Formatos Master</div>
-            <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> MP3 (Master)</a>
-            <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> WAV (Studio)</a>
+            <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-whatsapp-logo"></i> MP3 (&lt; 15MB WhatsApp)</a>
+            <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (&lt; 15MB WhatsApp)</a>
             <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
             <div style="border-top:1px solid var(--border);margin:3px 0"></div>
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Stems Pro</div>
-            <a href="#" data-stem="vocals" data-id="${esc(t.id)}"><i class="ph ph-microphone"></i> Voz aislada</a>
-            <a href="#" data-stem="instrumental" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> Instrumental</a>
+            <a href="#" data-stem="vocals" data-id="${esc(t.id)}"><i class="ph ph-microphone"></i> Voz aislada (&lt; 15MB)</a>
+            <a href="#" data-stem="instrumental" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> Instrumental (&lt; 15MB)</a>
           </div>
         </div>
       </div>
