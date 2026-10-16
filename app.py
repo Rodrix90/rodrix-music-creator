@@ -370,15 +370,15 @@ async def run_voiceover_task(
             if ducking:
                 log_msg("Activando atenuación inteligente (Auto-Ducking) para ministración...")
                 filter_complex = (
-                    f"[0:a]{voice_filter_str}[v_clean];"
-                    f"[1:a]volume={bg_volume},afade=t=out:st={fade_start}:d=2.5[bg_vol];"
-                    f"[bg_vol][v_clean]sidechaincompress=threshold=0.07:ratio=4:attack=50:release=700[bg_ducked];"
-                    f"[v_clean][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2[out]"
+                    f"[0:a]{voice_filter_str},aformat=channel_layouts=stereo:sample_rates=44100,asplit=2[v_main][v_sc];"
+                    f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
+                    f"[bg_vol][v_sc]sidechaincompress=threshold=0.07:ratio=4:attack=50:release=700[bg_ducked];"
+                    f"[v_main][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2[out]"
                 )
             else:
                 filter_complex = (
-                    f"[0:a]{voice_filter_str}[v_clean];"
-                    f"[1:a]volume={bg_volume},afade=t=out:st={fade_start}:d=2.5[bg_vol];"
+                    f"[0:a]{voice_filter_str},aformat=channel_layouts=stereo:sample_rates=44100[v_clean];"
+                    f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
                     f"[v_clean][bg_vol]amix=inputs=2:duration=first:dropout_transition=2[out]"
                 )
             ffmpeg_cmd = [
@@ -402,7 +402,9 @@ async def run_voiceover_task(
 
         proc = await asyncio.to_thread(subprocess.run, ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if proc.returncode != 0:
-            log_msg(f"ERROR FFmpeg: {proc.stderr[:300]}")
+            err_lines = [l for l in proc.stderr.strip().splitlines() if l.strip()]
+            err_tail = "\n".join(err_lines[-5:]) if err_lines else proc.stderr[:300]
+            log_msg(f"ERROR FFmpeg: {err_tail}")
             raise Exception("Error al procesar el audio con FFmpeg.")
 
         log_msg("¡Predicación procesada y masterizada con éxito!")
