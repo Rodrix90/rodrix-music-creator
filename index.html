@@ -767,11 +767,12 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           </div>
 
           <div class="field" style="margin-bottom:14px">
-            <label class="label">🎚️ Dinámica y Procesamiento Quirúrgico</label>
+            <label class="label">🎚️ Dinámica, Supresión de Ruido y Espacialización</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding-top:4px">
-              <label class="check"><input type="checkbox" id="voCompression" checked> iZotope VEA Boost (Compresión Óptica Vocal estilo LA-2A)</label>
-              <label class="check"><input type="checkbox" id="voNoise" checked> iZotope VEA Clean (Filtro anti-golpes, caja y siseo)</label>
-              <label class="check"><input type="checkbox" id="voLeveling" checked> Nivelador Dinámico Inteligente</label>
+              <label class="check"><input type="checkbox" id="voNoise" checked> 🔇 Supresor de Ruido Blanco & Siseo (FFT Denoise)</label>
+              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Broadcast Pro (Cuerpo y pegada)</label>
+              <label class="check"><input type="checkbox" id="voLeveling" checked> 🎚️ Nivelador Dinámico Inteligente (Volumen parejo)</label>
+              <label class="check"><input type="checkbox" id="voStereoWide" checked> 🎧 Stereo Wide 3D (Voz amplia y envolvente)</label>
             </div>
           </div>
 
@@ -1145,6 +1146,7 @@ $('voiceoverForm').addEventListener('submit', async e => {
   fd.append('compression', $('voCompression').checked);
   fd.append('noise_reduction', $('voNoise').checked);
   fd.append('leveling', $('voLeveling').checked);
+  fd.append('stereo_wide', $('voStereoWide').checked);
   if (selectedBg === 'custom' && $('voCustomBgInput').files[0]) {
     fd.append('custom_bg', $('voCustomBgInput').files[0]);
   }
