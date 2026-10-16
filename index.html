@@ -714,23 +714,33 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <input type="text" id="voTitleInput" required placeholder="Ej: Lectura del Salmo 23 - Mensaje Pastoral">
           </div>
 
-          <!-- Ecualización & Restauración -->
-          <div class="grid2">
+          <!-- Cadena de Grabación y Masterización Vocal de Estudio -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px">
             <div class="field">
-              <label class="label" for="voEqProfile">Ecualización Vocal</label>
+              <label class="label" for="voEqProfile">🎛️ Consola & Ecualización Profesional</label>
               <select id="voEqProfile">
-                <option value="clarity" selected>Claridad & Presencia Bíblica (Recomendado para Celular)</option>
-                <option value="warm">Calidez y Cuerpo Pastoral (Redondo)</option>
-                <option value="gentle">Voz Íntima & Suave (Oración)</option>
-                <option value="none">Original (Sin cambios de EQ)</option>
+                <option value="pro_studio" selected>Consola de Estudio Neve/SSL (Cuerpo, Claridad y De-Box) [Recomendado]</option>
+                <option value="clarity">Máxima Presencia & Articulación (Audios lejanos)</option>
+                <option value="warm">Calidez Pastoral & Cuerpo Redondo (Voz profunda)</option>
+                <option value="gentle">Voz Íntima & Suave Devocional</option>
+                <option value="none">Sin Ecualización (Plano)</option>
               </select>
             </div>
             <div class="field">
-              <label class="label">Procesamiento Quirúrgico</label>
-              <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px">
-                <label class="check"><input type="checkbox" id="voNoise" checked> Filtro Anti-Golpes de Celular & Siseo</label>
-                <label class="check"><input type="checkbox" id="voLeveling" checked> Nivelador Dinámico (Speech-Norm)</label>
-              </div>
+              <label class="label" for="voReverbProfile">✨ Reverb Vocal de Estudio</label>
+              <select id="voReverbProfile">
+                <option value="plate" selected>Plate Cálida de Estudio (Sutil, dimensión y aire) [Recomendado]</option>
+                <option value="hall">Hall Devocional (Espacio amplio para oración)</option>
+                <option value="none">Sin Reverb (Voz seca)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label class="label">🎚️ Dinámica y Procesamiento de Micrófono Profesional</label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding-top:4px">
+              <label class="check"><input type="checkbox" id="voCompression" checked> Compresión Óptica (Estilo LA-2A, voz sólida y pareja)</label>
+              <label class="check"><input type="checkbox" id="voNoise" checked> Filtro Quirúrgico (Anti-golpes, caja y siseo)</label>
+              <label class="check"><input type="checkbox" id="voLeveling" checked> Nivelador Dinámico Inteligente</label>
             </div>
           </div>
 
@@ -1068,6 +1078,8 @@ $('voiceoverForm').addEventListener('submit', async e => {
   fd.append('bg_volume', (+$('voBgVol').value / 100).toFixed(2));
   fd.append('ducking', $('voDucking').checked);
   fd.append('eq_profile', $('voEqProfile').value);
+  fd.append('vocal_reverb', $('voReverbProfile').value);
+  fd.append('compression', $('voCompression').checked);
   fd.append('noise_reduction', $('voNoise').checked);
   fd.append('leveling', $('voLeveling').checked);
   if (selectedBg === 'custom' && $('voCustomBgInput').files[0]) {

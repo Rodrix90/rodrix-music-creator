@@ -262,7 +262,9 @@ async def process_voiceover(
     custom_bg: UploadFile = File(None),
     bg_volume: float = Form(0.12),
     ducking: bool = Form(True),
-    eq_profile: str = Form("clarity"),
+    eq_profile: str = Form("pro_studio"),
+    vocal_reverb: str = Form("plate"),
+    compression: bool = Form(True),
     noise_reduction: bool = Form(True),
     leveling: bool = Form(True),
     current_user: str = Depends(get_current_user)
@@ -285,7 +287,8 @@ async def process_voiceover(
         run_voiceover_task,
         task_id, voice_bytes, voice_filename, title, bg_choice,
         custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
-        eq_profile, noise_reduction, leveling
+        eq_profile, noise_reduction, leveling,
+        vocal_reverb, compression
     )
     
     return {"status": "started", "task_id": task_id}
@@ -293,7 +296,8 @@ async def process_voiceover(
 async def run_voiceover_task(
     task_id, voice_bytes, voice_filename, title, bg_choice,
     custom_bg_bytes, custom_bg_filename, bg_volume, ducking,
-    eq_profile, noise_reduction, leveling
+    eq_profile, noise_reduction, leveling,
+    vocal_reverb="plate", compression=True
 ):
     def log_msg(msg):
         import datetime
@@ -323,29 +327,48 @@ async def run_voiceover_task(
             voice_dur = 60.0
         log_msg(f"Audio del pastor detectado: {voice_dur:.1f} segundos.")
 
-        # Build voice processing filter
+        # Build professional vocal processing chain (Console EQ + LA-2A Compression + Subtle Studio Reverb)
         v_filters = []
         if noise_reduction:
-            log_msg("Aplicando corte de retumbos (85 Hz) y anti-siseo de celular...")
-            v_filters.append("highpass=f=85")
-            v_filters.append("equalizer=f=360:width_type=o:width=1.5:g=-3.5")
-            v_filters.append("lowpass=f=15500")
+            log_msg("Aplicando corte de retumbos (80 Hz), eliminación de acartonamiento y anti-siseo...")
+            v_filters.append("highpass=f=80")
+            v_filters.append("equalizer=f=320:width_type=o:width=1.3:g=-3.0")
+            v_filters.append("lowpass=f=16000")
 
-        if eq_profile == "clarity":
-            log_msg("Aplicando ecualización de presencia e inteligibilidad bíblica...")
-            v_filters.append("equalizer=f=3400:width_type=o:width=1.2:g=3.2")
-            v_filters.append("equalizer=f=10500:width_type=o:width=1.5:g=2.0")
+        if eq_profile in ["pro_studio", "clarity"]:
+            log_msg("Aplicando ecualización de consola de estudio profesional (cuerpo analógico, presencia e inteligibilidad)...")
+            v_filters.append("equalizer=f=180:width_type=o:width=1.2:g=2.0")
+            v_filters.append("equalizer=f=3600:width_type=o:width=1.2:g=3.2")
+            v_filters.append("equalizer=f=6800:width_type=q:width=2.5:g=-2.2")
+            v_filters.append("equalizer=f=11000:width_type=o:width=1.4:g=2.2")
         elif eq_profile == "warm":
-            log_msg("Aplicando ecualización cálida y redonda...")
-            v_filters.append("equalizer=f=180:width_type=o:width=1.2:g=2.2")
-            v_filters.append("equalizer=f=3000:width_type=o:width=1.5:g=1.5")
+            log_msg("Aplicando ecualización cálida pastoral (cuerpo redondo y graves suaves)...")
+            v_filters.append("equalizer=f=160:width_type=o:width=1.2:g=2.8")
+            v_filters.append("equalizer=f=2800:width_type=o:width=1.2:g=1.8")
+            v_filters.append("equalizer=f=10000:width_type=o:width=1.5:g=1.5")
         elif eq_profile == "gentle":
-            log_msg("Aplicando ecualización suave devocional...")
-            v_filters.append("equalizer=f=2800:width_type=o:width=1.0:g=1.8")
+            log_msg("Aplicando ecualización íntima devocional...")
+            v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=1.5")
+            v_filters.append("equalizer=f=3000:width_type=o:width=1.0:g=1.5")
+            v_filters.append("equalizer=f=6000:width_type=q:width=2.0:g=-2.0")
+
+        if compression:
+            log_msg("Aplicando compresión óptica de estudio (estilo LA-2A: nivelación transparente y solidez vocal)...")
+            v_filters.append("acompressor=threshold=-18dB:ratio=3:attack=15:release=220:makeup=2dB")
 
         if leveling:
-            log_msg("Nivelando dinámica de habla (Speech-Norm)...")
-            v_filters.append("speechnorm=e=4:r=0.0001:l=1")
+            log_msg("Optimizando rango dinámico transparente...")
+            v_filters.append("speechnorm=e=3:r=0.0002:l=1")
+
+        if vocal_reverb == "plate":
+            log_msg("Agregando sutil reverb de estudio (Plate cálida: dimensión y aire sin tapar la voz)...")
+            v_filters.append("aecho=0.88:0.65:25|48|72:0.20|0.14|0.08")
+        elif vocal_reverb == "hall":
+            log_msg("Agregando reverb devocional (Hall suave y envolvente)...")
+            v_filters.append("aecho=0.84:0.70:35|70|115:0.28|0.18|0.10")
+
+        # Limitador final true-peak para evitar saturación digital
+        v_filters.append("alimiter=limit=-1.0dB:attack=5:release=50")
 
         voice_filter_str = ",".join(v_filters) if v_filters else "anull"
 
