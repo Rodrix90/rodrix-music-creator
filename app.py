@@ -774,10 +774,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "norteño": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
                 "norteno": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
                 "regional mexicano": ["regional mexican", "accordion", "bajo sexto", "corrido", "banda", "ranchera", "mariachi", "sierreño"],
-                "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "bronco style", "accordion"],
+                "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "ritmo grupero", "accordion"],
                 "mexican": ["regional mexican", "norteño", "grupero", "ranchera", "mariachi", "accordion"],
-                "grupero": ["grupero", "onda grupera", "balada grupera", "bronco style", "cumbia grupera", "los bukis"],
-                "bronco": ["bronco style", "grupero", "cumbia grupera", "norteño", "accordion"],
+                "grupero": ["grupero", "onda grupera", "balada grupera", "ritmo grupero", "cumbia grupera", "sintetizador grupero"],
+                "bronco": ["ritmo grupero", "cumbia grupera", "norteño", "accordion"],
                 "latin ritmics": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
                 "ritmos latinos": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
                 "salsa": ["salsa", "salsa horns", "latin brass", "montuno"],
@@ -803,14 +803,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         neg_tags_list.append(syn)
                         style = re.sub(rf'\b{re.escape(syn)}\b', '', style, flags=re.IGNORECASE)
 
-            # Deduplicate negative tags
+            # Deduplicate negative tags & filter out artist names prohibited by Udio API
+            banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
             seen = set()
             dedup_neg = []
             for t in neg_tags_list:
-                tl = t.lower()
-                if tl not in seen:
+                tl = t.lower().strip()
+                if tl and tl not in seen and not banned_artists_pattern.search(tl):
                     seen.add(tl)
-                    dedup_neg.append(t)
+                    dedup_neg.append(t.strip())
 
             # Build direct key bans that MUST be front-loaded in style (e.g. no accordion, no cumbia, no norteño)
             critical_instruments = ["accordion", "bajo sexto", "cumbia", "norteño", "corrido", "grupero", "polka", "distortion", "autotune"]
