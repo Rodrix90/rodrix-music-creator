@@ -258,9 +258,9 @@ async def process_voiceover(
     background_tasks: BackgroundTasks,
     voice_audio: UploadFile = File(...),
     title: str = Form("Predicación Pastoral"),
-    bg_choice: str = Form("none"),
+    bg_choice: str = Form("rhodes_pad"),
     custom_bg: UploadFile = File(None),
-    bg_volume: float = Form(0.12),
+    bg_volume: float = Form(0.07),
     ducking: bool = Form(True),
     mic_profile: str = Form("behringer_tm1"),
     interface_profile: str = Form("umc404hd"),
@@ -464,39 +464,43 @@ async def run_voiceover_task(
             v_filters.append("agate=threshold=-42dB:ratio=1.5:attack=10:release=220:range=-10dB")
             v_filters.append("lowpass=f=16000")
 
-        # 3. TRANSFORMACIÓN TONAL ESTUDIO / PODCAST SPOTIFY
-        log_msg("Modelando curva tonal broadcast (Cuerpo de micrófono de estudio, eliminación de sonido a celular y brillo pro)...")
-        # Cuerpo y presencia de gran diafragma (pecho cálido que no tiene el celular)
-        v_filters.append("equalizer=f=160:width_type=o:width=1.0:g=3.2")
-        # Extracción quirúrgica del sonido acartonado y plástico del celular
-        v_filters.append("equalizer=f=420:width_type=o:width=1.2:g=-3.5")
-        # Articulación, pegada y presencia de locutor al frente
-        v_filters.append("equalizer=f=3200:width_type=o:width=1.2:g=3.0")
-        # De-Esser suave anti-siseo en frecuencias estridentes
+        # 3. TRANSFORMACIÓN TONAL RADIO BROADCAST & MICROFONÍA DE ESTUDIO
+        log_msg("Modelando curva tonal de cabina de radio FM (Cuerpo de locución, eliminación de resonancia de celular y presencia pro)...")
+        # Cuerpo y autoridad pastoral de locutor (pecho cálido 160Hz)
+        v_filters.append("equalizer=f=160:width_type=o:width=1.0:g=3.5")
+        # Extracción del sonido plástico y acartonado del celular (420Hz)
+        v_filters.append("equalizer=f=420:width_type=o:width=1.2:g=-3.8")
+        # Pegada y articulación de locución en radio (3.2kHz)
+        v_filters.append("equalizer=f=3200:width_type=o:width=1.2:g=3.2")
+        # De-Esser anti-siseo suave
         v_filters.append("equalizer=f=6500:width_type=o:width=1.4:g=-2.5")
-        # Aire sedoso de condensador (quitar el velo opaco del celular)
+        # Brillo y aire cristalino
         v_filters.append("treble=g=3.0:f=10500")
 
-        # Ajuste por perfil de micrófono
+        # Perfil de cápsula
         if mic_profile == "behringer_tm1":
-            log_msg("Añadiendo perfil Behringer TM1 dorada: agudos nítidos de estudio...")
+            log_msg("Añadiendo perfil Behringer TM1 dorada: cápsula de 1 pulgada y agudos nítidos...")
             v_filters.append("equalizer=f=4800:width_type=o:width=1.2:g=1.5")
         elif mic_profile == "shure_sm7b":
-            log_msg("Añadiendo perfil Shure SM7B: cuerpo broadcast robusto...")
+            log_msg("Añadiendo perfil Shure SM7B: presencia broadcast clásica de radio...")
             v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=1.8")
         elif mic_profile == "neumann_u87":
             log_msg("Añadiendo perfil Neumann U87: agudos high-end sedosos...")
             v_filters.append("treble=g=1.8:f=12000")
 
-        # 4. COMPRESIÓN VOCAL & NIVELACIÓN REAL DE CELULAR (2 Etapas: Nivelador + Control de Picos)
+        # 4. EXCITADOR ARMÓNICO DE CABINA DE RADIO (AURAL EXCITER)
+        log_msg("Inyectando excitador armónico Aural Exciter (brillo y definición de radio FM)...")
+        v_filters.append("aexciter=level_in=1:level_out=1:amount=1.2:drive=8.5:freq=6000:ceil=16000")
+
+        # 5. COMPRESIÓN Y NIVELACIÓN BROADCAST DE 2 ETAPAS (Estilo Optimod)
         if compression or leveling:
-            log_msg("Aplicando nivelación vocal de 2 etapas (eleva el volumen del celular a primer plano)...")
-            # Etapa 1: Nivelador dinámico (atrapa la voz lejana del celular a -26dB y la trae al frente con +4.5dB)
+            log_msg("Nivelando dinámica broadcast de 2 etapas (voz al frente y consistente)...")
+            # Nivelador: atrapa voz a -26dB y la trae a primer plano con +4.5dB
             v_filters.append("acompressor=threshold=-26dB:ratio=3:attack=15:release=250:makeup=4.5dB")
-            # Etapa 2: Control musical de picos (evita saturación en gritos o énfasis)
+            # Control de picos: evita saturación
             v_filters.append("acompressor=threshold=-12dB:ratio=4:attack=5:release=100")
 
-        # 5. REVERB VOCAL DE ESTUDIO (Solo si se solicita explícitamente)
+        # 6. ESPACIALIZACIÓN Y REVERB (si se solicita)
         if vocal_reverb == "plate":
             log_msg("Agregando micro-dimensión Plate de estudio...")
             v_filters.append("aecho=0.95:0.10:35|70:0.08|0.04")
@@ -504,16 +508,10 @@ async def run_voiceover_task(
             log_msg("Agregando reverb Hall devocional...")
             v_filters.append("aecho=0.92:0.15:50|100:0.10|0.05")
 
-        # 6. IMAGEN ESTÉREO (Voz sólida al centro)
         v_filters.append("aformat=channel_layouts=stereo:sample_rates=44100")
         if stereo_wide:
             log_msg("Aplicando sutil apertura estéreo envolvente...")
             v_filters.append("extrastereo=m=1.06")
-
-        # 7. MAXIMIZADOR DE VOLUMEN BROADCAST SPOTIFY (-14 LUFS, TP -1.0 dBTP)
-        log_msg("Maximizando ganancia y sonoridad a estándar Spotify Podcast (-14 LUFS / True-Peak -1.0 dB)...")
-        v_filters.append("loudnorm=I=-14:TP=-1.0:LRA=7")
-        v_filters.append("alimiter=limit=-1.0dB")
 
         voice_filter_str = ",".join(v_filters) if v_filters else "anull"
 
@@ -533,21 +531,23 @@ async def run_voiceover_task(
             bg_file = custom_path
 
         if bg_file and os.path.exists(bg_file):
-            log_msg(f"Mezclando música de fondo ambiental muy suave (volumen {int(bg_volume*100)}%)...")
+            log_msg(f"Mezclando colchón musical de radio (volumen {int(bg_volume*100)}%)...")
             fade_start = max(0.5, voice_dur - 2.5)
             if ducking:
-                log_msg("Activando atenuación inteligente (Auto-Ducking) para ministración...")
+                log_msg("Activando atenuación inteligente de radio (Auto-Ducking)...")
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},aformat=channel_layouts=stereo:sample_rates=44100,asplit=2[v_main][v_sc];"
+                    f"[0:a]{voice_filter_str},asplit=2[v_main][v_sc];"
                     f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
-                    f"[bg_vol][v_sc]sidechaincompress=threshold=0.07:ratio=4:attack=50:release=700[bg_ducked];"
-                    f"[v_main][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2[out]"
+                    f"[bg_vol][v_sc]sidechaincompress=threshold=0.06:ratio=4:attack=50:release=700[bg_ducked];"
+                    f"[v_main][bg_ducked]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
+                    f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
                 )
             else:
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},aformat=channel_layouts=stereo:sample_rates=44100[v_clean];"
+                    f"[0:a]{voice_filter_str}[v_main];"
                     f"[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume={bg_volume:.2f},afade=t=out:st={fade_start:.2f}:d=2.5[bg_vol];"
-                    f"[v_clean][bg_vol]amix=inputs=2:duration=first:dropout_transition=2[out]"
+                    f"[v_main][bg_vol]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=2[mixed];"
+                    f"[mixed]loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB[out]"
                 )
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
@@ -561,11 +561,12 @@ async def run_voiceover_task(
                 out_path
             ]
         else:
-            log_msg("Sin música de fondo. Exportando voz restaurada y masterizada...")
+            log_msg("Sin música de fondo. Exportando voz de radio online masterizada (-14 LUFS)...")
+            master_chain = f"{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB"
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
                 "-i", temp_voice,
-                "-af", voice_filter_str,
+                "-af", master_chain,
                 "-t", f"{voice_dur:.2f}",
                 "-threads", "0",
                 "-c:a", "libmp3lame", "-b:a", safe_bitrate,

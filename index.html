@@ -767,11 +767,11 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           </div>
 
           <div class="field" style="margin-bottom:14px">
-            <label class="label">🎚️ Dinámica, Supresión de Ruido y Espacialización</label>
+            <label class="label">🎚️ Dinámica, Supresión de Ruido y Espacialización de Radio</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding-top:4px">
               <label class="check"><input type="checkbox" id="voNoise" checked> 🔇 Supresor Limpio de Ruido (Expansor suave anti-siseo)</label>
-              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Broadcast Pro (Cuerpo y presencia)</label>
-              <label class="check"><input type="checkbox" id="voLeveling" checked> 🔊 Maximizador Spotify Podcast (-14 LUFS Ganancia Pro)</label>
+              <label class="check"><input type="checkbox" id="voCompression" checked> 🎙️ Compresión Broadcast FM Pro (Cuerpo y presencia)</label>
+              <label class="check"><input type="checkbox" id="voLeveling" checked> 🔊 Maximizador Radio Streaming (-14 LUFS Ganancia Pro)</label>
               <label class="check"><input type="checkbox" id="voStereoWide"> 🎧 Apertura Estéreo Suave (Desactivada por defecto para voz sólida al centro)</label>
             </div>
           </div>
@@ -780,14 +780,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <div class="field">
             <div class="label">
               <span>2. Música de Fondo Ambiental (Ministración & Oración - Opcional)</span>
-              <span style="font-size:10px;text-transform:none;color:var(--muted)">Selecciona una si deseas acompañamiento</span>
+              <span style="font-size:10px;text-transform:none;color:var(--muted)">Recomendación Radio: 6% a 8% para no tapar la voz</span>
             </div>
             <div class="ambient-grid" id="ambientGrid">
               <div class="ambient-card active" data-bg="none">
                 <div class="ambient-icon" style="color:var(--primary);background:rgba(255,255,255,0.05)"><i class="ph ph-microphone"></i></div>
                 <div class="ambient-info">
-                  <div class="ambient-title">Sin Música (Pura Voz Spotify)</div>
-                  <div class="ambient-sub">Solo voz limpia, restaurada y maximizada [Predeterminado]</div>
+                  <div class="ambient-title">Sin Música (Pura Voz de Radio)</div>
+                  <div class="ambient-sub">Solo voz de cabina limpia, restaurada y al 100%</div>
                 </div>
                 <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
@@ -795,7 +795,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="ambient-icon"><i class="ph ph-piano-keys"></i></div>
                 <div class="ambient-info">
                   <div class="ambient-title">Piano Rhodes & Pad Celestial</div>
-                  <div class="ambient-sub">Devocional cálido, tono campana suave</div>
+                  <div class="ambient-sub">Colchón devocional suave (6-8% recomendado)</div>
                 </div>
                 <div class="ambient-btn"><i class="ph ph-check"></i></div>
               </div>
@@ -837,8 +837,8 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <!-- Controles de mezcla de fondo -->
           <div class="grid2" id="voMixControls" style="display:none">
             <div class="field">
-              <label class="label"><span>Volumen de la Música de Fondo</span><span class="val" id="voBgVolVal">12% (Muy Suave)</span></label>
-              <input type="range" id="voBgVol" min="5" max="35" value="12">
+              <label class="label"><span>Volumen del Colchón Musical</span><span class="val" id="voBgVolVal">7% (Colchón de Radio Recomendado 6-8%)</span></label>
+              <input type="range" id="voBgVol" min="3" max="20" value="7">
             </div>
             <div class="field" style="justify-content:center">
               <label class="check" title="Baja automáticamente el volumen de la música cuando el pastor habla y la sube en las pausas de silencio.">
@@ -1094,7 +1094,7 @@ document.querySelectorAll('.ambient-card').forEach(card => {
 
 $('voBgVol').addEventListener('input', e => {
   const v = e.target.value;
-  $('voBgVolVal').textContent = v + '% ' + (v <= 15 ? '(Muy Suave)' : '(Moderado)');
+  $('voBgVolVal').textContent = v + '% ' + (v <= 8 ? '(Colchón de Radio Recomendado 6-8%)' : '(Alto para Radio)');
 });
 
 $('voDropZone').addEventListener('click', () => $('voAudioInput').click());
