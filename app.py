@@ -566,6 +566,7 @@ async def run_voiceover_task(
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
                 "-i", temp_voice,
+                "-vn",
                 "-af", master_chain,
                 "-t", f"{voice_dur:.2f}",
                 "-threads", "0",

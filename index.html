@@ -710,13 +710,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 
         <form class="form-card" id="voiceoverForm" autocomplete="off">
           <div class="field">
-            <label class="label" for="voAudioInput">1. Audio del Pastor (Grabadora Samsung, MP3, M4A, WAV)</label>
+            <label class="label" for="voAudioInput">1. Audio del Pastor (WhatsApp MP4, Grabadora Samsung M4A, MP3, WAV)</label>
             <div class="drop-zone" id="voDropZone">
               <i class="ph ph-microphone"></i>
               <div style="font-weight:700;font-size:14px" id="voFileName">Selecciona o arrastra el audio del pastor aquí</div>
-              <div style="font-size:11.5px;color:var(--muted)">Grabadora Samsung (.m4a), WhatsApp, MP3, WAV, AAC</div>
-              <div class="drop-zone-btn"><i class="ph ph-folder-open"></i> Elegir Grabación de Celular</div>
-              <input type="file" id="voAudioInput" accept="audio/*,.m4a,.aac,.wav,.mp3,.ogg,.flac" style="display:none" required>
+              <div style="font-size:11.5px;color:var(--muted)">Audios de WhatsApp (.mp4, .opus, .ogg), Grabadora Samsung (.m4a), MP3, WAV, AAC</div>
+              <div class="drop-zone-btn"><i class="ph ph-folder-open"></i> Elegir Grabación de Celular / WhatsApp</div>
+              <input type="file" id="voAudioInput" accept="audio/*,video/mp4,video/*,.mp4,.m4a,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac" style="display:none" required>
             </div>
           </div>
 
@@ -830,7 +830,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <div class="field" id="voCustomBgField" style="display:none">
             <label class="label">Selecciona tu archivo de música instrumental</label>
             <div class="file-row">
-              <input type="file" id="voCustomBgInput" accept="audio/*">
+              <input type="file" id="voCustomBgInput" accept="audio/*,video/mp4,video/*,.mp4,.m4a,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac">
             </div>
           </div>
 
