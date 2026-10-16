@@ -880,7 +880,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <i class="ph ph-whatsapp-logo" style="font-size:18px"></i> Descargar MP3 (WhatsApp &lt; 15MB)
               </button>
               <button type="button" class="btn-sec" id="voDlWavBtn" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);padding:10px 18px;font-size:13px;display:inline-flex;align-items:center;gap:8px">
-                <i class="ph ph-waveform" style="font-size:16px"></i> Descargar WAV (&lt; 15MB)
+                <i class="ph ph-waveform" style="font-size:16px"></i> Descargar WAV (Studio Sin Comprimir)
               </button>
               <button type="button" class="btn-sec" id="voGoLibBtn" style="background:transparent;border:1px dashed var(--border);padding:10px 16px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-left:auto">
                 <i class="ph ph-books"></i> Ver en Mi Librería
@@ -1351,7 +1351,7 @@ function renderLibrary(tracks){
           <div class="menu">
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Formatos Master</div>
             <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-whatsapp-logo"></i> MP3 (&lt; 15MB WhatsApp)</a>
-            <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (&lt; 15MB WhatsApp)</a>
+            <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (Studio Sin Comprimir)</a>
             <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
             <div style="border-top:1px solid var(--border);margin:3px 0"></div>
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Stems Pro</div>
@@ -1656,8 +1656,7 @@ $('libList').addEventListener('click', e => {
   const format = a.dataset.dl;
   const card = a.closest('.track');
   const trackTitle = card ? card.querySelector('.t-title').textContent : 'cancion';
-  const q = new URLSearchParams({ width: $('mWidth').value, eq: $('mEq').value, loud: $('mLoud').value });
-  const dlUrl = '/api/download/' + encodeURIComponent(id) + '/' + format + '?' + q.toString();
+  const dlUrl = '/api/download/' + encodeURIComponent(id) + '/' + format;
   triggerAudioDownload(dlUrl, `${trackTitle}.${format}`);
 });
 

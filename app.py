@@ -1202,11 +1202,22 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                             if taudio:
                                 log_msg(f"Guardando copia permanente para {ttitle}...")
                                 taudio_cached = await cache_track_audio(tid, taudio)
+                                
+                                # Subir respaldo a la nube Catbox para persistencia garantizada
+                                local_track_file = os.path.join(TRACKS_DIR, f"{tid}.mp3")
+                                cloud_backup = None
+                                if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
+                                    try:
+                                        cloud_backup = await upload_to_catbox_async(local_track_file)
+                                    except Exception:
+                                        pass
+                                
                                 track_info = {
                                     "id": tid,
                                     "title": ttitle,
                                     "audio_url": taudio_cached,
                                     "raw_audio_url": taudio,
+                                    "cloud_backup": cloud_backup,
                                     "image_url": timage,
                                     "duration": tduration,
                                     "status": tstatus,
@@ -1295,13 +1306,15 @@ async def save_dictionary(request: Request, current_user: str = Depends(get_curr
     return JSONResponse(content={"status": "success"})
 
 async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_file: str) -> str:
-    """Returns a local file path to the audio file, cached if available, or downloaded."""
+    """Returns a local file path to the audio file, cached if available, or downloaded quickly."""
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return local_path
         
     urls_to_try = []
-    if track.get("raw_audio_url") and str(track["raw_audio_url"]).startswith("http"):
+    if track.get("cloud_backup") and str(track["cloud_backup"]).startswith("http"):
+        urls_to_try.append(track["cloud_backup"])
+    if track.get("raw_audio_url") and str(track["raw_audio_url"]).startswith("http") and track["raw_audio_url"] not in urls_to_try:
         urls_to_try.append(track["raw_audio_url"])
     if track.get("audio_url") and str(track["audio_url"]).startswith("http") and track["audio_url"] not in urls_to_try:
         urls_to_try.append(track["audio_url"])
@@ -1314,7 +1327,7 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
     last_err = None
     for url in urls_to_try:
         try:
-            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True, headers=headers) as client:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, headers=headers) as client:
                 async with client.stream("GET", url) as resp:
                     if resp.status_code == 200:
                         with open(local_path, "wb") as f:
@@ -1328,7 +1341,7 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
                 import urllib.request
                 def fetch_u():
                     req = urllib.request.Request(url, headers=headers)
-                    with urllib.request.urlopen(req, timeout=60) as resp:
+                    with urllib.request.urlopen(req, timeout=8) as resp:
                         with open(local_path, "wb") as out_f:
                             while True:
                                 chunk = resp.read(65536)
@@ -1489,8 +1502,52 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
     import unicodedata
     clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
     safe_title = "".join([c for c in clean_ascii if c.isalnum() or c in ' -_']).strip() or "track"
+
+    # 1. DESCARGA INMEDIATA: MP3 directo desde disco local (0 segundos)
+    local_mp3 = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    if audio_format == "mp3" and eq == "none" and loud == "none" and width <= 1.0:
+        if os.path.exists(local_mp3) and os.path.getsize(local_mp3) > 1000:
+            await enforce_max_file_size_mp3(local_mp3)
+            return FileResponse(
+                path=local_mp3,
+                filename=f"{safe_title}.mp3",
+                media_type="audio/mpeg"
+            )
+
+    # 2. DESCARGA INMEDIATA: WAV directo si ya está en caché local
+    local_wav = os.path.join(TRACKS_DIR, f"{task_id}.wav")
+    if audio_format == "wav" and eq == "none" and loud == "none" and width <= 1.0:
+        if os.path.exists(local_wav) and os.path.getsize(local_wav) > 1000:
+            return FileResponse(
+                path=local_wav,
+                filename=f"{safe_title}.wav",
+                media_type="audio/wav"
+            )
+
+    # 3. OBTENER ARCHIVO FUENTE
+    source_audio_file = await get_or_download_audio_file(task_id, track, "")
+
+    # 4. CONVERSIÓN INMEDIATA A WAV (Calidad Estudio Sin Comprimir: 44.1kHz 16-bit PCM estéreo)
+    if audio_format == "wav" and eq == "none" and loud == "none" and width <= 1.0:
+        wav_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", local_wav]
+        await asyncio.to_thread(subprocess.run, wav_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return FileResponse(
+            path=local_wav,
+            filename=f"{safe_title}.wav",
+            media_type="audio/wav"
+        )
+
+    # 5. MP3 DIRECTO SIN MASTERIZACIÓN
+    if audio_format == "mp3" and eq == "none" and loud == "none" and width <= 1.0:
+        await enforce_max_file_size_mp3(source_audio_file)
+        return FileResponse(
+            path=source_audio_file,
+            filename=f"{safe_title}.mp3",
+            media_type="audio/mpeg"
+        )
+
+    # 6. SOLO SI SE SOLICITARON FILTROS DE MASTERIZACIÓN EXPLÍCITOS
     master_filter = build_master_filter(width, eq, loud)
-    
     temp_out = f"temp_dl_out_{uuid.uuid4().hex}.{audio_format}"
     
     def cleanup_files(files):
@@ -1502,38 +1559,23 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         gc.collect()
 
     try:
-        source_audio_file = await get_or_download_audio_file(task_id, track, "")
-        dur = get_audio_duration_seconds(source_audio_file)
-        safe_bitrate = calculate_safe_mp3_bitrate(dur)
-        
-        # If MP3 with no mastering filters: return source directly as an attachment if under 15MB!
-        if audio_format == "mp3" and not master_filter:
-            await enforce_max_file_size_mp3(source_audio_file)
-            return FileResponse(
-                path=source_audio_file,
-                filename=f"{safe_title}.mp3",
-                media_type="audio/mpeg"
-            )
-            
-        # Process with FFmpeg at maximum speed with multithreading
         ffmpeg_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-map_metadata", "-1"]
         if master_filter:
             ffmpeg_cmd.extend(["-af", master_filter])
         if audio_format == "wav":
-            wav_args = get_safe_wav_ffmpeg_args(dur)
-            ffmpeg_cmd.extend(wav_args)
+            # WAV sin comprimir
+            ffmpeg_cmd.extend(["-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2"])
         elif audio_format == "flac":
             ffmpeg_cmd.extend(["-c:a", "flac", "-compression_level", "8", "-ar", "44100"])
         elif audio_format == "mp3":
+            dur = get_audio_duration_seconds(source_audio_file)
+            safe_bitrate = calculate_safe_mp3_bitrate(dur)
             ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", safe_bitrate, "-ar", "44100"])
             
         ffmpeg_cmd.append(temp_out)
-        try:
-            await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            if audio_format == "mp3":
-                await enforce_max_file_size_mp3(temp_out)
-        except subprocess.CalledProcessError as pe:
-            raise Exception(f"FFmpeg Error: {pe.stderr}")
+        await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if audio_format == "mp3":
+            await enforce_max_file_size_mp3(temp_out)
             
         from starlette.background import BackgroundTask
         suffix = "_master" if master_filter else ""
@@ -1584,21 +1626,15 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
             media_type="audio/mpeg"
         )
     elif audio_format == "wav":
-        temp_wav = f"temp_vo_{uuid.uuid4().hex}.wav"
-        dur = get_audio_duration_seconds(local_path)
-        wav_args = get_safe_wav_ffmpeg_args(dur)
-        cmd = ["ffmpeg", "-threads", "0", "-y", "-i", local_path] + wav_args + [temp_wav]
-        await asyncio.to_thread(subprocess.run, cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        from starlette.background import BackgroundTask
-        def rm_temp():
-            if os.path.exists(temp_wav):
-                try: os.remove(temp_wav)
-                except: pass
+        local_wav = os.path.join(TRACKS_DIR, f"{task_id}.wav")
+        if not os.path.exists(local_wav) or os.path.getsize(local_wav) < 1000:
+            # WAV sin comprimir: calidad CD 44.1kHz 16-bit PCM estéreo
+            cmd = ["ffmpeg", "-threads", "0", "-y", "-i", local_path, "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", local_wav]
+            await asyncio.to_thread(subprocess.run, cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return FileResponse(
-            path=temp_wav,
+            path=local_wav,
             filename=f"{safe_title}.wav",
-            media_type="audio/wav",
-            background=BackgroundTask(rm_temp)
+            media_type="audio/wav"
         )
 
 @app.get("/api/me")
