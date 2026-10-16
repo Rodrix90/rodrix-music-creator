@@ -735,16 +735,38 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
 
         # Clean structural tags from style string (they belong in lyrics, not style)
         style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
-        style = re.sub(r',\s*,+', ',', style).strip(' ,')
+
+        # Detect user custom BPM (e.g. 83.3 BPM, 85 bpm, 120 bpm)
+        custom_bpm_match = re.search(r'\b(\d+(?:\.\d+)?)\s*bpm\b', style, re.IGNORECASE)
+        custom_bpm = float(custom_bpm_match.group(1)) if custom_bpm_match else None
+
+        if custom_bpm:
+            # Strip out any conflicting preset BPMs like 135 bpm, 68 bpm, 125 bpm
+            style = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', style, flags=re.IGNORECASE)
+            style = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', style, flags=re.IGNORECASE)
+            if custom_bpm < 95:
+                bpm_tag = f"{custom_bpm:.1f} BPM, andante tempo, worship ballad"
+            elif custom_bpm > 120:
+                bpm_tag = f"{custom_bpm:.1f} BPM, driving tempo, upbeat praise"
+            else:
+                bpm_tag = f"{custom_bpm:.1f} BPM, moderato tempo"
+            log_msg(f"Tempo del usuario detectado y respetado estrictamente: {custom_bpm:.1f} BPM")
+        else:
+            bpm_tag = ""
 
         # Detect Christian / Worship / Devotional context for genre anchoring
-        is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian"])
+        is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian"])
         is_fast_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "alabanza rapida", "alabanza rápida"])
 
-        if is_fast_pentecostal:
-            genre_anchor = "fast joyful pentecostal praise choir, upbeat Christian worship, lively tempo, straight rhythm"
+        if custom_bpm and custom_bpm < 100:
+            # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
+            genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
+        elif is_fast_pentecostal and (not custom_bpm or custom_bpm >= 110):
+            genre_anchor = "fast joyful Christian worship praise choir, straight 4/4 driving rock drums with snare backbeat on 2 and 4, punchy bass, no cumbia, no latin rhythm"
         elif is_worship:
-            genre_anchor = "sacred Christian worship hymn, church acoustic, straight 4/4 rhythm"
+            genre_anchor = f"sacred Christian worship hymn, {bpm_tag or 'straight 4/4 rhythm'}, clean acoustic and electric instruments, church acoustic, no cumbia"
+        elif bpm_tag:
+            genre_anchor = bpm_tag
         else:
             genre_anchor = ""
 
@@ -805,6 +827,11 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         neg_tags_list.append(syn)
                         style = re.sub(rf'\b{re.escape(syn)}\b', '', style, flags=re.IGNORECASE)
 
+            # If Christian / Worship, always enforce anti-cumbia negative tags automatically
+            if is_worship:
+                for mandatory_anti_cumbia in ["cumbia", "ritmo cumbia", "grupero", "cumbia sonidera", "accordion", "acordeon", "guiro", "timbales", "latin rhythm", "tropical rhythm", "reggaeton"]:
+                    neg_tags_list.append(mandatory_anti_cumbia)
+
             # Deduplicate negative tags & filter out artist names prohibited by Udio API
             banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
             seen = set()
@@ -818,11 +845,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             # Build direct key bans that MUST be front-loaded in style (e.g. no accordion, no cumbia, no norteño)
             critical_instruments = ["accordion", "bajo sexto", "cumbia", "norteño", "corrido", "grupero", "polka", "distortion", "autotune"]
             active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
+            if is_worship:
+                for req_no in ["no cumbia", "no accordion", "no latin rhythm"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
             if active_critical:
                 key_bans_str = ", ".join(active_critical)
 
-            # Combine style: Anchor + Style + Front-loaded bans
-            combined_parts = [p for p in [genre_anchor, style, key_bans_str] if p]
+            # Combine style: Anchor + Key bans + Style
+            combined_parts = [p for p in [genre_anchor, key_bans_str, style] if p]
             style = ", ".join(combined_parts)
             style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
