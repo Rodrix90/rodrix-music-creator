@@ -19,7 +19,7 @@
 html,body{height:100%}
 body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;background:var(--bg);color:var(--text);overflow:hidden}
 button{font-family:inherit;cursor:pointer}
-.app{display:grid;grid-template-columns:250px 1fr 360px;height:100vh}
+.app{display:grid;grid-template-columns:250px 1fr;height:100vh}
 
 /* ---------- SIDEBAR ---------- */
 .sidebar{background:var(--side);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 14px}
@@ -95,13 +95,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .console .dim{color:#6B7280}
 
 /* ---------- LIBRARY ---------- */
-.library{background:var(--side);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
-.lib-head{padding:20px 18px 12px;display:flex;align-items:center;justify-content:space-between}
-.lib-head h2{font-size:16px;font-weight:700}
-.lib-list{flex:1;overflow-y:auto;padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px}
-.empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:13px}
-.track{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;gap:12px;transition:.2s}
-.track:hover{border-color:var(--accent)}
+.lib-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;padding:6px 0 24px}
+.empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:40px 10px;font-size:13px}
+.track{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;gap:12px;transition:.2s}
+.track:hover{border-color:var(--accent);transform:translateY(-1px)}
 .track.playing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 6px 20px rgba(90,103,216,.25)}
 .thumb{width:64px;height:64px;border-radius:10px;background:linear-gradient(135deg,#3540A3,#7C3AED);flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden;position:relative}
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
@@ -124,16 +121,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .menu.open-up{top:auto;bottom:36px}
 .menu a{display:block;padding:8px 14px;color:var(--text);text-decoration:none;font-size:12px;white-space:nowrap}
 .menu a:hover{background:var(--accent-dark)}
-.player{border-top:1px solid var(--border);padding:12px 16px;display:none;flex-direction:column;gap:6px;background:#181826}
+.player{border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:none;flex-direction:column;gap:8px;background:#181826}
 .player.show{display:flex}
-.player .pt{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .pt{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .player audio{width:100%;height:34px}
-
-.mobile-tabs{display:none}
 
 /* ---------- RESPONSIVE ---------- */
 @media(max-width:1100px){
-  .app{grid-template-columns:72px 1fr 320px}
+  .app{grid-template-columns:72px 1fr}
   .logo-text,.nav a span,.side-foot span{display:none}
   .nav a{justify-content:center;padding:12px 0;border-left-width:4px}
   .logo{justify-content:center}
@@ -146,8 +141,6 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   .nav{flex-direction:row;margin-left:auto}
   .side-foot{display:none}
   .center{padding:18px 14px 30px;overflow:visible}
-  .library{border-left:none;border-top:1px solid var(--border);min-height:400px}
-  .mobile-tabs{display:flex}
 }
 
 /* ---------- PRESETS DE CULTO & LITURGIA ---------- */
@@ -172,6 +165,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .gear-card:hover{border-color:var(--accent);background:rgba(90,103,216,.12);transform:translateY(-1px)}
 .gear-card.active{border-color:var(--accent);background:rgba(90,103,216,.25);box-shadow:0 0 14px rgba(90,103,216,.4)}
 .gear-thumb{width:46px !important;height:46px !important;min-width:46px !important;max-width:46px !important;border-radius:8px;background:#12121c;border:1px solid rgba(255,255,255,.1);display:flex !important;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.gear-thumb img{width:100% !important;height:100% !important;object-fit:cover !important;display:block;border-radius:7px}
 .gear-thumb svg{width:38px !important;height:38px !important;max-width:38px !important;max-height:38px !important;display:block}
 .gear-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .gear-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -291,7 +285,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="console">
                   <div class="gear-card" data-gear="neve 8048">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C2430"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#2E3C4E" stroke="#485B75"/><rect x="7" y="7" width="13" height="8" rx="2" fill="#FFE8A3"/><rect x="24" y="7" width="13" height="8" rx="2" fill="#FFE8A3"/><line x1="12" y1="13" x2="16" y2="9" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><line x1="29" y1="13" x2="33" y2="9" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><circle cx="13" cy="22" r="4.5" fill="#C53030" stroke="#9B2C2C"/><circle cx="24" cy="22" r="3.5" fill="#3182CE"/><circle cx="33" cy="22" r="3.5" fill="#3182CE"/><circle cx="13" cy="32" r="3.5" fill="#3182CE"/><circle cx="24" cy="32" r="3.5" fill="#718096"/><circle cx="33" cy="32" r="3.5" fill="#718096"/></svg>
+                      <img src="/assets/gear/neve.jpg" alt="Neve 8048 / 1073">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Neve 8048 / 1073</div>
@@ -302,7 +296,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="ssl 4000 e/g">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#121217"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#202028" stroke="#3D3D4E"/><rect x="7" y="7" width="6" height="30" rx="1.5" fill="#0D0D12"/><rect x="8" y="9" width="4" height="3" fill="#E53E3E" rx="0.5"/><rect x="8" y="13" width="4" height="3" fill="#ECC94B" rx="0.5"/><rect x="8" y="17" width="4" height="3" fill="#48BB78" rx="0.5"/><rect x="8" y="21" width="4" height="3" fill="#48BB78" rx="0.5"/><circle cx="20" cy="11" r="3.5" fill="#E53E3E"/><circle cx="30" cy="11" r="3.5" fill="#38A169"/><circle cx="20" cy="20" r="3.5" fill="#3182CE"/><circle cx="30" cy="20" r="3.5" fill="#DD6B20"/><line x1="25" y1="26" x2="25" y2="37" stroke="#4A5568" stroke-width="1.5"/><rect x="22" y="29" width="6" height="4" rx="1" fill="#E2E8F0"/></svg>
+                      <img src="/assets/gear/ssl.jpg" alt="SSL 4000 E/G">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">SSL 4000 E/G</div>
@@ -313,7 +307,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="api 1608">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141E28"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#2B3E50" stroke="#466582"/><rect x="7" y="7" width="30" height="9" rx="2" fill="#E2E8F0" stroke="#718096" stroke-width="0.8"/><line x1="12" y1="14" x2="22" y2="9" stroke="#C53030" stroke-width="1.2" stroke-linecap="round"/><circle cx="14" cy="24" r="4.5" fill="#1A202C"/><circle cx="14" cy="24" r="2.8" fill="#3182CE"/><circle cx="29" cy="24" r="4.5" fill="#1A202C"/><circle cx="29" cy="24" r="2.8" fill="#3182CE"/><circle cx="11" cy="34" r="2" fill="#E53E3E"/><circle cx="18" cy="34" r="2" fill="#ECC94B"/><circle cx="25" cy="34" r="2" fill="#48BB78"/></svg>
+                      <img src="/assets/gear/api.jpg" alt="API 1608 / 312">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">API 1608 / 312</div>
@@ -324,7 +318,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="abbey road tg12345">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#171C20"/><rect x="4" y="4" width="36" height="36" rx="4" fill="#3A444C" stroke="#5C6B75"/><circle cx="22" cy="15" r="9" fill="#F7FAFC" stroke="#718096"/><line x1="22" y1="19" x2="26" y2="10" stroke="#E53E3E" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="30" r="5" fill="#1A202C" stroke="#CBD5E0" stroke-width="0.8"/><circle cx="32" cy="30" r="5" fill="#1A202C" stroke="#CBD5E0" stroke-width="0.8"/></svg>
+                      <img src="/assets/gear/abbey_road.jpg" alt="Abbey Road TG12345">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Abbey Road TG12345</div>
@@ -342,7 +336,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="drums">
                   <div class="gear-card" data-gear="dw collector's maple">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1814"/><ellipse cx="10" cy="13" rx="8" ry="2.5" fill="#ECC94B" stroke="#D69E2E"/><ellipse cx="34" cy="12" rx="8" ry="2.5" fill="#ECC94B" stroke="#D69E2E"/><ellipse cx="16" cy="18" rx="6" ry="2.5" fill="#ED8936"/><rect x="10" y="18" width="12" height="6" fill="#C05621" rx="1"/><ellipse cx="28" cy="18" rx="6" ry="2.5" fill="#ED8936"/><rect x="22" y="18" width="12" height="6" fill="#C05621" rx="1"/><ellipse cx="9" cy="27" rx="6" ry="2.5" fill="#E2E8F0"/><circle cx="26" cy="31" r="10" fill="#DD6B20" stroke="#7B341E" stroke-width="1.5"/><circle cx="26" cy="31" r="8" fill="#F7FAFC"/><circle cx="30" cy="33" r="2.2" fill="#1A202C"/></svg>
+                      <img src="/assets/gear/dw_drums.jpg" alt="DW Collector's Maple">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">DW Collector's Maple</div>
@@ -353,7 +347,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="ludwig classic 70s">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181A1C"/><ellipse cx="11" cy="13" rx="8" ry="2.5" fill="#ECC94B"/><ellipse cx="33" cy="13" rx="8" ry="2.5" fill="#ECC94B"/><rect x="16" y="17" width="12" height="6" fill="#A0AEC0" rx="1"/><rect x="6" y="25" width="11" height="6" fill="#CBD5E0" stroke="#718096" rx="1"/><circle cx="26" cy="30" r="10.5" fill="#718096" stroke="#4A5568" stroke-width="1.5"/><circle cx="26" cy="30" r="8.5" fill="#E2E8F0"/></svg>
+                      <img src="/assets/gear/ludwig_drums.jpg" alt="Ludwig Classic Vintage">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Ludwig Classic Vintage</div>
@@ -364,7 +358,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="yamaha recording custom">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141416"/><ellipse cx="11" cy="12" rx="8" ry="2.5" fill="#ECC94B"/><ellipse cx="33" cy="12" rx="8" ry="2.5" fill="#ECC94B"/><rect x="16" y="16" width="12" height="6" fill="#1A202C" rx="1"/><circle cx="25" cy="30" r="10.5" fill="#1A202C" stroke="#2D3748" stroke-width="1.5"/><circle cx="25" cy="30" r="8.5" fill="#2D3748"/><circle cx="29" cy="32" r="2" fill="#000"/></svg>
+                      <img src="/assets/gear/yamaha_drums.jpg" alt="Yamaha Recording Custom">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Yamaha Recording Custom</div>
@@ -382,7 +376,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="bass">
                   <div class="gear-card" data-gear="fender jazz bass 1975">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1B1714"/><path d="M14 18 C14 12 26 12 26 18 C26 23 30 26 29 34 C28 39 12 40 11 34 C10 27 14 24 14 18 Z" fill="#C05621"/><ellipse cx="20" cy="30" rx="5" ry="7" fill="#ECC94B"/><path d="M14 23 C16 22 23 23 23 27 C23 31 16 33 14 30 Z" fill="#742A2A"/><rect x="18" y="27" width="5" height="1.8" fill="#1A202C"/><rect x="18" y="31" width="5" height="1.8" fill="#1A202C"/><rect x="18" y="4" width="4" height="15" fill="#ECC94B"/></svg>
+                      <img src="/assets/gear/fender_jazz.jpg" alt="Fender Jazz Bass 1975">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Jazz Bass 1975</div>
@@ -393,7 +387,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="fender precision 1962">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1819"/><path d="M14 17 C13 12 27 12 27 18 C27 24 30 27 28 35 C27 40 13 40 12 35 C11 28 14 24 14 17 Z" fill="#E2E8F0"/><path d="M14 22 C17 21 24 23 24 28 C23 33 16 34 14 31 Z" fill="#9B2C2C"/><rect x="17" y="27" width="3.5" height="2" fill="#1A202C"/><rect x="19.5" y="29.5" width="3.5" height="2" fill="#1A202C"/><rect x="18" y="4" width="4" height="14" fill="#D69E2E"/></svg>
+                      <img src="/assets/gear/fender_p.jpg" alt="Fender Precision 1962">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Precision 1962</div>
@@ -404,7 +398,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="music man stingray">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#16171A"/><path d="M14 18 C14 13 26 13 26 18 C26 24 29 27 28 35 C27 40 13 40 12 35 C11 28 14 24 14 18 Z" fill="#4A5568"/><ellipse cx="19" cy="24" rx="4" ry="6" fill="#1A202C"/><rect x="17" y="29" width="7" height="4" fill="#1A202C" rx="1"/><rect x="18" y="4" width="4" height="14" fill="#ECC94B"/></svg>
+                      <img src="/assets/gear/stingray.jpg" alt="Music Man StingRay">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Music Man StingRay</div>
@@ -415,7 +409,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="contrabajo acustico">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181512"/><path d="M16 17 C13 20 13 22 17 24 C13 27 12 33 15 37 C18 41 26 41 29 37 C32 33 31 27 27 24 C31 22 31 20 28 17 C25 14 19 14 16 17 Z" fill="#7B341E"/><rect x="21" y="7" width="2" height="12" fill="#1A202C"/><circle cx="22" cy="5" r="2.5" fill="#7B341E"/><rect x="20" y="29" width="4" height="1.5" fill="#D69E2E"/></svg>
+                      <img src="/assets/gear/upright_bass.jpg" alt="Contrabajo Acústico">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Contrabajo Acústico</div>
@@ -433,7 +427,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="keys">
                   <div class="gear-card" data-gear="yamaha cfx grand">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#141416"/><path d="M9 14 L9 32 L34 32 L34 22 C34 16 28 14 20 14 Z" fill="#1A202C" stroke="#4A5568"/><path d="M12 17 L12 28 L30 28 L30 23 C30 18 25 17 19 17 Z" fill="#D69E2E"/><rect x="9" y="32" width="25" height="5" fill="#F7FAFC"/><rect x="12" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="15" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="19" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="22" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="25" y="32" width="1.5" height="3" fill="#1A202C"/><rect x="29" y="32" width="1.5" height="3" fill="#1A202C"/></svg>
+                      <img src="/assets/gear/cfx_grand.jpg" alt="Yamaha CFX Grand">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Yamaha CFX Grand</div>
@@ -444,7 +438,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="fender rhodes mark i">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#18181C"/><path d="M6 14 C6 11 38 11 38 14 L38 23 L6 23 Z" fill="#2D3748"/><rect x="6" y="21" width="32" height="6" fill="#CBD5E0"/><circle cx="10" cy="24" r="1.5" fill="#1A202C"/><circle cx="14" cy="24" r="1.5" fill="#1A202C"/><rect x="6" y="27" width="32" height="7" fill="#F7FAFC"/><rect x="9" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="13" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="18" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="22" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="26" y="27" width="1.8" height="4" fill="#1A202C"/><rect x="31" y="27" width="1.8" height="4" fill="#1A202C"/></svg>
+                      <img src="/assets/gear/rhodes.jpg" alt="Fender Rhodes Mark I">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Rhodes Mark I</div>
@@ -455,7 +449,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="hammond b3 + leslie">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1A1512"/><rect x="4" y="9" width="22" height="26" rx="2" fill="#7B341E"/><rect x="6" y="16" width="18" height="4" fill="#F7FAFC"/><rect x="6" y="22" width="18" height="4" fill="#F7FAFC"/><rect x="28" y="9" width="12" height="26" rx="2" fill="#9C4221"/><line x1="30" y1="14" x2="38" y2="14" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="18" x2="38" y2="18" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="26" x2="38" y2="26" stroke="#2D1A0E" stroke-width="1.5"/><line x1="30" y1="30" x2="38" y2="30" stroke="#2D1A0E" stroke-width="1.5"/></svg>
+                      <img src="/assets/gear/hammond_b3.jpg" alt="Hammond B3 + Leslie">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Hammond B3 + Leslie</div>
@@ -466,7 +460,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="roland juno-106">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#121318"/><rect x="4" y="9" width="36" height="26" rx="2" fill="#1A202C" stroke="#2B6CB0"/><line x1="5" y1="12" x2="39" y2="12" stroke="#3182CE" stroke-width="1.5"/><circle cx="8" cy="18" r="1.2" fill="#E53E3E"/><circle cx="12" cy="16" r="1.2" fill="#ECC94B"/><circle cx="16" cy="19" r="1.2" fill="#3182CE"/><circle cx="20" cy="17" r="1.2" fill="#38A169"/><rect x="5" y="24" width="34" height="10" fill="#F7FAFC"/><rect x="8" y="24" width="2" height="6" fill="#1A202C"/><rect x="13" y="24" width="2" height="6" fill="#1A202C"/><rect x="19" y="24" width="2" height="6" fill="#1A202C"/></svg>
+                      <img src="/assets/gear/juno_106.jpg" alt="Roland Juno-106">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Roland Juno-106</div>
@@ -484,7 +478,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="gear-grid" data-cat="guitar">
                   <div class="gear-card" data-gear="stratocaster">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1A1817"/><path d="M14 16 C12 10 26 10 24 16 C24 21 28 25 27 34 C26 39 12 40 11 34 C10 27 14 23 14 16 Z" fill="#C05621"/><ellipse cx="19" cy="28" rx="5" ry="7" fill="#ECC94B"/><path d="M14 20 C16 19 22 20 22 25 C22 29 15 31 13 28 Z" fill="#F7FAFC"/><rect x="16" y="23" width="5" height="1.5" fill="#1A202C"/><rect x="16" y="26" width="5" height="1.5" fill="#1A202C"/><rect x="16" y="29" width="5" height="1.5" fill="#1A202C"/><rect x="17.5" y="4" width="3" height="13" fill="#ECC94B"/></svg>
+                      <img src="/assets/gear/stratocaster.jpg" alt="Fender Stratocaster">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Fender Stratocaster</div>
@@ -495,7 +489,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="gibson les paul">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#1C1615"/><path d="M16 17 C13 19 14 22 17 24 C14 27 12 33 15 37 C18 41 26 41 29 37 C32 33 30 27 27 24 C27 20 26 18 22 17 Z" fill="#DD6B20"/><circle cx="21" cy="28" r="6" fill="#ECC94B"/><rect x="18" y="23" width="6" height="3" fill="#CBD5E0" rx="0.5"/><rect x="18" y="28" width="6" height="3" fill="#CBD5E0" rx="0.5"/><rect x="19.5" y="4" width="3" height="14" fill="#7B341E"/></svg>
+                      <img src="/assets/gear/les_paul.jpg" alt="Gibson Les Paul">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Gibson Les Paul</div>
@@ -506,7 +500,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </div>
                   <div class="gear-card" data-gear="martin d-28 acustica">
                     <div class="gear-thumb">
-                      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect width="44" height="44" rx="6" fill="#181513"/><path d="M16 17 C14 20 14 22 17 24 C13 27 12 33 15 37 C18 41 26 41 29 37 C32 33 31 27 27 24 C30 22 30 20 28 17 C25 15 19 15 16 17 Z" fill="#ED8936"/><circle cx="22" cy="24" r="3.5" fill="#1A202C"/><rect x="19" y="31" width="6" height="2" fill="#2D1A0E"/><rect x="20.5" y="4" width="3" height="14" fill="#7B341E"/></svg>
+                      <img src="/assets/gear/martin_d28.jpg" alt="Martin D-28 Acústica">
                     </div>
                     <div class="gear-info">
                       <div class="gear-name">Martin D-28 Acústica</div>
@@ -833,31 +827,48 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </form>
       </div>
 
-  <!-- LIBRARY -->
-  <aside class="library" id="library">
-    <div class="lib-head">
-      <h2>Mi Librería</h2>
-      <button class="icon-btn" id="refreshLib" title="Actualizar"><i class="ph ph-arrows-clockwise"></i></button>
-    </div>
-    <div class="lib-list" id="libList"><div class="empty">Cargando...</div></div>
-    <div class="player" id="player">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-        <div class="pt" id="playerTitle" style="font-size:12px;font-weight:700">-</div>
-        <div id="playerTimer" style="font-size:11px;color:var(--muted);font-family:monospace">0:00 / 0:00</div>
+      <!-- VISTA 3: MI LIBRERÍA -->
+      <div id="view-libreria" class="view-panel" style="display:none">
+        <div class="page-head">
+          <div>
+            <h1>📚 Mi Librería Musical y Predicaciones</h1>
+            <p style="font-size:12px;color:var(--muted);margin-top:4px">Tus canciones generadas, audios pastorales y masters listos para escuchar y descargar.</p>
+          </div>
+          <button type="button" class="btn-sec" id="refreshLib" style="padding:6px 14px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px">
+            <i class="ph ph-arrows-clockwise"></i> Actualizar
+          </button>
+        </div>
+
+        <!-- Reproductor de onda destacado -->
+        <div class="player form-card" id="player" style="display:flex;padding:18px 22px;margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div>
+              <div class="pt" id="playerTitle" style="font-size:14px;font-weight:700">Selecciona una pista para reproducir</div>
+              <div id="playerSubtitle" style="font-size:11px;color:var(--muted)">Rodrix Master Audio Player</div>
+            </div>
+            <div id="playerTimer" style="font-size:12px;color:var(--muted);font-family:monospace;font-weight:600">0:00 / 0:00</div>
+          </div>
+          <div id="waveform" style="width:100%;height:54px;border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.35);cursor:pointer;margin:6px 0 10px"></div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <button type="button" class="btn-play" id="wsPlayPauseBtn" style="padding:6px 16px;font-size:12px">
+              <i class="ph ph-play" id="wsPlayIcon"></i> <span id="wsPlayText">Play</span>
+            </button>
+            <div style="flex:1"></div>
+            <i class="ph ph-speaker-high" style="color:var(--muted);font-size:16px"></i>
+            <input type="range" id="wsVolume" min="0" max="1" step="0.05" value="0.9" style="width:90px;height:4px">
+          </div>
+          <audio id="audio" style="display:none"></audio>
+        </div>
+
+        <!-- Grilla de pistas de la biblioteca -->
+        <div class="lib-list" id="libList">
+          <div class="empty">Cargando biblioteca...</div>
+        </div>
       </div>
-      <div id="waveform" style="width:100%;height:46px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,0.3);cursor:pointer"></div>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-        <button type="button" class="btn-play" id="wsPlayPauseBtn" style="padding:4px 10px;font-size:11px">
-          <i class="ph ph-play" id="wsPlayIcon"></i> <span id="wsPlayText">Play</span>
-        </button>
-        <div style="flex:1"></div>
-        <i class="ph ph-speaker-high" style="color:var(--muted);font-size:15px"></i>
-        <input type="range" id="wsVolume" min="0" max="1" step="0.05" value="0.9" style="width:65px;height:4px">
-      </div>
-      <audio id="audio" style="display:none"></audio>
-    </div>
-  </aside>
-</div>
+
+    </div> <!-- .center-inner -->
+  </main> <!-- .center -->
+</div> <!-- .app -->
 
 <script>
 const $ = id => document.getElementById(id);
@@ -891,6 +902,7 @@ $('nav-crear').onclick = e => {
   setActive('nav-crear');
   $('view-crear').style.display = 'flex';
   $('view-vozenoff').style.display = 'none';
+  $('view-libreria').style.display = 'none';
   document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
 };
 $('nav-vozenoff').onclick = e => {
@@ -898,12 +910,21 @@ $('nav-vozenoff').onclick = e => {
   setActive('nav-vozenoff');
   $('view-crear').style.display = 'none';
   $('view-vozenoff').style.display = 'flex';
+  $('view-libreria').style.display = 'none';
   document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
 };
-$('nav-libreria').onclick = e => { e.preventDefault(); setActive('nav-libreria'); loadLibrary(); $('library').scrollIntoView({behavior:'smooth'}); };
-$('nav-ajustes').onclick = e => { e.preventDefault(); setActive('nav-ajustes'); $('advanced').open = true; $('advanced').scrollIntoView({behavior:'smooth',block:'center'}); };
+$('nav-libreria').onclick = e => {
+  e.preventDefault();
+  setActive('nav-libreria');
+  $('view-crear').style.display = 'none';
+  $('view-vozenoff').style.display = 'none';
+  $('view-libreria').style.display = 'flex';
+  loadLibrary();
+  document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
+};
+$('nav-ajustes').onclick = e => { e.preventDefault(); setActive('nav-ajustes'); $('view-crear').style.display = 'flex'; $('view-vozenoff').style.display = 'none'; $('view-libreria').style.display = 'none'; $('advanced').open = true; $('advanced').scrollIntoView({behavior:'smooth',block:'center'}); };
 $('nav-ayuda').onclick = e => { e.preventDefault(); setActive('nav-ayuda');
-  alert('Cómo usar Rodrix Music Creator:\n\n1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio y genera música con IA.\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, ecualiza el sonido y mezcla música devocional muy suave con auto-ducking.\n3. Librería: Escucha, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.'); };
+  alert('Cómo usar Rodrix Music Creator:\n\n1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio con fotos reales y genera música con IA.\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, elimina ruidos y retumbos, ecualiza y mezcla música devocional muy suave con auto-ducking.\n3. Librería: Escucha en el reproductor de onda, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.'); };
 
 /* ---------- PRESETS DE CULTO & LITURGIA ---------- */
 const WORSHIP_PRESETS = {
@@ -1452,6 +1473,9 @@ $('libList').addEventListener('click', async e => {
     if (t.exclude_styles !== undefined) $('excludeInput').value = t.exclude_styles;
     
     setActive('nav-crear');
+    $('view-crear').style.display = 'flex';
+    $('view-vozenoff').style.display = 'none';
+    $('view-libreria').style.display = 'none';
     document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
     logLine(`Parámetros del himno "${t.title}" cargados en el formulario.`);
   } else if (act === 'dl') {

@@ -17,10 +17,16 @@ import datetime
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 
+from fastapi.staticfiles import StaticFiles
+
 # Load environment variables
 load_dotenv()
 
 app = FastAPI(title="Rodrix Music Creator - Udio Engine", version="3.0")
+
+assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
 app.add_middleware(
     CORSMiddleware,
