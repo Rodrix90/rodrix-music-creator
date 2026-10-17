@@ -485,6 +485,10 @@ async def run_voiceover_task(
         else:
             v_filters.append("highpass=f=80:width_type=q:w=0.7")
 
+        # De-Clicker quirúrgico anti-golpes y chasquidos (elimina golpecitos, pops mecánicos y ruido impulsivo de celular)
+        log_msg("Aplicando De-Clicker quirúrgico anti-golpes y chasquidos (adeclick)...")
+        v_filters.append("adeclick")
+
         # 2. SUPRESIÓN LIMPIA DE RUIDO Y SISEO (Expansor suave y anti-siseo sin distorsión)
         if noise_reduction:
             log_msg("Aplicando reducción de ruido limpia (expansor acústico suave y filtro anti-siseo sin artefactos)...")

@@ -1637,10 +1637,15 @@ async function startLiveRecording() {
       await recAudioCtx.resume();
     }
 
-    if (!recMediaStream) {
+    if (!recMediaStream || !recMediaStream.active) {
       try {
         recMediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: false,
+            channelCount: 1
+          }
         });
       } catch (errConstraint) {
         recMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1648,6 +1653,7 @@ async function startLiveRecording() {
     }
 
     // SI SE ACTIVÓ EL PISADO (PUNCH-IN OVERWRITE):
+    let isPunchInResume = false;
     if (recPunchInSeconds !== null && recPcmChunks.length > 0) {
       const cutSampleIndex = Math.floor(recPunchInSeconds * recSampleRate);
       let totalSamples = recPcmChunks.reduce((acc, c) => acc + c.length, 0);
@@ -1658,27 +1664,67 @@ async function startLiveRecording() {
         offset += chunk.length;
       }
       const truncated = merged.slice(0, cutSampleIndex);
+
+      // Micro fade-out suave (12ms) en el punto de corte para evitar golpecito/clic de DC
+      const fadeSamples = Math.min(Math.floor(recSampleRate * 0.012), truncated.length);
+      for (let i = 0; i < fadeSamples; i++) {
+        const factor = (fadeSamples - 1 - i) / fadeSamples;
+        truncated[truncated.length - fadeSamples + i] *= factor;
+      }
+
       recPcmChunks = [truncated];
       recDurationMs = (cutSampleIndex / recSampleRate) * 1000;
       recPunchInSeconds = null;
+      isPunchInResume = true;
     }
 
-    // Configurar nodo de captura de audio PCM
+    // 1. Nodo fuente de audio del micrófono
     recSourceNode = recAudioCtx.createMediaStreamSource(recMediaStream);
-    recScriptNode = recAudioCtx.createScriptProcessor(4096, 1, 1);
-    
-    // Analyser para animación de la onda en vivo
+
+    // 2. Filtro Pasa-Altos (80Hz, Q=0.7) en frontend:
+    // Elimina ruidos de manipulación del celular, roces, soplidos y offset DC
+    const recHighPass = recAudioCtx.createBiquadFilter();
+    recHighPass.type = 'highpass';
+    recHighPass.frequency.value = 80;
+    recHighPass.Q.value = 0.7;
+
+    // 3. Analyser para animación del osciloscopio
     const analyser = recAudioCtx.createAnalyser();
     analyser.fftSize = 256;
-    recSourceNode.connect(analyser);
-    analyser.connect(recScriptNode);
-    recScriptNode.connect(recAudioCtx.destination);
 
+    // 4. ScriptProcessor con buffer de 8192 para evitar caídas de audio en Android
+    recScriptNode = recAudioCtx.createScriptProcessor(8192, 1, 1);
+
+    // 5. Nodo de Silencio MUTE: ¡CRUCIAL! Mantiene el procesamiento Web Audio activo
+    // SIN reproducir el micrófono por los altavoces del celular (lo cual provocaba acoples,
+    // chasquidos y pequeños golpecitos por retorno acústico).
+    const recMuteGain = recAudioCtx.createGain();
+    recMuteGain.gain.value = 0.0;
+
+    // Conectar nodos: Mic -> HighPass -> [Analyser, ScriptProcessor] -> MuteGain -> Destination
+    recSourceNode.connect(recHighPass);
+    recHighPass.connect(analyser);
+    recHighPass.connect(recScriptNode);
+    recScriptNode.connect(recMuteGain);
+    recMuteGain.connect(recAudioCtx.destination);
+
+    let isFirstChunk = isPunchInResume || (recPcmChunks.length === 0);
     recScriptNode.onaudioprocess = (e) => {
       if (!recIsRecording) return;
       const inputData = e.inputBuffer.getChannelData(0);
-      recPcmChunks.push(new Float32Array(inputData));
-      recDurationMs += (inputData.length / recSampleRate) * 1000;
+      const chunk = new Float32Array(inputData);
+
+      // Micro fade-in de 12ms en el primer bloque para evitar clics o pops al iniciar / pisar
+      if (isFirstChunk) {
+        const fadeLen = Math.min(Math.floor(recSampleRate * 0.012), chunk.length);
+        for (let i = 0; i < fadeLen; i++) {
+          chunk[i] *= (i / fadeLen);
+        }
+        isFirstChunk = false;
+      }
+
+      recPcmChunks.push(chunk);
+      recDurationMs += (chunk.length / recSampleRate) * 1000;
     };
 
     // Estados de UI
@@ -1722,10 +1768,16 @@ function drawLiveOscilloscope(analyser) {
   const ctx = canvas.getContext('2d');
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
+  let lastFrameTime = 0;
 
-  function renderFrame() {
+  function renderFrame(now) {
     if (!recIsRecording) return;
     recAnimFrame = requestAnimationFrame(renderFrame);
+
+    // Limitar a ~30 FPS para no sobrecargar la CPU del celular
+    if (now - lastFrameTime < 33) return;
+    lastFrameTime = now;
+
     analyser.getByteTimeDomainData(dataArray);
 
     ctx.fillStyle = '#0F0F17';
@@ -1746,7 +1798,7 @@ function drawLiveOscilloscope(analyser) {
     ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
   }
-  renderFrame();
+  recAnimFrame = requestAnimationFrame(renderFrame);
 }
 
 // Pausar Grabación y Generar Forma de Onda Interactiva
@@ -1821,6 +1873,13 @@ function resetLiveRecording() {
 
   if (recWs) {
     recWs.empty();
+  }
+
+  if (recMediaStream) {
+    try {
+      recMediaStream.getTracks().forEach(t => t.stop());
+    } catch(e) {}
+    recMediaStream = null;
   }
 
   $('recStatusDot').style.background = '#64748B';
