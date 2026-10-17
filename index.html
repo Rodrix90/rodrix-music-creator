@@ -1527,9 +1527,13 @@ async function startLiveRecording() {
     }
 
     if (!recMediaStream) {
-      recMediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-      });
+      try {
+        recMediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+      } catch (errConstraint) {
+        recMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
     }
 
     // SI SE ACTIVÓ EL PISADO (PUNCH-IN OVERWRITE):
@@ -1592,7 +1596,11 @@ async function startLiveRecording() {
 
   } catch (err) {
     console.error('Error micrófono:', err);
-    alert('No se pudo acceder al micrófono. Por favor asegúrate de otorgar los permisos de micrófono en el dispositivo.');
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      alert('Permiso de micrófono no habilitado por el WebView.\n\n⚠️ Si estás en la APK instalada: necesitas actualizar la APK a la versión con micrófono tocando el botón "Descargar APK" (la versión anterior que tenías instalada no tenía el puente nativo de audio activado).');
+    } else {
+      alert('Error al acceder al micrófono (' + (err.name || 'Error') + '): ' + (err.message || 'Verifica los permisos en tu dispositivo.'));
+    }
   }
 }
 
