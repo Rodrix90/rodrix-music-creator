@@ -474,53 +474,71 @@ async def run_voiceover_task(
         log_msg(f"Optimizando tamaño para WhatsApp (< 15 MB): Bitrate adaptativo a {safe_bitrate}...")
 
         # =====================================================================
-        # MASTERIZACIÓN VOCAL BROADCAST TRANSPARENTE & NATURAL
+        # MASTERIZACIÓN VOCAL PODCAST SPOTIFY (-14 LUFS LOUDNESS PRO)
         # =====================================================================
         v_filters = []
         
-        # 1. INTERFAZ & PREAMPS: Filtro Pasa-Altos limpio contra golpes y vibraciones
-        # Elimina frecuencias subsónicas de mesa y aire (< 75Hz) sin alterar la voz humana
-        log_msg("Aplicando filtro Pasa-Altos transparente (75 Hz)...")
-        v_filters.append("highpass=f=75:width_type=q:w=0.7")
+        # 1. INTERFAZ & PREAMPS (Corte limpio de retumbos subsónicos de mesa y golpes)
+        if interface_profile == "umc404hd":
+            log_msg("Emulando Behringer UMC404HD: Preamps MIDAS (corte 75Hz + headroom broadcast)...")
+            v_filters.append("highpass=f=75:width_type=q:w=0.7")
+        else:
+            v_filters.append("highpass=f=80:width_type=q:w=0.7")
 
-        # 2. REDUCCIÓN DE RUIDO ESPECTRAL SUAVE (Sin compuertas bruscas ni bombeo de sala)
+        # 2. SUPRESIÓN LIMPIA DE RUIDO Y SISEO (Expansor suave y anti-siseo sin distorsión)
         if noise_reduction:
-            log_msg("Aplicando reducción de ruido espectral suave y transparente...")
-            v_filters.append("afftdn=nf=-24")
-            v_filters.append("lowpass=f=16500")
+            log_msg("Aplicando reducción de ruido limpia (expansor acústico suave y filtro anti-siseo sin artefactos)...")
+            v_filters.append("agate=threshold=-42dB:ratio=1.5:attack=10:release=220:range=-10dB")
+            v_filters.append("lowpass=f=16000")
 
-        # 3. ECUALIZACIÓN VOCAL CÁLIDA Y NATURAL (Conserva 100% el timbre natural sin ahuecar ni sonar a baño)
-        if plugin_profile == "none" or mic_profile == "standard":
-            log_msg("Perfil transparente: conservando el timbre acústico 100% original de la grabación...")
+        # 3. TRANSFORMACIÓN TONAL RADIO BROADCAST & MICROFONÍA DE ESTUDIO
+        log_msg("Modelando curva tonal de cabina de radio FM (Cuerpo de locución, eliminación de resonancia de celular y presencia pro)...")
+        # Cuerpo y autoridad pastoral de locutor (pecho cálido 160Hz)
+        v_filters.append("equalizer=f=160:width_type=o:width=1.0:g=3.5")
+        # Extracción del sonido plástico y acartonado del celular (420Hz)
+        v_filters.append("equalizer=f=420:width_type=o:width=1.2:g=-3.8")
+        # Pegada y articulación de locución en radio (3.2kHz)
+        v_filters.append("equalizer=f=3200:width_type=o:width=1.2:g=3.2")
+        # De-Esser anti-siseo suave
+        v_filters.append("equalizer=f=6500:width_type=o:width=1.4:g=-2.5")
+        # Brillo y aire cristalino
+        v_filters.append("treble=g=3.0:f=10500")
+
+        # Perfil de cápsula
+        if mic_profile == "behringer_tm1":
+            log_msg("Añadiendo perfil Behringer TM1 dorada: cápsula de 1 pulgada y agudos nítidos...")
+            v_filters.append("equalizer=f=4800:width_type=o:width=1.2:g=1.5")
         elif mic_profile == "shure_sm7b":
-            log_msg("Añadiendo presencia Shure SM7B (cuerpo cálido de radio y proximidad)...")
-            v_filters.append("equalizer=f=180:width_type=o:width=1.0:g=1.5")
-            v_filters.append("equalizer=f=2800:width_type=o:width=1.0:g=1.2")
+            log_msg("Añadiendo perfil Shure SM7B: presencia broadcast clásica de radio...")
+            v_filters.append("equalizer=f=200:width_type=o:width=1.2:g=1.8")
         elif mic_profile == "neumann_u87":
-            log_msg("Añadiendo perfil Neumann U87 (agudos sedosos y claridad)...")
-            v_filters.append("equalizer=f=3200:width_type=o:width=1.0:g=1.0")
-            v_filters.append("treble=g=1.2:f=11000")
-        else: # behringer_tm1 / izotope_vea por defecto
-            log_msg("Aplicando ecualización broadcast cálida y cristalina (pecho 180Hz + claridad suave 3kHz)...")
-            v_filters.append("equalizer=f=180:width_type=o:width=1.0:g=1.2")
-            v_filters.append("equalizer=f=3000:width_type=o:width=1.0:g=1.2")
-            v_filters.append("treble=g=1.0:f=10000")
+            log_msg("Añadiendo perfil Neumann U87: agudos high-end sedosos...")
+            v_filters.append("treble=g=1.8:f=12000")
 
-        # 4. COMPRESIÓN VOCAL SUAVE 2:1 (Nivelación musical que no infla la acústica de la habitación)
-        if compression:
-            log_msg("Aplicando compresión musical broadcast suave 2:1 (dinámica balanceada sin efecto cuarto de baño)...")
-            v_filters.append("acompressor=threshold=-18dB:ratio=2.0:attack=20:release=250:makeup=1.5dB")
+        # 4. EXCITADOR ARMÓNICO DE CABINA DE RADIO (AURAL EXCITER)
+        log_msg("Inyectando excitador armónico Aural Exciter (brillo y definición de radio FM)...")
+        v_filters.append("aexciter=level_in=1:level_out=1:amount=1.2:drive=8.5:freq=6000:ceil=16000")
 
-        # 5. REVERBERACIÓN (Solo si el usuario la solicita explícitamente)
+        # 5. COMPRESIÓN Y NIVELACIÓN BROADCAST DE 2 ETAPAS (Estilo Optimod)
+        if compression or leveling:
+            log_msg("Nivelando dinámica broadcast de 2 etapas (voz al frente y consistente)...")
+            # Nivelador: atrapa voz a -26dB y la trae a primer plano con +4.5dB
+            v_filters.append("acompressor=threshold=-26dB:ratio=3:attack=15:release=250:makeup=4.5dB")
+            # Control de picos: evita saturación
+            v_filters.append("acompressor=threshold=-12dB:ratio=4:attack=5:release=100")
+
+        # 6. ESPACIALIZACIÓN Y REVERB (si se solicita)
         if vocal_reverb == "plate":
-            log_msg("Agregando micro-dimensión Plate de estudio muy suave...")
-            v_filters.append("aecho=0.92:0.10:45:0.08")
+            log_msg("Agregando micro-dimensión Plate de estudio...")
+            v_filters.append("aecho=0.95:0.10:35|70:0.08|0.04")
         elif vocal_reverb == "hall":
-            log_msg("Agregando reverb Hall devocional suave...")
-            v_filters.append("aecho=0.90:0.12:65|110:0.08|0.04")
+            log_msg("Agregando reverb Hall devocional...")
+            v_filters.append("aecho=0.92:0.15:50|100:0.10|0.05")
 
-        # 6. ENFOQUE ESTÉREO CENTRADO (Voz sólida al centro, sin cancelaciones de fase)
         v_filters.append("aformat=channel_layouts=stereo:sample_rates=44100")
+        if stereo_wide:
+            log_msg("Aplicando sutil apertura estéreo envolvente...")
+            v_filters.append("extrastereo=m=1.06")
 
         voice_filter_str = ",".join(v_filters) if v_filters else "anull"
 
@@ -561,7 +579,7 @@ async def run_voiceover_task(
                 )
                 
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},loudnorm=I=-16:TP=-1.5:LRA=10,adelay=5000|5000,apad=pad_dur={outro_sec + 1.0:.1f}[v_ready];"
+                    f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,adelay=5000|5000,apad=pad_dur={outro_sec + 1.0:.1f}[v_ready];"
                     f"[1:a]atrim=0:{total_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,"
                     f"volume='{vol_expr}':eval=frame,afade=t=in:st=0:d=0.5,afade=t=out:st={fade_out_start:.2f}:d=2.5[bg_ready];"
                     f"[v_ready][bg_ready]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
@@ -569,10 +587,10 @@ async def run_voiceover_task(
                 )
                 export_duration = total_dur
             else:
-                log_msg(f"Estructura Podcast Continuo: Voz al 100% (-16 LUFS) y música de fondo suave ({int(bed_vol*100)}%)...")
+                log_msg(f"Estructura Podcast Continuo: Voz al 100% (-14 LUFS) y música de fondo suave ({int(bed_vol*100)}%)...")
                 fade_start = max(0.5, voice_dur - 2.5)
                 filter_complex = (
-                    f"[0:a]{voice_filter_str},loudnorm=I=-16:TP=-1.5:LRA=10[v_ready];"
+                    f"[0:a]{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7[v_ready];"
                     f"[1:a]atrim=0:{voice_dur:.2f},aformat=channel_layouts=stereo:sample_rates=44100,volume={bed_vol:.2f},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start:.2f}:d=2.5[bg_ready];"
                     f"[v_ready][bg_ready]amix=inputs=2:weights=1 1:normalize=0:duration=first:dropout_transition=0[mixed];"
                     f"[mixed]alimiter=limit=-1.0dB[out]"
@@ -592,8 +610,8 @@ async def run_voiceover_task(
                 out_path
             ]
         else:
-            log_msg("Sin música de fondo. Exportando voz broadcast limpia y natural (-16 LUFS)...")
-            master_chain = f"{voice_filter_str},loudnorm=I=-16:TP=-1.5:LRA=10,alimiter=limit=-1.0dB"
+            log_msg("Sin música de fondo. Exportando voz de radio online masterizada (-14 LUFS)...")
+            master_chain = f"{voice_filter_str},loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=-1.0dB"
             export_duration = voice_dur
             safe_bitrate = calculate_safe_mp3_bitrate(export_duration)
             ffmpeg_cmd = [

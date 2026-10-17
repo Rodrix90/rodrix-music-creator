@@ -1641,8 +1641,8 @@ async function startLiveRecording() {
       try {
         recMediaStream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
+            echoCancellation: false,
+            noiseSuppression: false,
             autoGainControl: false,
             channelCount: 1
           }
@@ -1678,33 +1678,25 @@ async function startLiveRecording() {
       isPunchInResume = true;
     }
 
-    // 1. Nodo fuente de audio del micrófono
+    // 1. Nodo fuente de audio del micrófono (crudo, ancho de banda completo de estudio)
     recSourceNode = recAudioCtx.createMediaStreamSource(recMediaStream);
 
-    // 2. Filtro Pasa-Altos (80Hz, Q=0.7) en frontend:
-    // Elimina ruidos de manipulación del celular, roces, soplidos y offset DC
-    const recHighPass = recAudioCtx.createBiquadFilter();
-    recHighPass.type = 'highpass';
-    recHighPass.frequency.value = 80;
-    recHighPass.Q.value = 0.7;
-
-    // 3. Analyser para animación del osciloscopio
+    // 2. Analyser para animación del osciloscopio
     const analyser = recAudioCtx.createAnalyser();
     analyser.fftSize = 256;
 
-    // 4. ScriptProcessor con buffer de 8192 para evitar caídas de audio en Android
+    // 3. ScriptProcessor con buffer de 8192 para captura limpia sin caídas en Android
     recScriptNode = recAudioCtx.createScriptProcessor(8192, 1, 1);
 
-    // 5. Nodo de Silencio MUTE: ¡CRUCIAL! Mantiene el procesamiento Web Audio activo
+    // 4. Nodo de Silencio MUTE: ¡CRUCIAL! Mantiene el procesamiento Web Audio activo
     // SIN reproducir el micrófono por los altavoces del celular (lo cual provocaba acoples,
     // chasquidos y pequeños golpecitos por retorno acústico).
     const recMuteGain = recAudioCtx.createGain();
     recMuteGain.gain.value = 0.0;
 
-    // Conectar nodos: Mic -> HighPass -> [Analyser, ScriptProcessor] -> MuteGain -> Destination
-    recSourceNode.connect(recHighPass);
-    recHighPass.connect(analyser);
-    recHighPass.connect(recScriptNode);
+    // Conectar nodos: Mic -> [Analyser, ScriptProcessor] -> MuteGain -> Destination
+    recSourceNode.connect(analyser);
+    recSourceNode.connect(recScriptNode);
     recScriptNode.connect(recMuteGain);
     recMuteGain.connect(recAudioCtx.destination);
 
@@ -1939,6 +1931,20 @@ function pcmToWav(pcmChunks, sampleRate) {
     offset += c.length;
   }
 
+  // Normalización de ganancia de estudio (igual que la grabadora nativa de Samsung)
+  // Lleva la voz al nivel profesional óptimo (-1 dBFS = 0.90) para que no sea un audio apagado
+  let maxPeak = 0;
+  for (let i = 0; i < totalLength; i++) {
+    let abs = Math.abs(merged[i]);
+    if (abs > maxPeak) maxPeak = abs;
+  }
+  if (maxPeak > 0.005) {
+    let targetGain = Math.min(0.90 / maxPeak, 15.0);
+    for (let i = 0; i < totalLength; i++) {
+      merged[i] *= targetGain;
+    }
+  }
+
   const numChannels = 1;
   const bytesPerSample = 2;
   const blockAlign = numChannels * bytesPerSample;
@@ -2011,9 +2017,20 @@ $('voDropZone').addEventListener('drop', e => {
 
 $('voiceoverForm').addEventListener('submit', async e => {
   e.preventDefault();
-  let file = $('voAudioInput').files[0];
-  if (!file && recordedVoiceBlob) {
-    file = new File([recordedVoiceBlob], "grabacion_estudio.wav", { type: "audio/wav" });
+  let file = null;
+  const isRecordMode = $('tabVoRecord').classList.contains('on');
+  if (isRecordMode) {
+    if (recIsRecording) {
+      pauseLiveRecording();
+    }
+    if (!recordedVoiceBlob && recPcmChunks.length > 0) {
+      recordedVoiceBlob = pcmToWav(recPcmChunks, recSampleRate);
+    }
+    if (recordedVoiceBlob) {
+      file = new File([recordedVoiceBlob], "grabacion_estudio.wav", { type: "audio/wav" });
+    }
+  } else {
+    file = $('voAudioInput').files[0];
   }
   if (!file) {
     alert('Por favor graba tu mensaje con el micrófono o selecciona un archivo de audio para continuar.');
