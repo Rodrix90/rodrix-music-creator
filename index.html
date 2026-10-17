@@ -262,6 +262,9 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <i class="ph ph-arrows-clockwise"></i>
         </button>
         <div id="mobileUserAvatar" onclick="toggleProfileModal()" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;overflow:hidden">R</div>
+        <a href="/api/logout" title="Cerrar sesión" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);color:#F87171;padding:6px 9px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px">
+          <i class="ph ph-sign-out"></i>
+        </a>
       </div>
     </div>
     <ul class="nav" style="margin-top:20px">
@@ -712,6 +715,19 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 </button>
               </div>
             </div>
+            <!-- TARJETA CUENTA Y SESIÓN (VISIBLE PARA TODOS LOS USUARIOS) -->
+            <div style="background:#181824;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0" id="settingsUserAvatar">U</div>
+                <div>
+                  <div style="font-weight:700;font-size:13px;color:var(--text)" id="settingsUserName">Mi Cuenta</div>
+                  <div style="font-size:11px;color:var(--muted)" id="settingsUserEmail">usuario@gmail.com</div>
+                </div>
+              </div>
+              <a href="/api/logout" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);color:#F87171;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;transition:.2s">
+                <i class="ph ph-sign-out" style="font-size:16px"></i> Cerrar sesión
+              </a>
+            </div>
           </div>
         </details>
 
@@ -798,14 +814,95 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </div>
 
         <form class="form-card" id="voiceoverForm" autocomplete="off">
-          <div class="field">
-            <label class="label" for="voAudioInput">1. Audio del Pastor (WhatsApp MP4, Grabadora Samsung M4A, MP3, WAV)</label>
-            <div class="drop-zone" id="voDropZone">
-              <i class="ph ph-microphone"></i>
-              <div style="font-weight:700;font-size:14px" id="voFileName">Selecciona o arrastra el audio del pastor aquí</div>
-              <div style="font-size:11.5px;color:var(--muted)">Audios de WhatsApp (.mp4, .opus, .ogg), Grabadora Samsung (.m4a), MP3, WAV, AAC</div>
-              <div class="drop-zone-btn"><i class="ph ph-folder-open"></i> Elegir Grabación de Celular / WhatsApp</div>
-              <input type="file" id="voAudioInput" accept="audio/*,video/mp4,video/*,.mp4,.m4a,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac" style="display:none" required>
+          <!-- SELECTOR DE ORIGEN: GRABAR EN VIVO VS SUBIR ARCHIVO -->
+          <div class="field" style="margin-bottom:12px">
+            <div class="label">
+              <span>1. Audio del Pastor / Locutor</span>
+              <span style="font-size:11px;color:var(--muted)">Graba con micrófono o sube una grabación existente</span>
+            </div>
+            
+            <div class="seg" id="voSourceSeg" style="display:flex;width:100%;margin-bottom:12px">
+              <button type="button" id="tabVoRecord" class="on" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;font-weight:700">
+                <i class="ph ph-microphone"></i> 🎙️ Grabar en Vivo (Con pisado de errores)
+              </button>
+              <button type="button" id="tabVoUpload" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;font-weight:700">
+                <i class="ph ph-upload-simple"></i> 📁 Subir Archivo existente
+              </button>
+            </div>
+
+            <!-- PANEL 1: GRABADORA EN VIVO CON PISADO (SAMSUNG STYLE) -->
+            <div id="voRecordPanel" style="display:flex;flex-direction:column;gap:14px;background:#181824;border:1px solid var(--border);border-radius:14px;padding:18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span id="recStatusDot" style="width:12px;height:12px;border-radius:50%;background:#64748B;display:inline-block"></span>
+                  <span id="recStatusText" style="font-size:13px;font-weight:700;color:var(--text)">Listo para grabar</span>
+                </div>
+                <div id="recTimer" style="font-family:monospace;font-size:24px;font-weight:800;color:#FBBF24;letter-spacing:1px">00:00.0</div>
+              </div>
+
+              <!-- CONTENEDOR DE ONDA INTERACTIVA Y CANVAS -->
+              <div style="position:relative;background:#0F0F17;border:1px solid var(--border);border-radius:10px;padding:10px;min-height:95px;overflow:hidden">
+                <canvas id="recLiveCanvas" width="800" height="80" style="width:100%;height:80px;display:none"></canvas>
+                <div id="recWaveContainer" style="width:100%;height:80px;display:block">
+                  <div id="recWaveform" style="width:100%;height:80px"></div>
+                </div>
+                <div id="recWaveEmpty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:var(--muted);pointer-events:none;white-space:nowrap">
+                  <i class="ph ph-waveform"></i> La onda de tu voz aparecerá aquí mientras hablas
+                </div>
+              </div>
+
+              <!-- INSTRUCCIÓN DE PISADO -->
+              <div style="font-size:11.5px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:10px 12px;border-radius:8px;display:flex;align-items:flex-start;gap:8px">
+                <i class="ph ph-lightbulb" style="color:#FBBF24;font-size:18px;flex-shrink:0;margin-top:1px"></i>
+                <div>
+                  <b style="color:var(--text)">Función Pisado (Samsung Style):</b>
+                  Si te equivocás, poné <b>Pausa</b>, tocá en la onda el segundo donde te trabaste, y tocá <b>"Pisar y seguir grabando"</b>. Borrará desde ese punto y continuará sin baches.
+                </div>
+              </div>
+
+              <!-- CONTROLES -->
+              <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
+                <!-- Botón Principal: Grabar / Pisar -->
+                <button type="button" id="btnRecStart" style="background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:50px;padding:10px 22px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 15px rgba(239,68,68,.4);cursor:pointer;transition:.2s">
+                  <i class="ph ph-record-fill" style="font-size:18px"></i> <span id="btnRecStartText">Comenzar Grabación</span>
+                </button>
+
+                <!-- Botón Pausa -->
+                <button type="button" id="btnRecPause" disabled style="background:#2C2C3A;color:var(--text);border:1px solid var(--border);border-radius:50px;padding:10px 18px;font-size:13px;font-weight:600;display:none;align-items:center;gap:6px;cursor:pointer">
+                  <i class="ph ph-pause-fill"></i> Pausa
+                </button>
+
+                <!-- Botón Pre-escucha -->
+                <button type="button" id="btnRecPlay" disabled style="background:#2C2C3A;color:var(--text);border:1px solid var(--border);border-radius:50px;padding:10px 18px;font-size:13px;font-weight:600;display:none;align-items:center;gap:6px;cursor:pointer">
+                  <i class="ph ph-play-fill"></i> <span id="btnRecPlayText">Pre-escuchar</span>
+                </button>
+
+                <!-- Botón Reiniciar -->
+                <button type="button" id="btnRecReset" style="background:transparent;color:#F87171;border:1px solid rgba(239,68,68,.3);border-radius:50px;padding:10px 16px;font-size:12px;display:none;align-items:center;gap:6px;cursor:pointer">
+                  <i class="ph ph-trash"></i> Descartar
+                </button>
+
+                <!-- Botón Usar Grabación -->
+                <button type="button" id="btnRecApply" style="background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:50px;padding:10px 22px;font-size:13px;font-weight:700;display:none;align-items:center;gap:8px;box-shadow:0 4px 15px rgba(16,185,129,.4);cursor:pointer">
+                  <i class="ph ph-check-circle-fill" style="font-size:18px"></i> ✅ Usar esta Grabación
+                </button>
+              </div>
+
+              <!-- Badge de Grabación Cargada -->
+              <div id="recReadyBadge" style="display:none;align-items:center;justify-content:center;gap:8px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#22C55E;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700">
+                <i class="ph ph-check-circle" style="font-size:16px"></i> <span id="recReadyText">Grabación lista para masterizar</span>
+              </div>
+            </div>
+
+            <!-- PANEL 2: SUBIDA DE ARCHIVO EXISTENTE -->
+            <div id="voUploadPanel" style="display:none">
+              <div class="drop-zone" id="voDropZone">
+                <i class="ph ph-folder-open"></i>
+                <div style="font-weight:700;font-size:14px" id="voFileName">Selecciona o arrastra el archivo de audio aquí</div>
+                <div style="font-size:11.5px;color:var(--muted)">Audios de WhatsApp (.mp4, .opus, .ogg), Grabadora Samsung (.m4a), MP3, WAV, AAC</div>
+                <div class="drop-zone-btn"><i class="ph ph-folder-open"></i> Elegir Archivo</div>
+                <input type="file" id="voAudioInput" accept="audio/*,video/mp4,video/*,.mp4,.m4a,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac" style="display:none">
+              </div>
             </div>
           </div>
 
@@ -1324,6 +1421,379 @@ $('voBgVol').addEventListener('input', e => {
   $('voBgVolVal').textContent = v + '% ' + (v <= 8 ? '(Colchón de Radio Recomendado 6-8%)' : '(Alto para Radio)');
 });
 
+/* ==========================================================================
+   GRABADORA EN VIVO CON PISADO DE ERRORES (SAMSUNG VOICE RECORDER STYLE)
+   ========================================================================== */
+let recAudioCtx = null;
+let recMediaStream = null;
+let recScriptNode = null;
+let recSourceNode = null;
+let recPcmChunks = []; // Array de Float32Array
+let recSampleRate = 44100;
+let recIsRecording = false;
+let recIsPaused = false;
+let recDurationMs = 0;
+let recTimerInterval = null;
+let recWs = null; // Instancia WaveSurfer
+let recPunchInSeconds = null; // Segundo donde el usuario quiere pisar
+let recordedVoiceBlob = null;
+let recAnimFrame = null;
+
+// Alternar entre pestañas Grabar en Vivo y Subir Archivo
+$('tabVoRecord').onclick = () => {
+  $('tabVoRecord').classList.add('on');
+  $('tabVoUpload').classList.remove('on');
+  $('voRecordPanel').style.display = 'flex';
+  $('voUploadPanel').style.display = 'none';
+};
+$('tabVoUpload').onclick = () => {
+  $('tabVoUpload').classList.add('on');
+  $('tabVoRecord').classList.remove('on');
+  $('voUploadPanel').style.display = 'block';
+  $('voRecordPanel').style.display = 'none';
+};
+
+function formatRecTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const tenths = Math.floor((ms % 1000) / 100);
+  return `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${tenths}`;
+}
+
+// Inicializar WaveSurfer para el panel de grabación interactivo
+function initRecWaveSurfer() {
+  if (recWs) return;
+  recWs = WaveSurfer.create({
+    container: '#recWaveform',
+    waveColor: '#818CF8',
+    progressColor: '#4F46E5',
+    cursorColor: '#EF4444',
+    cursorWidth: 3,
+    height: 75,
+    normalize: true,
+    barWidth: 2,
+    barGap: 2,
+    barRadius: 2
+  });
+
+  recWs.on('click', () => {
+    if (recIsPaused) {
+      handleWaveSeek(recWs.getCurrentTime());
+    }
+  });
+
+  recWs.on('seeking', (time) => {
+    if (recIsPaused) {
+      handleWaveSeek(time);
+    }
+  });
+
+  recWs.on('finish', () => {
+    $('btnRecPlayText').textContent = 'Pre-escuchar';
+    $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
+  });
+}
+
+function handleWaveSeek(currentTime) {
+  const totalSec = recDurationMs / 1000;
+  // Si se posiciona antes del final, activa el modo PISADO (punch-in)
+  if (currentTime < totalSec - 0.25) {
+    recPunchInSeconds = currentTime;
+    $('recStatusDot').style.background = '#EF4444';
+    $('recStatusText').textContent = `✂️ Punto de pisado fijado en ${formatRecTime(currentTime * 1000)}`;
+    $('recTimer').textContent = formatRecTime(currentTime * 1000);
+    $('btnRecStartText').textContent = `✂️ Pisar y Grabar desde ${formatRecTime(currentTime * 1000)}`;
+    $('btnRecStart').style.background = 'linear-gradient(135deg,#DC2626,#991B1B)';
+  } else {
+    recPunchInSeconds = null;
+    $('recStatusDot').style.background = '#FBBF24';
+    $('recStatusText').textContent = 'Pausado (Cursor al final)';
+    $('recTimer').textContent = formatRecTime(recDurationMs);
+    $('btnRecStartText').textContent = '🎙️ Continuar Grabando';
+    $('btnRecStart').style.background = 'linear-gradient(135deg,#EF4444,#DC2626)';
+  }
+}
+
+// Iniciar o Reanudar / Pisar Grabación
+async function startLiveRecording() {
+  try {
+    if (!recAudioCtx) {
+      recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      recSampleRate = recAudioCtx.sampleRate;
+    }
+    if (recAudioCtx.state === 'suspended') {
+      await recAudioCtx.resume();
+    }
+
+    if (!recMediaStream) {
+      recMediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+    }
+
+    // SI SE ACTIVÓ EL PISADO (PUNCH-IN OVERWRITE):
+    if (recPunchInSeconds !== null && recPcmChunks.length > 0) {
+      const cutSampleIndex = Math.floor(recPunchInSeconds * recSampleRate);
+      let totalSamples = recPcmChunks.reduce((acc, c) => acc + c.length, 0);
+      let merged = new Float32Array(totalSamples);
+      let offset = 0;
+      for (let chunk of recPcmChunks) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+      const truncated = merged.slice(0, cutSampleIndex);
+      recPcmChunks = [truncated];
+      recDurationMs = (cutSampleIndex / recSampleRate) * 1000;
+      recPunchInSeconds = null;
+    }
+
+    // Configurar nodo de captura de audio PCM
+    recSourceNode = recAudioCtx.createMediaStreamSource(recMediaStream);
+    recScriptNode = recAudioCtx.createScriptProcessor(4096, 1, 1);
+    
+    // Analyser para animación de la onda en vivo
+    const analyser = recAudioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    recSourceNode.connect(analyser);
+    analyser.connect(recScriptNode);
+    recScriptNode.connect(recAudioCtx.destination);
+
+    recScriptNode.onaudioprocess = (e) => {
+      if (!recIsRecording) return;
+      const inputData = e.inputBuffer.getChannelData(0);
+      recPcmChunks.push(new Float32Array(inputData));
+      recDurationMs += (inputData.length / recSampleRate) * 1000;
+    };
+
+    // Estados de UI
+    recIsRecording = true;
+    recIsPaused = false;
+    $('recStatusDot').style.background = '#EF4444';
+    $('recStatusText').textContent = '🔴 Grabando voz en vivo...';
+    $('recWaveEmpty').style.display = 'none';
+    $('recLiveCanvas').style.display = 'block';
+    $('recWaveContainer').style.display = 'none';
+
+    $('btnRecStart').style.display = 'none';
+    $('btnRecPause').style.display = 'inline-flex';
+    $('btnRecPause').disabled = false;
+    $('btnRecPlay').style.display = 'none';
+    $('btnRecReset').style.display = 'none';
+    $('btnRecApply').style.display = 'none';
+    $('recReadyBadge').style.display = 'none';
+
+    clearInterval(recTimerInterval);
+    recTimerInterval = setInterval(() => {
+      $('recTimer').textContent = formatRecTime(recDurationMs);
+    }, 100);
+
+    drawLiveOscilloscope(analyser);
+
+  } catch (err) {
+    console.error('Error micrófono:', err);
+    alert('No se pudo acceder al micrófono. Por favor asegúrate de otorgar los permisos de micrófono en el dispositivo.');
+  }
+}
+
+function drawLiveOscilloscope(analyser) {
+  const canvas = $('recLiveCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function renderFrame() {
+    if (!recIsRecording) return;
+    recAnimFrame = requestAnimationFrame(renderFrame);
+    analyser.getByteTimeDomainData(dataArray);
+
+    ctx.fillStyle = '#0F0F17';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#34D399';
+    ctx.beginPath();
+
+    const sliceWidth = canvas.width * 1.0 / bufferLength;
+    let x = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const v = dataArray[i] / 128.0;
+      const y = v * (canvas.height / 2);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+      x += sliceWidth;
+    }
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+  }
+  renderFrame();
+}
+
+// Pausar Grabación y Generar Forma de Onda Interactiva
+function pauseLiveRecording() {
+  recIsRecording = false;
+  recIsPaused = true;
+  clearInterval(recTimerInterval);
+  cancelAnimationFrame(recAnimFrame);
+
+  if (recScriptNode) {
+    recScriptNode.disconnect();
+    recScriptNode = null;
+  }
+  if (recSourceNode) {
+    recSourceNode.disconnect();
+    recSourceNode = null;
+  }
+
+  $('recStatusDot').style.background = '#FBBF24';
+  $('recStatusText').textContent = 'Pausado (Toca la onda para elegir dónde pisar)';
+  $('btnRecStartText').textContent = '🎙️ Continuar Grabando';
+  $('btnRecStart').style.background = 'linear-gradient(135deg,#EF4444,#DC2626)';
+  $('btnRecStart').style.display = 'inline-flex';
+  $('btnRecPause').style.display = 'none';
+  $('btnRecPlay').style.display = 'inline-flex';
+  $('btnRecPlay').disabled = false;
+  $('btnRecPlayText').textContent = 'Pre-escuchar';
+  $('btnRecReset').style.display = 'inline-flex';
+  $('btnRecApply').style.display = 'inline-flex';
+
+  $('recLiveCanvas').style.display = 'none';
+  $('recWaveContainer').style.display = 'block';
+  initRecWaveSurfer();
+
+  // Convertir PCM a WAV temporal y cargar en WaveSurfer interactivo
+  const tempWav = pcmToWav(recPcmChunks, recSampleRate);
+  const tempUrl = URL.createObjectURL(tempWav);
+  recWs.load(tempUrl);
+  recPunchInSeconds = null;
+}
+
+// Pre-escucha (Play/Pausa en WaveSurfer)
+function toggleRecPlayback() {
+  if (!recWs) return;
+  if (recWs.isPlaying()) {
+    recWs.pause();
+    $('btnRecPlayText').textContent = 'Pre-escuchar';
+    $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
+  } else {
+    recWs.play();
+    $('btnRecPlayText').textContent = 'Pausa';
+    $('btnRecPlay').querySelector('i').className = 'ph ph-pause-fill';
+  }
+}
+
+// Reiniciar / Descartar grabación
+function resetLiveRecording() {
+  if (recIsRecording) {
+    recIsRecording = false;
+    clearInterval(recTimerInterval);
+    cancelAnimationFrame(recAnimFrame);
+  }
+  recIsPaused = false;
+  recPcmChunks = [];
+  recDurationMs = 0;
+  recPunchInSeconds = null;
+  recordedVoiceBlob = null;
+
+  if (recWs) {
+    recWs.empty();
+  }
+
+  $('recStatusDot').style.background = '#64748B';
+  $('recStatusText').textContent = 'Listo para grabar';
+  $('recTimer').textContent = '00:00.0';
+  $('recWaveEmpty').style.display = 'block';
+  $('recLiveCanvas').style.display = 'none';
+  $('recWaveContainer').style.display = 'block';
+
+  $('btnRecStartText').textContent = 'Comenzar Grabación';
+  $('btnRecStart').style.background = 'linear-gradient(135deg,#EF4444,#DC2626)';
+  $('btnRecStart').style.display = 'inline-flex';
+  $('btnRecPause').style.display = 'none';
+  $('btnRecPlay').style.display = 'none';
+  $('btnRecReset').style.display = 'none';
+  $('btnRecApply').style.display = 'none';
+  $('recReadyBadge').style.display = 'none';
+}
+
+// Confirmar y Usar la Grabación
+function applyLiveRecording() {
+  if (recIsRecording) {
+    pauseLiveRecording();
+  }
+  if (!recPcmChunks.length) {
+    alert('No hay audio grabado aún.');
+    return;
+  }
+  recordedVoiceBlob = pcmToWav(recPcmChunks, recSampleRate);
+  
+  $('recReadyBadge').style.display = 'inline-flex';
+  $('recReadyText').textContent = `✓ Grabación cargada (${formatRecTime(recDurationMs)} min) lista para masterizar`;
+  
+  if (!$('voTitleInput').value.trim()) {
+    const d = new Date();
+    $('voTitleInput').value = `Predicación ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+  }
+
+  document.querySelector('.center').scrollBy({ top: 120, behavior: 'smooth' });
+}
+
+$('btnRecStart').onclick = startLiveRecording;
+$('btnRecPause').onclick = pauseLiveRecording;
+$('btnRecPlay').onclick = toggleRecPlayback;
+$('btnRecReset').onclick = resetLiveRecording;
+$('btnRecApply').onclick = applyLiveRecording;
+
+// Conversor PCM a WAV de 16-bit
+function pcmToWav(pcmChunks, sampleRate) {
+  let totalLength = pcmChunks.reduce((acc, c) => acc + c.length, 0);
+  let merged = new Float32Array(totalLength);
+  let offset = 0;
+  for (let c of pcmChunks) {
+    merged.set(c, offset);
+    offset += c.length;
+  }
+
+  const numChannels = 1;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = totalLength * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(view, 8, 'WAVE');
+
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  let dataOffset = 44;
+  for (let i = 0; i < totalLength; i++) {
+    let s = Math.max(-1, Math.min(1, merged[i]));
+    view.setInt16(dataOffset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    dataOffset += 2;
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
 $('voDropZone').addEventListener('click', () => $('voAudioInput').click());
 $('voAudioInput').addEventListener('change', e => {
   const file = e.target.files[0];
@@ -1356,8 +1826,14 @@ $('voDropZone').addEventListener('drop', e => {
 
 $('voiceoverForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const file = $('voAudioInput').files[0];
-  if (!file) { alert('Por favor selecciona el audio del pastor.'); return; }
+  let file = $('voAudioInput').files[0];
+  if (!file && recordedVoiceBlob) {
+    file = new File([recordedVoiceBlob], "grabacion_estudio.wav", { type: "audio/wav" });
+  }
+  if (!file) {
+    alert('Por favor graba tu mensaje con el micrófono o selecciona un archivo de audio para continuar.');
+    return;
+  }
 
   const fd = new FormData();
   fd.append('voice_audio', file);
@@ -1904,9 +2380,11 @@ async function loadUserInfo() {
       if ($('userEmailDisplay')) $('userEmailDisplay').textContent = email;
       if ($('modalUserName')) $('modalUserName').textContent = name;
       if ($('modalUserEmail')) $('modalUserEmail').textContent = email;
+      if ($('settingsUserName')) $('settingsUserName').textContent = name;
+      if ($('settingsUserEmail')) $('settingsUserEmail').textContent = email;
 
-      // Actualizar avatares (escritorio, barra móvil y modal)
-      const avatarElements = [$('userAvatar'), $('mobileUserAvatar'), $('modalUserAvatar')];
+      // Actualizar avatares (escritorio, barra móvil, modal y ajustes)
+      const avatarElements = [$('userAvatar'), $('mobileUserAvatar'), $('modalUserAvatar'), $('settingsUserAvatar')];
       avatarElements.forEach(av => {
         if (!av) return;
         if (data.picture) {
