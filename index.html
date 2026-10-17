@@ -841,22 +841,32 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               </div>
 
               <!-- CONTENEDOR DE ONDA INTERACTIVA Y CANVAS -->
-              <div style="position:relative;background:#0F0F17;border:1px solid var(--border);border-radius:10px;padding:10px;min-height:95px;overflow:hidden">
-                <canvas id="recLiveCanvas" width="800" height="80" style="width:100%;height:80px;display:none"></canvas>
-                <div id="recWaveContainer" style="width:100%;height:80px;display:block">
-                  <div id="recWaveform" style="width:100%;height:80px"></div>
+              <div style="position:relative;background:#0F0F17;border:1px solid var(--border);border-radius:10px;padding:10px;min-height:105px;overflow:hidden">
+                <canvas id="recLiveCanvas" width="800" height="90" style="width:100%;height:90px;display:none"></canvas>
+                <div id="recWaveContainer" style="width:100%;height:90px;display:block;touch-action:none;cursor:ew-resize;position:relative">
+                  <div id="recWaveform" style="width:100%;height:90px;touch-action:none"></div>
                 </div>
                 <div id="recWaveEmpty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:var(--muted);pointer-events:none;white-space:nowrap">
                   <i class="ph ph-waveform"></i> La onda de tu voz aparecerá aquí mientras hablas
                 </div>
               </div>
 
+              <!-- CONTROLES DE MICRO-AJUSTE DE PRECISIÓN (SOLO VISIBLES EN PAUSA) -->
+              <div id="recNudgeBar" style="display:none;align-items:center;justify-content:center;gap:6px;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:8px;padding:8px 10px;user-select:none;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:4px"><i class="ph ph-sliders"></i> Ajuste fino:</span>
+                <button type="button" class="btn-sec" onclick="nudgeRecTime(-1.0)" style="padding:5px 9px;font-size:11px;border-radius:6px" title="Retroceder 1 segundo">⏪ -1s</button>
+                <button type="button" class="btn-sec" onclick="nudgeRecTime(-0.2)" style="padding:5px 9px;font-size:11px;border-radius:6px;color:#FBBF24;border-color:rgba(234,179,8,.4)" title="Retroceder 0.2 segundos">◀ -0.2s</button>
+                <div id="recNudgePoint" style="font-family:monospace;font-size:13px;font-weight:700;color:#FDE047;background:rgba(234,179,8,.15);padding:4px 10px;border-radius:6px;border:1px solid rgba(234,179,8,.35)">00:00.0</div>
+                <button type="button" class="btn-sec" onclick="nudgeRecTime(+0.2)" style="padding:5px 9px;font-size:11px;border-radius:6px;color:#FBBF24;border-color:rgba(234,179,8,.4)" title="Avanzar 0.2 segundos">+0.2s ▶</button>
+                <button type="button" class="btn-sec" onclick="nudgeRecTime(+1.0)" style="padding:5px 9px;font-size:11px;border-radius:6px" title="Avanzar 1 segundo">+1s ⏩</button>
+              </div>
+
               <!-- INSTRUCCIÓN DE PISADO -->
               <div style="font-size:11.5px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:10px 12px;border-radius:8px;display:flex;align-items:flex-start;gap:8px">
-                <i class="ph ph-lightbulb" style="color:#FBBF24;font-size:18px;flex-shrink:0;margin-top:1px"></i>
+                <i class="ph ph-hand-swipe-right" style="color:#FBBF24;font-size:20px;flex-shrink:0;margin-top:1px"></i>
                 <div>
-                  <b style="color:var(--text)">Función Pisado (Samsung Style):</b>
-                  Si te equivocás, poné <b>Pausa</b>, tocá en la onda el segundo donde te trabaste, y tocá <b>"Pisar y seguir grabando"</b>. Borrará desde ese punto y continuará sin baches.
+                  <b style="color:var(--text)">Deslizá con el dedo sobre la onda:</b>
+                  Arrastrá el dedo libremente por la onda para mover el cursor al segundo exacto donde te trabaste. Usá los botones de <b>-0.2s / +0.2s</b> para precisión milimétrica.
                 </div>
               </div>
 
@@ -1470,8 +1480,10 @@ function initRecWaveSurfer() {
     progressColor: '#4F46E5',
     cursorColor: '#EF4444',
     cursorWidth: 3,
-    height: 75,
+    height: 90,
     normalize: true,
+    interact: true,
+    dragToSeek: true,
     barWidth: 2,
     barGap: 2,
     barRadius: 2
@@ -1483,9 +1495,27 @@ function initRecWaveSurfer() {
     }
   });
 
+  recWs.on('interaction', (newTime) => {
+    if (recIsPaused) {
+      handleWaveSeek(newTime);
+    }
+  });
+
   recWs.on('seeking', (time) => {
     if (recIsPaused) {
       handleWaveSeek(time);
+    }
+  });
+
+  recWs.on('timeupdate', (time) => {
+    if (recIsPaused && recWs.isPlaying()) {
+      handleWaveSeek(time);
+    }
+  });
+
+  recWs.on('ready', () => {
+    if ($('recNudgePoint')) {
+      $('recNudgePoint').textContent = formatRecTime(recDurationMs);
     }
   });
 
@@ -1493,12 +1523,93 @@ function initRecWaveSurfer() {
     $('btnRecPlayText').textContent = 'Pre-escuchar';
     $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
   });
+
+  // Configurar gestos táctiles directos con el dedo en celular / APK
+  setupWaveTouchScrubbing();
+}
+
+function setupWaveTouchScrubbing() {
+  const container = $('recWaveContainer');
+  if (!container) return;
+  let isDragging = false;
+
+  function doScrub(clientX) {
+    if (!recIsPaused || !recWs || recDurationMs <= 0) return;
+    const rect = container.getBoundingClientRect();
+    let pct = (clientX - rect.left) / rect.width;
+    pct = Math.max(0, Math.min(1, pct));
+    const targetTime = pct * (recDurationMs / 1000);
+    try {
+      if (typeof recWs.seekTo === 'function') {
+        recWs.seekTo(pct);
+      } else if (typeof recWs.setTime === 'function') {
+        recWs.setTime(targetTime);
+      }
+    } catch(e) {
+      console.warn('Scrub error:', e);
+    }
+    handleWaveSeek(targetTime);
+  }
+
+  container.addEventListener('touchstart', e => {
+    if (!recIsPaused) return;
+    isDragging = true;
+    if (e.touches && e.touches[0]) doScrub(e.touches[0].clientX);
+  }, { passive: true });
+
+  container.addEventListener('touchmove', e => {
+    if (!isDragging || !recIsPaused) return;
+    if (e.touches && e.touches[0]) {
+      e.preventDefault(); // Impide scroll vertical para deslizar libremente por la onda
+      doScrub(e.touches[0].clientX);
+    }
+  }, { passive: false });
+
+  window.addEventListener('touchend', () => { isDragging = false; });
+  window.addEventListener('touchcancel', () => { isDragging = false; });
+
+  container.addEventListener('mousedown', e => {
+    if (!recIsPaused) return;
+    isDragging = true;
+    doScrub(e.clientX);
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!isDragging || !recIsPaused) return;
+    doScrub(e.clientX);
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+}
+
+// Micro-ajuste milimétrico (-1s, -0.2s, +0.2s, +1s)
+function nudgeRecTime(deltaSeconds) {
+  if (!recIsPaused || !recWs || recDurationMs <= 0) return;
+  const totalSec = recDurationMs / 1000;
+  let current = (recPunchInSeconds !== null) ? recPunchInSeconds : totalSec;
+  let newTime = Math.max(0, Math.min(totalSec, current + deltaSeconds));
+  let pct = totalSec > 0 ? (newTime / totalSec) : 0;
+  try {
+    if (typeof recWs.seekTo === 'function') {
+      recWs.seekTo(pct);
+    } else if (typeof recWs.setTime === 'function') {
+      recWs.setTime(newTime);
+    }
+  } catch(err) {
+    console.warn('Nudge error:', err);
+  }
+  handleWaveSeek(newTime);
 }
 
 function handleWaveSeek(currentTime) {
   const totalSec = recDurationMs / 1000;
-  // Si se posiciona antes del final, activa el modo PISADO (punch-in)
-  if (currentTime < totalSec - 0.25) {
+  currentTime = Math.max(0, Math.min(totalSec, currentTime));
+  if ($('recNudgePoint')) {
+    $('recNudgePoint').textContent = formatRecTime(currentTime * 1000);
+  }
+
+  // Si se posiciona antes del final (con margen de 0.2s), activa el modo PISADO (punch-in)
+  if (currentTime < totalSec - 0.2) {
     recPunchInSeconds = currentTime;
     $('recStatusDot').style.background = '#EF4444';
     $('recStatusText').textContent = `✂️ Punto de pisado fijado en ${formatRecTime(currentTime * 1000)}`;
@@ -1586,6 +1697,7 @@ async function startLiveRecording() {
     $('btnRecReset').style.display = 'none';
     $('btnRecApply').style.display = 'none';
     $('recReadyBadge').style.display = 'none';
+    if ($('recNudgeBar')) $('recNudgeBar').style.display = 'none';
 
     clearInterval(recTimerInterval);
     recTimerInterval = setInterval(() => {
@@ -1667,6 +1779,7 @@ function pauseLiveRecording() {
 
   $('recLiveCanvas').style.display = 'none';
   $('recWaveContainer').style.display = 'block';
+  if ($('recNudgeBar')) $('recNudgeBar').style.display = 'flex';
   initRecWaveSurfer();
 
   // Convertir PCM a WAV temporal y cargar en WaveSurfer interactivo
@@ -1674,6 +1787,9 @@ function pauseLiveRecording() {
   const tempUrl = URL.createObjectURL(tempWav);
   recWs.load(tempUrl);
   recPunchInSeconds = null;
+  if ($('recNudgePoint')) {
+    $('recNudgePoint').textContent = formatRecTime(recDurationMs);
+  }
 }
 
 // Pre-escucha (Play/Pausa en WaveSurfer)
@@ -1713,6 +1829,7 @@ function resetLiveRecording() {
   $('recWaveEmpty').style.display = 'block';
   $('recLiveCanvas').style.display = 'none';
   $('recWaveContainer').style.display = 'block';
+  if ($('recNudgeBar')) $('recNudgeBar').style.display = 'none';
 
   $('btnRecStartText').textContent = 'Comenzar Grabación';
   $('btnRecStart').style.background = 'linear-gradient(135deg,#EF4444,#DC2626)';
@@ -1734,6 +1851,7 @@ function applyLiveRecording() {
     return;
   }
   recordedVoiceBlob = pcmToWav(recPcmChunks, recSampleRate);
+  if ($('recNudgeBar')) $('recNudgeBar').style.display = 'none';
   
   $('recReadyBadge').style.display = 'inline-flex';
   $('recReadyText').textContent = `✓ Grabación cargada (${formatRecTime(recDurationMs)} min) lista para masterizar`;
