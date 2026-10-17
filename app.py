@@ -1478,10 +1478,6 @@ async def get_stem_audio(task_id: str, stem_type: str):
         cleanup_files([temp_stem_out])
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/")
-async def root():
-    return FileResponse('index.html')
-
 @app.get("/player.html")
 async def player():
     return FileResponse('player.html')
@@ -1491,10 +1487,6 @@ async def walkman_image():
     if os.path.exists("walkman.jpg"):
         return FileResponse("walkman.jpg")
     raise HTTPException(status_code=404, detail="Imagen no encontrada")
-
-@app.get("/api/me")
-async def get_me(current_user: str = Depends(get_current_user)):
-    return JSONResponse(content={"email": current_user})
 
 def build_master_filter(width: float, eq: str, loud: str) -> str:
     """Construye la cadena de filtros FFmpeg de masterización (valores validados)."""
@@ -1697,8 +1689,16 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
 @app.get("/api/me")
 async def get_me(request: Request):
     user = request.session.get('user')
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
     if not user:
-        return {"logged_in": False, "name": "Usuario", "email": "", "is_admin": False}
+        return JSONResponse(
+            content={"logged_in": False, "name": "Usuario", "email": "", "is_admin": False},
+            headers=headers
+        )
     email = user.get('email', '').strip().lower()
     name = user.get('name') or user.get('given_name')
     if not name and email:
@@ -1706,8 +1706,11 @@ async def get_me(request: Request):
     if not name:
         name = "Rodrigo"
     picture = user.get('picture', '')
-    is_admin = (email == ADMIN_EMAIL)
-    return {"logged_in": True, "name": name, "email": email, "picture": picture, "is_admin": is_admin}
+    is_admin = (email == ADMIN_EMAIL.strip().lower())
+    return JSONResponse(
+        content={"logged_in": True, "name": name, "email": email, "picture": picture, "is_admin": is_admin},
+        headers=headers
+    )
 
 @app.get("/api/admin/users")
 async def admin_get_users(current_user: str = Depends(get_current_user)):
@@ -1716,7 +1719,10 @@ async def admin_get_users(current_user: str = Depends(get_current_user)):
     users = load_users()
     user_list = list(users.values())
     user_list.sort(key=lambda u: (0 if u.get("email") == ADMIN_EMAIL else 1, u.get("last_login", "")), reverse=False)
-    return {"status": "success", "users": user_list}
+    return JSONResponse(
+        content={"status": "success", "users": user_list},
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 @app.post("/api/admin/toggle_user")
 async def admin_toggle_user(request: Request, current_user: str = Depends(get_current_user)):
@@ -1745,7 +1751,8 @@ async def download_apk():
         return FileResponse(
             path=apk_path,
             filename="Rodrix_Music_Creator.apk",
-            media_type="application/vnd.android.package-archive"
+            media_type="application/vnd.android.package-archive",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
         )
     raise HTTPException(status_code=404, detail="APK no encontrado")
 
@@ -1774,7 +1781,14 @@ async def serve_spa(request: Request):
             html = f.read()
             html = html.replace("{{USER_NAME}}", real_name)
             html = html.replace("{{USER_EMAIL}}", email if email else "")
-            return html
+            return HTMLResponse(
+                content=html,
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
     return "<h3>index.html not found.</h3>"
 
 @app.get("/login", response_class=HTMLResponse)
@@ -1790,7 +1804,14 @@ async def serve_login(request: Request):
     login_path = os.path.join(os.getcwd(), "login.html")
     if os.path.exists(login_path):
         with open(login_path, "r", encoding="utf-8") as f:
-            return f.read()
+            return HTMLResponse(
+                content=f.read(),
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
     return "<h3>login.html not found.</h3>"
 
 @app.get("/api/login/google")

@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Rodrix Music Creator</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235A67D8'/%3E%3Cpath d='M6 32 C12 32 12 18 18 18 S24 46 30 46 S36 14 42 14 S48 40 52 40 S56 32 58 32' fill='none' stroke='%23fff' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -126,6 +129,48 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .player .pt{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .player audio{width:100%;height:34px}
 
+/* ---------- MOBILE BOTTOM NAVIGATION & MODAL ---------- */
+.mobile-bottom-nav{
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:60px;
+  background:#181824;
+  border-top:1px solid var(--border);
+  z-index:9999;
+  justify-content:space-around;
+  align-items:center;
+  padding:0 4px;
+  box-shadow:0 -4px 20px rgba(0,0,0,.6);
+}
+.bnav-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  color:var(--muted);
+  text-decoration:none;
+  font-size:10px;
+  font-weight:600;
+  padding:5px 6px;
+  border-radius:8px;
+  flex:1;
+  text-align:center;
+  transition:all .15s ease;
+  user-select:none;
+}
+.bnav-item i{font-size:20px}
+.bnav-item:hover{color:var(--text)}
+.bnav-item.active{color:#fff;background:rgba(90,103,216,.22)}
+.bnav-item.admin-bnav{color:#FBBF24}
+.bnav-item.admin-bnav.active{color:#FDE047;background:rgba(234,179,8,.22)}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.spinning i, i.spinning { animation: spin 0.8s linear infinite; }
+
 /* ---------- RESPONSIVE ---------- */
 @media(max-width:1100px){
   .app{grid-template-columns:72px 1fr}
@@ -134,13 +179,15 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   .logo{justify-content:center}
 }
 @media(max-width:760px){
-  body{overflow:auto}
+  body{overflow:auto;padding-bottom:65px}
   .app{display:flex;flex-direction:column;height:auto;min-height:100vh}
-  .sidebar{flex-direction:row;align-items:center;padding:10px 14px;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar{position:sticky;top:0;z-index:900;flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border-right:none;border-bottom:1px solid var(--border);background:#181824}
   .logo{margin:0}
-  .nav{flex-direction:row;margin-left:auto}
-  .side-foot{display:none}
-  .center{padding:18px 14px 30px;overflow:visible}
+  .sidebar .nav{display:none !important}
+  .side-foot{display:none !important}
+  .mobile-top-actions{display:flex !important}
+  .mobile-bottom-nav{display:flex !important}
+  .center{padding:14px 12px 90px;overflow:visible}
 }
 
 /* ---------- PRESETS DE CULTO & LITURGIA ---------- */
@@ -200,30 +247,49 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 <body>
 <div class="app">
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR & MOBILE HEADER -->
   <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-icon"><i class="ph ph-music-notes"></i></div>
-      <div class="logo-text">Rodrix Music Creator</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+      <div class="logo" style="margin-bottom:0">
+        <div class="logo-icon"><i class="ph ph-music-notes"></i></div>
+        <div class="logo-text">Rodrix Music Creator</div>
+      </div>
+      <div class="mobile-top-actions" style="display:none;align-items:center;gap:8px">
+        <div id="mobileAdminPill" onclick="showView('usuarios')" style="display:none;align-items:center;gap:5px;background:rgba(234,179,8,.18);border:1px solid rgba(234,179,8,.4);padding:5px 10px;border-radius:20px;cursor:pointer;color:#FBBF24;font-size:11px;font-weight:700;">
+          <i class="ph ph-crown"></i> <span>👑 Usuarios</span>
+        </div>
+        <button type="button" onclick="forceAppRefresh()" id="mobileRefreshBtn" title="Actualizar App" style="background:#1F1F2E;border:1px solid var(--border);color:var(--ok);border-radius:8px;padding:6px 9px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <i class="ph ph-arrows-clockwise"></i>
+        </button>
+        <div id="mobileUserAvatar" onclick="toggleProfileModal()" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;overflow:hidden">R</div>
+      </div>
     </div>
-    <ul class="nav">
+    <ul class="nav" style="margin-top:20px">
       <li><a href="#" class="active" id="nav-crear"><i class="ph ph-plus-circle"></i><span>Crear canción</span></a></li>
       <li><a href="#" id="nav-vozenoff"><i class="ph ph-microphone-stage"></i><span>Voz en Off / Predicación</span></a></li>
       <li><a href="#" id="nav-libreria"><i class="ph ph-books"></i><span>Librería</span></a></li>
-      <li id="nav-users-li" style="display:none"><a href="#" id="nav-usuarios"><i class="ph ph-users-three"></i><span>Usuarios</span></a></li>
+      <li id="nav-users-li" style="display:none"><a href="#" id="nav-usuarios" style="color:#FBBF24"><i class="ph ph-crown" style="color:#FBBF24"></i><span style="color:#FBBF24">👑 Control de Usuarios</span></a></li>
       <li><a href="/download-app" target="_blank" style="color:#34D399"><i class="ph ph-android-logo"></i><span>Descargar APK</span></a></li>
       <li><a href="#" id="nav-ajustes"><i class="ph ph-sliders-horizontal"></i><span>Ajustes</span></a></li>
       <li><a href="#" id="nav-ayuda"><i class="ph ph-question"></i><span>Ayuda</span></a></li>
     </ul>
     <div class="side-foot">
-      <div style="display:flex;align-items:center;gap:9px;min-width:0">
-        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden" id="userAvatar">R</div>
+      <div style="display:flex;align-items:center;gap:9px;min-width:0;cursor:pointer" onclick="toggleProfileModal()">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden" id="userAvatar">R</div>
         <div style="display:flex;flex-direction:column;min-width:0;line-height:1.2">
-          <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rodrigo</span>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rodrigo</span>
+            <span id="adminBadgeDesktop" class="badge-admin" style="display:none;font-size:9px;padding:1px 5px">ADMIN</span>
+          </div>
           <span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userEmailDisplay">rodryandy@gmail.com</span>
         </div>
       </div>
-      <a href="/api/logout"><i class="ph ph-sign-out"></i><span>Cerrar sesión</span></a>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <a href="/api/logout"><i class="ph ph-sign-out"></i><span>Cerrar sesión</span></a>
+        <button type="button" onclick="forceAppRefresh()" title="Comprobar actualización" style="background:none;border:none;color:var(--ok);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:3px">
+          <i class="ph ph-arrows-clockwise"></i> Actualizar
+        </button>
+      </div>
     </div>
   </aside>
 
@@ -628,6 +694,24 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             </div>
             <label class="check"><input type="checkbox" id="bypass" checked> Anti-Copyright (audio de referencia)</label>
             <label class="check" title="Si la API rechaza la letra por 'copyrighted material', activá esto. Puede empeorar la pronunciación."><input type="checkbox" id="obfuscate"> Ofuscar letra (si la API la rechaza por copyright)</label>
+
+            <!-- TARJETA ADMINISTRADOR (SOLO VISIBLE SI ES ADMIN) -->
+            <div id="adminSettingsCard" style="display:none;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.35);border-radius:10px;padding:14px;margin-top:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,179,8,.2);display:grid;place-items:center;color:#FBBF24;font-size:20px;flex-shrink:0">
+                    <i class="ph ph-crown"></i>
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:13px;color:#FDE047">👑 Cuenta Administrador</div>
+                    <div style="font-size:11px;color:var(--muted)">Gestiona los usuarios que acceden con Google y bloquea accesos.</div>
+                  </div>
+                </div>
+                <button type="button" onclick="showView('usuarios')" class="btn-primary" style="background:linear-gradient(135deg,#D97706,#B45309);font-size:12px;font-weight:700;padding:8px 14px">
+                  <i class="ph ph-users-three"></i> 👥 Control de Usuarios
+                </button>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -982,6 +1066,66 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   </main> <!-- .center -->
 </div> <!-- .app -->
 
+<!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVIL (Y APK) -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <a href="#" class="bnav-item active" id="bnav-crear" onclick="showView('crear');return false;">
+    <i class="ph ph-plus-circle"></i>
+    <span>Crear</span>
+  </a>
+  <a href="#" class="bnav-item" id="bnav-vozenoff" onclick="showView('vozenoff');return false;">
+    <i class="ph ph-microphone-stage"></i>
+    <span>Predicación</span>
+  </a>
+  <a href="#" class="bnav-item" id="bnav-libreria" onclick="showView('libreria');return false;">
+    <i class="ph ph-books"></i>
+    <span>Librería</span>
+  </a>
+  <a href="#" class="bnav-item admin-bnav" id="bnav-usuarios" style="display:none;" onclick="showView('usuarios');return false;">
+    <i class="ph ph-crown"></i>
+    <span>👑 Usuarios</span>
+  </a>
+  <a href="#" class="bnav-item" id="bnav-ajustes" onclick="showView('ajustes');return false;">
+    <i class="ph ph-sliders-horizontal"></i>
+    <span>Ajustes</span>
+  </a>
+</nav>
+
+<!-- MODAL DE PERFIL / ADMINISTRADOR -->
+<div id="profileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#1F1F2E;border:1px solid var(--border);border-radius:16px;max-width:380px;width:100%;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(0,0,0,0.6)">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h3 style="font-size:16px;font-weight:700">Mi Perfil</h3>
+      <button type="button" onclick="toggleProfileModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">&times;</button>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:14px;background:#181824;padding:14px;border-radius:12px;border:1px solid var(--border)">
+      <div id="modalUserAvatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">R</div>
+      <div style="display:flex;flex-direction:column;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span id="modalUserName" style="font-weight:700;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Rodrigo</span>
+          <span id="modalAdminBadge" class="badge-admin" style="display:none;font-size:10px">👑 ADMIN</span>
+        </div>
+        <span id="modalUserEmail" style="font-size:12px;color:var(--muted);word-break:break-all">rodryandy@gmail.com</span>
+      </div>
+    </div>
+
+    <div id="modalAdminAction" style="display:none;flex-direction:column;gap:8px">
+      <button type="button" onclick="toggleProfileModal();showView('usuarios')" class="btn-primary" style="background:linear-gradient(135deg,#D97706,#B45309);font-weight:700;font-size:13px;padding:10px;justify-content:center">
+        <i class="ph ph-crown"></i> 👑 Control y Bloqueo de Usuarios
+      </button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" onclick="forceAppRefresh()" class="btn-sec" style="font-size:12px;padding:10px;justify-content:center;color:var(--ok);border-color:rgba(52,211,153,.3)">
+        <i class="ph ph-arrows-clockwise"></i> 🔄 Actualizar App / Limpiar Caché
+      </button>
+      <a href="/api/logout" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;color:#F87171;font-size:12px;font-weight:600;padding:8px">
+        <i class="ph ph-sign-out"></i> Cerrar sesión
+      </a>
+    </div>
+  </div>
+</div>
+
 <script>
 const $ = id => document.getElementById(id);
 let currentTask = null, pollTimer = null, progressTimer = null, progress = 0;
@@ -1008,46 +1152,77 @@ $('clearBtn').addEventListener('click', () => {
 });
 
 /* navegación entre pestañas */
-function setActive(id){ document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active')); $(id).classList.add('active'); }
-$('nav-crear').onclick = e => {
-  e.preventDefault();
-  setActive('nav-crear');
-  $('view-crear').style.display = 'flex';
-  $('view-vozenoff').style.display = 'none';
-  $('view-libreria').style.display = 'none';
-  document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
-};
-$('nav-vozenoff').onclick = e => {
-  e.preventDefault();
-  setActive('nav-vozenoff');
-  $('view-crear').style.display = 'none';
-  $('view-vozenoff').style.display = 'flex';
-  $('view-libreria').style.display = 'none';
-  document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
-};
-$('nav-libreria').onclick = e => {
-  e.preventDefault();
-  setActive('nav-libreria');
-  $('view-crear').style.display = 'none';
-  $('view-vozenoff').style.display = 'none';
-  $('view-libreria').style.display = 'flex';
-  loadLibrary();
-  document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
-};
-$('nav-usuarios').onclick = e => {
-  e.preventDefault();
-  setActive('nav-usuarios');
-  $('view-crear').style.display = 'none';
-  $('view-vozenoff').style.display = 'none';
-  $('view-libreria').style.display = 'none';
-  $('view-usuarios').style.display = 'flex';
-  loadUsers();
-  document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
-};
+function showView(viewName) {
+  const views = {
+    'crear': $('view-crear'),
+    'vozenoff': $('view-vozenoff'),
+    'libreria': $('view-libreria'),
+    'usuarios': $('view-usuarios')
+  };
+
+  if (viewName === 'ajustes') {
+    $('view-crear').style.display = 'flex';
+    $('view-vozenoff').style.display = 'none';
+    $('view-libreria').style.display = 'none';
+    $('view-usuarios').style.display = 'none';
+    if ($('advanced')) {
+      $('advanced').open = true;
+      $('advanced').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  } else {
+    Object.keys(views).forEach(k => {
+      if (views[k]) views[k].style.display = (k === viewName) ? 'flex' : 'none';
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const centerEl = document.querySelector('.center');
+    if (centerEl) centerEl.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Marcar activo en el sidebar de escritorio
+  document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
+  const desktopNav = $('nav-' + viewName);
+  if (desktopNav) desktopNav.classList.add('active');
+
+  // Marcar activo en la barra inferior móvil
+  document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+  const bnav = $('bnav-' + viewName);
+  if (bnav) bnav.classList.add('active');
+
+  if (viewName === 'libreria') loadLibrary();
+  if (viewName === 'usuarios') loadUsers();
+}
+
+$('nav-crear').onclick = e => { e.preventDefault(); showView('crear'); };
+$('nav-vozenoff').onclick = e => { e.preventDefault(); showView('vozenoff'); };
+$('nav-libreria').onclick = e => { e.preventDefault(); showView('libreria'); };
+$('nav-usuarios').onclick = e => { e.preventDefault(); showView('usuarios'); };
+$('nav-ajustes').onclick = e => { e.preventDefault(); showView('ajustes'); };
 $('refreshUsersBtn').onclick = loadUsers;
-$('nav-ajustes').onclick = e => { e.preventDefault(); setActive('nav-ajustes'); $('view-crear').style.display = 'flex'; $('view-vozenoff').style.display = 'none'; $('view-libreria').style.display = 'none'; $('view-usuarios').style.display = 'none'; $('advanced').open = true; $('advanced').scrollIntoView({behavior:'smooth',block:'center'}); };
-$('nav-ayuda').onclick = e => { e.preventDefault(); setActive('nav-ayuda');
-  alert('Cómo usar Rodrix Music Creator:\n\n1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio con fotos reales y genera música con IA.\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, elimina ruidos y retumbos, ecualiza y mezcla música devocional muy suave con auto-ducking.\n3. Librería: Escucha en el reproductor de onda, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.'); };
+$('nav-ayuda').onclick = e => { e.preventDefault();
+  alert('Cómo usar Rodrix Music Creator:\n\n1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio con fotos reales y genera música con IA.\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, elimina ruidos y retumbos, ecualiza y mezcla música devocional muy suave con auto-ducking.\n3. Librería: Escucha en el reproductor de onda, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.');
+};
+
+function toggleProfileModal() {
+  const modal = $('profileModal');
+  if (!modal) return;
+  modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+}
+
+function forceAppRefresh() {
+  const btns = [$('mobileRefreshBtn'), $('refreshUsersBtn')];
+  btns.forEach(b => { if (b) b.classList.add('spinning'); });
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      Promise.all(names.map(name => caches.delete(name))).finally(() => {
+        window.location.href = window.location.pathname + '?refresh=' + Date.now();
+      });
+    }).catch(() => {
+      window.location.href = window.location.pathname + '?refresh=' + Date.now();
+    });
+  } else {
+    window.location.href = window.location.pathname + '?refresh=' + Date.now();
+  }
+}
 
 /* ---------- PRESETS DE CULTO & LITURGIA ---------- */
 const WORSHIP_PRESETS = {
@@ -1717,30 +1892,44 @@ $('libList').addEventListener('click', e => {
 
 async function loadUserInfo() {
   try {
-    const res = await fetch('/api/me');
+    const res = await fetch('/api/me?t=' + Date.now());
     if (res.ok) {
       const data = await res.json();
-      if (data.name) {
-        const el = $('userNameDisplay');
-        if (el) el.textContent = data.name;
-        const av = $('userAvatar');
-        if (av) {
-          if (data.picture) {
-            av.innerHTML = `<img src="${esc(data.picture)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`;
-          } else {
-            av.textContent = data.name.charAt(0).toUpperCase();
-          }
+      const name = data.name || 'Rodrigo';
+      const email = data.email || 'rodryandy@gmail.com';
+      const initial = (name ? name[0] : (email ? email[0] : 'R')).toUpperCase();
+
+      // Nombres y correos en interfaz
+      if ($('userNameDisplay')) $('userNameDisplay').textContent = name;
+      if ($('userEmailDisplay')) $('userEmailDisplay').textContent = email;
+      if ($('modalUserName')) $('modalUserName').textContent = name;
+      if ($('modalUserEmail')) $('modalUserEmail').textContent = email;
+
+      // Actualizar avatares (escritorio, barra móvil y modal)
+      const avatarElements = [$('userAvatar'), $('mobileUserAvatar'), $('modalUserAvatar')];
+      avatarElements.forEach(av => {
+        if (!av) return;
+        if (data.picture) {
+          av.innerHTML = `<img src="${esc(data.picture)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`;
+        } else {
+          av.textContent = initial;
         }
-      }
-      if (data.email) {
-        const elEmail = $('userEmailDisplay');
-        if (elEmail) elEmail.textContent = data.email;
-      }
+      });
+
+      // Si es el Administrador (rodryandy@gmail.com)
       if (data.is_admin) {
         if ($('nav-users-li')) $('nav-users-li').style.display = 'block';
+        if ($('bnav-usuarios')) $('bnav-usuarios').style.display = 'flex';
+        if ($('mobileAdminPill')) $('mobileAdminPill').style.display = 'inline-flex';
+        if ($('adminSettingsCard')) $('adminSettingsCard').style.display = 'block';
+        if ($('adminBadgeDesktop')) $('adminBadgeDesktop').style.display = 'inline-block';
+        if ($('modalAdminBadge')) $('modalAdminBadge').style.display = 'inline-block';
+        if ($('modalAdminAction')) $('modalAdminAction').style.display = 'flex';
       }
     }
-  } catch(e){}
+  } catch(e){
+    console.error('Error loadUserInfo:', e);
+  }
 }
 
 async function loadUsers() {
