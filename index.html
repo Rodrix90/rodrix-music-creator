@@ -98,39 +98,61 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .console .dim{color:#6B7280}
 
 /* ---------- LIBRARY ---------- */
-.lib-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;padding:6px 0 24px}
-.empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:40px 10px;font-size:13px}
-.track{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;gap:12px;transition:.2s}
-.track:hover{border-color:var(--accent);transform:translateY(-1px)}
-.track.playing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 6px 20px rgba(90,103,216,.25)}
-.thumb{width:64px;height:64px;border-radius:10px;background:linear-gradient(135deg,#3540A3,#7C3AED);flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden;position:relative}
-.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.lib-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:16px;padding:10px 0 32px}
+@media (max-width:560px){.lib-list{grid-template-columns:1fr;gap:12px}}
+.empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:48px 12px;font-size:14px;background:rgba(255,255,255,0.02);border:1px dashed var(--border);border-radius:14px}
+
+/* Custom Studio Checkbox (Replaces ugly default browser checkbox) */
+.studio-chk{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.05);cursor:pointer;position:relative;display:inline-flex;align-items:center;justify-content:center;outline:none;flex-shrink:0;transition:all .2s cubic-bezier(0.4,0,0.2,1)}
+.studio-chk:hover{border-color:#25D366;background:rgba(37,211,102,0.12);box-shadow:0 0 10px rgba(37,211,102,0.25)}
+.studio-chk:checked{background:#25D366;border-color:#25D366;box-shadow:0 2px 10px rgba(37,211,102,0.4)}
+.studio-chk:checked::after{content:'';width:5px;height:10px;border:solid #ffffff;border-width:0 2.2px 2.2px 0;transform:rotate(45deg);margin-bottom:2px}
+
+.track{background:linear-gradient(145deg,rgba(28,28,44,0.78),rgba(18,18,28,0.92));border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all .25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 4px 18px rgba(0,0,0,0.25);backdrop-filter:blur(10px);position:relative}
+.track:hover{border-color:rgba(99,102,241,0.45);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.42),0 0 15px rgba(99,102,241,0.15)}
+.track.playing{border-color:var(--accent);background:linear-gradient(145deg,rgba(38,38,65,0.85),rgba(22,22,38,0.95));box-shadow:0 0 0 1px var(--accent),0 8px 30px rgba(90,103,216,0.35)}
+.thumb{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,#3730A3,#6D28D9);flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden;position:relative;box-shadow:0 4px 14px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.12)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.6}
 .thumb .bar{width:4px;border-radius:2px;background:linear-gradient(180deg,#fff,#A5B4FC);height:30%;position:relative;z-index:1}
 .track.playing .bar{animation:wave 1s ease-in-out infinite}
 .bar:nth-child(2){animation-delay:.1s!important;height:60%}.bar:nth-child(3){animation-delay:.25s!important;height:85%}
 .bar:nth-child(4){animation-delay:.15s!important;height:50%}.bar:nth-child(5){animation-delay:.3s!important;height:70%}
 .bar:nth-child(6){animation-delay:.05s!important;height:40%}
 @keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.2)}}
-.t-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.t-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted)}
-.tag{background:rgba(90,103,216,.18);color:#A5B4FC;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600}
-.t-actions{display:flex;gap:6px;align-items:center;margin-top:auto;position:relative}
-.btn-play{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;display:flex;gap:5px;align-items:center}
-.btn-play:hover{filter:brightness(1.15)}
-.t-actions .icon-btn{width:30px;height:30px;font-size:15px}
-.menu{display:none;position:absolute;top:36px;right:0;background:var(--side);border:1px solid var(--border);border-radius:8px;overflow:hidden;z-index:1000;min-width:175px;box-shadow:0 10px 30px rgba(0,0,0,.7)}
+
+.t-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.t-title-row{display:flex;align-items:center;gap:8px;min-width:0}
+.t-title{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;letter-spacing:-0.2px}
+.t-title:hover{color:#A5B4FC}
+.btn-rename{width:26px;height:26px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.btn-rename:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.15)}
+
+.t-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.tag{background:rgba(99,102,241,0.18);color:#A5B4FC;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;border:1px solid rgba(99,102,241,0.25)}
+
+.t-actions{display:flex;gap:7px;align-items:center;margin-top:2px;position:relative;flex-wrap:wrap}
+.btn-play-sm{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:11.5px;font-weight:700;display:inline-flex;gap:5px;align-items:center;cursor:pointer;box-shadow:0 3px 10px rgba(90,103,216,0.3);transition:all .2s}
+.btn-play-sm:hover{transform:scale(1.03);filter:brightness(1.15)}
+.icon-circle-btn{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--muted);font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s}
+.icon-circle-btn:hover{background:rgba(255,255,255,0.14);color:#fff;border-color:rgba(255,255,255,0.25);transform:translateY(-1px)}
+.icon-circle-btn.share-wa{background:rgba(37,211,102,0.12);border-color:rgba(37,211,102,0.3);color:#25D366}
+.icon-circle-btn.share-wa:hover{background:#25D366;color:#fff;box-shadow:0 0 12px rgba(37,211,102,0.45)}
+.icon-circle-btn.del:hover{background:rgba(239,68,68,0.2);border-color:rgba(239,68,68,0.4);color:#EF4444}
+
+.menu{display:none;position:absolute;top:36px;right:0;background:var(--side);border:1px solid var(--border);border-radius:10px;overflow:hidden;z-index:1000;min-width:185px;box-shadow:0 12px 35px rgba(0,0,0,.75);backdrop-filter:blur(8px)}
 .menu.open{display:block}
 .menu.open-up{top:auto;bottom:36px}
-.menu a{display:block;padding:8px 14px;color:var(--text);text-decoration:none;font-size:12px;white-space:nowrap}
+.menu a{display:block;padding:9px 15px;color:var(--text);text-decoration:none;font-size:12px;white-space:nowrap;transition:background .15s}
 .menu a:hover{background:var(--accent-dark)}
-.player{border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:none;flex-direction:column;gap:8px;background:#181826}
+
+.player{background:linear-gradient(180deg,rgba(28,28,44,0.95),rgba(16,16,26,0.98));border:1px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 24px;display:none;flex-direction:column;gap:10px;box-shadow:0 12px 35px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.08);margin-bottom:22px}
 .player.show{display:flex}
-.player .pt{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .pt{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;letter-spacing:-0.2px}
 .player audio{width:100%;height:34px}
-.lib-bulk-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 18px;margin-bottom:16px;background:linear-gradient(135deg,rgba(30,30,46,0.9),rgba(20,20,32,0.95));border:1px solid rgba(255,255,255,0.1);border-radius:12px}
+
+.lib-bulk-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:14px 20px;margin-bottom:20px;background:linear-gradient(135deg,rgba(28,28,44,0.85),rgba(18,18,28,0.95));border:1px solid rgba(255,255,255,0.09);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,0.3);backdrop-filter:blur(12px)}
 @media (max-width:640px){
-  .lib-bulk-bar{flex-direction:column;align-items:stretch!important;gap:10px}
+  .lib-bulk-bar{flex-direction:column;align-items:stretch!important;gap:12px}
   .lib-bulk-bar>div:first-child{justify-content:space-between;width:100%}
   .lib-bulk-bar>div:last-child{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%}
   .lib-bulk-bar button{width:100%;justify-content:center;padding:10px 8px!important;font-size:12px!important}
@@ -1157,17 +1179,17 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         <!-- Barra de Acciones Masivas y Compartir para Radio -->
         <div class="lib-bulk-bar" id="libBulkBar" style="display:none">
           <div style="display:flex;align-items:center;gap:12px;">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;margin:0;user-select:none;color:var(--text);">
-              <input type="checkbox" id="selectAllTracksChk" style="width:20px;height:20px;accent-color:#25D366;cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;font-weight:700;margin:0;user-select:none;color:#fff;">
+              <input type="checkbox" id="selectAllTracksChk" class="studio-chk" title="Seleccionar todas las pistas">
               <span>Seleccionar Todos</span>
             </label>
-            <span id="selectedCountBadge" style="font-size:12px;font-weight:600;color:var(--muted);background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:20px;">0 seleccionados</span>
+            <span id="selectedCountBadge" style="font-size:12px;font-weight:600;color:#A5B4FC;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);padding:4px 12px;border-radius:20px;">0 seleccionados</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <button type="button" class="btn-primary" id="bulkShareBtn" disabled style="background:#25D366;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.4;transition:all .2s;box-shadow:0 4px 12px rgba(37,211,102,0.25);">
+            <button type="button" class="btn-primary" id="bulkShareBtn" disabled style="background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;padding:9px 20px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.35;transition:all .2s;box-shadow:0 4px 16px rgba(37,211,102,0.3);">
               <i class="ph ph-whatsapp-logo" style="font-size:18px;"></i> <span>Compartir MP3</span>
             </button>
-            <button type="button" class="btn-sec" id="bulkDownloadBtn" disabled style="padding:9px 16px;font-size:13px;font-weight:600;border-radius:10px;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.4;transition:all .2s;">
+            <button type="button" class="btn-sec" id="bulkDownloadBtn" disabled style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.35;transition:all .2s;">
               <i class="ph ph-download-simple" style="font-size:18px;"></i> <span>Descargar al Celular</span>
             </button>
           </div>
@@ -2284,23 +2306,27 @@ function renderLibrary(tracks){
   if ($('libBulkBar')) $('libBulkBar').style.display = 'flex';
   l.innerHTML = tracks.map(t => `
     <div class="track ${t.id === currentTrackId ? 'playing' : ''}" data-id="${esc(t.id)}">
-      <div style="display:flex;align-items:center;padding:0 2px;">
-        <input type="checkbox" class="track-select-chk" data-id="${esc(t.id)}" style="width:22px;height:22px;accent-color:#25D366;cursor:pointer;" title="Seleccionar">
+      <div style="display:flex;align-items:center;">
+        <input type="checkbox" class="track-select-chk studio-chk" data-id="${esc(t.id)}" title="Seleccionar pista">
       </div>
       <div class="thumb">${t.image_url ? `<img src="${esc(t.image_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
       <div class="t-info">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-          <div class="t-title" title="${esc(t.title)}" style="cursor:pointer;" data-act="rename">${esc(t.title)}</div>
-          <button class="icon-btn" data-act="rename" title="Renombrar grabación" style="width:26px;height:26px;font-size:13px;flex-shrink:0;color:var(--muted);"><i class="ph ph-pencil-simple"></i></button>
+        <div class="t-title-row">
+          <div class="t-title" title="${esc(t.title)}" data-act="rename">${esc(t.title)}</div>
+          <button class="btn-rename" data-act="rename" title="Renombrar grabación"><i class="ph ph-pencil-simple"></i></button>
         </div>
-        <div class="t-meta"><span>${fmtDur(t.duration)}</span><span class="tag">Premium</span>${/instrumental/i.test(t.title) ? '<span class="tag">Instrumental</span>' : ''}</div>
+        <div class="t-meta">
+          <span><i class="ph ph-clock" style="font-size:11px;"></i> ${fmtDur(t.duration)}</span>
+          <span class="tag">Master Pro</span>
+          ${/instrumental/i.test(t.title) ? '<span class="tag" style="background:rgba(16,185,129,0.18);color:#6EE7B7;border-color:rgba(16,185,129,0.3);">Instrumental</span>' : ''}
+        </div>
         <div class="t-actions">
-          <button class="btn-play" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
-          <button class="icon-btn" data-act="share" title="Compartir MP3 (WhatsApp / Telegram)" style="color:#25D366;font-size:16px;"><i class="ph ph-whatsapp-logo"></i></button>
-          <button class="icon-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
-          <button class="icon-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
-          <button class="icon-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
+          <button class="btn-play-sm" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
+          <button class="icon-circle-btn share-wa" data-act="share" title="Enviar MP3 a WhatsApp / Telegram"><i class="ph ph-whatsapp-logo"></i></button>
+          <button class="icon-circle-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
+          <button class="icon-circle-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
+          <button class="icon-circle-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
           <div class="menu">
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Formatos Master</div>
             <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-whatsapp-logo"></i> MP3 (&lt; 15MB WhatsApp)</a>
