@@ -1190,7 +1190,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <i class="ph ph-whatsapp-logo" style="font-size:18px;"></i> <span>Compartir MP3</span>
             </button>
             <button type="button" class="btn-sec" id="bulkDownloadBtn" disabled style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.35;transition:all .2s;">
-              <i class="ph ph-download-simple" style="font-size:18px;"></i> <span>Descargar al Celular</span>
+              <i class="ph ph-download-simple" style="font-size:18px;"></i> <span id="bulkDownloadBtnText">Descargar</span>
             </button>
           </div>
         </div>
@@ -2344,6 +2344,31 @@ function renderLibrary(tracks){
   updateSelectedTracksState();
 }
 
+function getDeviceDownloadLabel() {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  // Tablets first: iPads, Android tablets (usually Android without 'mobile'), or Macs with multi-touch
+  if (ua.includes('ipad') || (ua.includes('android') && !ua.includes('mobile') && !ua.includes('mobi')) || ua.includes('tablet') || (navigator.maxTouchPoints > 1 && ua.includes('macintosh'))) {
+    return 'Descargar a la Tablet';
+  }
+  // Mobile phones
+  if (ua.includes('mobi') || ua.includes('android') || ua.includes('iphone') || ua.includes('ipod') || ua.includes('windows phone')) {
+    return 'Descargar al Celular';
+  }
+  // Desktop / PC / Laptop
+  return 'Descargar';
+}
+
+function getDeviceTargetName() {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  if (ua.includes('ipad') || (ua.includes('android') && !ua.includes('mobile') && !ua.includes('mobi')) || ua.includes('tablet') || (navigator.maxTouchPoints > 1 && ua.includes('macintosh'))) {
+    return 'tu tablet';
+  }
+  if (ua.includes('mobi') || ua.includes('android') || ua.includes('iphone') || ua.includes('ipod') || ua.includes('windows phone')) {
+    return 'tu celular';
+  }
+  return 'tu computadora';
+}
+
 function updateSelectedTracksState() {
   const chks = document.querySelectorAll('.track-select-chk');
   const checked = document.querySelectorAll('.track-select-chk:checked');
@@ -2358,6 +2383,10 @@ function updateSelectedTracksState() {
   if (allChk) {
     allChk.checked = total > 0 && count === total;
     allChk.indeterminate = count > 0 && count < total;
+  }
+
+  if ($('bulkDownloadBtnText')) {
+    $('bulkDownloadBtnText').textContent = getDeviceDownloadLabel();
   }
 
   const shareBtn = $('bulkShareBtn');
@@ -2511,22 +2540,23 @@ function showShareFallbackModal(tracks) {
   }
 
   const trackCount = tracks.length;
+  const targetName = getDeviceTargetName();
   modal.innerHTML = `
     <div style="background:#1e1e2e;border:1px solid rgba(255,255,255,0.15);border-radius:16px;max-width:440px;width:100%;padding:22px;color:var(--text);box-shadow:0 16px 40px rgba(0,0,0,0.6);text-align:center;">
       <div style="width:56px;height:56px;border-radius:50%;background:rgba(37,211,102,0.15);color:#25D366;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px;">
         <i class="ph ph-whatsapp-logo"></i>
       </div>
-      <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;">¡${trackCount === 1 ? 'Audio guardado' : trackCount + ' audios guardados'} en tu celular!</h3>
+      <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;">¡${trackCount === 1 ? 'Audio guardado' : trackCount + ' audios guardados'} en ${targetName}!</h3>
       <p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.4;">
-        Los archivos MP3 ya se descargaron a tu teléfono. Puedes abrir WhatsApp ahora mismo y adjuntarlos tocando el clip 📎 o botón de audio.
+        Los archivos MP3 ya se descargaron a ${targetName}. Puedes abrir WhatsApp o tu aplicación de mensajería para adjuntarlos.
       </p>
       
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
-        <a href="https://api.whatsapp.com/" target="_blank" style="background:#25D366;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(37,211,102,0.3);">
+        <a href="https://web.whatsapp.com/" target="_blank" style="background:#25D366;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(37,211,102,0.3);">
           <i class="ph ph-whatsapp-logo" style="font-size:18px;"></i> Abrir WhatsApp
         </a>
         <a href="/api/download/apk" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;text-decoration:none;padding:10px;border-radius:10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
-          <i class="ph ph-android-logo" style="font-size:16px;color:#A5B4FC;"></i> Actualizar App Rodrix (Envío directo en 1 toque)
+          <i class="ph ph-android-logo" style="font-size:16px;color:#A5B4FC;"></i> Instalar / Actualizar App Android (Envío nativo en 1 toque)
         </a>
       </div>
       
@@ -2843,6 +2873,9 @@ if ($('bulkShareBtn')) {
 
 if ($('bulkDownloadBtn')) {
   $('bulkDownloadBtn').addEventListener('click', () => downloadSelectedTracks());
+  if ($('bulkDownloadBtnText')) {
+    $('bulkDownloadBtnText').textContent = getDeviceDownloadLabel();
+  }
 }
 
 /* ---------- Botones rápidos de exclusión de estilos ---------- */
