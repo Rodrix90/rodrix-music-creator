@@ -1123,9 +1123,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <h1>📚 Mi Librería Musical y Predicaciones</h1>
             <p style="font-size:12px;color:var(--muted);margin-top:4px">Tus canciones generadas, audios pastorales y masters listos para escuchar y descargar.</p>
           </div>
-          <button type="button" class="btn-sec" id="refreshLib" style="padding:6px 14px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px">
-            <i class="ph ph-arrows-clockwise"></i> Actualizar
-          </button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <a href="/api/download/apk" class="btn-sec" style="padding:6px 14px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);" title="Descargar versión actualizada de la app Rodrix con WhatsApp directo">
+              <i class="ph ph-android-logo"></i> Actualizar App
+            </a>
+            <button type="button" class="btn-sec" id="refreshLib" style="padding:6px 14px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px">
+              <i class="ph ph-arrows-clockwise"></i> Actualizar
+            </button>
+          </div>
         </div>
 
         <!-- Reproductor de onda destacado -->
@@ -2413,6 +2418,15 @@ async function shareSelectedTracks(trackIds = null) {
   const originalHtml = btn ? btn.innerHTML : '';
 
   try {
+    // 1. PRIORIDAD NATIVA ANDROID (App APK Rodrix):
+    if (window.AndroidApp && typeof window.AndroidApp.shareAudiosJson === 'function') {
+      const urls = tracks.map(t => location.origin + '/api/download/' + encodeURIComponent(t.id) + '/mp3');
+      const titles = tracks.map(t => (t.title || 'audio').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'audio');
+      window.AndroidApp.shareAudiosJson(JSON.stringify(urls), JSON.stringify(titles));
+      showToast('Abriendo WhatsApp / Telegram...', 'success');
+      return;
+    }
+
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = `<i class="ph ph-spinner ph-spin" style="font-size:18px;"></i> <span>Preparando ${tracks.length}...</span>`;
@@ -2442,9 +2456,10 @@ async function shareSelectedTracks(trackIds = null) {
       });
       showToast('¡Compartido con éxito!', 'success');
     } else {
-      showToast('Descargando audios para adjuntar...', 'info');
+      // Fallback amigable: descargar audios al móvil y ofrecer abrir WhatsApp o actualizar app
+      showToast('Descargando audios a tu dispositivo...', 'info');
       await downloadSelectedTracks(ids);
-      alert('Tu navegador no permite compartir archivos directamente por WhatsApp/Telegram. Los archivos MP3 se han descargado en tu dispositivo para que puedas adjuntarlos directamente.');
+      showShareFallbackModal(tracks);
     }
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -2458,6 +2473,43 @@ async function shareSelectedTracks(trackIds = null) {
     }
     updateSelectedTracksState();
   }
+}
+
+function showShareFallbackModal(tracks) {
+  let modal = $('shareFallbackModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'shareFallbackModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    document.body.appendChild(modal);
+  }
+
+  const trackCount = tracks.length;
+  modal.innerHTML = `
+    <div style="background:#1e1e2e;border:1px solid rgba(255,255,255,0.15);border-radius:16px;max-width:440px;width:100%;padding:22px;color:var(--text);box-shadow:0 16px 40px rgba(0,0,0,0.6);text-align:center;">
+      <div style="width:56px;height:56px;border-radius:50%;background:rgba(37,211,102,0.15);color:#25D366;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px;">
+        <i class="ph ph-whatsapp-logo"></i>
+      </div>
+      <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;">¡${trackCount === 1 ? 'Audio guardado' : trackCount + ' audios guardados'} en tu celular!</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.4;">
+        Los archivos MP3 ya se descargaron a tu teléfono. Puedes abrir WhatsApp ahora mismo y adjuntarlos tocando el clip 📎 o botón de audio.
+      </p>
+      
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+        <a href="https://api.whatsapp.com/" target="_blank" style="background:#25D366;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(37,211,102,0.3);">
+          <i class="ph ph-whatsapp-logo" style="font-size:18px;"></i> Abrir WhatsApp
+        </a>
+        <a href="/api/download/apk" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;text-decoration:none;padding:10px;border-radius:10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i class="ph ph-android-logo" style="font-size:16px;color:#A5B4FC;"></i> Actualizar App Rodrix (Envío directo en 1 toque)
+        </a>
+      </div>
+      
+      <button type="button" onclick="$('shareFallbackModal').style.display='none'" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 12px;">
+        Cerrar
+      </button>
+    </div>
+  `;
+  modal.style.display = 'flex';
 }
 
 async function downloadSelectedTracks(trackIds = null) {
