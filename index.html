@@ -128,6 +128,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .player.show{display:flex}
 .player .pt{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .player audio{width:100%;height:34px}
+.lib-bulk-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 18px;margin-bottom:16px;background:linear-gradient(135deg,rgba(30,30,46,0.9),rgba(20,20,32,0.95));border:1px solid rgba(255,255,255,0.1);border-radius:12px}
+@media (max-width:640px){
+  .lib-bulk-bar{flex-direction:column;align-items:stretch!important;gap:10px}
+  .lib-bulk-bar>div:first-child{justify-content:space-between;width:100%}
+  .lib-bulk-bar>div:last-child{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+  .lib-bulk-bar button{width:100%;justify-content:center;padding:10px 8px!important;font-size:12px!important}
+}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,15px)}to{opacity:1;transform:translate(-50%,0)}}
 
 /* ---------- MOBILE BOTTOM NAVIGATION & MODAL ---------- */
 .mobile-bottom-nav{
@@ -1139,6 +1147,25 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <input type="range" id="wsVolume" min="0" max="1" step="0.05" value="0.9" style="width:90px;height:4px">
           </div>
           <audio id="audio" style="display:none"></audio>
+        </div>
+
+        <!-- Barra de Acciones Masivas y Compartir para Radio -->
+        <div class="lib-bulk-bar" id="libBulkBar" style="display:none">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;margin:0;user-select:none;color:var(--text);">
+              <input type="checkbox" id="selectAllTracksChk" style="width:20px;height:20px;accent-color:#25D366;cursor:pointer;">
+              <span>Seleccionar Todos</span>
+            </label>
+            <span id="selectedCountBadge" style="font-size:12px;font-weight:600;color:var(--muted);background:rgba(255,255,255,0.08);padding:4px 10px;border-radius:20px;">0 seleccionados</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button type="button" class="btn-primary" id="bulkShareBtn" disabled style="background:#25D366;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.4;transition:all .2s;box-shadow:0 4px 12px rgba(37,211,102,0.25);">
+              <i class="ph ph-whatsapp-logo" style="font-size:18px;"></i> <span>Compartir MP3</span>
+            </button>
+            <button type="button" class="btn-sec" id="bulkDownloadBtn" disabled style="padding:9px 16px;font-size:13px;font-weight:600;border-radius:10px;display:inline-flex;align-items:center;gap:8px;cursor:not-allowed;opacity:0.4;transition:all .2s;">
+              <i class="ph ph-download-simple" style="font-size:18px;"></i> <span>Descargar al Celular</span>
+            </button>
+          </div>
         </div>
 
         <!-- Grilla de pistas de la biblioteca -->
@@ -2243,18 +2270,31 @@ function setServer(ok){
 }
 function renderLibrary(tracks){
   const l = $('libList');
-  if (!tracks.length) { l.innerHTML = '<div class="empty">Aún no hay pistas. ¡Crea tu primera canción!</div>'; return; }
+  if (!tracks.length) {
+    l.innerHTML = '<div class="empty">Aún no hay pistas. ¡Crea tu primera canción o graba tu primera locución!</div>';
+    if ($('libBulkBar')) $('libBulkBar').style.display = 'none';
+    l._tracks = [];
+    return;
+  }
+  if ($('libBulkBar')) $('libBulkBar').style.display = 'flex';
   l.innerHTML = tracks.map(t => `
     <div class="track ${t.id === currentTrackId ? 'playing' : ''}" data-id="${esc(t.id)}">
+      <div style="display:flex;align-items:center;padding:0 2px;">
+        <input type="checkbox" class="track-select-chk" data-id="${esc(t.id)}" style="width:22px;height:22px;accent-color:#25D366;cursor:pointer;" title="Seleccionar">
+      </div>
       <div class="thumb">${t.image_url ? `<img src="${esc(t.image_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
       <div class="t-info">
-        <div class="t-title" title="${esc(t.title)}">${esc(t.title)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <div class="t-title" title="${esc(t.title)}" style="cursor:pointer;" data-act="rename">${esc(t.title)}</div>
+          <button class="icon-btn" data-act="rename" title="Renombrar grabación" style="width:26px;height:26px;font-size:13px;flex-shrink:0;color:var(--muted);"><i class="ph ph-pencil-simple"></i></button>
+        </div>
         <div class="t-meta"><span>${fmtDur(t.duration)}</span><span class="tag">Premium</span>${/instrumental/i.test(t.title) ? '<span class="tag">Instrumental</span>' : ''}</div>
         <div class="t-actions">
           <button class="btn-play" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
+          <button class="icon-btn" data-act="share" title="Compartir MP3 (WhatsApp / Telegram)" style="color:#25D366;font-size:16px;"><i class="ph ph-whatsapp-logo"></i></button>
           <button class="icon-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
-          <button class="icon-btn" data-act="dl" title="Descargar"><i class="ph ph-download-simple"></i></button>
+          <button class="icon-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
           <button class="icon-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
           <div class="menu">
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Formatos Master</div>
@@ -2270,6 +2310,230 @@ function renderLibrary(tracks){
       </div>
     </div>`).join('');
   l._tracks = tracks;
+  updateSelectedTracksState();
+}
+
+function updateSelectedTracksState() {
+  const chks = document.querySelectorAll('.track-select-chk');
+  const checked = document.querySelectorAll('.track-select-chk:checked');
+  const count = checked.length;
+  const total = chks.length;
+
+  if ($('selectedCountBadge')) {
+    $('selectedCountBadge').textContent = `${count} seleccionados`;
+  }
+  
+  const allChk = $('selectAllTracksChk');
+  if (allChk) {
+    allChk.checked = total > 0 && count === total;
+    allChk.indeterminate = count > 0 && count < total;
+  }
+
+  const shareBtn = $('bulkShareBtn');
+  const dlBtn = $('bulkDownloadBtn');
+  if (shareBtn) {
+    if (count > 0) {
+      shareBtn.removeAttribute('disabled');
+      shareBtn.style.opacity = '1';
+      shareBtn.style.cursor = 'pointer';
+    } else {
+      shareBtn.setAttribute('disabled', 'true');
+      shareBtn.style.opacity = '0.4';
+      shareBtn.style.cursor = 'not-allowed';
+    }
+  }
+  if (dlBtn) {
+    if (count > 0) {
+      dlBtn.removeAttribute('disabled');
+      dlBtn.style.opacity = '1';
+      dlBtn.style.cursor = 'pointer';
+    } else {
+      dlBtn.setAttribute('disabled', 'true');
+      dlBtn.style.opacity = '0.4';
+      dlBtn.style.cursor = 'not-allowed';
+    }
+  }
+}
+
+async function renameTrack(id) {
+  const t = ($('libList')._tracks || []).find(x => x.id === id);
+  if (!t) return;
+  const currentTitle = t.title || '';
+  const newTitle = prompt('Escribe el nuevo nombre para este audio:', currentTitle);
+  if (newTitle === null) return;
+  const trimmed = newTitle.trim();
+  if (!trimmed || trimmed === currentTitle) return;
+
+  try {
+    showToast('Guardando nuevo nombre...', 'info');
+    const r = await fetch('/api/library/' + encodeURIComponent(id) + '/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: trimmed })
+    });
+    if (r.ok) {
+      t.title = trimmed;
+      const card = document.querySelector(`.track[data-id="${id}"]`);
+      if (card) {
+        const titleEl = card.querySelector('.t-title');
+        if (titleEl) {
+          titleEl.textContent = trimmed;
+          titleEl.title = trimmed;
+        }
+      }
+      if (currentTrackId === id && $('playerTitle')) {
+        $('playerTitle').textContent = trimmed;
+      }
+      showToast('¡Nombre actualizado con éxito!', 'success');
+      logLine(`Audio renombrado a "${trimmed}".`);
+    } else {
+      const err = await r.json().catch(() => ({}));
+      showToast(err.detail || 'Error al renombrar el audio', 'err');
+    }
+  } catch (err) {
+    showToast('Error de conexión al renombrar', 'err');
+  }
+}
+
+async function shareSelectedTracks(trackIds = null) {
+  let ids = trackIds;
+  if (!ids) {
+    const checked = Array.from(document.querySelectorAll('.track-select-chk:checked'));
+    ids = checked.map(c => c.dataset.id);
+  }
+  if (!ids || !ids.length) {
+    showToast('Selecciona al menos un audio para compartir.', 'info');
+    return;
+  }
+
+  const tracks = ($('libList')._tracks || []).filter(t => ids.includes(t.id));
+  if (!tracks.length) return;
+
+  const btn = $('bulkShareBtn');
+  const originalHtml = btn ? btn.innerHTML : '';
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<i class="ph ph-spinner ph-spin" style="font-size:18px;"></i> <span>Preparando ${tracks.length}...</span>`;
+    }
+    showToast(`Preparando ${tracks.length} audio(s) para enviar...`, 'info');
+
+    const fileObjects = [];
+    for (let i = 0; i < tracks.length; i++) {
+      const t = tracks[i];
+      const safeTitle = (t.title || 'audio').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'audio';
+      const filename = `${safeTitle}.mp3`;
+      
+      const res = await fetch('/api/download/' + encodeURIComponent(t.id) + '/mp3');
+      if (!res.ok) {
+        throw new Error(`No se pudo obtener el audio de "${t.title}"`);
+      }
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: 'audio/mpeg' });
+      fileObjects.push(file);
+    }
+
+    if (navigator.canShare && navigator.canShare({ files: fileObjects })) {
+      await navigator.share({
+        files: fileObjects,
+        title: tracks.length === 1 ? tracks[0].title : 'Audios Rodrix',
+        text: tracks.length === 1 ? `Audio: ${tracks[0].title}` : `Audios de Radio (${tracks.length})`
+      });
+      showToast('¡Compartido con éxito!', 'success');
+    } else {
+      showToast('Descargando audios para adjuntar...', 'info');
+      await downloadSelectedTracks(ids);
+      alert('Tu navegador no permite compartir archivos directamente por WhatsApp/Telegram. Los archivos MP3 se han descargado en tu dispositivo para que puedas adjuntarlos directamente.');
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Error sharing files:', err);
+      showToast('No se pudo compartir: ' + (err.message || 'error desconocido'), 'err');
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+    updateSelectedTracksState();
+  }
+}
+
+async function downloadSelectedTracks(trackIds = null) {
+  let ids = trackIds;
+  if (!ids) {
+    const checked = Array.from(document.querySelectorAll('.track-select-chk:checked'));
+    ids = checked.map(c => c.dataset.id);
+  }
+  if (!ids || !ids.length) {
+    showToast('Selecciona al menos un audio para descargar.', 'info');
+    return;
+  }
+
+  const tracks = ($('libList')._tracks || []).filter(t => ids.includes(t.id));
+  if (!tracks.length) return;
+
+  const btn = $('bulkDownloadBtn');
+  const originalHtml = btn ? btn.innerHTML : '';
+
+  try {
+    if (btn) btn.disabled = true;
+    showToast(`Iniciando descarga de ${tracks.length} audio(s)...`, 'info');
+
+    for (let i = 0; i < tracks.length; i++) {
+      const t = tracks[i];
+      if (btn) {
+        btn.innerHTML = `<i class="ph ph-spinner ph-spin" style="font-size:18px;"></i> <span>Descargando (${i + 1}/${tracks.length})...</span>`;
+      }
+      const safeTitle = (t.title || 'audio').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'audio';
+      const dlUrl = '/api/download/' + encodeURIComponent(t.id) + '/mp3';
+      triggerAudioDownload(dlUrl, `${safeTitle}.mp3`);
+      
+      if (i < tracks.length - 1) {
+        await new Promise(r => setTimeout(r, 600));
+      }
+    }
+    showToast(`¡Se han descargado ${tracks.length} audio(s) correctamente!`, 'success');
+  } catch (err) {
+    console.error('Error in batch download:', err);
+    showToast('Error en la descarga masiva', 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+    updateSelectedTracksState();
+  }
+}
+
+function showToast(msg, type = 'info') {
+  let container = $('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999999;display:flex;flex-direction:column;gap:8px;pointer-events:none;align-items:center;';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  const bg = type === 'success' ? '#10B981' : type === 'err' ? '#EF4444' : '#6366F1';
+  toast.style.cssText = `background:${bg};color:#fff;padding:10px 18px;border-radius:30px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:inline-flex;align-items:center;gap:8px;pointer-events:auto;animation:toastIn 0.3s ease forwards;`;
+  
+  let icon = 'ph-info';
+  if (type === 'success') icon = 'ph-check-circle';
+  if (type === 'err') icon = 'ph-warning-circle';
+  
+  toast.innerHTML = `<i class="ph ${icon}" style="font-size:16px;"></i> <span>${msg}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translate(-50%, 10px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => {
+      try { if (toast.parentNode) toast.parentNode.removeChild(toast); } catch(e){}
+    }, 300);
+  }, 3500);
 }
 
 let wavesurfer = null;
@@ -2456,6 +2720,12 @@ $('libList').addEventListener('click', async e => {
     }
     m.classList.toggle('open');
     e.stopPropagation();
+  } else if (act === 'rename') {
+    e.stopPropagation();
+    renameTrack(id);
+  } else if (act === 'share') {
+    e.stopPropagation();
+    shareSelectedTracks([id]);
   } else if (act === 'del') {
     if (!confirm('¿Eliminar esta pista de la librería?')) return;
     const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });
@@ -2472,6 +2742,30 @@ $('libList').addEventListener('click', async e => {
 });
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(x => x.classList.remove('open')));
 $('refreshLib').addEventListener('click', loadLibrary);
+
+if ($('selectAllTracksChk')) {
+  $('selectAllTracksChk').addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+    document.querySelectorAll('.track-select-chk').forEach(chk => {
+      chk.checked = isChecked;
+    });
+    updateSelectedTracksState();
+  });
+}
+
+$('libList').addEventListener('change', (e) => {
+  if (e.target.classList.contains('track-select-chk')) {
+    updateSelectedTracksState();
+  }
+});
+
+if ($('bulkShareBtn')) {
+  $('bulkShareBtn').addEventListener('click', () => shareSelectedTracks());
+}
+
+if ($('bulkDownloadBtn')) {
+  $('bulkDownloadBtn').addEventListener('click', () => downloadSelectedTracks());
+}
 
 /* ---------- Botones rápidos de exclusión de estilos ---------- */
 document.querySelectorAll('.btn-quick-excl').forEach(btn => {

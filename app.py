@@ -1341,6 +1341,24 @@ async def api_delete_from_library(task_id: str, current_user: str = Depends(get_
     save_library(new_library)
     return JSONResponse(content={"status": "success"})
 
+@app.post("/api/library/{task_id}/rename")
+async def api_rename_track(task_id: str, request: Request, current_user: str = Depends(get_current_user)):
+    data = await request.json()
+    new_title = data.get("title", "").strip()
+    if not new_title:
+        raise HTTPException(status_code=400, detail="El título no puede estar vacío.")
+    library = load_library()
+    found = False
+    for t in library:
+        if t.get("id") == task_id:
+            t["title"] = new_title
+            found = True
+            break
+    if not found:
+        raise HTTPException(status_code=404, detail="Track no encontrado.")
+    save_library(library)
+    return JSONResponse(content={"status": "success", "title": new_title})
+
 DICTIONARY_FILE = "dictionary.txt"
 
 @app.get("/api/dictionary")
