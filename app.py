@@ -798,17 +798,17 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if word and sound:
                 final_lyrics = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", sound, final_lyrics, flags=re.IGNORECASE)
                 log_msg(f"Pronunciación: '{word}' -> '{sound}'")
-    else:
-        # Determine prefix and vocal accent without forcing regional Mexican genre
-        if "mexican" in style.lower() or "mexicano" in style.lower():
+    if not is_instrumental:
+        # Determine prefix and vocal accent
+        if "argentin" in style.lower() or "pentecostal" in style.lower() or "avivamiento" in style.lower():
+            prefix = "[Language: Spanish]\n[Vocals: Coro de iglesia argentino, acento argentino rioplatense natural, canto congregacional fervoroso al unísono, sin acento caribeño ni centroamericano]\n"
+        elif "mexican" in style.lower() or "mexicano" in style.lower():
             prefix = "[Language: Spanish]\n[Vocals: Mexican Spanish accent]\n"
         elif "coro" in style.lower() or "choir" in style.lower():
-            prefix = "[Language: Spanish]\n[Vocals: Congregational church choir, natural Latin Spanish vocals]\n"
+            prefix = "[Language: Spanish]\n[Vocals: Coro congregacional de iglesia, acento argentino y latino natural, voces sinceras y apasionadas]\n"
         else:
-            prefix = "[Language: Spanish]\n[Vocals: Natural Latin American Spanish, clear tone, no castilian lisp]\n"
+            prefix = "[Language: Spanish]\n[Vocals: Natural Latin American Spanish, clear tone, no castilian lisp, no caribbean accent]\n"
         
-        # Ofuscar la letra con caracteres invisibles solo si el usuario lo pide (evita el filtro
-        # de copyright de la API, pero puede empeorar la pronunciación).
         if obfuscate and final_lyrics:
             log_msg("Ofuscando letra para evitar detección de copyright...")
             final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
@@ -877,14 +877,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, vintage Gretsch 4-piece acoustic drum kit, Charlie Watts style organic human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
-                "coros pentecostales": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, vintage Gretsch 4-piece acoustic drum kit, Charlie Watts style organic human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
-                "pentecostal": "joyful pentecostal church praise, steady 100 bpm tempo, short 4-second intro, vintage Gretsch 4-piece drum kit, Charlie Watts style organic swing pocket, dry crisp snare crack on 2 and 4, round warm kick, dark Zildjian cymbals, warm bass, rhythm guitars, congregational worship, no noisy drums",
-                "avivamiento": "joyful church revival praise, steady 100 bpm tempo, short 4-second intro, vintage acoustic 4-piece drums with Charlie Watts swing pocket, dry snare backbeat, round kick, warm bass guitar, rhythm guitar",
-                "coros de avivamiento": "joyful church revival praise choir, steady 100 bpm tempo, short 4-second intro, vintage acoustic 4-piece drums with Charlie Watts swing pocket, dry snare backbeat, round kick, warm bass guitar, rhythm guitar",
-                "coro pentecostal de avivamiento": "joyful pentecostal church praise choir, steady 100 bpm tempo, short 4-second musical intro, singing starts quickly, vintage Gretsch 4-piece acoustic drum kit, Charlie Watts style organic human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, punchy warm bass, clean rhythm guitar, acoustic guitar strum, congregational handclaps, no chaotic drums",
-                "alabanza rapida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, vintage 4-piece drums with Charlie Watts style pocket and swing, dry crisp snare, warm bass, rhythm guitar",
-                "alabanza rápida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, vintage 4-piece drums with Charlie Watts style pocket and swing, dry crisp snare, warm bass, rhythm guitar",
+                "coro pentecostal": "coro pentecostal tradicional de avivamiento argentino, steady 118 bpm tempo, traditional southern gospel march, square straight 4/4 rhythm, simple acoustic kick drum on 1 and 3, dry cutting Ludwig Supraphonic snare backbeat on 2 and 4 accompanied by loud congregational handclaps, root-fifth alternating acoustic bass, driving acoustic rhythm guitar strum, church tambourine, Argentine church choir in unison, passionate rioplatense Spanish vocals, no latin rhythm, no syncopation, no tumbao, no cumbia, no caribbean accent",
+                "coros pentecostales": "coro pentecostal tradicional de avivamiento argentino, steady 118 bpm tempo, traditional southern gospel march, square straight 4/4 rhythm, simple acoustic kick drum on 1 and 3, dry cutting Ludwig Supraphonic snare backbeat on 2 and 4 accompanied by loud congregational handclaps, root-fifth alternating acoustic bass, driving acoustic rhythm guitar strum, church tambourine, Argentine church choir in unison, passionate rioplatense Spanish vocals, no latin rhythm, no syncopation, no tumbao, no cumbia, no caribbean accent",
+                "pentecostal": "coro pentecostal tradicional argentino, steady 118 bpm tempo, traditional gospel march in straight 4/4 time, kick on 1 and 3, dry snare on 2 and 4 with loud church handclaps, root-fifth alternating bass, acoustic rhythm guitar, Argentine choir singing in unison, rioplatense accent, no latin rhythm, no syncopation, no cumbia",
+                "avivamiento": "coro de avivamiento pentecostal tradicional argentino, steady 118 bpm tempo, straight 4/4 gospel march rhythm, kick on 1 and 3, dry snare on 2 and 4 with congregational handclaps, root-fifth alternating bass, acoustic guitar, Argentine church choir, rioplatense accent, no latin rhythm",
+                "coros de avivamiento": "coro de avivamiento pentecostal tradicional argentino, steady 118 bpm tempo, straight 4/4 gospel march rhythm, kick on 1 and 3, dry snare on 2 and 4 with congregational handclaps, root-fifth alternating bass, acoustic guitar, Argentine church choir, rioplatense accent, no latin rhythm",
+                "coro pentecostal de avivamiento": "coro pentecostal tradicional de avivamiento argentino, steady 118 bpm tempo, traditional southern gospel march, square straight 4/4 rhythm, simple acoustic kick drum on 1 and 3, dry cutting Ludwig Supraphonic snare backbeat on 2 and 4 accompanied by loud congregational handclaps, root-fifth alternating acoustic bass, driving acoustic rhythm guitar strum, church tambourine, Argentine church choir in unison, passionate rioplatense Spanish vocals, no latin rhythm, no syncopation, no tumbao, no cumbia, no caribbean accent",
+                "alabanza rapida": "coro de alabanza pentecostal tradicional argentina, steady 118 bpm tempo, marcha 4/4 tradicional, bombo en 1 y 3, caja en 2 y 4 con palmas de iglesia, bajo alternado raiz-quinta, rasgueo acustico, coro argentino, sin ritmo latino",
+                "alabanza rápida": "coro de alabanza pentecostal tradicional argentina, steady 118 bpm tempo, marcha 4/4 tradicional, bombo en 1 y 3, caja en 2 y 4 con palmas de iglesia, bajo alternado raiz-quinta, rasgueo acustico, coro argentino, sin ritmo latino",
                 "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
@@ -1064,8 +1064,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
-            target_bpm = f"{custom_bpm:.1f} BPM" if custom_bpm else "100 BPM steady tempo"
-            genre_anchor = f"joyful Christian pentecostal praise choir, {target_bpm}, short 4-second musical intro, singing starts quickly, vintage Gretsch 4-piece acoustic drums, Charlie Watts style human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm bass, clean rhythm electric guitar, acoustic strum, handclaps, congregational worship, no cumbia, no chaotic drums, no heavy rock drums"
+            target_bpm = f"{custom_bpm:.1f} BPM" if custom_bpm else "118 BPM steady tempo"
+            genre_anchor = f"coro pentecostal tradicional de avivamiento argentino, {target_bpm}, traditional southern gospel march, square straight 4/4 rhythm, simple acoustic kick drum on 1 and 3, dry cutting Ludwig Supraphonic snare backbeat on 2 and 4 accompanied by loud congregational handclaps, root-fifth alternating acoustic bass, driving acoustic rhythm guitar strum, church tambourine on eighth notes, Argentine church choir singing in unison, passionate rioplatense Spanish vocals, no latin rhythm, no syncopation, no tumbao, no salsa, no cumbia, no caribbean rhythm, no caribbean accent"
         elif custom_bpm and custom_bpm < 100 and is_worship:
             # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
             genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
@@ -1081,12 +1081,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if "instrumental" not in style.lower():
                 style = style + ", instrumental, no vocals"
         else:
-            if "mexican" in style.lower() or "mexicano" in style.lower():
+            if "argentin" in style.lower() or "pentecostal" in style.lower() or "avivamiento" in style.lower():
+                vocal_tag = "Argentine church choir, rioplatense Spanish accent, passionate congregational singing, no caribbean accent, no central american accent"
+            elif "mexican" in style.lower() or "mexicano" in style.lower():
                 vocal_tag = "mexican spanish vocals"
             elif "coro" in style.lower() or "choir" in style.lower():
-                vocal_tag = "congregational choir, church choir, natural Spanish singing"
+                vocal_tag = "congregational church choir, Argentine Spanish singing"
             else:
-                vocal_tag = "clear natural Spanish vocals, neutral tone, no castilian lisp"
+                vocal_tag = "clear natural Spanish vocals, neutral tone, no castilian lisp, no caribbean accent"
             
             if "spanish vocals" not in style.lower() and "choir" not in style.lower():
                 style = f"{style}, {vocal_tag}"
@@ -1147,7 +1149,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     neg_tags_list.append(vals_anti)
 
             if is_pentecostal:
-                for pent_anti in ["chaotic drums", "heavy rock drums", "drum solos", "noisy drums", "loud crash cymbals", "long intro", "135 bpm", "fast tempo", "electronic drums", "digital triggers", "drum machine", "double bass drum", "blast beats", "overproduced drums"]:
+                for pent_anti in [
+                    "latin rhythm", "ritmo latino", "percusion latina", "latin percussion",
+                    "syncopation", "sincopa", "tumbao", "contratiempos latinos", "offbeat accents",
+                    "cumbia", "merengue", "salsa", "bachata", "reggaeton", "dembow", "tropical rhythm",
+                    "reggae skank", "ska", "caribbean accent", "acento caribeño", "acento centroamericano",
+                    "modismos caribeños", "caribbean vocals", "chaotic drums", "heavy rock drums",
+                    "drum solos", "noisy drums", "electronic drums", "digital triggers", "drum machine",
+                    "double bass drum", "blast beats", "overproduced drums", "latin groove"
+                ]:
                     neg_tags_list.append(pent_anti)
 
             if is_drum_solo:
@@ -1191,7 +1201,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if is_pentecostal:
-                for req_no in ["no chaotic drums", "no heavy rock drums", "no drum solos", "no cumbia"]:
+                for req_no in ["no latin rhythm", "no syncopation", "no cumbia", "no caribbean accent", "no tumbao", "no chaotic drums"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if active_critical:
