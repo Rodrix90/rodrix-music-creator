@@ -739,6 +739,74 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <textarea id="styleInput" required placeholder="Describe todo aquí: Voz como Luis Miguel, estilo pop energético mexicano, con guitarras eléctricas Stratocaster y mucho flanger..."></textarea>
           </div>
 
+        <!-- ASISTENTE DE ACORDES Y TABLATURA / CANCIONERO (COLAPSABLE) -->
+        <details class="adv" id="chordDetails" style="margin-bottom:12px;border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.04);border-radius:10px;padding:8px 12px">
+          <summary style="cursor:pointer;font-weight:700;color:#C4B5FD;display:flex;align-items:center;justify-content:space-between;list-style:none">
+            <span style="display:flex;align-items:center;gap:8px">
+              <i class="ph ph-guitar" style="font-size:18px;color:#A78BFA"></i>
+              <span>🎸 Asistente de Acordes, Tablatura & Cancionero</span>
+            </span>
+            <span class="badge" style="font-size:10px;background:rgba(139,92,246,0.2);color:#DDD6FE;border:1px solid rgba(139,92,246,0.4)">Opcional • Clic para desplegar</span>
+          </summary>
+          <div class="adv-body" style="margin-top:10px">
+            <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">
+              Pega aquí la tablatura, cancionero o letra con acordes arriba (LaCuerda, CifraClub o cifrado suelto). El sistema extraerá la armonía real para la banda y limpiará la letra para la voz sin desafinar.
+            </div>
+
+            <div class="field" style="margin-bottom:8px">
+              <div class="label" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+                <span>Tablatura / Acordes con Letra:</span>
+                <span style="font-size:10.5px;color:#A78BFA">Soporta C-D-E-F-G-A-B y Do-Re-Mi-Fa-Sol-La-Si</span>
+              </div>
+              <textarea id="chordInput" style="font-family:monospace;font-size:12px;line-height:1.45;min-height:130px;white-space:pre" placeholder="[Intro] D G D A&#10;&#10;D         Bm&#10;Hermano toma el arado&#10;G           A&#10;no mires hacia atrás&#10;&#10;[Coro]&#10;G     A     D&#10;Sigue fiel a Jesús"></textarea>
+            </div>
+
+            <!-- BARRA DE ACCIONES Y TRANSPOSICIÓN -->
+            <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.25);border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
+              <!-- Acciones de extracción -->
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" class="btn-sec" id="btnProcessChords" style="background:#7C3AED;color:#fff;border-color:#8B5CF6;padding:4px 10px;font-size:11.5px;font-weight:700">
+                  <i class="ph ph-lightning"></i> Procesar Armonía
+                </button>
+                <button type="button" class="btn-sec" id="btnSendCleanLyrics" style="padding:4px 10px;font-size:11.5px">
+                  <i class="ph ph-copy"></i> Pasar Letra Limpia al Box
+                </button>
+                <button type="button" class="btn-sec" id="btnInjectChordsStyle" style="padding:4px 10px;font-size:11.5px">
+                  <i class="ph ph-faders"></i> Inyectar al Estilo
+                </button>
+              </div>
+
+              <!-- Transposición de Tono -->
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:11px;color:var(--muted);font-weight:700">Tono:</span>
+                <button type="button" class="btn-sec" id="btnTransDown" style="padding:2px 8px;font-size:11px" title="Bajar 1 Semitono (♭)">♭ -1</button>
+                <span id="detectedKeyDisplay" style="padding:3px 8px;background:rgba(139,92,246,0.25);color:#E0E7FF;border:1px solid rgba(139,92,246,0.5);border-radius:6px;font-weight:700;font-size:11px;min-width:65px;text-align:center">Libre</span>
+                <button type="button" class="btn-sec" id="btnTransUp" style="padding:2px 8px;font-size:11px" title="Subir 1 Semitono (♯)">♯ +1</button>
+              </div>
+            </div>
+
+            <!-- RESUMEN VISUAL DETECTADO -->
+            <div id="chordSummaryBox" style="display:none;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:8px;padding:8px 10px;font-size:11.5px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+                <span style="color:#C4B5FD;font-weight:700"><i class="ph ph-music-notes"></i> Armonía Detectada:</span>
+                <span id="summaryKeyText" class="badge" style="background:#4C1D95;color:#E9D5FF;border-color:#7C3AED">Tonalidad: Re Mayor (D)</span>
+              </div>
+              <div id="summaryProgText" style="color:var(--text);margin-top:2px;font-size:11px;word-break:break-word">
+                <!-- Se llena dinámicamente con las progresiones -->
+              </div>
+              <div id="summaryBassText" style="color:#A78BFA;margin-top:3px;font-size:10.5px">
+                <!-- Se llena con notas de bajo invertidas si hay -->
+              </div>
+            </div>
+
+            <div style="margin-top:8px">
+              <label class="check" style="font-size:11px;color:var(--muted)">
+                <input type="checkbox" id="chkAutoApplyChords" checked> Sincronizar automáticamente tonalidad y acordes con la banda al generar
+              </label>
+            </div>
+          </div>
+        </details>
+
         <div class="field">
           <label class="label" for="lyricsInput">
             <span>Letra</span>
@@ -1714,6 +1782,334 @@ document.querySelectorAll('.rhythm-pill').forEach(pill => {
   });
 });
 
+/* ---------- ASISTENTE DE ACORDES, TABLATURA & CANCIONERO ---------- */
+const CHROMATIC_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const CHROMATIC_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+const LATIN_MAP = {
+  'do': 'C', 're': 'D', 'mi': 'E', 'fa': 'F', 'sol': 'G', 'la': 'A', 'si': 'B'
+};
+
+const NOTE_SPANISH_NAMES = {
+  'C': 'Do Mayor', 'C#': 'Do# Mayor', 'Db': 'Re♭ Mayor',
+  'D': 'Re Mayor', 'D#': 'Re# Mayor', 'Eb': 'Mi♭ Mayor',
+  'E': 'Mi Mayor', 'F': 'Fa Mayor', 'F#': 'Fa# Mayor', 'Gb': 'Sol♭ Mayor',
+  'G': 'Sol Mayor', 'G#': 'Sol# Mayor', 'Ab': 'La♭ Mayor',
+  'A': 'La Mayor', 'A#': 'La# Mayor', 'Bb': 'Si♭ Mayor', 'B': 'Si Mayor',
+  'Cm': 'Do menor', 'C#m': 'Do# menor', 'Dm': 'Re menor', 'D#m': 'Re# menor', 'Ebm': 'Mi♭ menor',
+  'Em': 'Mi menor', 'Fm': 'Fa menor', 'F#m': 'Fa# menor', 'Gm': 'Sol menor', 'G#m': 'Sol# menor',
+  'Am': 'La menor', 'A#m': 'La# menor', 'Bbm': 'Si♭ menor', 'Bm': 'Si menor'
+};
+
+function normalizeChordToken(token) {
+  let t = (token || '').trim();
+  t = t.replace(/^[(\[{]+|[)\]},;:]+$/g, '');
+  
+  for (const [lat, ang] of Object.entries(LATIN_MAP)) {
+    const reg = new RegExp('^' + lat + '([#b]?)(.*)$', 'i');
+    if (reg.test(t)) {
+      t = t.replace(reg, (match, acc, rest) => ang + (acc || '') + (rest || ''));
+      break;
+    }
+  }
+  if (t.includes('/')) {
+    const parts = t.split('/');
+    let slash = parts[1];
+    for (const [lat, ang] of Object.entries(LATIN_MAP)) {
+      const reg = new RegExp('^' + lat + '([#b]?)(.*)$', 'i');
+      if (reg.test(slash)) {
+        slash = slash.replace(reg, (match, acc, rest) => ang + (acc || '') + (rest || ''));
+        break;
+      }
+    }
+    t = parts[0] + '/' + slash;
+  }
+  return t;
+}
+
+function isChordToken(token) {
+  const norm = normalizeChordToken(token);
+  return /^([A-G][b#]?)(maj7|maj9|maj|min|m7b5|m7|m9|m|sus2|sus4|sus|dim|aug|add9|add2|6|7|9|11|13)?(?:\/([A-G][b#]?))?$/i.test(norm);
+}
+
+function transposeSingleChord(token, semitones) {
+  const norm = normalizeChordToken(token);
+  const m = norm.match(/^([A-G][b#]?)(maj7|maj9|maj|min|m7b5|m7|m9|m|sus2|sus4|sus|dim|aug|add9|add2|6|7|9|11|13)?(?:\/([A-G][b#]?))?$/i);
+  if (!m) return token;
+  
+  const root = m[1].toUpperCase();
+  const quality = m[2] || '';
+  const slash = m[3] ? m[3].toUpperCase() : null;
+
+  function shiftNote(note) {
+    let idx = CHROMATIC_SHARP.indexOf(note);
+    let useFlat = false;
+    if (idx === -1) {
+      idx = CHROMATIC_FLAT.indexOf(note);
+      useFlat = true;
+    }
+    if (idx === -1) return note;
+    let newIdx = (idx + semitones) % 12;
+    if (newIdx < 0) newIdx += 12;
+    return (useFlat && CHROMATIC_FLAT[newIdx] !== CHROMATIC_SHARP[newIdx]) ? CHROMATIC_FLAT[newIdx] : CHROMATIC_SHARP[newIdx];
+  }
+
+  const newRoot = shiftNote(root);
+  const newSlash = slash ? '/' + shiftNote(slash) : '';
+  return newRoot + quality + newSlash;
+}
+
+function transposeSongText(text, semitones) {
+  return text.split('\n').map(line => {
+    if (/^\[(intro|verso|estrofa|coro|chorus|puente|bridge|solo|outro|pre-coro)\]/i.test(line.trim())) {
+      return line.replace(/\b([A-G][b#]?(?:maj7|maj9|maj|min|m7b5|m7|m9|m|sus2|sus4|sus|dim|aug|add9|add2|6|7|9|11|13)?(?:\/[A-G][b#]?)?|(?:do|re|mi|fa|sol|la|si)[b#]?(?:maj7|maj|min|m7|m|sus4|sus|dim|aug|7|9)?(?:\/(?:do|re|mi|fa|sol|la|si)[b#]?)?)\b/gi, match => transposeSingleChord(match, semitones));
+    }
+    if (/\[([A-G][b#]?[^\]]*|(?:do|re|mi|fa|sol|la|si)[^\]]*)\]/i.test(line)) {
+      return line.replace(/\[([A-G][b#]?[^\]]*|(?:do|re|mi|fa|sol|la|si)[^\]]*)\]/gi, (match, p1) => {
+        if (isChordToken(p1)) return '[' + transposeSingleChord(p1, semitones) + ']';
+        return match;
+      });
+    }
+    const tokens = line.trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return line;
+    const chordCount = tokens.filter(isChordToken).length;
+    if (chordCount > 0 && (chordCount / tokens.length >= 0.5 || chordCount >= 2)) {
+      return line.replace(/\b([A-G][b#]?(?:maj7|maj9|maj|min|m7b5|m7|m9|m|sus2|sus4|sus|dim|aug|add9|add2|6|7|9|11|13)?(?:\/[A-G][b#]?)?|(?:do|re|mi|fa|sol|la|si)[b#]?(?:maj7|maj|min|m7|m|sus4|sus|dim|aug|7|9)?(?:\/(?:do|re|mi|fa|sol|la|si)[b#]?)?)\b/gi, match => transposeSingleChord(match, semitones));
+    }
+    return line;
+  }).join('\n');
+}
+
+function parseSongChordsAndLyrics(rawText) {
+  if (!rawText || !rawText.trim()) return { cleanLyrics: '', progressionText: '', detectedKey: '', spanishKey: '', sections: {}, bassInversions: [] };
+
+  const lines = rawText.split('\n');
+  const sections = {};
+  let currentSection = 'General';
+  const cleanLyricsLines = [];
+  const allChords = [];
+  const bassInversions = new Set();
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed) {
+      cleanLyricsLines.push('');
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(/^\[?(intro|verso|estrofa|coro|chorus|puente|bridge|solo|outro|pre-coro)[^\]:]*\]?:?/i);
+    if (sectionMatch) {
+      let secName = sectionMatch[1].toLowerCase();
+      if (secName.includes('intro')) secName = 'Intro';
+      else if (secName.includes('coro') || secName.includes('chorus')) secName = 'Coro';
+      else if (secName.includes('puente') || secName.includes('bridge')) secName = 'Puente';
+      else if (secName.includes('solo')) secName = 'Solo';
+      else if (secName.includes('outro')) secName = 'Outro';
+      else secName = 'Estrofa';
+      
+      currentSection = secName;
+      if (!sections[currentSection]) sections[currentSection] = [];
+      
+      cleanLyricsLines.push(`[${secName}]`);
+      
+      const afterTag = trimmed.substring(sectionMatch[0].length).trim();
+      if (afterTag) {
+        const tagTokens = afterTag.split(/\s+/).filter(Boolean);
+        tagTokens.forEach(tok => {
+          if (isChordToken(tok)) {
+            const ch = normalizeChordToken(tok);
+            sections[currentSection].push(ch);
+            allChords.push(ch);
+            if (ch.includes('/')) bassInversions.add(ch.split('/')[1]);
+          }
+        });
+      }
+      continue;
+    }
+
+    if (/\[([A-G][b#]?[^\]]*|(?:do|re|mi|fa|sol|la|si)[^\]]*)\]/i.test(trimmed)) {
+      if (!sections[currentSection]) sections[currentSection] = [];
+      const inlineChords = [];
+      const cleanLine = trimmed.replace(/\[([A-G][b#]?[^\]]*|(?:do|re|mi|fa|sol|la|si)[^\]]*)\]/gi, (match, p1) => {
+        if (isChordToken(p1)) {
+          const ch = normalizeChordToken(p1);
+          inlineChords.push(ch);
+          allChords.push(ch);
+          if (ch.includes('/')) bassInversions.add(ch.split('/')[1]);
+          return '';
+        }
+        return match;
+      });
+      inlineChords.forEach(c => sections[currentSection].push(c));
+      cleanLyricsLines.push(cleanLine.replace(/\s{2,}/g, ' ').trim());
+      continue;
+    }
+
+    const tokens = trimmed.split(/\s+/).filter(Boolean);
+    const validChords = tokens.filter(isChordToken);
+    const isChordLine = tokens.length > 0 && (validChords.length / tokens.length >= 0.55 || (validChords.length >= 2 && tokens.length <= validChords.length + 1));
+
+    if (isChordLine) {
+      if (!sections[currentSection]) sections[currentSection] = [];
+      validChords.forEach(c => {
+        const norm = normalizeChordToken(c);
+        sections[currentSection].push(norm);
+        allChords.push(norm);
+        if (norm.includes('/')) bassInversions.add(norm.split('/')[1]);
+      });
+    } else {
+      cleanLyricsLines.push(trimmed);
+    }
+  }
+
+  let detectedKey = 'D';
+  let detectedQuality = 'Major';
+  if (allChords.length > 0) {
+    const rootCounts = {};
+    allChords.forEach(c => {
+      const root = c.replace(/maj7|maj9|maj|min|m7b5|m7|m9|m|sus2|sus4|sus|dim|aug|add9|add2|6|7|9|11|13|\/.*$/i, '').toUpperCase();
+      rootCounts[root] = (rootCounts[root] || 0) + 1;
+    });
+    const firstChord = allChords[0].toUpperCase();
+    const isFirstMinor = /m|min/i.test(allChords[0]) && !/maj/i.test(allChords[0]);
+    let topRoot = Object.keys(rootCounts).reduce((a, b) => rootCounts[a] > rootCounts[b] ? a : b, Object.keys(rootCounts)[0]);
+    
+    const firstRoot = firstChord.replace(/maj7|maj|min|m7|m|sus|\/.*$/i, '');
+    if (rootCounts[firstRoot] && rootCounts[firstRoot] >= Math.max(1, (rootCounts[topRoot] || 0) - 1)) {
+      topRoot = firstRoot;
+      if (isFirstMinor) detectedQuality = 'Minor';
+    }
+    detectedKey = topRoot;
+  }
+
+  const keyFull = `${detectedKey} ${detectedQuality}`;
+  const spanishKey = (NOTE_SPANISH_NAMES[detectedKey + (detectedQuality === 'Minor' ? 'm' : '')] || `${detectedKey} ${detectedQuality}`);
+
+  const progParts = [];
+  for (const [sec, chList] of Object.entries(sections)) {
+    if (chList.length > 0) {
+      const flow = chList.filter((c, idx) => idx === 0 || c !== chList[idx - 1]);
+      progParts.push(`${sec}: ${flow.slice(0, 8).join(' - ')}`);
+    }
+  }
+
+  return {
+    cleanLyrics: cleanLyricsLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+    progressionText: progParts.join(' | '),
+    detectedKey: keyFull,
+    spanishKey: spanishKey,
+    sections: sections,
+    bassInversions: Array.from(bassInversions)
+  };
+}
+
+let currentHarmonicAnalysis = null;
+
+function runHarmonicAnalysis() {
+  const txt = $('chordInput') ? $('chordInput').value.trim() : '';
+  if (!txt) {
+    if ($('chordSummaryBox')) $('chordSummaryBox').style.display = 'none';
+    if ($('detectedKeyDisplay')) $('detectedKeyDisplay').textContent = 'Libre';
+    currentHarmonicAnalysis = null;
+    return;
+  }
+
+  currentHarmonicAnalysis = parseSongChordsAndLyrics(txt);
+
+  if ($('chordSummaryBox')) $('chordSummaryBox').style.display = 'block';
+  if ($('summaryKeyText')) $('summaryKeyText').textContent = `Tonalidad: ${currentHarmonicAnalysis.spanishKey} (${currentHarmonicAnalysis.detectedKey})`;
+  if ($('detectedKeyDisplay')) $('detectedKeyDisplay').textContent = currentHarmonicAnalysis.detectedKey.replace(' Major', '').replace(' Minor', 'm');
+
+  if ($('summaryProgText')) {
+    $('summaryProgText').textContent = currentHarmonicAnalysis.progressionText ? `🎼 Secuencia: ${currentHarmonicAnalysis.progressionText}` : 'Sin progresión clara detectada.';
+  }
+
+  if ($('summaryBassText')) {
+    if (currentHarmonicAnalysis.bassInversions.length > 0) {
+      $('summaryBassText').style.display = 'block';
+      $('summaryBassText').innerHTML = `🎸 <b>Bajos de paso / Inversiones:</b> Notas ${currentHarmonicAnalysis.bassInversions.join(', ')} activas en el bajo.`;
+    } else {
+      $('summaryBassText').style.display = 'none';
+    }
+  }
+}
+
+if ($('btnProcessChords')) {
+  $('btnProcessChords').addEventListener('click', () => {
+    runHarmonicAnalysis();
+    if (currentHarmonicAnalysis && currentHarmonicAnalysis.detectedKey) {
+      showToast(`Armonía procesada: ${currentHarmonicAnalysis.spanishKey}. Progresión lista.`, 'ok');
+    } else {
+      showToast('Pega una tablatura o acordes para analizar.', 'info');
+    }
+  });
+}
+
+if ($('btnSendCleanLyrics')) {
+  $('btnSendCleanLyrics').addEventListener('click', () => {
+    if (!currentHarmonicAnalysis) runHarmonicAnalysis();
+    if (currentHarmonicAnalysis && currentHarmonicAnalysis.cleanLyrics) {
+      $('lyricsInput').value = currentHarmonicAnalysis.cleanLyrics;
+      showToast('Letra limpia sin acordes transferida al box de Letra.', 'ok');
+      logLine('Letra limpia importada desde la tablatura.');
+    } else {
+      showToast('No se detectó letra para transferir en el texto.', 'info');
+    }
+  });
+}
+
+if ($('btnInjectChordsStyle')) {
+  $('btnInjectChordsStyle').addEventListener('click', () => {
+    if (!currentHarmonicAnalysis) runHarmonicAnalysis();
+    if (currentHarmonicAnalysis && (currentHarmonicAnalysis.detectedKey || currentHarmonicAnalysis.progressionText)) {
+      const harmPrompt = [];
+      if (currentHarmonicAnalysis.detectedKey) harmPrompt.push(`key of ${currentHarmonicAnalysis.detectedKey}`);
+      if (currentHarmonicAnalysis.progressionText) harmPrompt.push(`chord progression: ${currentHarmonicAnalysis.progressionText}`);
+      if (currentHarmonicAnalysis.bassInversions.length > 0) {
+        harmPrompt.push(`bassline voice leading with inverted bass notes (${currentHarmonicAnalysis.bassInversions.join(', ')})`);
+      }
+      harmPrompt.push('tight musical accompaniment following harmonic chord changes');
+
+      let cur = $('styleInput').value.trim();
+      const harmStr = harmPrompt.join(', ');
+      $('styleInput').value = cur ? `${harmStr}, ${cur}` : harmStr;
+      showToast('Progresión y tonalidad inyectadas en el Prompt de estilo.', 'ok');
+      logLine(`Armonía agregada al prompt: ${harmStr}`);
+    } else {
+      showToast('Pega primero una tablatura o acordes.', 'info');
+    }
+  });
+}
+
+if ($('btnTransDown')) {
+  $('btnTransDown').addEventListener('click', () => {
+    const curText = $('chordInput').value;
+    if (!curText.trim()) return;
+    $('chordInput').value = transposeSongText(curText, -1);
+    runHarmonicAnalysis();
+    showToast(`Transpuesto -1 Semitono (${currentHarmonicAnalysis?.spanishKey || ''})`, 'info');
+  });
+}
+
+if ($('btnTransUp')) {
+  $('btnTransUp').addEventListener('click', () => {
+    const curText = $('chordInput').value;
+    if (!curText.trim()) return;
+    $('chordInput').value = transposeSongText(curText, +1);
+    runHarmonicAnalysis();
+    showToast(`Transpuesto +1 Semitono (${currentHarmonicAnalysis?.spanishKey || ''})`, 'info');
+  });
+}
+
+if ($('chordInput')) {
+  $('chordInput').addEventListener('input', () => {
+    if (window._chordDebounce) clearTimeout(window._chordDebounce);
+    window._chordDebounce = setTimeout(runHarmonicAnalysis, 600);
+  });
+}
+
 /* ---------- VOZ EN OFF & PREDICACIÓN ---------- */
 let selectedBg = 'none';
 document.querySelectorAll('.ambient-card').forEach(card => {
@@ -2504,8 +2900,36 @@ $('genForm').addEventListener('submit', async e => {
     finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
   }
 
+  // Sincronización Armónica de Acordes / Tablatura
+  if ($('chkAutoApplyChords') && $('chkAutoApplyChords').checked && $('chordInput') && $('chordInput').value.trim()) {
+    if (!currentHarmonicAnalysis) runHarmonicAnalysis();
+    if (currentHarmonicAnalysis && (currentHarmonicAnalysis.detectedKey || currentHarmonicAnalysis.progressionText)) {
+      const harmPrompt = [];
+      if (currentHarmonicAnalysis.detectedKey && !finalStyle.toLowerCase().includes('key of')) {
+        harmPrompt.push(`key of ${currentHarmonicAnalysis.detectedKey}`);
+      }
+      if (currentHarmonicAnalysis.progressionText && !finalStyle.toLowerCase().includes('chord progression')) {
+        harmPrompt.push(`chord progression: ${currentHarmonicAnalysis.progressionText}`);
+      }
+      if (currentHarmonicAnalysis.bassInversions && currentHarmonicAnalysis.bassInversions.length > 0) {
+        harmPrompt.push(`bassline voice leading with bass notes (${currentHarmonicAnalysis.bassInversions.join(', ')})`);
+      }
+      harmPrompt.push('tight musical accompaniment following chord changes');
+      finalStyle = `${harmPrompt.join(', ')}, ${finalStyle}`;
+      logLine(`Armonía sincronizada: ${currentHarmonicAnalysis.spanishKey} | ${currentHarmonicAnalysis.progressionText}`);
+    }
+  }
+
   fd.append('style', finalStyle);
-  const userLyrics = $('lyricsInput').value.trim();
+  let userLyrics = $('lyricsInput').value.trim();
+
+  // Si el usuario no puso letra en el box principal pero la tablatura tenía letra limpia, usarla automáticamente
+  if (!userLyrics && currentHarmonicAnalysis && currentHarmonicAnalysis.cleanLyrics) {
+    userLyrics = currentHarmonicAnalysis.cleanLyrics;
+    $('lyricsInput').value = userLyrics;
+    logLine('Usando letra limpia extraída automáticamente de la tablatura.');
+  }
+
   let lyricsToSend = '';
   if (instr) {
     lyricsToSend = userLyrics ? (userLyrics.toLowerCase().includes('[instrumental]') ? userLyrics : `[Instrumental]\n\n${userLyrics}`) : '[Instrumental]';

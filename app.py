@@ -809,6 +809,31 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         else:
             prefix = "[Language: Spanish]\n[Vocals: Natural Latin American Spanish, clear tone, no castilian lisp, no caribbean accent]\n"
         
+        # Limpieza inteligente defensiva: Si la letra contiene líneas de acordes sueltos (ej: D Bm G A),
+        # extraerlos para enriquecer el estilo armónico y evitar que la voz intente cantar las notas.
+        if final_lyrics:
+            raw_lines = final_lyrics.split("\n")
+            cleaned_lines = []
+            extracted_chords = []
+            chord_token_pattern = re.compile(r'^[A-G][b#]?(?:maj7|maj|min|m7|m|sus4|sus|dim|aug|7|9)?(?:\/[A-G][b#]?)?$', re.IGNORECASE)
+            for line in raw_lines:
+                stripped = line.strip()
+                if stripped.startswith("[") and stripped.endswith("]"):
+                    cleaned_lines.append(line)
+                    continue
+                words = stripped.split()
+                if words and all(chord_token_pattern.match(w) for w in words) and len(words) >= 1 and len(words) <= 8:
+                    extracted_chords.extend(words)
+                else:
+                    # Si tiene acordes inline tipo [D], removerlos de la letra
+                    inline_cleaned = re.sub(r'\[[A-G][b#]?[^\]]*\]', '', line)
+                    cleaned_lines.append(inline_cleaned)
+            if extracted_chords and "chord progression" not in style.lower():
+                prog_str = " - ".join(extracted_chords[:12])
+                style = f"chord progression: {prog_str}, {style}"
+                log_msg(f"Acordes detectados y sincronizados en la mezcla: {prog_str}")
+            final_lyrics = "\n".join(cleaned_lines)
+
         if obfuscate and final_lyrics:
             log_msg("Ofuscando letra para evitar detección de copyright...")
             final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
