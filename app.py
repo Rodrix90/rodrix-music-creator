@@ -768,7 +768,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
     }
 
     is_instrumental = not include_lyrics or (lyrics.strip().lower() == "[instrumental]")
-    if is_instrumental:
+    if is_instrumental and "(instrumental)" not in title.lower():
         title = f"{title} (Instrumental)"
     
     final_lyrics = lyrics if not is_instrumental else "[Instrumental]"
@@ -874,6 +874,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "alabanza rápida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
                 "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
+                "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+                "piano de oración": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+                "piano devocional": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
                 "himno solemne tradicional": "traditional sacred hymn, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo, classical sacred Christian hymn",
                 "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, driving 125 bpm, punchy acoustic rock drum kit with solid backbeat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, dotted eighth-note delay lead guitar riff, modern synth arpeggio, inspiring youth worship leader and anthemic chorus",
                 "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat",
@@ -1023,10 +1026,13 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             bpm_tag = ""
 
         # Detect Christian / Worship / Devotional context for genre anchoring
-        is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian"])
+        is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian", "oracion", "oración"])
         is_fast_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "alabanza rapida", "alabanza rápida"])
+        is_solo_piano_prayer = any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
 
-        if custom_bpm and custom_bpm < 100:
+        if is_solo_piano_prayer:
+            genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, solo acoustic concert grand piano with deep lush hall reverb, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
+        elif custom_bpm and custom_bpm < 100:
             # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
             genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
         elif is_fast_pentecostal and (not custom_bpm or custom_bpm >= 110):
@@ -1100,6 +1106,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 for mandatory_anti_cumbia in ["cumbia", "ritmo cumbia", "grupero", "cumbia sonidera", "accordion", "acordeon", "guiro", "timbales", "latin rhythm", "tropical rhythm", "reggaeton"]:
                     neg_tags_list.append(mandatory_anti_cumbia)
 
+            if is_solo_piano_prayer:
+                for solo_anti in ["drums", "drum kit", "percussion", "bass", "electric guitar", "synths", "brass", "orchestra", "strings", "cumbia", "singing", "vocals", "voices"]:
+                    neg_tags_list.append(solo_anti)
+
             # Deduplicate negative tags & filter out artist names prohibited by Udio API
             banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
             seen = set()
@@ -1115,6 +1125,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
             if is_worship:
                 for req_no in ["no cumbia", "no accordion", "no latin rhythm"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
+            if is_solo_piano_prayer:
+                for req_no in ["no drums", "no vocals", "no singing", "no electric guitar", "no bass", "no synths"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if active_critical:

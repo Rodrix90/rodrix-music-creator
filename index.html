@@ -376,6 +376,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="preset-desc">Pop/Rock Hillsong & Elevation 125 BPM, batería punchy, overdrive cálido, sintes.</div>
                 <span class="preset-tag">Pop/Rock • 125 BPM</span>
               </div>
+              <div class="preset-card" data-preset="piano_oracion">
+                <div class="preset-head">
+                  <div class="preset-title"><i class="ph ph-piano-keys"></i><span>Piano de Oración</span></div>
+                  <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
+                </div>
+                <div class="preset-desc">Música de fondo para orar. Piano de cola acústico con reverb profunda, tempo lento meditativo, 100% instrumental sin voces.</div>
+                <span class="preset-tag" style="color:#60A5FA;background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.25);">Solo Piano • Reverb • Instrumental</span>
+              </div>
             </div>
           </div>
 
@@ -1389,19 +1397,28 @@ function forceAppRefresh() {
 const WORSHIP_PRESETS = {
   pentecostal: {
     style: "coro pentecostal de avivamiento, straight 4/4 driving rock drum beat with energetic snare backbeat, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, joyful congregational worship, handclaps, high tempo 135 bpm",
-    exclude: "cumbia, ritmo cumbia, grupero, norteño, accordion, guiro, cumbia sonidera, latin ritmics, tropical rhythm, reggaeton beat, dembow, latin percussion, salsa, montuno, bachata, bajo sexto, corrido, autotune, distortion"
+    exclude: "cumbia, ritmo cumbia, grupero, norteño, accordion, guiro, cumbia sonidera, latin ritmics, tropical rhythm, reggaeton beat, dembow, latin percussion, salsa, montuno, bachata, bajo sexto, corrido, autotune, distortion",
+    instrumental: false
   },
   adoracion: {
     style: "adoración íntima, gentle 68 bpm, warm Fender Rhodes Mark I, atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, soft strings",
-    exclude: "cumbia, reggaeton, dembow, fast tempo, uptempo, heavy drums, distortion, autotune, robotic voice, brass horns, accordion, polka"
+    exclude: "cumbia, reggaeton, dembow, fast tempo, uptempo, heavy drums, distortion, autotune, robotic voice, brass horns, accordion, polka",
+    instrumental: false
   },
   himno: {
     style: "himno solemne tradicional, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo",
-    exclude: "drum kit, trap beat, 808 bass, electric guitars, synth pop, autotune, robotic voice, dance music, cumbia, reggaeton, rock"
+    exclude: "drum kit, trap beat, 808 bass, electric guitars, synth pop, autotune, robotic voice, dance music, cumbia, reggaeton, rock",
+    instrumental: false
   },
   juvenil: {
     style: "alabanza juvenil pop/rock, modern Christian praise, driving 125 bpm, punchy rock drum kit with solid backbeat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, dotted eighth delay lead guitar, modern synths",
-    exclude: "cumbia, accordion, acordeon, norteño, grupero, mariachi, brass horns, dembow, reggaeton, bachata, salsa, autotune"
+    exclude: "cumbia, accordion, acordeon, norteño, grupero, mariachi, brass horns, dembow, reggaeton, bachata, salsa, autotune",
+    instrumental: false
+  },
+  piano_oracion: {
+    style: "piano de oracion, solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, sacred Christian prayer background, slow 60 bpm, reverent, solo piano instrumental",
+    exclude: "vocals, singing, voice, speech, words, lyrics, choir, drums, drum kit, percussion, bass guitar, synthesizer, electric guitar, acoustic guitar, brass, horns, strings orchestra, beat, groove, rhythm, cumbia, uptempo",
+    instrumental: true
   }
 };
 
@@ -1419,6 +1436,32 @@ document.querySelectorAll('.preset-card').forEach(card => {
     if (p) {
       $('styleInput').value = p.style;
       $('excludeInput').value = p.exclude;
+      if (typeof p.instrumental === 'boolean') {
+        $('instrumental').checked = p.instrumental;
+        $('lyricsInput').disabled = p.instrumental;
+        $('lyricsInput').style.opacity = p.instrumental ? 0.4 : 1;
+        if (p.instrumental) {
+          $('lyricsInput').placeholder = "[Instrumental - Solo Piano de Cola con Reverb]";
+        } else {
+          $('lyricsInput').placeholder = "[Verse]\nEscribe aquí tu letra...";
+        }
+      }
+      if (card.dataset.preset === 'piano_oracion') {
+        const pianoGear = document.querySelector('.gear-card[data-gear="yamaha cfx grand"]');
+        if (pianoGear && typeof activeGear !== 'undefined') {
+          document.querySelectorAll('.gear-card').forEach(c => {
+            c.classList.remove('active');
+            const icon = c.querySelector('.btn-gear-toggle i');
+            if (icon) icon.className = 'ph ph-plus';
+          });
+          activeGear.clear();
+          pianoGear.classList.add('active');
+          activeGear.add('yamaha cfx grand');
+          const icon = pianoGear.querySelector('.btn-gear-toggle i');
+          if (icon) icon.className = 'ph ph-check';
+          if ($('rackChainText')) $('rackChainText').textContent = 'YAMAHA CFX GRAND';
+        }
+      }
       logLine(`Preset activado: ${card.querySelector('.preset-head span').textContent}`);
     }
   });
