@@ -253,6 +253,19 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .gear-card.active .btn-gear-toggle{background:var(--accent);border-color:var(--accent);color:#fff}
 .rack-summary{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
+/* ---------- SELECTOR DE RITMO & BANDA ---------- */
+.rhythm-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:6px}
+.rhythm-pill{background:#181824;border:1px solid var(--border);border-radius:10px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);transition:.2s;user-select:none}
+.rhythm-pill i{font-size:16px;color:#A5B4FC}
+.rhythm-pill:hover{border-color:var(--accent);color:var(--text);background:rgba(90,103,216,.1)}
+.rhythm-pill.active{border-color:var(--accent);background:rgba(90,103,216,.24);color:#fff;box-shadow:0 0 12px rgba(90,103,216,.3)}
+.band-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.band-chip{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11.5px;color:var(--text);display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;transition:.15s}
+.band-chip:hover{border-color:var(--accent);background:rgba(90,103,216,.12)}
+.band-chip input{accent-color:var(--accent);cursor:pointer;margin:0}
+.btn-extend-action{background:rgba(90,103,216,.18);color:#C7D2FE;border:1px solid rgba(90,103,216,.35);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;transition:.2s}
+.btn-extend-action:hover{background:var(--accent);color:#fff}
+
 /* ---------- VOZ EN OFF & MINISTRACIÓN ---------- */
 .drop-zone{border:2px dashed var(--border);border-radius:12px;padding:24px 20px;text-align:center;cursor:pointer;background:rgba(0,0,0,.25);transition:.2s;display:flex;flex-direction:column;align-items:center;gap:10px}
 .drop-zone:hover,.drop-zone.dragover{border-color:var(--ok);background:rgba(52,211,153,.08)}
@@ -664,6 +677,57 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               </div>
             </div>
           </details>
+
+          <!-- SELECTOR DE PATRÓN RÍTMICO Y BANDA -->
+          <div class="field" style="margin-top:4px">
+            <div class="label">
+              <span>🥁 Base Rítmica & Métrica (Garantía de Tiempo)</span>
+              <span style="font-size:10.5px;color:var(--muted)">Fija la métrica exacta para que la batería nunca falle</span>
+            </div>
+            <div class="rhythm-bar" id="rhythmBar">
+              <div class="rhythm-pill active" data-rhythm="gospel_2step">
+                <i class="ph ph-metronome"></i>
+                <div>
+                  <div style="color:var(--text);font-weight:700">Gospel 2-Step</div>
+                  <div style="font-size:10px">Bombo 1-3 • Caja 2-4 (118 BPM)</div>
+                </div>
+              </div>
+              <div class="rhythm-pill" data-rhythm="worship_ballad">
+                <i class="ph ph-hands-praying"></i>
+                <div>
+                  <div style="color:var(--text);font-weight:700">Balada 4/4</div>
+                  <div style="font-size:10px">Rock suave • Adoración (68 BPM)</div>
+                </div>
+              </div>
+              <div class="rhythm-pill" data-rhythm="waltz_34">
+                <i class="ph ph-crown"></i>
+                <div>
+                  <div style="color:var(--text);font-weight:700">Vals 3/4</div>
+                  <div style="font-size:10px">Compás ternario • Strauss</div>
+                </div>
+              </div>
+              <div class="rhythm-pill" data-rhythm="libre">
+                <i class="ph ph-sliders"></i>
+                <div>
+                  <div style="color:var(--text);font-weight:700">Personalizado</div>
+                  <div style="font-size:10px">Libre según tu prompt</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- INSTRUMENTACIÓN DE BANDA REQUERIDA -->
+            <div style="margin-top:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">🎸 Banda Activa en la Mezcla:</div>
+              <div class="band-strip" id="bandStrip">
+                <label class="band-chip"><input type="checkbox" id="chkDrums" checked> 🥁 Batería Acústica al Frente</label>
+                <label class="band-chip"><input type="checkbox" id="chkBass" checked> 🎸 Bajo Raíz/Quinta</label>
+                <label class="band-chip"><input type="checkbox" id="chkGuitar" checked> 🪕 Guitarra Acústica Rasgueada</label>
+                <label class="band-chip"><input type="checkbox" id="chkPiano"> 🎹 Piano de Cola</label>
+                <label class="band-chip"><input type="checkbox" id="chkOrgan"> 🎵 Órgano Hammond B3</label>
+                <label class="band-chip" style="border-color:rgba(239,68,68,0.3);color:#FCA5A5"><input type="checkbox" id="chkNoLatin" checked> 🚫 Cero Percusión Latina</label>
+              </div>
+            </div>
+          </div>
 
           <div class="field">
             <label class="label" for="styleInput">Prompt de estilo y voz</label>
@@ -1481,28 +1545,27 @@ document.querySelectorAll('.preset-card').forEach(card => {
           $('lyricsInput').placeholder = "[Verse]\nEscribe aquí tu letra...";
         }
       }
-      if (card.dataset.preset === 'drum_solo') {
-        $('lyricsInput').disabled = false;
-        $('lyricsInput').style.opacity = 1;
-        $('lyricsInput').value = p.lyrics;
-        $('titleInput').value = 'Century 1994 Drum Solo Showcase (3 Min)';
-        $('styleInfluence').value = 85;
-        $('siVal').textContent = '85%';
-        $('weirdness').value = 20;
-        $('wVal').textContent = '20%';
-        const drumGear = document.querySelector('.gear-card[data-gear="century 1994 rock kit"]');
-        if (drumGear && typeof activeGear !== 'undefined') {
-          document.querySelectorAll('.gear-card').forEach(c => {
-            c.classList.remove('active');
-            const icon = c.querySelector('.btn-gear-toggle i');
-            if (icon) icon.className = 'ph ph-plus';
-          });
-          activeGear.clear();
-          drumGear.classList.add('active');
-          activeGear.add('century 1994 rock kit');
-          const icon = drumGear.querySelector('.btn-gear-toggle i');
-          if (icon) icon.className = 'ph ph-check';
-          if ($('rackChainText')) $('rackChainText').textContent = 'CENTURY 1994 ROCK KIT';
+      if (card.dataset.preset === 'pentecostal') {
+        const rPill = document.querySelector('.rhythm-pill[data-rhythm="gospel_2step"]');
+        if (rPill) {
+          document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
+          rPill.classList.add('active');
+        }
+        if ($('chkDrums')) $('chkDrums').checked = true;
+        if ($('chkBass')) $('chkBass').checked = true;
+        if ($('chkGuitar')) $('chkGuitar').checked = true;
+        if ($('chkNoLatin')) $('chkNoLatin').checked = true;
+      } else if (card.dataset.preset === 'adoracion') {
+        const rPill = document.querySelector('.rhythm-pill[data-rhythm="worship_ballad"]');
+        if (rPill) {
+          document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
+          rPill.classList.add('active');
+        }
+      } else if (card.dataset.preset === 'vals_vienes') {
+        const rPill = document.querySelector('.rhythm-pill[data-rhythm="waltz_34"]');
+        if (rPill) {
+          document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
+          rPill.classList.add('active');
         }
       }
       if (card.dataset.preset === 'piano_oracion') {
@@ -1584,6 +1647,30 @@ $('applyGearBtn').addEventListener('click', () => {
   $('styleInput').value = cur;
   $('studioGearDetails').open = false;
   logLine(`Equipamiento añadido al prompt de estilo: ${gearStr}`);
+});
+
+/* ---------- SELECTOR DE RITMO & MÉTRICA ---------- */
+document.querySelectorAll('.rhythm-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const r = pill.dataset.rhythm;
+    if (r === 'gospel_2step') {
+      if ($('chkDrums')) $('chkDrums').checked = true;
+      if ($('chkBass')) $('chkBass').checked = true;
+      if ($('chkGuitar')) $('chkGuitar').checked = true;
+      if ($('chkNoLatin')) $('chkNoLatin').checked = true;
+      showToast('Patrón fijado: Gospel 2-Step (Bombo 1-3, Caja 2-4 a 118 BPM)', 'info');
+    } else if (r === 'worship_ballad') {
+      if ($('chkDrums')) $('chkDrums').checked = true;
+      if ($('chkNoLatin')) $('chkNoLatin').checked = true;
+      showToast('Patrón fijado: Balada 4/4 suave (68 BPM)', 'info');
+    } else if (r === 'waltz_34') {
+      if ($('chkDrums')) $('chkDrums').checked = false;
+      if ($('chkNoLatin')) $('chkNoLatin').checked = true;
+      showToast('Patrón fijado: Vals Vienés 3/4', 'info');
+    }
+  });
 });
 
 /* ---------- VOZ EN OFF & PREDICACIÓN ---------- */
@@ -2341,7 +2428,42 @@ $('genForm').addEventListener('submit', async e => {
   e.preventDefault();
   const fd = new FormData();
   const instr = $('instrumental').checked;
-  fd.append('style', $('styleInput').value.trim());
+
+  // Enriquecer con Selector de Ritmo y Banda
+  let finalStyle = $('styleInput').value.trim();
+  const activeRhythmPill = document.querySelector('.rhythm-pill.active');
+  const rhythmType = activeRhythmPill ? activeRhythmPill.dataset.rhythm : 'libre';
+  
+  if (rhythmType === 'gospel_2step' && !finalStyle.toLowerCase().includes('gospel 2-step')) {
+    finalStyle = `driving acoustic drum kit rhythm, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat, gospel 2-step straight 4/4 rhythm, steady 118 bpm, ${finalStyle}`;
+  } else if (rhythmType === 'worship_ballad' && !finalStyle.toLowerCase().includes('ballad')) {
+    finalStyle = `sacred Christian worship ballad, gentle 68 bpm, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, ${finalStyle}`;
+  } else if (rhythmType === 'waltz_34' && !finalStyle.toLowerCase().includes('waltz') && !finalStyle.toLowerCase().includes('vals')) {
+    finalStyle = `grand Viennese waltz hymn in 3/4 time, authentic Viennese oom-pah-pah 3/4 lilt, Strauss style, ${finalStyle}`;
+  }
+
+  // Banda activa
+  const bandExtras = [];
+  if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
+    bandExtras.push('prominent acoustic drum kit with crisp snare crack');
+  }
+  if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass')) {
+    bandExtras.push('root-fifth alternating bass line');
+  }
+  if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
+    bandExtras.push('crisp acoustic rhythm guitar strumming');
+  }
+  if ($('chkPiano') && $('chkPiano').checked && !finalStyle.toLowerCase().includes('piano')) {
+    bandExtras.push('acoustic grand piano');
+  }
+  if ($('chkOrgan') && $('chkOrgan').checked && !finalStyle.toLowerCase().includes('organ')) {
+    bandExtras.push('Hammond B3 organ');
+  }
+  if (bandExtras.length > 0) {
+    finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
+  }
+
+  fd.append('style', finalStyle);
   const userLyrics = $('lyricsInput').value.trim();
   let lyricsToSend = '';
   if (instr) {
@@ -2353,7 +2475,14 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('title', $('titleInput').value.trim());
   fd.append('include_lyrics', !instr);
   fd.append('bypass_copyright', $('bypass').checked);
-  fd.append('exclude_styles', $('excludeInput').value);
+
+  // Exclusiones activas
+  let finalExclude = $('excludeInput').value.trim();
+  if ($('chkNoLatin') && $('chkNoLatin').checked) {
+    const antiLatin = 'ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa';
+    finalExclude = finalExclude ? `${finalExclude}, ${antiLatin}` : antiLatin;
+  }
+  fd.append('exclude_styles', finalExclude);
   fd.append('vocal_gender', gender);
   fd.append('weirdness', $('weirdness').value);
   fd.append('style_influence', $('styleInfluence').value);
@@ -2450,6 +2579,7 @@ function renderLibrary(tracks){
           <button class="btn-play-sm" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
           <button class="icon-circle-btn share-wa" data-act="share" title="Enviar MP3 a WhatsApp / Telegram"><i class="ph ph-whatsapp-logo"></i></button>
           <button class="icon-circle-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
+          <button class="icon-circle-btn" data-act="extend" title="Extender canción (Alargar duración)"><i class="ph ph-arrows-out-line-horizontal"></i></button>
           <button class="icon-circle-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
           <button class="icon-circle-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
           <div class="menu">
@@ -2458,9 +2588,11 @@ function renderLibrary(tracks){
             <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (Studio Sin Comprimir)</a>
             <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
             <div style="border-top:1px solid var(--border);margin:3px 0"></div>
-            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Stems Pro</div>
-            <a href="#" data-stem="vocals" data-id="${esc(t.id)}"><i class="ph ph-microphone"></i> Voz aislada (&lt; 15MB)</a>
-            <a href="#" data-stem="instrumental" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> Instrumental (&lt; 15MB)</a>
+            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Separación de Pistas (Stems)</div>
+            <a href="#" data-stem="instrumental" data-id="${esc(t.id)}" title="Descargar pista instrumental para cantar en vivo"><i class="ph ph-waveform"></i> Pista Instrumental / Karaoke</a>
+            <a href="#" data-stem="vocals" data-id="${esc(t.id)}" title="Descargar sólo las voces"><i class="ph ph-microphone"></i> Coro / Voces Aisladas</a>
+            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
+            <a href="#" data-act-menu="extend" data-id="${esc(t.id)}" style="color:#A5B4FC"><i class="ph ph-arrows-out-line-horizontal"></i> Extender pista en el creador</a>
           </div>
         </div>
       </div>
@@ -2882,6 +3014,26 @@ $('libList').addEventListener('click', async e => {
     return;
   }
 
+  const menuExtend = e.target.closest('a[data-act-menu="extend"]');
+  if (menuExtend) {
+    e.preventDefault();
+    const id = menuExtend.dataset.id;
+    const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
+    if (t.title) $('titleInput').value = `${t.title} (Extendido)`;
+    if (t.style) $('styleInput').value = t.style;
+    if (t.lyrics && t.lyrics !== '[Instrumental]') {
+      $('lyricsInput').value = `${t.lyrics}\n\n[Chorus]\n(Añade aquí tu nueva estrofa o coro para extender)`;
+    }
+    setActive('nav-crear');
+    $('view-crear').style.display = 'flex';
+    $('view-vozenoff').style.display = 'none';
+    $('view-libreria').style.display = 'none';
+    if ($('advanced')) $('advanced').open = true;
+    document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
+    showToast(`Parámetros de "${t.title}" cargados para extender.`, 'info');
+    return;
+  }
+
   const btn = e.target.closest('[data-act]');
   if (!btn) { return; }
   const card = btn.closest('.track'); const id = card.dataset.id;
@@ -2959,6 +3111,23 @@ $('libList').addEventListener('click', async e => {
   } else if (act === 'share') {
     e.stopPropagation();
     shareSelectedTracks([id]);
+  } else if (act === 'extend') {
+    e.stopPropagation();
+    const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
+    if (t.title) $('titleInput').value = `${t.title} (Extendido)`;
+    if (t.style) $('styleInput').value = t.style;
+    if (t.lyrics && t.lyrics !== '[Instrumental]') {
+      $('lyricsInput').value = `${t.lyrics}\n\n[Chorus]\n(Añade aquí tu nueva estrofa o coro para extender)`;
+    }
+    // Switch to create view and open advanced reference audio
+    setActive('nav-crear');
+    $('view-crear').style.display = 'flex';
+    $('view-vozenoff').style.display = 'none';
+    $('view-libreria').style.display = 'none';
+    if ($('advanced')) $('advanced').open = true;
+    document.querySelector('.center').scrollTo({top:0,behavior:'smooth'});
+    showToast(`Parámetros de "${t.title}" cargados listos para extender duración.`, 'info');
+    logLine(`Modo Extender: Canción "${t.title}" preparada en el panel para continuarla.`);
   } else if (act === 'del') {
     if (!confirm('¿Eliminar esta pista de la librería?')) return;
     const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });
