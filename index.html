@@ -3133,6 +3133,25 @@ function renderScannedHymns() {
         <div>⏱️ <b>Tempo:</b> ${esc(h.tempo || 'Andante')}</div>
       </div>
 
+      ${h.audio_skeleton ? `
+      <!-- INDICADOR DE MELODÍA ORIGINAL DISPONIBLE -->
+      <div style="margin-top:8px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i class="ph ph-music-notes" style="color:#34D399;font-size:18px"></i>
+          <div>
+            <div style="font-weight:700;font-size:12px;color:#A7F3D0">Melodía Original del Himnario Detectada (12/8 a 54 BPM)</div>
+            <div style="font-size:11px;color:var(--muted)">Guía de notas y tempo lento lista para condicionar a la IA a cantar la melodía exacta.</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <audio id="audioSkeleton_${i}" src="${h.audio_skeleton}" preload="none"></audio>
+          <button type="button" class="btn-sec" onclick="togglePlaySkeleton(${i})" style="padding:4px 10px;font-size:11px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">
+            <i class="ph ph-speaker-high" id="iconSkeleton_${i}"></i> <span>Escuchar notas reales</span>
+          </button>
+        </div>
+      </div>
+      ` : ''}
+
       <!-- ARREGLO E INSTRUMENTACIÓN PERSONALIZADA PARA ESTE HIMNO (PRESERVA COMPÁS Y TEMPO) -->
       <div style="margin-top:8px">
         <label style="font-size:11px;color:#A78BFA;font-weight:600">Arreglo e Instrumentación (Mantiene compás ${esc(h.meter)} y tempo original):</label>
@@ -3193,6 +3212,21 @@ function renderScannedHymns() {
   `).join('');
 }
 
+window.togglePlaySkeleton = function(idx) {
+  const audio = $(`audioSkeleton_${idx}`);
+  const icon = $(`iconSkeleton_${idx}`);
+  if (!audio) return;
+  if (audio.paused) {
+    document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
+    audio.play();
+    if (icon) icon.className = 'ph ph-pause';
+    audio.onended = () => { if (icon) icon.className = 'ph ph-speaker-high'; };
+  } else {
+    audio.pause();
+    if (icon) icon.className = 'ph ph-speaker-high';
+  }
+};
+
 window.removeScannedHymn = function(idx) {
   scannedHymnsData.splice(idx, 1);
   renderScannedHymns();
@@ -3200,12 +3234,17 @@ window.removeScannedHymn = function(idx) {
 
 function buildHymnStylePrompt(orig, preset) {
   const meter = orig.meter || '4/4';
-  const tempo = orig.tempo || 'Andante';
+  let tempo = orig.tempo || 'Andante';
   const key = orig.key || 'Do Mayor';
   const chords = orig.chords || '';
 
+  // En compás 12/8 devocional tradicional, forzar tempo lento y sereno para evitar aceleraciones:
+  if (meter === '12/8' || (orig.title && (orig.title.includes('297') || orig.title.toLowerCase().includes('quiero verle')))) {
+    tempo = 'slow reverent 12/8 compound meter, slow andante gospel hymn tempo, 54 BPM dotted-quarter note, relaxed peaceful sway, unhurried sacred pacing, zero rush, solemn and peaceful';
+  }
+
   // REGLA FUNDAMENTAL: El compás, tempo, armonía y tonalidad de la partitura NUNCA se alteran:
-  const rhythmConstraint = `strictly in ${meter} time signature (${meter} meter), tempo ${tempo}, key of ${key}, chord progression ${chords}, flawless rhythmic adherence to ${meter}`;
+  const rhythmConstraint = `strictly in ${meter} time signature (${meter} meter), tempo ${tempo}, key of ${key}, chord progression ${chords}, flawless rhythmic adherence to ${meter}, unhurried reverent pacing`;
 
   let instr = '';
   switch (preset) {
@@ -3283,7 +3322,7 @@ window.generateSingleHymn = async function(idx) {
     if (gProgPhase) gProgPhase.textContent = phaseText;
   }
 
-  updateProgressUI(10, `Iniciando síntesis en compás ${orig.meter || '4/4'}...`);
+  updateProgressUI(10, `Iniciando síntesis en compás ${orig.meter || '4/4'} (54 BPM)...`);
   showToast(`Iniciando generación de "${title}"...`, 'info');
 
   const fd = new FormData();
@@ -3291,16 +3330,24 @@ window.generateSingleHymn = async function(idx) {
   fd.append('lyrics', lyrics);
   fd.append('style', style);
   fd.append('vocal_gender', globalVocal === 'female' ? 'female' : (globalVocal === 'male' ? 'male' : 'random'));
-  fd.append('ignore_audio', 'true');
   fd.append('include_lyrics', globalVocal === 'instrumental' ? 'false' : 'true');
   fd.append('bypass_copyright', 'false');
-  fd.append('exclude_styles', 'cumbia, trap, electronic, metal, distortion, latin percussion');
-  fd.append('weirdness', '25');
+  fd.append('weirdness', '20');
   fd.append('style_influence', '50');
-  fd.append('audio_influence', '0');
   fd.append('model', 'chirp-v5');
   fd.append('pronunciation', '');
   fd.append('obfuscate', 'false');
+
+  if (orig.skeleton_file) {
+    fd.append('skeleton_file', orig.skeleton_file);
+    fd.append('ignore_audio', 'false');
+    fd.append('audio_influence', '65');
+    fd.append('exclude_styles', 'fast tempo, uptempo, rushing, hurried, dance beat, fast swing, pop drums, electronic, cumbia, trap, syncopation');
+  } else {
+    fd.append('ignore_audio', 'true');
+    fd.append('audio_influence', '0');
+    fd.append('exclude_styles', 'cumbia, trap, electronic, metal, distortion, latin percussion');
+  }
 
   try {
     const res = await fetch('/api/transform', { method: 'POST', body: fd });

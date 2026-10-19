@@ -244,6 +244,7 @@ async def transform_audio(
     model: str = Form("chirp-v4-5"),
     pronunciation: str = Form(""),
     obfuscate: bool = Form(False),
+    skeleton_file: str = Form(""),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
@@ -256,6 +257,13 @@ async def transform_audio(
     if audio and not ignore_audio:
         audio_content = await audio.read()
         audio_filename = audio.filename
+    elif skeleton_file and os.path.exists(skeleton_file):
+        with open(skeleton_file, "rb") as sf:
+            audio_content = sf.read()
+        audio_filename = os.path.basename(skeleton_file)
+        ignore_audio = False
+        if audio_influence < 50:
+            audio_influence = 65
 
     import uuid
     task_id = str(uuid.uuid4())
@@ -2107,9 +2115,11 @@ HYMNAL_KNOWLEDGE_BASE = {
         "english_title": "O I Want to See Him",
         "key": "Ab Major (La bemol Mayor)",
         "meter": "12/8",
-        "tempo": "Andante Gospel (94 BPM)",
+        "tempo": "Lento Devocional (54 BPM en compás 12/8)",
         "chords": "Ab - Db - Ab - Eb7 - C7 - Fm - Bb7",
-        "style_tags": "sacred traditional Christian gospel hymn, 12/8 gospel swing rhythm, key of Ab Major, uplifting church choir singing in unison, grand piano and organ accompaniment, reverent and joyful",
+        "style_tags": "slow reverent traditional Christian worship hymn, strictly in 12/8 compound meter, slow andante gospel hymn tempo, 54 BPM dotted-quarter note, key of Ab Major, uplifting church choir singing in unison, grand Vienna Philharmonic orchestral strings and piano, unhurried sacred pacing, zero rush, faithful to hymn 297 melody",
+        "audio_skeleton": "/assets/skeletons/hymn_297.mp3",
+        "skeleton_file": "assets/skeletons/hymn_297.mp3",
         "lyrics": """[Verse 1]
 Voy feliz al dulce hogar, por fe en Jesús,
 Y luchando a traer almas a la luz;
@@ -2291,7 +2301,9 @@ def extract_score_metadata(filename: str, content: bytes) -> dict:
                 "tempo": hdata["tempo"],
                 "chords": hdata["chords"],
                 "lyrics": hdata["lyrics"],
-                "suggested_style": hdata["style_tags"]
+                "suggested_style": hdata["style_tags"],
+                "audio_skeleton": hdata.get("audio_skeleton", ""),
+                "skeleton_file": hdata.get("skeleton_file", "")
             }
             
     # 2. Si es MusicXML / XML:
@@ -2321,7 +2333,9 @@ def extract_score_metadata(filename: str, content: bytes) -> dict:
 
     # 3. Fallback inteligente para imágenes de partituras (incluyendo escaneos como 297):
     clean_name = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").title()
-    if "297" in clean_name or "297" in fname_lower or "c7db9a4c" in fname_lower or "quiero verle" in fname_lower:
+    if ("297" in clean_name or "297" in fname_lower or 
+        "c7db9a4c" in fname_lower or "170530fc" in fname_lower or 
+        "quiero verle" in fname_lower or "want to see him" in fname_lower):
         h = HYMNAL_KNOWLEDGE_BASE["297"]
         return {
             "id": str(uuid.uuid4())[:8],
@@ -2332,7 +2346,9 @@ def extract_score_metadata(filename: str, content: bytes) -> dict:
             "tempo": h["tempo"],
             "chords": h["chords"],
             "lyrics": h["lyrics"],
-            "suggested_style": h["style_tags"]
+            "suggested_style": h["style_tags"],
+            "audio_skeleton": h.get("audio_skeleton", ""),
+            "skeleton_file": h.get("skeleton_file", "")
         }
 
     return {
@@ -2394,22 +2410,34 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
         vocal_gender = h.get("vocal_gender", "male")
         exclude_styles = h.get("exclude_styles", "cumbia, trap, electronic, metal, distortion")
         
+        audio_content = None
+        audio_filename = None
+        ignore_audio = True
+        audio_influence = 0
+        sk_path = h.get("skeleton_file")
+        if sk_path and os.path.exists(sk_path):
+            with open(sk_path, "rb") as f_sk:
+                audio_content = f_sk.read()
+            audio_filename = os.path.basename(sk_path)
+            ignore_audio = False
+            audio_influence = 65
+
         try:
             await run_transform_task(
                 task_id=task_id,
                 style=style,
                 lyrics=lyrics,
                 title=title,
-                audio_content=None,
-                audio_filename=None,
-                ignore_audio=True,
+                audio_content=audio_content,
+                audio_filename=audio_filename,
+                ignore_audio=ignore_audio,
                 include_lyrics=True,
                 bypass_copyright=False,
                 exclude_styles=exclude_styles,
                 vocal_gender=vocal_gender,
                 weirdness=25,
                 style_influence=50,
-                audio_influence=0,
+                audio_influence=audio_influence,
                 model=model,
                 pronunciation="",
                 obfuscate=False
