@@ -1458,7 +1458,7 @@ const WORSHIP_PRESETS = {
     instrumental: false
   },
   drum_solo: {
-    style: "pure acoustic drum solo, isolated drum kit sound showcase, steady 90 bpm unhurried groove, Century 1994 Rock Kit, clean spacious audiophile drum test, pristine studio acoustics, dynamic hi-hat accents, crisp 14 snare rimshots and ghost notes, gradual progressive tom descent through 10 12 14 rack toms to 16 floor tom with Remo Hydraulic Ebony deep low thud, distinct 20 Meinl Raker ride bell pings, balanced 16 Paiste 302 crash accents, unhurried spacious groove, no other instruments, pure solo drums only",
+    style: "percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, steady 90 bpm unhurried groove, Century 1994 drum kit, clean spacious audiophile drum test, pristine studio acoustics, dynamic hi-hat accents, crisp 14 snare rimshots and ghost notes, gradual progressive tom descent through 10 12 14 rack toms to 16 floor tom with Remo Hydraulic Ebony deep low thud, distinct 20 Meinl Raker ride bell pings, balanced 16 Paiste 302 crash accents, unhurried spacious groove, dry room acoustics, zero melodic instruments, unaccompanied percussion",
     exclude: "guitar, electric guitar, acoustic guitar, guitars, bass, bass guitar, piano, keyboards, keyboard, organ, synth, synthesizer, strings, orchestra, brass, horns, vocals, singing, voice, voices, choir, backing track, melody, chords, harmony, song rhythm, full band, lead guitar, heavy metal, blast beats, double bass speed, chaotic drumming",
     instrumental: true,
     lyrics: `[Part 1: 0:00 - 0:20 | Drum Warm-up - Kick Drum and Tight Closed Hi-Hat]
@@ -1519,6 +1519,10 @@ document.querySelectorAll('.preset-card').forEach(card => {
         $('lyricsInput').style.opacity = 1;
         $('lyricsInput').value = p.lyrics;
         $('titleInput').value = 'Century 1994 Drum Solo Showcase (3 Min)';
+        $('styleInfluence').value = 85;
+        $('siVal').textContent = '85%';
+        $('weirdness').value = 20;
+        $('wVal').textContent = '20%';
         const drumGear = document.querySelector('.gear-card[data-gear="century 1994 rock kit"]');
         if (drumGear && typeof activeGear !== 'undefined') {
           document.querySelectorAll('.gear-card').forEach(c => {

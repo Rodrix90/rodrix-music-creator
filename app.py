@@ -1191,23 +1191,28 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if active_critical:
                 key_bans_str = ", ".join(active_critical)
 
-            # Combine style: Anchor + Key bans + Style
-            combined_parts = [p for p in [genre_anchor, key_bans_str, style] if p]
-            style = ", ".join(combined_parts)
-            style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            # For drum solos, DO NOT put words like 'guitars' or 'bass' in the positive style string
+            if is_drum_solo:
+                # Remove any accidental mention of guitars, bass, melody, or rock band from positive style
+                clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', style, flags=re.IGNORECASE)
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, zero melodic instruments, unaccompanied percussion"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            else:
+                combined_parts = [p for p in [genre_anchor, key_bans_str, style] if p]
+                style = ", ".join(combined_parts)
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
-            # 2. Bracket exclusion meta at top of prompt/lyrics:
-            exclude_header = f"[Exclude: {', '.join(dedup_neg[:12])}]\n"
-            if genre_anchor:
-                exclude_header += f"[Genre: {genre_anchor}]\n"
-            final_lyrics = exclude_header + final_lyrics
-            
             neg_final_str = ", ".join(dedup_neg)
             log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
         else:
-            if genre_anchor:
+            if genre_anchor and not is_drum_solo:
                 style = f"{genre_anchor}, {style}"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
+
+        # Compute weights
+        actual_style_weight = 0.85 if is_drum_solo else round(style_influence / 100.0, 2)
+        actual_weirdness = 0.20 if is_drum_solo else round(weirdness / 100.0, 2)
 
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
@@ -1220,16 +1225,16 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
+                "tags": style,
                 "title": title,
                 "make_instrumental": is_instrumental,
-                "style_weight": round(style_influence / 100.0, 2),
+                "style_weight": actual_style_weight,
                 "audio_weight": round(audio_influence / 100.0, 2),
-                "weirdness_constraint": round(weirdness / 100.0, 2)
+                "weirdness_constraint": actual_weirdness
             }
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
             if neg_final_str:
-                payload["tags"] = neg_final_str
                 payload["negative_tags"] = neg_final_str
                 payload["negative_prompt"] = neg_final_str
                 payload["exclude_styles"] = neg_final_str
@@ -1243,16 +1248,16 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "custom_mode": True,
                 "prompt": final_lyrics,
                 "style": style,
+                "tags": style,
                 "title": title,
                 "make_instrumental": is_instrumental,
                 "model": model,
-                "style_weight": round(style_influence / 100.0, 2),
-                "weirdness_constraint": round(weirdness / 100.0, 2)
+                "style_weight": actual_style_weight,
+                "weirdness_constraint": actual_weirdness
             }
             if vocal_gender in ["male", "female"]:
                 payload["gender"] = vocal_gender
             if neg_final_str:
-                payload["tags"] = neg_final_str
                 payload["negative_tags"] = neg_final_str
                 payload["negative_prompt"] = neg_final_str
                 payload["exclude_styles"] = neg_final_str
