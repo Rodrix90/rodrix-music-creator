@@ -864,14 +864,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, clean acoustic church drum kit with steady 4/4 backbeat on 2 and 4, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
-                "coros pentecostales": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, clean acoustic church drum kit with steady 4/4 backbeat on 2 and 4, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
-                "pentecostal": "joyful pentecostal church praise, steady 100 bpm tempo, short 4-second intro, clean acoustic church drum kit with steady 4/4 backbeat, warm bass, rhythm guitars, congregational worship, no noisy drums",
-                "avivamiento": "joyful church revival praise, steady 100 bpm tempo, short 4-second intro, clean church drums with steady backbeat, warm bass guitar, rhythm guitar",
-                "coros de avivamiento": "joyful church revival praise choir, steady 100 bpm tempo, short 4-second intro, clean church drums with steady backbeat, warm bass guitar, rhythm guitar",
-                "coro pentecostal de avivamiento": "joyful pentecostal church praise choir, steady 100 bpm tempo, short 4-second musical intro, singing starts quickly, clean acoustic church drum kit with steady 4/4 beat, warm snare backbeat on 2 and 4, punchy warm bass, clean rhythm guitar, acoustic guitar strum, congregational handclaps, no chaotic drums",
-                "alabanza rapida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, clean acoustic church drums with steady backbeat, warm bass, rhythm guitar",
-                "alabanza rápida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, clean acoustic church drums with steady backbeat, warm bass, rhythm guitar",
+                "coro pentecostal": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, vintage Gretsch 4-piece acoustic drum kit, Charlie Watts style organic human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
+                "coros pentecostales": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, vintage Gretsch 4-piece acoustic drum kit, Charlie Watts style organic human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
+                "pentecostal": "joyful pentecostal church praise, steady 100 bpm tempo, short 4-second intro, vintage Gretsch 4-piece drum kit, Charlie Watts style organic swing pocket, dry crisp snare crack on 2 and 4, round warm kick, dark Zildjian cymbals, warm bass, rhythm guitars, congregational worship, no noisy drums",
+                "avivamiento": "joyful church revival praise, steady 100 bpm tempo, short 4-second intro, vintage acoustic 4-piece drums with Charlie Watts swing pocket, dry snare backbeat, round kick, warm bass guitar, rhythm guitar",
+                "coros de avivamiento": "joyful church revival praise choir, steady 100 bpm tempo, short 4-second intro, vintage acoustic 4-piece drums with Charlie Watts swing pocket, dry snare backbeat, round kick, warm bass guitar, rhythm guitar",
+                "coro pentecostal de avivamiento": "joyful pentecostal church praise choir, steady 100 bpm tempo, short 4-second musical intro, singing starts quickly, vintage Gretsch 4-piece acoustic drum kit, Charlie Watts style organic human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, punchy warm bass, clean rhythm guitar, acoustic guitar strum, congregational handclaps, no chaotic drums",
+                "alabanza rapida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, vintage 4-piece drums with Charlie Watts style pocket and swing, dry crisp snare, warm bass, rhythm guitar",
+                "alabanza rápida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, vintage 4-piece drums with Charlie Watts style pocket and swing, dry crisp snare, warm bass, rhythm guitar",
                 "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
@@ -1041,7 +1041,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
             target_bpm = f"{custom_bpm:.1f} BPM" if custom_bpm else "100 BPM steady tempo"
-            genre_anchor = f"joyful Christian pentecostal praise choir, {target_bpm}, short 4-second musical intro, singing starts quickly, clean acoustic church drums with steady respectful 4/4 backbeat on 2 and 4, warm bass, clean rhythm electric guitar, acoustic strum, handclaps, congregational worship, no cumbia, no chaotic drums, no heavy rock drums"
+            genre_anchor = f"joyful Christian pentecostal praise choir, {target_bpm}, short 4-second musical intro, singing starts quickly, vintage Gretsch 4-piece acoustic drums, Charlie Watts style human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm bass, clean rhythm electric guitar, acoustic strum, handclaps, congregational worship, no cumbia, no chaotic drums, no heavy rock drums"
         elif custom_bpm and custom_bpm < 100:
             # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
             genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
@@ -1123,7 +1123,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     neg_tags_list.append(vals_anti)
 
             if is_pentecostal:
-                for pent_anti in ["chaotic drums", "heavy rock drums", "drum solos", "noisy drums", "loud crash cymbals", "long intro", "135 bpm", "fast tempo"]:
+                for pent_anti in ["chaotic drums", "heavy rock drums", "drum solos", "noisy drums", "loud crash cymbals", "long intro", "135 bpm", "fast tempo", "electronic drums", "digital triggers", "drum machine", "double bass drum", "blast beats", "overproduced drums"]:
                     neg_tags_list.append(pent_anti)
 
             # Deduplicate negative tags & filter out artist names prohibited by Udio API
@@ -1152,7 +1152,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if is_pentecostal:
-                for req_no in ["no chaotic drums", "no heavy rock drums", "no cumbia"]:
+                for req_no in ["no chaotic drums", "no heavy rock drums", "no drum solos", "no cumbia"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if active_critical:
