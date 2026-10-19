@@ -771,7 +771,18 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
     if is_instrumental and "(instrumental)" not in title.lower():
         title = f"{title} (Instrumental)"
     
-    final_lyrics = lyrics if not is_instrumental else "[Instrumental]"
+    # Preservar estructura de compases y secciones en temas instrumentales para duraciones largas
+    if is_instrumental:
+        cleaned_lyrics = lyrics.strip() if lyrics else ""
+        if cleaned_lyrics and cleaned_lyrics.lower() != "[instrumental]":
+            if "[instrumental]" not in cleaned_lyrics.lower():
+                final_lyrics = f"[Instrumental]\n\n{cleaned_lyrics}"
+            else:
+                final_lyrics = cleaned_lyrics
+        else:
+            final_lyrics = "[Instrumental]"
+    else:
+        final_lyrics = lyrics
 
     # Correcciones de pronunciación: una por línea con formato "palabra=como suena"
     if pronunciation.strip() and not is_instrumental and final_lyrics:
@@ -782,9 +793,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if word and sound:
                 final_lyrics = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", sound, final_lyrics, flags=re.IGNORECASE)
                 log_msg(f"Pronunciación: '{word}' -> '{sound}'")
-
-    if is_instrumental:
-        final_lyrics = "[Instrumental]"
     else:
         # Determine prefix and vocal accent without forcing regional Mexican genre
         if "mexican" in style.lower() or "mexicano" in style.lower():
@@ -897,9 +905,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "dw collector's maple": "DW Collector's Series maple drum kit, punchy kick drum, resonant snare with crack, warm balanced toms",
                 "ludwig classic 70s": "vintage 1970s Ludwig Classic drum kit, deep warm wooden tone, fat vintage snare with ring",
                 "yamaha recording custom": "Yamaha Recording Custom birch drum kit, clean punchy attack, perfectly controlled studio drum resonance",
-                "century 1994": "dense punchy aggressive 1994 rock acoustic drum mix, 1994 Century wood shell kit, 10 12 14 rack and 16 floor toms with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront kick and snare compression, raw powerful 1994 rock aesthetic",
-                "century 1994 rock kit": "dense punchy aggressive 1994 rock acoustic drum mix, 1994 Century wood shell kit, 10 12 14 rack and 16 floor toms with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront kick and snare compression, raw powerful 1994 rock aesthetic",
-                "century wood shell": "dense punchy aggressive 1994 rock acoustic drum mix, 1994 Century wood shell kit, 10 12 14 rack and 16 floor toms with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront kick and snare compression, raw powerful 1994 rock aesthetic",
+                "century 1994": "1994 Century acoustic wood shell drum kit, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+                "century 1994 rock kit": "1994 Century acoustic wood shell drum kit, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+                "century wood shell": "1994 Century acoustic wood shell drum kit, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
                 # Bajos
                 "fender jazz bass 1975": "1975 Fender Jazz Bass with active pickups, growling midrange bite, articulate fingerstyle clarity",
                 "fender precision 1962": "1962 Fender Precision Bass, deep punchy round low-end, classic Motown and vintage rock bass tone",
@@ -1033,24 +1041,31 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             bpm_tag = ""
 
         # Detect Christian / Worship / Devotional context for genre anchoring
-        is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian", "oracion", "oración"])
-        is_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "coro pentecostal", "coros pentecostales"])
-        is_solo_piano_prayer = any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
-        is_vals_vienes = any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
+        is_drum_solo = any(w in style.lower() for w in [
+            "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
+            "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
+            "pure drums", "drum test", "drum sound test"
+        ])
+        is_worship = not is_drum_solo and any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian", "oracion", "oración"])
+        is_pentecostal = not is_drum_solo and any(w in style.lower() for w in ["pentecostal", "avivamiento", "coro pentecostal", "coros pentecostales"])
+        is_solo_piano_prayer = not is_drum_solo and (any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"])))
+        is_vals_vienes = not is_drum_solo and any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
 
-        if is_solo_piano_prayer:
+        if is_drum_solo:
+            genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 bpm unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
+        elif is_solo_piano_prayer:
             genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, solo acoustic concert grand piano with deep lush hall reverb, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
             target_bpm = f"{custom_bpm:.1f} BPM" if custom_bpm else "100 BPM steady tempo"
             genre_anchor = f"joyful Christian pentecostal praise choir, {target_bpm}, short 4-second musical intro, singing starts quickly, vintage Gretsch 4-piece acoustic drums, Charlie Watts style human swing pocket, dry crisp Ludwig Supraphonic snare crack on 2 and 4, round warm 22-inch kick drum thud, tight expressive dark Zildjian hi-hat, warm bass, clean rhythm electric guitar, acoustic strum, handclaps, congregational worship, no cumbia, no chaotic drums, no heavy rock drums"
-        elif custom_bpm and custom_bpm < 100:
+        elif custom_bpm and custom_bpm < 100 and is_worship:
             # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
             genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
         elif is_worship:
             genre_anchor = f"sacred Christian worship hymn, {bpm_tag or 'straight 4/4 rhythm'}, clean acoustic and electric instruments, church acoustic, no cumbia"
-        elif bpm_tag:
+        elif bpm_tag and not is_drum_solo:
             genre_anchor = bpm_tag
         else:
             genre_anchor = ""
@@ -1129,6 +1144,17 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 for pent_anti in ["chaotic drums", "heavy rock drums", "drum solos", "noisy drums", "loud crash cymbals", "long intro", "135 bpm", "fast tempo", "electronic drums", "digital triggers", "drum machine", "double bass drum", "blast beats", "overproduced drums"]:
                     neg_tags_list.append(pent_anti)
 
+            if is_drum_solo:
+                for drum_anti in [
+                    "guitar", "electric guitar", "acoustic guitar", "guitars", "electric guitars",
+                    "bass", "bass guitar", "piano", "keyboard", "keyboards", "organ", "synth",
+                    "synthesizer", "strings", "orchestra", "brass", "horns", "vocals", "singing",
+                    "voice", "voices", "choir", "backing track", "melody", "chords", "harmony",
+                    "song rhythm", "full band", "lead guitar", "heavy metal", "blast beats",
+                    "double bass speed", "chaotic drumming"
+                ]:
+                    neg_tags_list.append(drum_anti)
+
             # Deduplicate negative tags & filter out artist names prohibited by Udio API
             banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
             seen = set()
@@ -1142,6 +1168,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             # Build direct key bans that MUST be front-loaded in style (e.g. no accordion, no cumbia, no norteño)
             critical_instruments = ["accordion", "bajo sexto", "cumbia", "norteño", "corrido", "grupero", "polka", "distortion", "autotune"]
             active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
+            if is_drum_solo:
+                for req_no in ["no guitars", "no bass", "no piano", "no synths", "no vocals", "no melody", "no chords"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
             if is_worship:
                 for req_no in ["no cumbia", "no accordion", "no latin rhythm"]:
                     if req_no not in active_critical:
