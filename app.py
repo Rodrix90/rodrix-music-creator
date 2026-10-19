@@ -816,6 +816,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             final_lyrics = prefix + final_lyrics
         
     upload_url = None
+    backup_upload_url = None
     temp_file_path = None
     bypassed_file_path = None
     
@@ -845,11 +846,22 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 target_upload_file = temp_file_path
                 log_msg("Usando audio original limpio (sin modulación de huella acústica).")
                 
-            log_msg("Subiendo MP3 a servidor temporal para obtener URL pública...")
-            upload_url = await upload_to_uguu_async(target_upload_file)
+            log_msg("Subiendo MP3 a CDN de alta velocidad (Catbox) para evitar demoras/timeouts...")
+            upload_url = await upload_to_catbox_async(target_upload_file)
             if not upload_url:
-                log_msg("ERROR: No se pudo subir el archivo de audio a Uguu.")
+                log_msg("Catbox no disponible, usando servidor alternativo (Uguu)...")
+                upload_url = await upload_to_uguu_async(target_upload_file)
+            else:
+                # Opcional: obtener URL de respaldo en Uguu por si Udio tiene problemas con Catbox
+                try:
+                    backup_upload_url = await upload_to_uguu_async(target_upload_file)
+                except Exception:
+                    pass
+            if not upload_url and not backup_upload_url:
+                log_msg("ERROR: No se pudo subir el archivo de audio a ningún servidor temporal.")
                 raise Exception("Fallo al subir el audio a servidor temporal.")
+            if not upload_url and backup_upload_url:
+                upload_url = backup_upload_url
             log_msg(f"Audio subido exitosamente a: {upload_url}")
             
             for p in [temp_file_path, bypassed_file_path]:
@@ -1432,6 +1444,13 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             except Exception as e:
                 err_str = str(e)
                 err_lower = err_str.lower()
+                is_timeout_or_transient = any(
+                    k in err_lower for k in [
+                        "408", "request timeout", "timeout", "timed out",
+                        "502", "503", "504", "gateway timeout", "bad gateway",
+                        "internal error", "500", "429", "too many requests"
+                    ]
+                )
                 if ("copyrighted material" in err_lower or "copyright" in err_lower) and attempt < max_retries - 1:
                     log_msg("Filtro de Copyright detectado en la letra/título. Aplicando ofuscación profunda y reintentando automáticamente...")
                     # Obfuscate lyrics to defeat string-matching filters
@@ -1443,9 +1462,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         payload["title"] = f"{raw_title} (Versión)"
                     await asyncio.sleep(2)
                     continue
-                elif "internal error" in err_lower and attempt < max_retries - 1:
-                    log_msg("Udio API Error Interno. Reintentando automaticamente en 15 segundos...")
-                    await asyncio.sleep(15)
+                elif is_timeout_or_transient and attempt < max_retries - 1:
+                    wait_sec = (attempt + 1) * 7
+                    log_msg(f"Servidor de Udio ocupado o con timeout temporal ({err_str[:90]}). Reintentando intento {attempt+2}/{max_retries} en {wait_sec}s...")
+                    # Si fue un timeout con upload_url y tenemos backup_upload_url, alternar a la URL de respaldo
+                    if upload_url and backup_upload_url and payload.get("upload_url") == upload_url:
+                        log_msg(f"Cambiando a URL de audio secundaria para evitar timeout: {backup_upload_url}")
+                        payload["upload_url"] = backup_upload_url
+                    await asyncio.sleep(wait_sec)
                     continue
                 else:
                     if "copyrighted material" in err_lower or "copyright" in err_lower:
