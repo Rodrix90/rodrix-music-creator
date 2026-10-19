@@ -1062,13 +1062,15 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               </div>
               <div class="grid2">
                 <div class="field">
-                  <label class="label">Arreglo e Instrumentación:</label>
+                  <label class="label">Arreglo e Instrumentación (Mantiene compás y tempo de la partitura):</label>
                   <select id="batchStylePreset" style="width:100%;padding:8px;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border)">
-                    <option value="original" selected>✨ Respetar compás y estilo de cada partitura (12/8, 4/4, 3/4)</option>
-                    <option value="vienna_44">🎻 Gran Balada Sinfónica Clásica (Filarmónica de Viena 4/4)</option>
-                    <option value="traditional_organ">🕊️ Himno Tradicional de Templo (Órgano de Tubos & Coro 4 Voces)</option>
-                    <option value="pentecostal_2step">🔥 Avivamiento Pentecostal (Gospel 2-Step Charlie Watts)</option>
-                    <option value="worship_piano">🎹 Piano Devocional de Adoración Íntima & Cuerdas</option>
+                    <option value="vienna_orchestra" selected>🎻 Gran Orquesta Sinfónica Clásica (Filarmónica de Viena: Cuerdas de Seda, Corno Francés, Maderas & Timbales)</option>
+                    <option value="traditional_organ">🕊️ Órgano de Tubos de Templo & Coro Sacro Tradicional (Catedral)</option>
+                    <option value="worship_piano">🎹 Piano Acústico de Concierto & Cuerdas Cálidas (Adoración Íntima)</option>
+                    <option value="pentecostal_band">🔥 Banda Pentecostal en Vivo (Batería Acústica, Bajo Melódico & Órgano Hammond B3)</option>
+                    <option value="acoustic_gospel">🎸 Gospel Acústico con Guitarras de Madera (Nylon & Cuerdas de Acero)</option>
+                    <option value="triumphant_brass">🎺 Metales Triunfales & Cuerdas Épicas (Himno Festivo Majestuoso)</option>
+                    <option value="original">✨ Orquestación Tradicional de Himnario (Fiel a la Partitura)</option>
                   </select>
                 </div>
                 <div class="field">
@@ -1096,10 +1098,24 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   </button>
                 </div>
                 <div style="margin-top:8px;font-size:11.5px;color:var(--muted)">
-                  • <b>1 Himno Solo:</b> Genera inmediatamente un MP3 individual del himno seleccionado (o el botón dentro de cada tarjeta).<br>
+                  • <b>1 Himno Solo:</b> Genera inmediatamente un MP3 individual del himno seleccionado (o usa el botón azul de cada tarjeta).<br>
                   • <b>Todo el Lote:</b> Genera todos los himnos en fila para luego unirlos abajo en <b>1 Hora Non-Stop</b>.
                 </div>
               </div>
+            </div>
+
+            <!-- PROGRESO DE GENERACIÓN INDIVIDUAL MP3 CON BARRA EN VIVO -->
+            <div id="singleProgressBox" style="display:none;margin-top:16px;background:rgba(37,99,235,0.08);border:1px solid rgba(59,130,246,0.35);border-radius:12px;padding:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span id="singleProgressTitle" style="font-weight:700;color:#93C5FD;font-size:13px">
+                  <i class="ph ph-spinner spinning"></i> Generando Himno en MP3...
+                </span>
+                <span id="singleProgressPct" style="font-weight:700;color:#93C5FD;font-size:13px">10%</span>
+              </div>
+              <div class="progress" style="height:9px;background:rgba(255,255,255,0.1);border-radius:10px;overflow:hidden">
+                <div id="singleProgressFill" style="width:10%;height:100%;background:linear-gradient(90deg,#2563EB,#60A5FA);border-radius:10px;transition:width 0.4s ease"></div>
+              </div>
+              <div id="singleProgressPhase" style="margin-top:8px;font-size:11.5px;color:#C4B5FD">Enviando notas, letra y acordes al motor de audio...</div>
             </div>
 
             <!-- PROGRESO DEL LOTE EN VIVO -->
@@ -1654,6 +1670,7 @@ $('clearBtn').addEventListener('click', () => {
 
 /* navegación entre pestañas */
 function showView(viewName) {
+  if (viewName === 'create') viewName = 'crear';
   const views = {
     'crear': $('view-crear'),
     'partituras': $('view-partituras'),
@@ -3111,8 +3128,24 @@ function renderScannedHymns() {
         </div>
       </div>
 
-      <div style="margin-top:8px;font-size:11.5px;color:var(--muted)">
-        🎼 <b>Armonía:</b> ${esc(h.chords || 'Armonía tradicional')}
+      <div style="margin-top:8px;font-size:11.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+        <div>🎼 <b>Armonía:</b> ${esc(h.chords || 'Armonía tradicional')}</div>
+        <div>⏱️ <b>Tempo:</b> ${esc(h.tempo || 'Andante')}</div>
+      </div>
+
+      <!-- ARREGLO E INSTRUMENTACIÓN PERSONALIZADA PARA ESTE HIMNO (PRESERVA COMPÁS Y TEMPO) -->
+      <div style="margin-top:8px">
+        <label style="font-size:11px;color:#A78BFA;font-weight:600">Arreglo e Instrumentación (Mantiene compás ${esc(h.meter)} y tempo original):</label>
+        <select class="hymn-preset-select" style="width:100%;padding:6px;border-radius:6px;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);font-size:11.5px;margin-top:2px">
+          <option value="inherit" selected>🌐 Usar Arreglo Global seleccionado arriba</option>
+          <option value="vienna_orchestra">🎻 Gran Orquesta Sinfónica Clásica (Filarmónica de Viena: Cuerdas de Seda, Corno Francés, Maderas, Timbales)</option>
+          <option value="traditional_organ">🕊️ Órgano de Tubos de Templo & Coro Sacro Tradicional (Catedral)</option>
+          <option value="worship_piano">🎹 Piano Acústico de Concierto & Cuerdas Cálidas (Adoración Íntima)</option>
+          <option value="pentecostal_band">🔥 Banda Pentecostal en Vivo (Batería Acústica, Bajo Melódico & Órgano Hammond B3)</option>
+          <option value="acoustic_gospel">🎸 Gospel Acústico con Guitarras de Madera (Nylon & Cuerdas de Acero)</option>
+          <option value="triumphant_brass">🎺 Metales Triunfales & Cuerdas Épicas (Himno Majestuoso)</option>
+          <option value="original">✨ Orquestación Tradicional de Himnario (Fiel a la Partitura)</option>
+        </select>
       </div>
 
       <details style="margin-top:8px">
@@ -3130,16 +3163,29 @@ function renderScannedHymns() {
             <i class="ph ph-sliders"></i> <span>Cargar en Creador</span>
           </button>
         </div>
-        <div id="hymnStatus_${i}" style="font-size:11.5px;color:var(--muted)"></div>
       </div>
 
-      <!-- RESULTADO INDIVIDUAL DEL HIMNO -->
-      <div id="hymnResult_${i}" style="display:none;margin-top:8px;background:rgba(37,99,235,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:8px;padding:8px 12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <span style="font-size:12px;color:#93C5FD;font-weight:600;display:flex;align-items:center;gap:5px"><i class="ph ph-check-circle" style="color:#34D399;font-size:16px"></i> ¡MP3 Generado con Éxito!</span>
-          <div style="display:flex;gap:6px">
+      <!-- BARRA DE PROGRESO INDIVIDUAL EN VIVO PARA ESTE HIMNO -->
+      <div id="hymnProgressBox_${i}" style="display:none;margin-top:10px;background:rgba(37,99,235,0.08);border:1px solid rgba(59,130,246,0.35);border-radius:10px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span id="hymnProgressText_${i}" style="font-weight:700;color:#93C5FD;font-size:12px">
+            <i class="ph ph-spinner spinning"></i> Generando MP3...
+          </span>
+          <span id="hymnProgressPct_${i}" style="font-weight:700;color:#93C5FD;font-size:12px">10%</span>
+        </div>
+        <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden">
+          <div id="hymnProgressFill_${i}" style="width:10%;height:100%;background:linear-gradient(90deg,#2563EB,#60A5FA);border-radius:10px;transition:width 0.4s ease"></div>
+        </div>
+        <div id="hymnProgressPhase_${i}" style="margin-top:6px;font-size:11px;color:#C4B5FD">Enviando notas y compás a Udio v5...</div>
+      </div>
+
+      <!-- RESULTADO INDIVIDUAL DEL HIMNO (REPRODUCIR Y DESCARGAR) -->
+      <div id="hymnResult_${i}" style="display:none;margin-top:10px;background:rgba(37,99,235,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:8px;padding:10px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span style="font-size:12px;color:#93C5FD;font-weight:700;display:flex;align-items:center;gap:6px"><i class="ph ph-check-circle" style="color:#34D399;font-size:18px"></i> ¡MP3 Generado con Éxito!</span>
+          <div style="display:flex;gap:8px">
             <button type="button" class="btn-play-sm" id="btnPlaySingle_${i}"><i class="ph ph-play"></i> Escuchar</button>
-            <a href="#" id="btnDownloadSingle_${i}" class="btn-sec" style="padding:4px 10px;font-size:11px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" download><i class="ph ph-download-simple"></i> Descargar MP3</a>
+            <a href="#" id="btnDownloadSingle_${i}" class="btn-sec" style="padding:5px 12px;font-size:11.5px;border-radius:7px;display:inline-flex;align-items:center;gap:4px" download><i class="ph ph-download-simple"></i> Descargar MP3</a>
           </div>
         </div>
       </div>
@@ -3152,18 +3198,44 @@ window.removeScannedHymn = function(idx) {
   renderScannedHymns();
 };
 
-function buildHymnStylePrompt(orig, globalPreset) {
-  let style = orig.suggested_style || 'sacred Christian worship hymn';
-  if (globalPreset === 'vienna_44') {
-    style = `grand classical symphony orchestra worship hymn in 4/4 time, Vienna Philharmonic style, lush strings, warm French horns, concert timpani, noble sacred melody, key of ${orig.key || 'D Major'}, solemn Spanish vocals`;
-  } else if (globalPreset === 'traditional_organ') {
-    style = `himno solemne tradicional, majestic church pipe organ, solemn strings, 4-part SATB choral harmonies, reverent cathedral acoustic, andante tempo, ${orig.key || ''}`;
-  } else if (globalPreset === 'pentecostal_2step') {
-    style = `driving acoustic drum kit rhythm, Charlie Watts drumming, Ludwig snare on 2 and 4, gospel 2-step straight 4/4, 118 bpm, root-fifth bass, passionate church choir in unison`;
-  } else if (globalPreset === 'worship_piano') {
-    style = `solo concert grand piano, gentle emotive worship, sacred prayer strings, intimate slow worship hymn`;
+function buildHymnStylePrompt(orig, preset) {
+  const meter = orig.meter || '4/4';
+  const tempo = orig.tempo || 'Andante';
+  const key = orig.key || 'Do Mayor';
+  const chords = orig.chords || '';
+
+  // REGLA FUNDAMENTAL: El compás, tempo, armonía y tonalidad de la partitura NUNCA se alteran:
+  const rhythmConstraint = `strictly in ${meter} time signature (${meter} meter), tempo ${tempo}, key of ${key}, chord progression ${chords}, flawless rhythmic adherence to ${meter}`;
+
+  let instr = '';
+  switch (preset) {
+    case 'vienna_orchestra':
+    case 'vienna_44':
+      instr = 'grand classical symphony orchestra, Vienna Philharmonic orchestral arrangement, soaring lush violin strings section, warm French horns, expressive oboe and woodwinds, concert orchestral timpani, noble sacred arrangement';
+      break;
+    case 'traditional_organ':
+      instr = 'majestic cathedral pipe organ, rich acoustic reverberation, solemn strings counter-melody, 4-part SATB choral harmonies, reverent traditional hymnal instrumentation';
+      break;
+    case 'worship_piano':
+      instr = 'solo concert grand piano, emotive warm cello and violin strings pad, intimate devotional acoustic prayer atmosphere, delicate expressive dynamics';
+      break;
+    case 'pentecostal_band':
+    case 'pentecostal_2step':
+      instr = 'live church worship band, authentic acoustic drum kit with snare and hi-hat, melodic electric bassline, Hammond B3 drawbar organ swells, acoustic rhythm guitar, energetic congregational praise';
+      break;
+    case 'acoustic_gospel':
+      instr = 'warm acoustic guitars, fingerpicked nylon strings, gentle acoustic percussion, upright acoustic bass, heartfelt authentic devotional atmosphere';
+      break;
+    case 'triumphant_brass':
+      instr = 'triumphant orchestral brass fanfare, shining trumpets, noble trombones, sweeping cinematic strings, majestic celebration of praise';
+      break;
+    case 'original':
+    default:
+      instr = orig.suggested_style || 'traditional sacred Christian worship hymn, reverent church arrangement';
+      break;
   }
-  return style;
+
+  return `${instr}, ${rhythmConstraint}, uplifting sacred melody, emotive church choir in unison singing with clear Spanish pronunciation`;
 }
 
 window.generateSingleHymn = async function(idx) {
@@ -3171,21 +3243,48 @@ window.generateSingleHymn = async function(idx) {
   const orig = scannedHymnsData[idx] || {};
   const title = (card ? card.querySelector('.hymn-title-input').value.trim() : '') || orig.title || 'Himno Sagrado';
   const lyrics = (card ? card.querySelector('.hymn-lyrics-input').value.trim() : '') || orig.lyrics || '';
-  const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'original';
-  const globalVocal = $('batchVocalChoice') ? $('batchVocalChoice').value : 'choir';
+  
+  // Preferir arreglo individual de la tarjeta si está definido; de lo contrario el global:
+  const cardSelect = card ? card.querySelector('.hymn-preset-select') : null;
+  const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
+  const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'vienna_orchestra';
+  const chosenPreset = cardChoice || globalPreset;
 
-  const style = buildHymnStylePrompt(orig, globalPreset);
+  const globalVocal = $('batchVocalChoice') ? $('batchVocalChoice').value : 'choir';
+  const style = buildHymnStylePrompt(orig, chosenPreset);
 
   const btn = $(`btnGenSingle_${idx}`);
-  const statusEl = $(`hymnStatus_${idx}`);
+  const cardProgBox = $(`hymnProgressBox_${idx}`);
+  const cardProgPct = $(`hymnProgressPct_${idx}`);
+  const cardProgFill = $(`hymnProgressFill_${idx}`);
+  const cardProgPhase = $(`hymnProgressPhase_${idx}`);
   const resultEl = $(`hymnResult_${idx}`);
-  
+
+  // Panel de progreso global
+  const gProgBox = $('singleProgressBox');
+  const gProgTitle = $('singleProgressTitle');
+  const gProgPct = $('singleProgressPct');
+  const gProgFill = $('singleProgressFill');
+  const gProgPhase = $('singleProgressPhase');
+
   if (btn) btn.disabled = true;
-  if (statusEl) {
-    statusEl.innerHTML = `<span style="color:#60A5FA"><i class="ph ph-spinner spinning"></i> Generando MP3 en Udio v5...</span>`;
+  if (resultEl) resultEl.style.display = 'none';
+
+  function updateProgressUI(pct, phaseText) {
+    if (cardProgBox) cardProgBox.style.display = 'block';
+    if (cardProgPct) cardProgPct.textContent = `${pct}%`;
+    if (cardProgFill) cardProgFill.style.width = `${pct}%`;
+    if (cardProgPhase) cardProgPhase.textContent = phaseText;
+
+    if (gProgBox) gProgBox.style.display = 'block';
+    if (gProgTitle) gProgTitle.innerHTML = `<i class="ph ph-spinner spinning"></i> Generando "${title}" en MP3...`;
+    if (gProgPct) gProgPct.textContent = `${pct}%`;
+    if (gProgFill) gProgFill.style.width = `${pct}%`;
+    if (gProgPhase) gProgPhase.textContent = phaseText;
   }
 
-  showToast(`Iniciando generación individual para "${title}"...`, 'info');
+  updateProgressUI(10, `Iniciando síntesis en compás ${orig.meter || '4/4'}...`);
+  showToast(`Iniciando generación de "${title}"...`, 'info');
 
   const fd = new FormData();
   fd.append('title', title);
@@ -3220,14 +3319,28 @@ window.generateSingleHymn = async function(idx) {
         if (!sRes.ok) return;
         const taskInfo = await sRes.json();
         
-        if (statusEl) {
-          statusEl.innerHTML = `<span style="color:#60A5FA"><i class="ph ph-spinner spinning"></i> Procesando notas y voces (${pollSecs}s)...</span>`;
+        let pct = 15;
+        let phase = `Orquestando partitura en compás ${orig.meter || '4/4'}...`;
+        if (pollSecs >= 6 && pollSecs < 18) {
+          pct = Math.min(45, 15 + Math.round((pollSecs - 6) * 2.5));
+          phase = 'Sintetizando coro en unísono y dicción en español...';
+        } else if (pollSecs >= 18 && pollSecs < 36) {
+          pct = Math.min(75, 45 + Math.round((pollSecs - 18) * 1.6));
+          phase = 'Orquestando capas de cuerdas, viento y armonía...';
+        } else if (pollSecs >= 36) {
+          pct = Math.min(92, 75 + Math.round((pollSecs - 36) * 1.0));
+          phase = 'Masterizando audio devocional y codificando MP3...';
         }
+        updateProgressUI(pct, `${phase} (${pollSecs}s)`);
 
         if (taskInfo.status === 'COMPLETED') {
           clearInterval(pollSingleTimer);
           if (btn) btn.disabled = false;
-          if (statusEl) statusEl.innerHTML = `<span style="color:#34D399"><i class="ph ph-check-circle"></i> ¡MP3 Listo!</span>`;
+          
+          updateProgressUI(100, '¡Himno completado con éxito!');
+          if (cardProgFill) cardProgFill.style.background = 'linear-gradient(90deg,#10B981,#34D399)';
+          if (gProgFill) gProgFill.style.background = 'linear-gradient(90deg,#10B981,#34D399)';
+          if (gProgTitle) gProgTitle.innerHTML = `<i class="ph ph-check-circle" style="color:#34D399"></i> ¡"${title}" Creado con Éxito!`;
           
           await loadLibrary();
           
@@ -3250,7 +3363,8 @@ window.generateSingleHymn = async function(idx) {
         } else if (taskInfo.status === 'ERROR') {
           clearInterval(pollSingleTimer);
           if (btn) btn.disabled = false;
-          if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error al generar</span>`;
+          if (cardProgPhase) cardProgPhase.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error al generar</span>`;
+          if (gProgPhase) gProgPhase.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error: ${esc(taskInfo.detail || 'Fallo')}</span>`;
           showToast(`Error generando "${title}": ${taskInfo.detail || 'Fallo'}`, 'err');
         }
       } catch (err) {
@@ -3260,7 +3374,8 @@ window.generateSingleHymn = async function(idx) {
 
   } catch (err) {
     if (btn) btn.disabled = false;
-    if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error</span>`;
+    if (cardProgPhase) cardProgPhase.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error</span>`;
+    if (gProgPhase) gProgPhase.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error: ${esc(err.message)}</span>`;
     showToast('Error al iniciar generación: ' + err.message, 'err');
   }
 };
@@ -3270,16 +3385,29 @@ window.loadHymnIntoMainCreator = function(idx) {
   const orig = scannedHymnsData[idx] || {};
   const title = (card ? card.querySelector('.hymn-title-input').value.trim() : '') || orig.title || 'Himno Sagrado';
   const lyrics = (card ? card.querySelector('.hymn-lyrics-input').value.trim() : '') || orig.lyrics || '';
-  const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'original';
   
-  const style = buildHymnStylePrompt(orig, globalPreset);
+  const cardSelect = card ? card.querySelector('.hymn-preset-select') : null;
+  const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
+  const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'vienna_orchestra';
+  const chosenPreset = cardChoice || globalPreset;
+
+  const style = buildHymnStylePrompt(orig, chosenPreset);
 
   if ($('titleInput')) $('titleInput').value = title;
   if ($('lyricsInput')) $('lyricsInput').value = lyrics;
   if ($('styleInput')) $('styleInput').value = style;
-  
-  showView('create');
-  showToast(`"${title}" cargado en el Creador Principal.`, 'ok');
+
+  showView('crear');
+
+  setTimeout(() => {
+    const el = $('lyricsInput') || $('titleInput');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+    }
+  }, 120);
+
+  showToast(`¡"${title}" cargado en el Creador Principal!`, 'ok');
 };
 
 if ($('btnLaunchSingleGlobal')) {
@@ -3309,16 +3437,10 @@ if ($('btnLaunchBatch')) {
       const title = card.querySelector('.hymn-title-input').value.trim() || orig.title;
       const lyrics = card.querySelector('.hymn-lyrics-input').value.trim() || orig.lyrics;
       
-      let style = orig.suggested_style || 'sacred Christian worship hymn';
-      if (globalPreset === 'vienna_44') {
-        style = `grand classical symphony orchestra worship hymn in 4/4 time, Vienna Philharmonic style, lush strings, warm French horns, concert timpani, noble sacred melody, key of ${orig.key || 'D Major'}, solemn Spanish vocals`;
-      } else if (globalPreset === 'traditional_organ') {
-        style = `himno solemne tradicional, majestic church pipe organ, solemn strings, 4-part SATB choral harmonies, reverent cathedral acoustic, andante tempo, ${orig.key || ''}`;
-      } else if (globalPreset === 'pentecostal_2step') {
-        style = `driving acoustic drum kit rhythm, Charlie Watts drumming, Ludwig snare on 2 and 4, gospel 2-step straight 4/4, 118 bpm, root-fifth bass, passionate church choir in unison`;
-      } else if (globalPreset === 'worship_piano') {
-        style = `solo concert grand piano, gentle emotive worship, sacred prayer strings, intimate slow worship hymn`;
-      }
+      const cardSelect = card ? card.querySelector('.hymn-preset-select') : null;
+      const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
+      const chosenPreset = cardChoice || globalPreset;
+      const style = buildHymnStylePrompt(orig, chosenPreset);
       
       hymnsToGenerate.push({
         title: title,
