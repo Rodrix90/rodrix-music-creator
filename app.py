@@ -877,6 +877,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
                 "piano de oración": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
                 "piano devocional": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+                "vals vienes": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
+                "vals vienés": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
+                "himno vals vienes": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
+                "himno vals vienés": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
                 "himno solemne tradicional": "traditional sacred hymn, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo, classical sacred Christian hymn",
                 "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, driving 125 bpm, punchy acoustic rock drum kit with solid backbeat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, dotted eighth-note delay lead guitar riff, modern synth arpeggio, inspiring youth worship leader and anthemic chorus",
                 "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat",
@@ -1029,9 +1033,12 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian", "oracion", "oración"])
         is_fast_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "alabanza rapida", "alabanza rápida"])
         is_solo_piano_prayer = any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
+        is_vals_vienes = any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
 
         if is_solo_piano_prayer:
             genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, solo acoustic concert grand piano with deep lush hall reverb, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
+        elif is_vals_vienes:
+            genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif custom_bpm and custom_bpm < 100:
             # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
             genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
@@ -1110,6 +1117,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 for solo_anti in ["drums", "drum kit", "percussion", "bass", "electric guitar", "synths", "brass", "orchestra", "strings", "cumbia", "singing", "vocals", "voices"]:
                     neg_tags_list.append(solo_anti)
 
+            if is_vals_vienes:
+                for vals_anti in ["cumbia", "ritmo cumbia", "4/4 beat", "4/4 rock drum beat", "straight rock drums", "modern drum kit", "trap", "808 bass", "electric guitar", "synths", "synthesizer", "autotune", "distortion", "reggaeton"]:
+                    neg_tags_list.append(vals_anti)
+
             # Deduplicate negative tags & filter out artist names prohibited by Udio API
             banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
             seen = set()
@@ -1129,6 +1140,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         active_critical.append(req_no)
             if is_solo_piano_prayer:
                 for req_no in ["no drums", "no vocals", "no singing", "no electric guitar", "no bass", "no synths"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
+            if is_vals_vienes:
+                for req_no in ["no 4/4 beat", "no rock drums", "no electric guitar", "no synths", "no cumbia"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if active_critical:

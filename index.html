@@ -384,6 +384,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="preset-desc">Música de fondo para orar. Piano de cola acústico con reverb profunda, tempo lento meditativo, 100% instrumental sin voces.</div>
                 <span class="preset-tag" style="color:#60A5FA;background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.25);">Solo Piano • Reverb • Instrumental</span>
               </div>
+              <div class="preset-card" data-preset="vals_vienes">
+                <div class="preset-head">
+                  <div class="preset-title"><i class="ph ph-crown"></i><span>Vals Vienés Imperial</span></div>
+                  <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
+                </div>
+                <div class="preset-desc">Himnos en compás 3/4 estilo Strauss. Filarmónica completa: cuerdas, maderas, cornos, trompetas, trombones, timbales y platillos con balanceo vienés.</div>
+                <span class="preset-tag" style="color:#FBBF24;background:rgba(251,191,36,0.12);border-color:rgba(251,191,36,0.25);">Vals 3/4 • Filarmónica • Rubato</span>
+              </div>
             </div>
           </div>
 
@@ -1419,6 +1427,11 @@ const WORSHIP_PRESETS = {
     style: "piano de oracion, solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, sacred Christian prayer background, slow 60 bpm, reverent, solo piano instrumental",
     exclude: "vocals, singing, voice, speech, words, lyrics, choir, drums, drum kit, percussion, bass guitar, synthesizer, electric guitar, acoustic guitar, brass, horns, strings orchestra, beat, groove, rhythm, cumbia, uptempo",
     instrumental: true
+  },
+  vals_vienes: {
+    style: "himno vals vienes, grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first violins, second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, rubato phrasing, majestic introduction and grand coda, sacred reverent Christian hymn melody, Vienna Philharmonic hall acoustic",
+    exclude: "cumbia, ritmo cumbia, 4/4 drum beat, straight 4/4 rock beat, modern drum kit, trap beat, 808 bass, electric guitars, synthesizers, autotune, robotic voice, distortion, reggaeton, dembow, salsa, bachata",
+    instrumental: false
   }
 };
 
@@ -1460,6 +1473,22 @@ document.querySelectorAll('.preset-card').forEach(card => {
           const icon = pianoGear.querySelector('.btn-gear-toggle i');
           if (icon) icon.className = 'ph ph-check';
           if ($('rackChainText')) $('rackChainText').textContent = 'YAMAHA CFX GRAND';
+        }
+      }
+      if (card.dataset.preset === 'vals_vienes') {
+        $('lyricsInput').placeholder = "[Verse]\nEscribe la letra del himno o marca Instrumental para vals orquestal puro...";
+        if (typeof activeGear !== 'undefined') {
+          document.querySelectorAll('.gear-card').forEach(c => {
+            const gear = c.dataset.gear || '';
+            if (gear.includes('ssl') || gear.includes('api') || gear.includes('dw') || gear.includes('juno') || gear.includes('stingray') || gear.includes('jazz bass')) {
+              c.classList.remove('active');
+              activeGear.delete(gear);
+              const icon = c.querySelector('.btn-gear-toggle i');
+              if (icon) icon.className = 'ph ph-plus';
+            }
+          });
+          const arr = Array.from(activeGear);
+          if ($('rackChainText')) $('rackChainText').textContent = arr.length ? arr.map(g => g.toUpperCase()).join(' + ') : 'Orquesta Filarmónica Clásica';
         }
       }
       logLine(`Preset activado: ${card.querySelector('.preset-head span').textContent}`);
