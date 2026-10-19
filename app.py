@@ -864,14 +864,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship, handclaps",
-                "coros pentecostales": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship, handclaps",
-                "pentecostal": "fast upbeat pentecostal praise, straight 4/4 live drum kit, punchy bass guitar, rhythm guitar, energetic congregational worship, fast tempo 135 bpm",
-                "avivamiento": "energetic revival praise, straight 4/4 live drums with snare backbeat, driving bass guitar, rhythm guitar, fast tempo 135 bpm",
-                "coros de avivamiento": "energetic revival praise, straight 4/4 live drums with snare backbeat, driving bass guitar, rhythm guitar, fast tempo 135 bpm",
-                "coro pentecostal de avivamiento": "fast upbeat pentecostal praise choir, straight 4/4 driving rock drum beat, energetic snare backbeat on 2 and 4, punchy 8th-note electric bass, clean rhythm electric guitar, acoustic guitar strum, high tempo 135 bpm, joyful congregational worship, handclaps",
-                "alabanza rapida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
-                "alabanza rápida": "fast joyful Christian praise, straight 4/4 driving rock drums, punchy bass, rhythm electric guitar, fast tempo 135 bpm",
+                "coro pentecostal": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, clean acoustic church drum kit with steady 4/4 backbeat on 2 and 4, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
+                "coros pentecostales": "joyful pentecostal praise choir, steady 100 bpm tempo, short 4-second intro, singing starts quickly, clean acoustic church drum kit with steady 4/4 backbeat on 2 and 4, warm electric bass, clean rhythm electric guitar, acoustic guitar strum, handclaps, joyful congregational worship, no chaotic drums",
+                "pentecostal": "joyful pentecostal church praise, steady 100 bpm tempo, short 4-second intro, clean acoustic church drum kit with steady 4/4 backbeat, warm bass, rhythm guitars, congregational worship, no noisy drums",
+                "avivamiento": "joyful church revival praise, steady 100 bpm tempo, short 4-second intro, clean church drums with steady backbeat, warm bass guitar, rhythm guitar",
+                "coros de avivamiento": "joyful church revival praise choir, steady 100 bpm tempo, short 4-second intro, clean church drums with steady backbeat, warm bass guitar, rhythm guitar",
+                "coro pentecostal de avivamiento": "joyful pentecostal church praise choir, steady 100 bpm tempo, short 4-second musical intro, singing starts quickly, clean acoustic church drum kit with steady 4/4 beat, warm snare backbeat on 2 and 4, punchy warm bass, clean rhythm guitar, acoustic guitar strum, congregational handclaps, no chaotic drums",
+                "alabanza rapida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, clean acoustic church drums with steady backbeat, warm bass, rhythm guitar",
+                "alabanza rápida": "joyful Christian praise, steady 100 bpm tempo, short 4-second intro, clean acoustic church drums with steady backbeat, warm bass, rhythm guitar",
                 "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
@@ -1031,7 +1031,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
 
         # Detect Christian / Worship / Devotional context for genre anchoring
         is_worship = any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian", "oracion", "oración"])
-        is_fast_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "alabanza rapida", "alabanza rápida"])
+        is_pentecostal = any(w in style.lower() for w in ["pentecostal", "avivamiento", "coro pentecostal", "coros pentecostales"])
         is_solo_piano_prayer = any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
         is_vals_vienes = any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
 
@@ -1039,11 +1039,12 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, solo acoustic concert grand piano with deep lush hall reverb, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
+        elif is_pentecostal:
+            target_bpm = f"{custom_bpm:.1f} BPM" if custom_bpm else "100 BPM steady tempo"
+            genre_anchor = f"joyful Christian pentecostal praise choir, {target_bpm}, short 4-second musical intro, singing starts quickly, clean acoustic church drums with steady respectful 4/4 backbeat on 2 and 4, warm bass, clean rhythm electric guitar, acoustic strum, handclaps, congregational worship, no cumbia, no chaotic drums, no heavy rock drums"
         elif custom_bpm and custom_bpm < 100:
             # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
             genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
-        elif is_fast_pentecostal and (not custom_bpm or custom_bpm >= 110):
-            genre_anchor = "fast joyful Christian worship praise choir, straight 4/4 driving rock drums with snare backbeat on 2 and 4, punchy bass, no cumbia, no latin rhythm"
         elif is_worship:
             genre_anchor = f"sacred Christian worship hymn, {bpm_tag or 'straight 4/4 rhythm'}, clean acoustic and electric instruments, church acoustic, no cumbia"
         elif bpm_tag:
@@ -1121,6 +1122,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 for vals_anti in ["cumbia", "ritmo cumbia", "4/4 beat", "4/4 rock drum beat", "straight rock drums", "modern drum kit", "trap", "808 bass", "electric guitar", "synths", "synthesizer", "autotune", "distortion", "reggaeton"]:
                     neg_tags_list.append(vals_anti)
 
+            if is_pentecostal:
+                for pent_anti in ["chaotic drums", "heavy rock drums", "drum solos", "noisy drums", "loud crash cymbals", "long intro", "135 bpm", "fast tempo"]:
+                    neg_tags_list.append(pent_anti)
+
             # Deduplicate negative tags & filter out artist names prohibited by Udio API
             banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
             seen = set()
@@ -1144,6 +1149,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         active_critical.append(req_no)
             if is_vals_vienes:
                 for req_no in ["no 4/4 beat", "no rock drums", "no electric guitar", "no synths", "no cumbia"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
+            if is_pentecostal:
+                for req_no in ["no chaotic drums", "no heavy rock drums", "no cumbia"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if active_critical:
