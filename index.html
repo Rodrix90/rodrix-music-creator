@@ -352,9 +352,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         <form class="form-card" id="genForm" autocomplete="off">
           <!-- PRESETS DE CULTO Y LITURGIA -->
           <div class="field">
-            <div class="label">
-              <span>🕊️ Presets de Culto y Liturgia (1 Clic)</span>
-              <span style="font-size:10px;text-transform:none;color:var(--muted)">Estilos listos, blindados contra cumbia</span>
+            <div class="label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+              <div>
+                <span>🕊️ Presets de Culto y Liturgia (1 Clic)</span>
+                <span style="font-size:10px;text-transform:none;color:var(--muted)">Estilos listos, blindados contra cumbia</span>
+              </div>
+              <button type="button" class="btn-sec" id="btnClearPreset" style="display:none;padding:3px 9px;font-size:11px;border-radius:6px;color:#FCA5A5;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);cursor:pointer">
+                <i class="ph ph-x-circle"></i> Desactivar Preset
+              </button>
             </div>
             <div class="preset-grid" id="presetGrid">
               <div class="preset-card" data-preset="pentecostal">
@@ -1515,8 +1520,42 @@ const WORSHIP_PRESETS = {
   }
 };
 
+function clearActivePreset() {
+  document.querySelectorAll('.preset-card').forEach(c => {
+    c.classList.remove('active');
+    const b = c.querySelector('.btn-preset-use');
+    if (b) b.innerHTML = '<i class="ph ph-lightning"></i> Cargar';
+  });
+  if ($('btnClearPreset')) $('btnClearPreset').style.display = 'none';
+  // Restaurar rítmica a Libre/Personalizado
+  const librePill = document.querySelector('.rhythm-pill[data-rhythm="libre"]');
+  if (librePill) {
+    document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
+    librePill.classList.add('active');
+  }
+  logLine('Preset desactivado. Modo libre restaurado.');
+  showToast('Preset desactivado. Ahora puedes configurar tu propio estilo libremente.', 'info');
+}
+
+if ($('btnClearPreset')) {
+  $('btnClearPreset').addEventListener('click', () => {
+    clearActivePreset();
+    // Limpiar o vaciar estilo y exclusión si coincidían
+    $('styleInput').value = '';
+    $('excludeInput').value = '';
+  });
+}
+
 document.querySelectorAll('.preset-card').forEach(card => {
   card.addEventListener('click', () => {
+    const wasActive = card.classList.contains('active');
+    
+    // Si ya estaba activo, un segundo clic lo desactiva (toggle)
+    if (wasActive) {
+      clearActivePreset();
+      return;
+    }
+
     document.querySelectorAll('.preset-card').forEach(c => {
       c.classList.remove('active');
       const b = c.querySelector('.btn-preset-use');
@@ -1525,6 +1564,8 @@ document.querySelectorAll('.preset-card').forEach(card => {
     card.classList.add('active');
     const b = card.querySelector('.btn-preset-use');
     if (b) b.innerHTML = '<i class="ph ph-check"></i> Activo';
+    if ($('btnClearPreset')) $('btnClearPreset').style.display = 'inline-flex';
+    
     const p = WORSHIP_PRESETS[card.dataset.preset];
     if (p) {
       $('styleInput').value = p.style;
