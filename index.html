@@ -1082,12 +1082,23 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 </div>
               </div>
 
-              <!-- BOTÓN DISPARADOR DEL LOTE -->
-              <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-                <button type="button" class="btn-primary" id="btnLaunchBatch" style="background:linear-gradient(135deg,#10B981,#059669);font-size:14px;font-weight:700;padding:12px 24px;border:none;box-shadow:0 6px 20px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:8px">
-                  <i class="ph ph-rocket-launch"></i> <span>🚀 Generar Himnario en Cola</span>
-                </button>
-                <span style="font-size:11.5px;color:var(--muted)">Cada himno se generará con su letra y acordes, y se guardará en tu Librería.</span>
+              <!-- BOTONES DISPARADORES: 1 HIMNO SOLO O ÁLBUM DE 1 HORA -->
+              <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
+                <div style="font-size:12px;font-weight:700;color:#C4B5FD;text-transform:uppercase;margin-bottom:10px">
+                  ⚡ Elige tu modo de producción:
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                  <button type="button" class="btn-primary" id="btnLaunchSingleGlobal" style="background:linear-gradient(135deg,#3B82F6,#1D4ED8);font-size:13.5px;font-weight:700;padding:12px 22px;border:none;box-shadow:0 6px 18px rgba(37,99,235,0.35);display:inline-flex;align-items:center;gap:8px">
+                    <i class="ph ph-file-audio"></i> <span>🎵 Generar 1 Himno Solo (1 MP3)</span>
+                  </button>
+                  <button type="button" class="btn-primary" id="btnLaunchBatch" style="background:linear-gradient(135deg,#10B981,#059669);font-size:13.5px;font-weight:700;padding:12px 24px;border:none;box-shadow:0 6px 20px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:8px">
+                    <i class="ph ph-rocket-launch"></i> <span>🚀 Generar Todo el Lote (Para Álbum 1 Hora)</span>
+                  </button>
+                </div>
+                <div style="margin-top:8px;font-size:11.5px;color:var(--muted)">
+                  • <b>1 Himno Solo:</b> Genera inmediatamente un MP3 individual del himno seleccionado (o el botón dentro de cada tarjeta).<br>
+                  • <b>Todo el Lote:</b> Genera todos los himnos en fila para luego unirlos abajo en <b>1 Hora Non-Stop</b>.
+                </div>
               </div>
             </div>
 
@@ -3108,6 +3119,30 @@ function renderScannedHymns() {
         <summary style="font-size:11.5px;color:#A78BFA;cursor:pointer;font-weight:600">Ver / Editar Letra Extraída de la Partitura</summary>
         <textarea class="hymn-lyrics-input" style="width:100%;min-height:90px;font-size:11.5px;margin-top:6px;padding:6px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;white-space:pre">${esc(h.lyrics)}</textarea>
       </details>
+
+      <!-- ACCIONES INDIVIDUALES DEL HIMNO (1 SOLO MP3 O CREADOR) -->
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn-primary" id="btnGenSingle_${i}" onclick="generateSingleHymn(${i})" style="background:linear-gradient(135deg,#2563EB,#1D4ED8);border:none;padding:6px 14px;border-radius:7px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(37,99,235,0.25)">
+            <i class="ph ph-play-circle"></i> <span>🎵 Generar este Himno (1 Solo MP3)</span>
+          </button>
+          <button type="button" class="btn-sec" onclick="loadHymnIntoMainCreator(${i})" style="padding:6px 12px;border-radius:7px;font-size:11.5px;display:inline-flex;align-items:center;gap:5px">
+            <i class="ph ph-sliders"></i> <span>Cargar en Creador</span>
+          </button>
+        </div>
+        <div id="hymnStatus_${i}" style="font-size:11.5px;color:var(--muted)"></div>
+      </div>
+
+      <!-- RESULTADO INDIVIDUAL DEL HIMNO -->
+      <div id="hymnResult_${i}" style="display:none;margin-top:8px;background:rgba(37,99,235,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:8px;padding:8px 12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+          <span style="font-size:12px;color:#93C5FD;font-weight:600;display:flex;align-items:center;gap:5px"><i class="ph ph-check-circle" style="color:#34D399;font-size:16px"></i> ¡MP3 Generado con Éxito!</span>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn-play-sm" id="btnPlaySingle_${i}"><i class="ph ph-play"></i> Escuchar</button>
+            <a href="#" id="btnDownloadSingle_${i}" class="btn-sec" style="padding:4px 10px;font-size:11px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" download><i class="ph ph-download-simple"></i> Descargar MP3</a>
+          </div>
+        </div>
+      </div>
     </div>
   `).join('');
 }
@@ -3116,6 +3151,146 @@ window.removeScannedHymn = function(idx) {
   scannedHymnsData.splice(idx, 1);
   renderScannedHymns();
 };
+
+function buildHymnStylePrompt(orig, globalPreset) {
+  let style = orig.suggested_style || 'sacred Christian worship hymn';
+  if (globalPreset === 'vienna_44') {
+    style = `grand classical symphony orchestra worship hymn in 4/4 time, Vienna Philharmonic style, lush strings, warm French horns, concert timpani, noble sacred melody, key of ${orig.key || 'D Major'}, solemn Spanish vocals`;
+  } else if (globalPreset === 'traditional_organ') {
+    style = `himno solemne tradicional, majestic church pipe organ, solemn strings, 4-part SATB choral harmonies, reverent cathedral acoustic, andante tempo, ${orig.key || ''}`;
+  } else if (globalPreset === 'pentecostal_2step') {
+    style = `driving acoustic drum kit rhythm, Charlie Watts drumming, Ludwig snare on 2 and 4, gospel 2-step straight 4/4, 118 bpm, root-fifth bass, passionate church choir in unison`;
+  } else if (globalPreset === 'worship_piano') {
+    style = `solo concert grand piano, gentle emotive worship, sacred prayer strings, intimate slow worship hymn`;
+  }
+  return style;
+}
+
+window.generateSingleHymn = async function(idx) {
+  const card = document.querySelector(`#scannedHymnsList .hymn-card[data-idx="${idx}"]`);
+  const orig = scannedHymnsData[idx] || {};
+  const title = (card ? card.querySelector('.hymn-title-input').value.trim() : '') || orig.title || 'Himno Sagrado';
+  const lyrics = (card ? card.querySelector('.hymn-lyrics-input').value.trim() : '') || orig.lyrics || '';
+  const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'original';
+  const globalVocal = $('batchVocalChoice') ? $('batchVocalChoice').value : 'choir';
+
+  const style = buildHymnStylePrompt(orig, globalPreset);
+
+  const btn = $(`btnGenSingle_${idx}`);
+  const statusEl = $(`hymnStatus_${idx}`);
+  const resultEl = $(`hymnResult_${idx}`);
+  
+  if (btn) btn.disabled = true;
+  if (statusEl) {
+    statusEl.innerHTML = `<span style="color:#60A5FA"><i class="ph ph-spinner spinning"></i> Generando MP3 en Udio v5...</span>`;
+  }
+
+  showToast(`Iniciando generación individual para "${title}"...`, 'info');
+
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('lyrics', lyrics);
+  fd.append('style', style);
+  fd.append('vocal_gender', globalVocal === 'female' ? 'female' : (globalVocal === 'male' ? 'male' : 'random'));
+  fd.append('ignore_audio', 'true');
+  fd.append('include_lyrics', globalVocal === 'instrumental' ? 'false' : 'true');
+  fd.append('bypass_copyright', 'false');
+  fd.append('exclude_styles', 'cumbia, trap, electronic, metal, distortion, latin percussion');
+  fd.append('weirdness', '25');
+  fd.append('style_influence', '50');
+  fd.append('audio_influence', '0');
+  fd.append('model', 'chirp-v5');
+  fd.append('pronunciation', '');
+  fd.append('obfuscate', 'false');
+
+  try {
+    const res = await fetch('/api/transform', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const errJson = await res.json().catch(()=>({}));
+      throw new Error(errJson.detail || ('HTTP ' + res.status));
+    }
+    const data = await res.json();
+    const taskId = data.task_id;
+
+    let pollSecs = 0;
+    const pollSingleTimer = setInterval(async () => {
+      pollSecs += 3;
+      try {
+        const sRes = await fetch('/api/status/' + taskId);
+        if (!sRes.ok) return;
+        const taskInfo = await sRes.json();
+        
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#60A5FA"><i class="ph ph-spinner spinning"></i> Procesando notas y voces (${pollSecs}s)...</span>`;
+        }
+
+        if (taskInfo.status === 'COMPLETED') {
+          clearInterval(pollSingleTimer);
+          if (btn) btn.disabled = false;
+          if (statusEl) statusEl.innerHTML = `<span style="color:#34D399"><i class="ph ph-check-circle"></i> ¡MP3 Listo!</span>`;
+          
+          await loadLibrary();
+          
+          const tracks = taskInfo.tracks || [];
+          if (tracks.length > 0) {
+            const track = tracks[0];
+            if (resultEl) {
+              resultEl.style.display = 'block';
+              const playBtn = $(`btnPlaySingle_${idx}`);
+              const downLink = $(`btnDownloadSingle_${idx}`);
+              if (playBtn) playBtn.onclick = () => playTrack(track);
+              if (downLink) {
+                downLink.href = track.audio_url || `/api/audio_file/${track.id}`;
+                downLink.download = `${title}.mp3`;
+              }
+            }
+            playTrack(track);
+            showToast(`¡"${title}" ha sido generado como MP3 individual! Reproduciendo...`, 'ok');
+          }
+        } else if (taskInfo.status === 'ERROR') {
+          clearInterval(pollSingleTimer);
+          if (btn) btn.disabled = false;
+          if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error al generar</span>`;
+          showToast(`Error generando "${title}": ${taskInfo.detail || 'Fallo'}`, 'err');
+        }
+      } catch (err) {
+        console.warn('Poll error:', err);
+      }
+    }, 3000);
+
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444"><i class="ph ph-x-circle"></i> Error</span>`;
+    showToast('Error al iniciar generación: ' + err.message, 'err');
+  }
+};
+
+window.loadHymnIntoMainCreator = function(idx) {
+  const card = document.querySelector(`#scannedHymnsList .hymn-card[data-idx="${idx}"]`);
+  const orig = scannedHymnsData[idx] || {};
+  const title = (card ? card.querySelector('.hymn-title-input').value.trim() : '') || orig.title || 'Himno Sagrado';
+  const lyrics = (card ? card.querySelector('.hymn-lyrics-input').value.trim() : '') || orig.lyrics || '';
+  const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'original';
+  
+  const style = buildHymnStylePrompt(orig, globalPreset);
+
+  if ($('titleInput')) $('titleInput').value = title;
+  if ($('lyricsInput')) $('lyricsInput').value = lyrics;
+  if ($('styleInput')) $('styleInput').value = style;
+  
+  showView('create');
+  showToast(`"${title}" cargado en el Creador Principal.`, 'ok');
+};
+
+if ($('btnLaunchSingleGlobal')) {
+  $('btnLaunchSingleGlobal').addEventListener('click', () => {
+    if (!scannedHymnsData.length) {
+      alert('Primero analiza al menos una partitura.');
+      return;
+    }
+    generateSingleHymn(0);
+  });
+}
 
 if ($('btnLaunchBatch')) {
   $('btnLaunchBatch').addEventListener('click', async () => {
