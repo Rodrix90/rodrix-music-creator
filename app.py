@@ -19,6 +19,11 @@ from authlib.integrations.starlette_client import OAuth
 
 from fastapi.staticfiles import StaticFiles
 
+try:
+    import fal_client
+except ImportError:
+    fal_client = None
+
 # Load environment variables
 load_dotenv()
 
@@ -254,13 +259,23 @@ async def transform_audio(
 
     audio_content = None
     audio_filename = None
+    resolved_skeleton = None
+    if skeleton_file:
+        cand = skeleton_file.lstrip("/\\")
+        if os.path.exists(cand):
+            resolved_skeleton = cand
+        else:
+            base_cand = os.path.join(os.path.dirname(os.path.abspath(__file__)), cand)
+            if os.path.exists(base_cand):
+                resolved_skeleton = base_cand
+
     if audio and not ignore_audio:
         audio_content = await audio.read()
         audio_filename = audio.filename
-    elif skeleton_file and os.path.exists(skeleton_file):
-        with open(skeleton_file, "rb") as sf:
+    elif resolved_skeleton:
+        with open(resolved_skeleton, "rb") as sf:
             audio_content = sf.read()
-        audio_filename = os.path.basename(skeleton_file)
+        audio_filename = os.path.basename(resolved_skeleton)
         ignore_audio = False
         if audio_influence < 50:
             audio_influence = 65
@@ -2282,10 +2297,11 @@ Y siempre feliz con él seré."""
 
 BATCH_TASKS = {}
 
-def extract_score_metadata(filename: str, content: bytes) -> dict:
+async def extract_score_metadata(filename: str, content: bytes) -> dict:
     fname_lower = filename.lower()
+    clean_name = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").title()
     
-    # 1. Comprobar si coincide con himnos conocidos del himnario
+    # 1. Comprobar si coincide con himnos conocidos del himnario por nombre de archivo
     for hid, hdata in HYMNAL_KNOWLEDGE_BASE.items():
         title_words = hdata["title"].lower().split()
         eng_words = hdata.get("english_title", "").lower().split()
@@ -2331,8 +2347,110 @@ def extract_score_metadata(filename: str, content: bytes) -> dict:
         except Exception:
             pass
 
-    # 3. Fallback inteligente para imágenes de partituras (incluyendo escaneos como 297):
-    clean_name = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").title()
+    # 3. OCR con Inteligencia Artificial Visual (Fal Vision) para cualquier imagen de partitura:
+    is_image = (
+        fname_lower.endswith((".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff")) or
+        content.startswith(b'\xff\xd8') or
+        content.startswith(b'\x89PNG') or
+        (len(content) > 12 and content[:4] == b'RIFF' and content[8:12] == b'WEBP')
+    )
+
+    if is_image and fal_client and os.environ.get("FAL_KEY"):
+        try:
+            mime = "image/png" if content.startswith(b'\x89PNG') else "image/jpeg"
+            img_url = await asyncio.to_thread(fal_client.upload, content, mime)
+            
+            ocr_prompt = """Eres un musicólogo experto e hiper-preciso en himnología cristiana y OCR de partituras e himnarios.
+Examina la imagen de la partitura y extrae con máxima fidelidad:
+1. Número del himno (si aparece arriba a la izquierda, derecha o centro, ej. 297).
+2. Título exacto del himno (ej. "¡Oh, Sí, Quiero Verle!").
+3. Tonalidad (armadura de clave: ej. Ab Major, Eb Major, C Major, Sol Mayor, etc.).
+4. Compás o métrica (ej. 12/8, 4/4, 3/4, 6/8).
+5. Tempo recomendado en BPM (ej. 54 BPM para 12/8 devocional lento, 80 BPM para 4/4).
+6. Progresión o acordes principales (ej. "Ab - Db - Eb7 - Ab").
+7. Letra completa en español ordenada por estrofas. REGLA OBLIGATORIA: Une las sílabas separadas por guiones en palabras normales completas del español (por ejemplo 'dul-ce' debe ser 'dulce', 'fe-liz' debe ser 'feliz', 'a-tra-er' debe ser 'atraer', 'ven-ce-ré' debe ser 'venceré'). Formatea claramente con etiquetas [Verse 1], [Chorus], [Verse 2], etc.
+
+Responde ÚNICAMENTE con un objeto JSON válido con los campos:
+{
+  "hymn_number": "297",
+  "title": "¡Oh, Sí, Quiero Verle!",
+  "key": "Ab Major (La bemol Mayor)",
+  "meter": "12/8",
+  "tempo": "Lento Devocional (54 BPM en compás 12/8)",
+  "chords": "Ab - Db - Eb7 - Ab",
+  "lyrics": "..."
+}
+No incluyas texto explicativo antes ni después del bloque JSON."""
+
+            res = await asyncio.to_thread(
+                fal_client.subscribe,
+                "fal-ai/any-llm/vision",
+                arguments={"prompt": ocr_prompt, "image_url": img_url}
+            )
+            raw_out = res.get("output", "")
+            m = re.search(r"\{[\s\S]*\}", raw_out)
+            if m:
+                parsed = json.loads(m.group(0))
+                det_num = str(parsed.get("hymn_number", "")).strip()
+                det_title = str(parsed.get("title", "")).strip()
+                det_meter = str(parsed.get("meter", "4/4")).strip()
+                det_key = str(parsed.get("key", "Sol Mayor (G Major)")).strip()
+                det_tempo = str(parsed.get("tempo", "Andante (80 BPM)")).strip()
+                det_chords = str(parsed.get("chords", "G - C - D - G")).strip()
+                raw_lyrics = str(parsed.get("lyrics", "")).strip()
+                clean_lyrics = re.sub(r'([a-zA-ZáéíóúÁÉÍÓÚñÑ])\s*-\s*([a-zA-ZáéíóúÁÉÍÓÚñÑ])', r'\1\2', raw_lyrics)
+
+                # Comprobar si el himno detectado coincide con nuestra base de conocimiento (ej: 297)
+                matched_kb = None
+                if det_num and det_num in HYMNAL_KNOWLEDGE_BASE:
+                    matched_kb = HYMNAL_KNOWLEDGE_BASE[det_num]
+                else:
+                    for hid, hdata in HYMNAL_KNOWLEDGE_BASE.items():
+                        title_words = [w.lower() for w in hdata["title"].split() if len(w) > 4]
+                        if any(w in det_title.lower() for w in title_words):
+                            matched_kb = hdata
+                            break
+
+                if matched_kb:
+                    return {
+                        "id": str(uuid.uuid4())[:8],
+                        "filename": filename,
+                        "title": matched_kb["title"],
+                        "key": matched_kb["key"],
+                        "meter": matched_kb["meter"],
+                        "tempo": matched_kb["tempo"],
+                        "chords": matched_kb["chords"],
+                        "lyrics": clean_lyrics if len(clean_lyrics) > 50 else matched_kb["lyrics"],
+                        "suggested_style": matched_kb["style_tags"],
+                        "audio_skeleton": matched_kb.get("audio_skeleton", ""),
+                        "skeleton_file": matched_kb.get("skeleton_file", "")
+                    }
+                else:
+                    # Himno nuevo o no catalogado en la base interna
+                    if det_meter in ("12/8", "6/8"):
+                        style_tag = f"sacred traditional Christian worship hymn, strictly in {det_meter} compound meter, slow reverent tempo ({det_tempo}), key of {det_key}, grand church pipe organ and warm symphonic strings, sacred choir in unison, unhurried devocional pacing, no modern pop drums"
+                    elif det_meter == "3/4":
+                        style_tag = f"sacred traditional Christian hymn, strictly in 3/4 triple meter, reverent tempo ({det_tempo}), key of {det_key}, pipe organ and warm symphonic strings, worship choir in unison, unhurried pacing"
+                    else:
+                        style_tag = f"sacred traditional Christian worship hymn, strictly in {det_meter} time, reverent tempo ({det_tempo}), key of {det_key}, grand symphonic orchestra strings and pipe organ, worship choir in unison"
+
+                    return {
+                        "id": str(uuid.uuid4())[:8],
+                        "filename": filename,
+                        "title": det_title if det_title else clean_name,
+                        "key": det_key,
+                        "meter": det_meter,
+                        "tempo": det_tempo,
+                        "chords": det_chords or "G - C - D - G",
+                        "lyrics": clean_lyrics if clean_lyrics else f"[Verse 1]\nHimno: {det_title}\n...",
+                        "suggested_style": style_tag,
+                        "audio_skeleton": "",
+                        "skeleton_file": ""
+                    }
+        except Exception as ocr_err:
+            print(f"[Vision OCR] Error analizando {filename} con Fal: {ocr_err}")
+
+    # 4. Fallback inteligente si no hay conexión o no se detectó por visión:
     if ("297" in clean_name or "297" in fname_lower or 
         "c7db9a4c" in fname_lower or "170530fc" in fname_lower or 
         "quiero verle" in fname_lower or "want to see him" in fname_lower):
@@ -2365,14 +2483,12 @@ def extract_score_metadata(filename: str, content: bytes) -> dict:
 
 @app.post("/api/scan_sheet_music")
 async def api_scan_sheet_music(files: list[UploadFile] = File(...)):
-    results = []
-    for f in files:
+    async def process_file(f: UploadFile):
         try:
             content = await f.read()
-            data = extract_score_metadata(f.filename, content)
-            results.append(data)
+            return await extract_score_metadata(f.filename, content)
         except Exception as e:
-            results.append({
+            return {
                 "id": str(uuid.uuid4())[:8],
                 "filename": f.filename,
                 "title": os.path.splitext(f.filename)[0],
@@ -2383,8 +2499,11 @@ async def api_scan_sheet_music(files: list[UploadFile] = File(...)):
                 "lyrics": "[Verse 1]\nEscribe o verifica la letra aquí...",
                 "suggested_style": "sacred Christian hymn",
                 "error": str(e)
-            })
-    return {"results": results, "count": len(results)}
+            }
+
+    results = await asyncio.gather(*[process_file(f) for f in files])
+    return {"results": list(results), "count": len(results)}
+
 
 async def run_batch_worker(batch_id: str, hymns: list[dict]):
     BATCH_TASKS[batch_id]["status"] = "PROCESSING"
@@ -2415,10 +2534,20 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
         ignore_audio = True
         audio_influence = 0
         sk_path = h.get("skeleton_file")
-        if sk_path and os.path.exists(sk_path):
-            with open(sk_path, "rb") as f_sk:
+        resolved_sk = None
+        if sk_path:
+            cand = sk_path.lstrip("/\\")
+            if os.path.exists(cand):
+                resolved_sk = cand
+            else:
+                base_cand = os.path.join(os.path.dirname(os.path.abspath(__file__)), cand)
+                if os.path.exists(base_cand):
+                    resolved_sk = base_cand
+
+        if resolved_sk:
+            with open(resolved_sk, "rb") as f_sk:
                 audio_content = f_sk.read()
-            audio_filename = os.path.basename(sk_path)
+            audio_filename = os.path.basename(resolved_sk)
             ignore_audio = False
             audio_influence = 65
 

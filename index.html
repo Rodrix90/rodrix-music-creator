@@ -876,6 +876,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <input type="file" id="audioInput" accept="audio/*,.m4a,.mp4,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac">
                 <button type="button" class="icon-btn" id="clearAudio" title="Quitar audio"><i class="ph ph-x"></i></button>
               </div>
+              <div id="loadedSkeletonBadge" style="display:none;margin-top:6px;background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);border-radius:6px;padding:6px 10px;font-size:11.5px;color:#A7F3D0;align-items:center;justify-content:space-between">
+                <span style="display:inline-flex;align-items:center;gap:6px">
+                  <i class="ph ph-music-notes" style="color:#34D399"></i>
+                  <span id="loadedSkeletonText">Guía melódica de partitura vinculada</span>
+                </span>
+                <button type="button" class="btn-sec" onclick="clearLoadedSkeleton()" style="padding:2px 6px;font-size:10px;border-radius:4px">Quitar</button>
+              </div>
             </div>
             <div class="field">
               <div class="label">
@@ -1038,7 +1045,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <i class="ph ph-lightning"></i> <span>⚡ Analizar y Escanear Partituras</span>
             </button>
             <span id="sheetScanLoading" style="display:none;font-size:12px;color:#C4B5FD">
-              <i class="ph ph-spinner spinning"></i> Leyendo partituras, notas y letras...
+              <i class="ph ph-spinner spinning"></i> Leyendo con IA Visión la partitura (notas, compás, tempo y letra)...
             </span>
           </div>
 
@@ -1662,10 +1669,19 @@ $('instrumental').addEventListener('change', e => {
     $('lyricsInput').placeholder = "[Verse]\nEscribe aquí tu letra...";
   }
 });
-$('clearAudio').addEventListener('click', () => $('audioInput').value = '');
+$('clearAudio').addEventListener('click', () => {
+  $('audioInput').value = '';
+  if (window.clearLoadedSkeleton) window.clearLoadedSkeleton();
+});
+$('audioInput').addEventListener('change', () => {
+  if ($('audioInput').files.length > 0 && window.clearLoadedSkeleton) {
+    window.clearLoadedSkeleton();
+  }
+});
 $('clearBtn').addEventListener('click', () => {
   ['styleInput','lyricsInput','titleInput','excludeInput','pronInput'].forEach(i => $(i).value = '');
   $('audioInput').value = '';
+  if (window.clearLoadedSkeleton) window.clearLoadedSkeleton();
 });
 
 /* navegación entre pestañas */
@@ -3139,7 +3155,7 @@ function renderScannedHymns() {
         <div style="display:flex;align-items:center;gap:8px">
           <i class="ph ph-music-notes" style="color:#34D399;font-size:18px"></i>
           <div>
-            <div style="font-weight:700;font-size:12px;color:#A7F3D0">Melodía Original del Himnario Detectada (12/8 a 54 BPM)</div>
+            <div style="font-weight:700;font-size:12px;color:#A7F3D0">Melodía Original del Himnario Detectada (${esc(h.meter || '12/8')} - ${esc(h.tempo || '54 BPM')})</div>
             <div style="font-size:11px;color:var(--muted)">Guía de notas y tempo lento lista para condicionar a la IA a cantar la melodía exacta.</div>
           </div>
         </div>
@@ -3427,6 +3443,13 @@ window.generateSingleHymn = async function(idx) {
   }
 };
 
+window.clearLoadedSkeleton = function() {
+  window.activeLoadedSkeleton = null;
+  const badge = $('loadedSkeletonBadge');
+  if (badge) badge.style.display = 'none';
+  showToast('Guía melódica desvinculada del Creador', 'info');
+};
+
 window.loadHymnIntoMainCreator = function(idx) {
   const card = document.querySelector(`#scannedHymnsList .hymn-card[data-idx="${idx}"]`);
   const orig = scannedHymnsData[idx] || {};
@@ -3444,6 +3467,24 @@ window.loadHymnIntoMainCreator = function(idx) {
   if ($('lyricsInput')) $('lyricsInput').value = lyrics;
   if ($('styleInput')) $('styleInput').value = style;
 
+  if (orig.skeleton_file) {
+    window.activeLoadedSkeleton = orig.skeleton_file;
+    if ($('audioInfluence')) {
+      $('audioInfluence').value = '65';
+      if ($('aiVal')) $('aiVal').textContent = '65%';
+    }
+    const badge = $('loadedSkeletonBadge');
+    const bText = $('loadedSkeletonText');
+    if (badge) badge.style.display = 'flex';
+    if (bText) bText.textContent = `Melodía real vinculada: "${title}" (${orig.meter || '12/8'} - ${orig.tempo || '54 BPM'})`;
+    showToast(`¡"${title}" cargado con Guía Melódica activa (54 BPM en compás ${orig.meter || '12/8'})!`, 'ok');
+  } else {
+    window.activeLoadedSkeleton = null;
+    const badge = $('loadedSkeletonBadge');
+    if (badge) badge.style.display = 'none';
+    showToast(`¡"${title}" cargado en el Creador Principal!`, 'ok');
+  }
+
   showView('crear');
 
   setTimeout(() => {
@@ -3453,9 +3494,8 @@ window.loadHymnIntoMainCreator = function(idx) {
       el.focus();
     }
   }, 120);
-
-  showToast(`¡"${title}" cargado en el Creador Principal!`, 'ok');
 };
+
 
 if ($('btnLaunchSingleGlobal')) {
   $('btnLaunchSingleGlobal').addEventListener('click', () => {
@@ -3758,7 +3798,15 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('model', $('modelInput').value);
   fd.append('pronunciation', $('pronInput').value);
   fd.append('obfuscate', $('obfuscate').checked);
-  if ($('audioInput').files[0]) fd.append('audio', $('audioInput').files[0]);
+  if ($('audioInput').files[0]) {
+    fd.append('audio', $('audioInput').files[0]);
+  } else if (window.activeLoadedSkeleton) {
+    fd.append('skeleton_file', window.activeLoadedSkeleton);
+    fd.append('ignore_audio', 'false');
+    if (parseInt($('audioInfluence').value || '0', 10) < 50) {
+      fd.set('audio_influence', '65');
+    }
+  }
 
   $('console').innerHTML = '';
   setBusy(true); startProgress();

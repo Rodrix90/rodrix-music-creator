@@ -7,3 +7,4 @@ mutagen
 python-dotenv
 authlib
 itsdangerous
+fal-client
