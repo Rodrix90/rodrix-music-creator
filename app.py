@@ -1,4 +1,5 @@
 import os
+import io
 import re
 import gc
 import hmac
@@ -306,7 +307,16 @@ async def transform_audio(
                 audio_influence = 65
 
         task_id = str(uuid.uuid4())
-        TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
+        TASKS[task_id] = {
+            "id": task_id,
+            "status": "IN_PROGRESS",
+            "title": title or "Obra Musical",
+            "logs": "",
+            "tracks": [],
+            "detail": "",
+            "is_public_domain": is_public_domain,
+            "audio_filename": audio_filename or "N/A"
+        }
 
         background_tasks.add_task(
             run_transform_task,
@@ -327,7 +337,9 @@ async def transform_audio(
 async def get_task_status(task_id: str):
     if task_id not in TASKS:
         raise HTTPException(status_code=404, detail="Task no encontrada")
-    return TASKS[task_id]
+    res = dict(TASKS[task_id])
+    res["id"] = task_id
+    return res
 
 @app.delete("/api/task/{task_id}")
 async def cancel_task(task_id: str):
@@ -370,7 +382,16 @@ async def process_voiceover(
         custom_bg_filename = custom_bg.filename
         
     task_id = str(uuid.uuid4())
-    TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
+    TASKS[task_id] = {
+        "id": task_id,
+        "status": "IN_PROGRESS",
+        "title": title or "Predicación Pastoral",
+        "logs": "",
+        "tracks": [],
+        "detail": "",
+        "is_public_domain": False,
+        "audio_filename": voice_filename or "N/A"
+    }
     
     background_tasks.add_task(
         run_voiceover_task,
@@ -1599,77 +1620,117 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
 
 
 # -----------------------------------------------------------------------------
-# PRUEBA TÉCNICA DE COMPATIBILIDAD DE AUDIO (M4A, MP4, MP3, WAV)
+# PRUEBA TÉCNICA DE COMPATIBILIDAD Y DECODIFICACIÓN (FFMPEG/FFPROBE)
 # -----------------------------------------------------------------------------
 @app.post("/api/check_audio_compatibility")
 async def check_audio_compatibility(file: UploadFile = File(...)):
-    """Verifica técnicamente que un archivo M4A, MP4, MP3 o WAV se decodifique correctamente."""
+    """Verifica técnicamente que un archivo M4A, MP4, MP3 o WAV se decodifique completamente con FFprobe y FFmpeg."""
+    temp_path = None
     try:
         content = await file.read()
         if not content:
             return JSONResponse(status_code=400, content={"compatible": False, "error": "El archivo está vacío."})
             
         filename = file.filename or "audio"
-        ext = os.path.splitext(filename)[1].lower()
+        ext = os.path.splitext(filename)[1].lower() or ".tmp"
         size_mb = round(len(content) / (1024 * 1024), 2)
         
-        import mutagen
-        bio = io.BytesIO(content)
-        mf = mutagen.File(bio)
+        # Guardar en archivo temporal para que ffprobe y ffmpeg puedan examinar los frames reales
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tf:
+            tf.write(content)
+            temp_path = tf.name
+
+        # 1. Inspección de flujo de audio con ffprobe
+        probe_cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=codec_name,channels,sample_rate,duration,bit_rate",
+            "-show_entries", "format=format_name,duration,size,bit_rate",
+            "-of", "json",
+            temp_path
+        ]
+        proc = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
         
-        if mf is None or not hasattr(mf, "info") or mf.info is None:
-            # Fallback nativo para archivos WAV usando módulo estándar wave
-            if ext in [".wav", ".wave"]:
-                try:
-                    import wave
-                    bio.seek(0)
-                    with wave.open(bio, 'rb') as wf:
-                        channels = wf.getnchannels()
-                        rate = wf.getframerate()
-                        frames = wf.getnframes()
-                        length_sec = round(frames / float(rate), 2)
-                        return {
-                            "compatible": True,
-                            "filename": filename,
-                            "format": "WAV",
-                            "channels": "Estéreo" if channels >= 2 else "Mono",
-                            "sample_rate": f"{rate} Hz",
-                            "duration_sec": length_sec,
-                            "file_size_mb": size_mb,
-                            "message": f"Archivo WAV decodificado correctamente ({length_sec}s, {rate} Hz, {channels} canales)."
-                        }
-                except Exception as wav_err:
-                    return {
-                        "compatible": False,
-                        "filename": filename,
-                        "format": "WAV",
-                        "error": f"Cabecera WAV inválida o corrupta: {wav_err}",
-                        "message": "El archivo WAV no se pudo decodificar correctamente."
-                    }
-                    
+        if proc.returncode != 0:
+            err_msg = proc.stderr.strip() or "No se pudo leer el flujo de datos del archivo."
             return {
                 "compatible": False,
                 "filename": filename,
-                "format": ext.lstrip(".").upper() or "Desconocido",
-                "error": "No se reconoció un flujo de audio válido en el contenedor.",
-                "message": f"El archivo {filename} no contiene un formato de audio compatible o está dañado."
+                "error": err_msg,
+                "message": f"FFprobe no pudo reconocer un formato multimedia válido en '{filename}': {err_msg}"
             }
             
-        length_sec = round(getattr(mf.info, "length", 0.0), 2)
-        sample_rate = getattr(mf.info, "sample_rate", 44100)
-        channels = getattr(mf.info, "channels", 2)
-        channels_str = "Estéreo" if channels >= 2 else "Mono"
-        fmt_name = type(mf).__name__.replace("MP3", "MP3").replace("MP4", "M4A/MP4").replace("Wave", "WAV")
+        probe_data = json.loads(proc.stdout) if proc.stdout else {}
+        streams = probe_data.get("streams", [])
+        if not streams:
+            return {
+                "compatible": False,
+                "filename": filename,
+                "error": "No contiene flujo de audio",
+                "message": f"El archivo '{filename}' no contiene ninguna pista de audio reconocible."
+            }
+
+        audio_stream = streams[0]
+        fmt_data = probe_data.get("format", {})
+        codec_name = audio_stream.get("codec_name", "audio").upper()
         
+        # 2. Prueba de decodificación completa de audio con FFmpeg
+        decode_cmd = [
+            "ffmpeg", "-v", "error",
+            "-i", temp_path,
+            "-f", "null",
+            "-"
+        ]
+        decode_proc = subprocess.run(decode_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=20)
+        
+        if decode_proc.returncode != 0:
+            err_detail = decode_proc.stderr.strip() or "Error durante la decodificación de tramas de audio."
+            return {
+                "compatible": False,
+                "filename": filename,
+                "format": codec_name,
+                "error": err_detail,
+                "message": f"El archivo '{filename}' está dañado o truncado y falló la decodificación FFmpeg: {err_detail}"
+            }
+
+        # Extraer parámetros limpios
+        channels = audio_stream.get("channels", 2)
+        channels_str = "Estéreo" if channels >= 2 else "Mono"
+        sample_rate = audio_stream.get("sample_rate", "44100")
+        
+        dur_val = audio_stream.get("duration") or fmt_data.get("duration")
+        try:
+            length_sec = round(float(dur_val), 2) if dur_val else 0.0
+        except Exception:
+            length_sec = 0.0
+
+        # Formatear nombre amigable de formato
+        format_display = codec_name
+        if "AAC" in codec_name or ext in [".m4a", ".mp4"]:
+            format_display = f"AAC ({ext.upper().lstrip('.')})"
+        elif "MP3" in codec_name or ext == ".mp3":
+            format_display = "MP3"
+        elif "PCM" in codec_name or ext == ".wav":
+            format_display = "WAV (PCM)"
+
         return {
             "compatible": True,
             "filename": filename,
-            "format": fmt_name,
-            "channels": channels_str,
+            "format": format_display,
+            "codec": codec_name.lower(),
+            "channels": f"{channels_str} ({channels} ch)",
             "sample_rate": f"{sample_rate} Hz",
             "duration_sec": length_sec,
             "file_size_mb": size_mb,
-            "message": f"Archivo {fmt_name} decodificado correctamente ({length_sec}s, {sample_rate} Hz, {channels_str})."
+            "message": f"Archivo {format_display} decodificado íntegramente con FFmpeg ({length_sec}s, {sample_rate} Hz, {channels_str})."
+        }
+
+    except subprocess.TimeoutExpired:
+        return {
+            "compatible": False,
+            "filename": file.filename,
+            "error": "Timeout",
+            "message": "La verificación de audio excedió el tiempo límite (archivo bloqueado o respuesta lenta)."
         }
     except Exception as e:
         return {
@@ -1678,53 +1739,80 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
             "error": str(e),
             "message": f"Error al verificar compatibilidad de audio: {str(e)}"
         }
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 # -----------------------------------------------------------------------------
-# INFORME TÉCNICO DE DIAGNÓSTICO (RECHAZO DE CATÁLOGO COMERCIAL)
+# INFORME TÉCNICO DE DIAGNÓSTICO (DISPONIBLE PARA CUALQUIER TAREA FALLIDA O RECHAZADA)
 # -----------------------------------------------------------------------------
 @app.get("/api/diagnostic_report/{task_id}")
 async def get_diagnostic_report(task_id: str):
     """Genera y descarga un informe técnico de diagnóstico sin credenciales ni claves privadas."""
+    if not task_id or task_id.strip() in ["", "undefined", "null"]:
+        return PlainTextResponse(
+            "ERROR: Identificador de tarea inválido o no especificado.",
+            status_code=400,
+            headers={"Content-Disposition": 'attachment; filename="diagnostico_error.txt"'}
+        )
+
     task = TASKS.get(task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="Informe de diagnóstico no encontrado para esta tarea.")
-        
-    diag = task.get("diagnostic_info", {})
-    title = diag.get("title", task.get("title", "Obra sin título"))
-    model = diag.get("model", "N/A")
-    date_str = diag.get("date_utc", datetime.datetime.now(datetime.timezone.utc).isoformat())
-    exact_err = diag.get("exact_error_message", task.get("detail", "Coincidencia de catálogo"))
-    is_pd = diag.get("is_public_domain", False)
-    has_audio = diag.get("has_audio_reference", False)
-    audio_file = diag.get("audio_filename", "N/A")
-    
-    report_text = f"""================================================================================
-INFORME TÉCNICO DE DIAGNÓSTICO - COINCIDENCIA DE CATÁLOGO COMERCIAL
+        err_report = f"""================================================================================
+INFORME DE DIAGNÓSTICO NO DISPONIBLE
 Rodrix Music Creator (Generación Musical Asistida por IA)
 ================================================================================
 
-DATOS DE LA SOLICITUD:
---------------------------------------------------------------------------------
-Identificador de Tarea (Task ID) : {task_id}
-Fecha y Hora de la Solicitud (UTC): {date_str}
-Título de la Obra               : {title}
-Modelo de Generación            : {model}
-Declaración de Dominio Público  : {'SÍ (Grabación propia de obra tradicional/autorizada)' if is_pd else 'NO declarada'}
-Audio de Referencia Vinculado   : {'SÍ' if has_audio else 'NO'}
-Archivo de Referencia Original  : {audio_file}
+Identificador solicitado : {task_id}
+Fecha de consulta (UTC)  : {datetime.datetime.now(datetime.timezone.utc).isoformat()}
 
-RESPUESTA REGISTRADA DEL PROVEEDOR (UDIO API):
---------------------------------------------------------------------------------
-Mensaje de Rechazo Exacto:
-"{exact_err}"
+CAUSA:
+No se encontró la tarea '{task_id}' en la memoria del servidor.
 
-Clasificación del Estado:
-Rechazo automatizado por huella acústica / catálogo comercial registrado en Udio.
-Los créditos de la cuenta fueron reembolsados por el proveedor.
+POSIBLES RAZONES:
+1. El servidor se ha reiniciado o desplegado recientemente, limpiando la memoria volátil.
+2. La tarea fue limpiada por antigüedad (conservación de las últimas 30 tareas).
+3. El navegador solicitó un identificador erróneo o una tarea de una sesión anterior.
 
-PROCEDIMIENTO PARA SOLICITAR REVISIÓN MANUAL AL PROVEEDOR:
---------------------------------------------------------------------------------
-Si esta obra es una interpretación propia de un himno clásico, obra tradicional
+ACCIÓN SUGERIDA:
+Vuelva a cargar la pista de audio o melodía en el creador y pulse Generar para
+iniciar una nueva tarea y registrar un nuevo diagnóstico.
+
+================================================================================
+Este informe no contiene claves privadas ni datos sensibles.
+================================================================================
+"""
+        return PlainTextResponse(
+            err_report,
+            status_code=404,
+            headers={"Content-Disposition": f'attachment; filename="diagnostico_no_encontrado_{task_id}.txt"'}
+        )
+
+    diag = task.get("diagnostic_info", {})
+    title = diag.get("title") or task.get("title") or "Obra Musical"
+    model = diag.get("model") or "udio-130-v2.0 / udioapi.pro"
+    date_str = diag.get("date_utc") or datetime.datetime.now(datetime.timezone.utc).isoformat()
+    exact_err = diag.get("exact_error_message") or task.get("detail") or "Sin mensaje de error especificado."
+    is_catalog = task.get("catalog_rejection", False)
+    is_pd = diag.get("is_public_domain", task.get("is_public_domain", False))
+    has_audio = diag.get("has_audio_reference", bool(task.get("audio_filename") and task.get("audio_filename") != "N/A"))
+    audio_file = diag.get("audio_filename") or task.get("audio_filename", "N/A")
+    raw_logs = task.get("logs", "No hay registros disponibles para esta tarea.")
+    
+    # Sanitizar logs para garantizar 100% que ninguna clave o token pueda figurar
+    sanitized_logs = re.sub(r'sk-[a-zA-Z0-9_\-]{8,}', '[PROTECTED_API_KEY]', raw_logs)
+    sanitized_logs = re.sub(r'(key|token|secret)=([a-zA-Z0-9_\-]{8,})', r'\1=[PROTECTED]', sanitized_logs, flags=re.IGNORECASE)
+
+    status_name = task.get("status", "DESCONOCIDO")
+
+    if is_catalog:
+        encabezado_tipo = "COINCIDENCIA DE CATÁLOGO COMERCIAL (FILTRO DE AUDIO REGISTRADO)"
+        clasificacion = """Rechazo automatizado por huella acústica / catálogo comercial registrado en Udio.
+Los créditos de la cuenta fueron automáticamente reembolsados por el proveedor."""
+        procedimiento = f"""Si esta obra es una interpretación propia de un himno clásico, obra tradicional
 en dominio público o una composición con los debidos derechos, puedes solicitar
 una revisión al equipo técnico del proveedor de la API siguiendo estos pasos:
 
@@ -1739,7 +1827,44 @@ una revisión al equipo técnico del proveedor de la API siguiendo estos pasos:
      y no un fonograma comercial protegido de terceros.
 
 3. El equipo de soporte evaluará la solicitud para la excepción o habilitación
-   correspondiente en su filtro de catálogo automatizado.
+   correspondiente en su filtro de catálogo automatizado."""
+    else:
+        encabezado_tipo = f"ESTADO DE TAREA: {status_name}"
+        clasificacion = f"Detalle registrado: {exact_err}"
+        procedimiento = """Este informe contiene el estado técnico completo y los registros de ejecución de la tarea.
+Puede conservarlo para trazabilidad o para revisar cualquier advertencia del sistema."""
+
+    report_text = f"""================================================================================
+INFORME TÉCNICO DE DIAGNÓSTICO - {encabezado_tipo}
+Rodrix Music Creator (Generación Musical Asistida por IA)
+================================================================================
+
+DATOS DE LA SOLICITUD:
+--------------------------------------------------------------------------------
+Identificador de Tarea (Task ID) : {task_id}
+Estado de la Tarea              : {status_name}
+Fecha y Hora de Registro (UTC)  : {date_str}
+Título de la Obra               : {title}
+Modelo de Generación            : {model}
+Declaración de Dominio Público  : {'SÍ (Grabación propia de obra tradicional/autorizada)' if is_pd else 'NO declarada'}
+Audio de Referencia Vinculado   : {'SÍ' if has_audio else 'NO'}
+Archivo de Referencia Original  : {audio_file}
+
+RESPUESTA Y DETALLES TÉCNICOS:
+--------------------------------------------------------------------------------
+Mensaje Registrado:
+"{exact_err}"
+
+Clasificación del Estado:
+{clasificacion}
+
+REGISTRO DETALLADO DE OPERACIONES (LOGS):
+--------------------------------------------------------------------------------
+{sanitized_logs}
+
+PROCEDIMIENTO Y RECOMENDACIONES:
+--------------------------------------------------------------------------------
+{procedimiento}
 
 ================================================================================
 Generado por Rodrix Music Creator.
@@ -1748,6 +1873,7 @@ Este documento no contiene credenciales, claves de API ni datos confidenciales.
 """
     return PlainTextResponse(
         report_text,
+        media_type="text/plain; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="diagnostico_{task_id}.txt"'
         }
@@ -2342,9 +2468,12 @@ async def api_logout(request: Request):
 # ==============================================================================
 # ESCÁNER DE PARTITURAS & GENERADOR DE HIMNARIOS (OMR + BATCH + ÁLBUM 1 HORA)
 # ==============================================================================
-from pydub import AudioSegment
-if os.path.exists("ffmpeg.exe"):
-    AudioSegment.converter = os.path.abspath("ffmpeg.exe")
+try:
+    from pydub import AudioSegment
+    if os.path.exists("ffmpeg.exe"):
+        AudioSegment.converter = os.path.abspath("ffmpeg.exe")
+except ImportError:
+    AudioSegment = None
 
 HYMNAL_KNOWLEDGE_BASE = {
     "15": {
