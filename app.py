@@ -158,15 +158,21 @@ async def upload_to_uguu_async(file_path: str) -> str | None:
     return None
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
+    ffmpeg_bin = "ffmpeg"
+    if os.path.exists("ffmpeg.exe"):
+        ffmpeg_bin = os.path.abspath("ffmpeg.exe")
+    elif os.path.exists(os.path.join(os.path.dirname(__file__), "ffmpeg.exe")):
+        ffmpeg_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "ffmpeg.exe"))
+
     ffmpeg_cmd = [
-        "ffmpeg",
+        ffmpeg_bin,
         "-threads", "1",
         "-y",
         "-i", input_path,
         "-vn",
         "-t", "120",
         "-map_metadata", "-1",
-        "-af", "aformat=channel_layouts=mono,asetrate=44100*1.12,aresample=44100,atempo=0.892,flanger=delay=7:depth=7:regen=20:width=80:speed=2,vibrato=f=4.0:d=0.4,compand=attacks=0:points=-80/-80|-15/-15|0/-15|20/-15",
+        "-af", "aformat=channel_layouts=mono,asetrate=44100*1.025,aresample=44100,atempo=0.975,flanger=delay=4:depth=4:regen=15:width=70:speed=1.5,vibrato=f=3.0:d=0.25,compand=attacks=0:points=-80/-80|-15/-15|0/-15|20/-15",
         output_path
     ]
     try:
@@ -1539,15 +1545,38 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                         "internal error", "500", "429", "too many requests"
                     ]
                 )
-                if ("copyrighted material" in err_lower or "copyright" in err_lower) and attempt < max_retries - 1:
-                    log_msg("Filtro de Copyright detectado en la letra/título. Aplicando ofuscación profunda y reintentando automáticamente...")
-                    # Obfuscate lyrics to defeat string-matching filters
+                is_catalog_or_copyright = any(
+                    k in err_lower for k in [
+                        "copyright", "copyrighted material", "matches an existing recording",
+                        "existing recording in our catalog", "catalog", "refunded"
+                    ]
+                )
+                if is_catalog_or_copyright and attempt < max_retries - 1:
+                    log_msg("Filtro de Catálogo/Copyright detectado por Udio ('matches an existing recording in our catalog').")
+                    log_msg("Activando modulación de huella acústica (anti-fingerprint), ofuscación de letra y renombramiento de versión...")
+                    
+                    # 1. Modificar título para evitar coincidencia exacta con catálogo comercial
+                    raw_title = payload.get("title", "")
+                    if "(Versión Alabanza)" not in raw_title and "(Versión)" not in raw_title:
+                        payload["title"] = f"{raw_title} (Versión)"
+                    
+                    # 2. Ofuscar texto de la letra contra coincidencia de strings
                     raw_prompt = payload.get("prompt", "")
                     payload["prompt"] = obfuscate_lyrics(raw_prompt)
-                    # Modify title so exact title match doesn't trip filter
-                    raw_title = payload.get("title", "")
-                    if "(Versión)" not in raw_title:
-                        payload["title"] = f"{raw_title} (Versión)"
+                    
+                    # 3. Modular audio de referencia si existe para romper la huella acústica de catálogo
+                    if upload_url and temp_file_path and os.path.exists(temp_file_path):
+                        bypassed_retry = f"retry_bypassed_{uuid.uuid4().hex}.mp3"
+                        res_bp = await asyncio.to_thread(bypass_audio_fingerprint, temp_file_path, bypassed_retry)
+                        if res_bp == "SUCCESS" and os.path.exists(bypassed_retry):
+                            new_url = await upload_to_catbox_async(bypassed_retry) or await upload_to_uguu_async(bypassed_retry)
+                            if new_url:
+                                payload["upload_url"] = new_url
+                                log_msg(f"Audio de referencia modulado con éxito para bypass de catálogo: {new_url}")
+                        if os.path.exists(bypassed_retry):
+                            try: os.remove(bypassed_retry)
+                            except: pass
+                            
                     await asyncio.sleep(2)
                     continue
                 elif is_timeout_or_transient and attempt < max_retries - 1:
@@ -2907,7 +2936,7 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
                 audio_filename=audio_filename,
                 ignore_audio=ignore_audio,
                 include_lyrics=True,
-                bypass_copyright=False,
+                bypass_copyright=True,
                 exclude_styles=exclude_styles,
                 vocal_gender=vocal_gender,
                 weirdness=25,

@@ -3480,12 +3480,12 @@ window.generateSingleHymn = async function(idx) {
   fd.append('style', style);
   fd.append('vocal_gender', globalVocal === 'female' ? 'female' : (globalVocal === 'male' ? 'male' : 'random'));
   fd.append('include_lyrics', globalVocal === 'instrumental' ? 'false' : 'true');
-  fd.append('bypass_copyright', 'false');
+  fd.append('bypass_copyright', 'true');
   fd.append('weirdness', '20');
   fd.append('style_influence', '50');
   fd.append('model', 'chirp-v5');
   fd.append('pronunciation', '');
-  fd.append('obfuscate', 'false');
+  fd.append('obfuscate', 'true');
   fd.append('target_bpm', chosenBpm.toString());
 
   if (orig.skeleton_file) {
