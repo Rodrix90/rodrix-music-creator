@@ -250,6 +250,7 @@ async def transform_audio(
     pronunciation: str = Form(""),
     obfuscate: bool = Form(False),
     skeleton_file: str = Form(""),
+    target_bpm: int = Form(0),
     current_user: str = Depends(get_current_user)
 ):
     if not UDIO_API_KEY:
@@ -273,8 +274,27 @@ async def transform_audio(
         audio_content = await audio.read()
         audio_filename = audio.filename
     elif resolved_skeleton:
-        with open(resolved_skeleton, "rb") as sf:
-            audio_content = sf.read()
+        if target_bpm and target_bpm > 30 and target_bpm != 54:
+            ratio = max(0.5, min(2.0, target_bpm / 54.0))
+            temp_out = os.path.join(tempfile.gettempdir(), f"skel_{uuid.uuid4().hex[:8]}.mp3")
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", resolved_skeleton, "-filter:a", f"atempo={ratio:.3f}", temp_out],
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                with open(temp_out, "rb") as sf:
+                    audio_content = sf.read()
+                try:
+                    os.remove(temp_out)
+                except Exception:
+                    pass
+            except Exception as e:
+                print(f"[Skeleton Tempo] Error escalando BPM: {e}")
+                with open(resolved_skeleton, "rb") as sf:
+                    audio_content = sf.read()
+        else:
+            with open(resolved_skeleton, "rb") as sf:
+                audio_content = sf.read()
         audio_filename = os.path.basename(resolved_skeleton)
         ignore_audio = False
         if audio_influence < 50:
@@ -974,12 +994,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "century 1994 rock kit": "1994 Century acoustic wood shell drum kit, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
                 "century wood shell": "1994 Century acoustic wood shell drum kit, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
                 # Bajos
-                "fender jazz bass 1975": "1975 Fender Jazz Bass with active pickups, growling midrange bite, articulate fingerstyle clarity",
-                "fender precision 1962": "1962 Fender Precision Bass, deep punchy round low-end, classic Motown and vintage rock bass tone",
-                "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "music man stingray": "Music Man StingRay bass, punchy active humbucker, aggressive slap and finger tone, tight sub-bass",
-                "contrabajo acustico": "acoustic upright double bass, warm resonant wooden body, deep woody acoustic pizzicato tone",
-                "contrabajo acústico": "acoustic upright double bass, warm resonant wooden body, deep woody acoustic pizzicato tone",
+                "fender jazz bass deluxe": "Fender American Deluxe Jazz Bass, active 18V preamp with 3-band EQ, dual 4th generation Noiseless single-coil pickups, modern Hi-Fi electric bass tone, bright punchy slap attack, growling articulate low-mids, deep tight low end, real roundwound nickel strings on rosewood fretboard, played fingerstyle with organic string dynamics and natural fret buzz, plugged into classic Ampeg SVT tube amplifier and 8x10 speaker cabinet, warm analog direct-box bass tone, authentic physical wooden electric bass guitar, zero synth bass",
+                "fender jazz bass 1975": "vintage 1975 Fender Jazz Bass with ash body and maple fingerboard with black block inlays, bridge pickup single-coil growl, bright biting treble, scooped mid punch, Jaco Pastorius style lyrical fingerstyle tone, real roundwound nickel strings, mic'd vintage Ampeg SVT tube amplifier and 8x10 cabinet, authentic physical wooden electric bass guitar, zero synth bass",
+                "fender jazz bass": "authentic Fender Jazz Bass electric guitar, dual single-coil pickups, growling articulate midrange, punchy low end, real roundwound strings plucked with fingers, organic fret buzz, mic'd Ampeg SVT tube bass amp, real physical wooden electric bass guitar, zero synth bass",
+                "fender precision 1962": "legendary 1962 Fender Precision Bass with alder body and split-coil pickup, warm thumping Motown James Jamerson vintage tone, flatwound strings, muted fleshy thumb and finger pluck, thick punchy fundamental low-end warmth that sits glued in the mix, vintage Flip-Top Ampeg B-15 Portaflex tube amp, real physical electric bass guitar, zero synth bass",
+                "fender precision bass": "classic Fender Precision Bass with split-coil pickup, warm thumping fundamental, flatwound strings, vintage Ampeg B-15 tube amp, real physical wooden electric bass guitar, zero synth bass",
+                "fender precision": "classic Fender Precision Bass with split-coil pickup, warm thumping fundamental, flatwound strings, vintage Ampeg B-15 tube amp, real physical wooden electric bass guitar, zero synth bass",
+                "music man stingray": "iconic Ernie Ball Music Man StingRay bass guitar, massive alnico active humbucker pickup with 3-band active preamp, aggressive punchy slap and pop sound, massive growling low-mid bite, high-voltage definition, real steel roundwound strings, Gallien-Krueger 800RB amplifier punch, real physical electric bass guitar, zero synth bass",
+                "contrabajo acustico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
+                "contrabajo acústico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
                 # Teclados y Pianos
                 "yamaha cfx grand": "Yamaha CFX 9-foot concert grand piano, crystal clear brilliant highs, majestic resonant bass, acoustic concert hall reverb",
                 "fender rhodes mark i": "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo, lush neo-soul worship vibe",
@@ -1194,6 +1217,20 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     for syn in synonym_map[key]:
                         neg_tags_list.append(syn)
                         style = re.sub(rf'\b{re.escape(syn)}\b', '', style, flags=re.IGNORECASE)
+
+            # Si se solicita bajo real (o en cualquier estilo con instrumentación acústica/eléctrica),
+            # forzar la expulsión estricta de cualquier sintetizador de bajo o 808 para garantizar sonido de bajo real de cuerdas
+            has_real_bass = any(k in style.lower() for k in [
+                "bass", "bajo", "fender", "precision", "jazz bass", "stingray", "contrabajo", "upright"
+            ])
+            if has_real_bass and not is_solo_piano_prayer:
+                for bass_anti in [
+                    "synth bass", "synthesizer bass", "synthbass", "808 bass", "808 sub", "sub bass synth",
+                    "electronic bass", "moog bass", "midi bass", "synthesized bassline", "digital sub bass",
+                    "techno bass", "keyboard bass", "synthetic bass", "fake bass", "keytar bass",
+                    "acid bass", "wobble bass", "reese bass", "electronic sub", "sine wave sub"
+                ]:
+                    neg_tags_list.append(bass_anti)
 
             # If Christian / Worship, always enforce anti-cumbia negative tags automatically
             if is_worship:

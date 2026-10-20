@@ -18,3 +18,5 @@ ffmpeg.exe
 !assets/ambient/*.mp3
 !assets/skeletons/*.mp3
 !assets/skeletons/*.wav
+
+!assets/audio/bass/*.mp3

@@ -251,6 +251,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .btn-gear-toggle{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);display:grid;place-items:center;font-size:13px;flex-shrink:0;transition:.2s}
 .gear-card:hover .btn-gear-toggle{border-color:var(--accent);color:var(--text)}
 .gear-card.active .btn-gear-toggle{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-gear-audio{width:26px;height:26px;border-radius:6px;border:1px solid rgba(52,211,153,.35);background:rgba(52,211,153,.1);color:#34D399;display:grid;place-items:center;font-size:13px;flex-shrink:0;transition:.2s;cursor:pointer}
+.btn-gear-audio:hover{background:rgba(52,211,153,.25);border-color:#34D399;transform:scale(1.08)}
+.btn-gear-audio.playing{background:#059669;border-color:#10B981;color:#fff;animation:pulseAudio 1.2s infinite}
+@keyframes pulseAudio{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.5)}50%{box-shadow:0 0 10px 3px rgba(16,185,129,0.7)}}
 .rack-summary{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
 /* ---------- SELECTOR DE RITMO & BANDA ---------- */
@@ -533,8 +537,28 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 
               <!-- Bajos -->
               <div class="gear-section">
-                <div class="gear-title"><i class="ph ph-waveform"></i> Bajos Eléctricos & Acústicos</div>
+                <div class="gear-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                  <span><i class="ph ph-waveform"></i> Bajos Eléctricos & Acústicos</span>
+                  <span style="font-size:10.5px;color:#34D399;font-weight:600;text-transform:none;display:inline-flex;align-items:center;gap:4px"><i class="ph ph-speaker-high"></i> Pulsa el parlante para escuchar el sonido real</span>
+                </div>
                 <div class="gear-grid" data-cat="bass">
+                  <!-- Fender Jazz Bass Deluxe -->
+                  <div class="gear-card" data-gear="fender jazz bass deluxe">
+                    <div class="gear-thumb">
+                      <img src="/assets/gear/fender_jazz_deluxe.jpg" alt="Fender Jazz Bass Deluxe">
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Fender Jazz Bass Deluxe</div>
+                      <div class="gear-model">Preamp Activo 18V & Noiseless</div>
+                      <div class="gear-sound">Punch moderno, slap y definición Hi-Fi</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <button type="button" class="btn-gear-audio" onclick="event.stopPropagation(); playGearSample('/assets/audio/bass/fender_jazz_deluxe.mp3', this)" title="Escuchar sonido real de este bajo"><i class="ph ph-speaker-high"></i></button>
+                      <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    </div>
+                  </div>
+
+                  <!-- Fender Jazz Bass 1975 -->
                   <div class="gear-card" data-gear="fender jazz bass 1975">
                     <div class="gear-thumb">
                       <img src="/assets/gear/fender_jazz.jpg" alt="Fender Jazz Bass 1975">
@@ -544,8 +568,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                       <div class="gear-model">Pastillas Single-Coil</div>
                       <div class="gear-sound">Brillo melódico y ataque</div>
                     </div>
-                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <button type="button" class="btn-gear-audio" onclick="event.stopPropagation(); playGearSample('/assets/audio/bass/fender_jazz_1975.mp3', this)" title="Escuchar sonido real de este bajo"><i class="ph ph-speaker-high"></i></button>
+                      <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    </div>
                   </div>
+
+                  <!-- Fender Precision 1962 -->
                   <div class="gear-card" data-gear="fender precision 1962">
                     <div class="gear-thumb">
                       <img src="/assets/gear/fender_p.jpg" alt="Fender Precision 1962">
@@ -555,8 +584,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                       <div class="gear-model">Classic Vintage P-Bass</div>
                       <div class="gear-sound">Graves redondos y sólidos</div>
                     </div>
-                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <button type="button" class="btn-gear-audio" onclick="event.stopPropagation(); playGearSample('/assets/audio/bass/fender_p_1962.mp3', this)" title="Escuchar sonido real de este bajo"><i class="ph ph-speaker-high"></i></button>
+                      <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    </div>
                   </div>
+
+                  <!-- Music Man StingRay -->
                   <div class="gear-card" data-gear="music man stingray">
                     <div class="gear-thumb">
                       <img src="/assets/gear/stingray.jpg" alt="Music Man StingRay">
@@ -566,8 +600,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                       <div class="gear-model">Humbucker Activo</div>
                       <div class="gear-sound">Pegada potente y slap</div>
                     </div>
-                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <button type="button" class="btn-gear-audio" onclick="event.stopPropagation(); playGearSample('/assets/audio/bass/stingray.mp3', this)" title="Escuchar sonido real de este bajo"><i class="ph ph-speaker-high"></i></button>
+                      <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    </div>
                   </div>
+
+                  <!-- Contrabajo Acústico -->
                   <div class="gear-card" data-gear="contrabajo acustico">
                     <div class="gear-thumb">
                       <img src="/assets/gear/upright_bass.jpg" alt="Contrabajo Acústico">
@@ -577,7 +616,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                       <div class="gear-model">Upright Double Bass</div>
                       <div class="gear-sound">Madera profunda y resonante</div>
                     </div>
-                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <button type="button" class="btn-gear-audio" onclick="event.stopPropagation(); playGearSample('/assets/audio/bass/upright_bass.mp3', this)" title="Escuchar sonido real de este bajo"><i class="ph ph-speaker-high"></i></button>
+                      <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1948,21 +1990,75 @@ document.querySelectorAll('.gear-card').forEach(card => {
   });
 });
 
+/* ---------- AUDIO PREVIEWS DE EQUIPAMIENTO & BAJOS ---------- */
+let currentGearAudio = null;
+let currentGearBtn = null;
+window.playGearSample = function(url, btn) {
+  if (currentGearAudio && !currentGearAudio.paused) {
+    currentGearAudio.pause();
+    if (currentGearBtn) {
+      currentGearBtn.classList.remove('playing');
+      const icon = currentGearBtn.querySelector('i');
+      if (icon) icon.className = 'ph ph-speaker-high';
+    }
+    if (currentGearBtn === btn) {
+      currentGearAudio = null;
+      currentGearBtn = null;
+      return;
+    }
+  }
+
+  currentGearAudio = new Audio(url);
+  currentGearBtn = btn;
+  btn.classList.add('playing');
+  const icon = btn.querySelector('i');
+  if (icon) icon.className = 'ph ph-pause';
+
+  currentGearAudio.play().catch(e => console.warn('Audio play error:', e));
+  currentGearAudio.onended = () => {
+    btn.classList.remove('playing');
+    if (icon) icon.className = 'ph ph-speaker-high';
+    currentGearAudio = null;
+    currentGearBtn = null;
+  };
+};
+
+const GEAR_DETAILED_PROMPTS = {
+  'fender jazz bass deluxe': 'authentic Fender American Deluxe Jazz Bass, active 18V preamp with 3-band EQ, dual 4th generation Noiseless single-coil pickups, modern Hi-Fi electric bass tone, bright punchy slap attack, growling articulate low-mids, deep tight low end, real roundwound nickel strings on rosewood fretboard, played fingerstyle with organic string dynamics and natural fret buzz, plugged into classic Ampeg SVT tube amplifier and 8x10 speaker cabinet, warm analog direct-box bass tone, authentic physical wooden electric bass guitar, zero synth bass',
+  'fender jazz bass 1975': 'authentic vintage 1975 Fender Jazz Bass with ash body and maple fingerboard with black block inlays, bridge pickup single-coil growl, bright biting treble, scooped mid punch, Jaco Pastorius style lyrical fingerstyle tone, real roundwound nickel strings, mic\'d vintage Ampeg SVT tube amplifier and 8x10 cabinet, authentic physical wooden electric bass guitar, zero synth bass',
+  'fender precision 1962': 'legendary 1962 Fender Precision Bass with alder body and split-coil pickup, warm thumping Motown James Jamerson vintage tone, flatwound strings, muted fleshy thumb and finger pluck, thick punchy fundamental low-end warmth that sits glued in the mix, vintage Flip-Top Ampeg B-15 Portaflex tube amp, real physical electric bass guitar, zero synth bass',
+  'music man stingray': 'iconic Ernie Ball Music Man StingRay bass guitar, massive alnico active humbucker pickup with 3-band active preamp, aggressive punchy slap and pop sound, massive growling low-mid bite, high-voltage definition, real steel roundwound strings, Gallien-Krueger 800RB amplifier punch, real physical electric bass guitar, zero synth bass',
+  'contrabajo acustico': 'authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass'
+};
+
 $('applyGearBtn').addEventListener('click', () => {
   const arr = Array.from(activeGear);
   if (!arr.length) { alert('Selecciona primero al menos un instrumento o consola del rack.'); return; }
   let cur = $('styleInput').value.trim();
-  const gearStr = arr.join(', ');
+  
+  const expandedList = arr.map(g => GEAR_DETAILED_PROMPTS[g] || g);
+  const gearStr = expandedList.join(', ');
+  
   if (cur) {
-    if (!cur.toLowerCase().includes(arr[0].toLowerCase())) {
-      cur += ', ' + gearStr;
-    }
+    cur += ', ' + gearStr;
   } else {
     cur = gearStr;
   }
   $('styleInput').value = cur;
+  
+  // Si se seleccionó algún bajo del rack, prohibir automáticamente sintetizadores de bajo en exclusiones
+  const hasBassGear = arr.some(g => g.includes('bass') || g.includes('contrabajo') || g.includes('stingray') || g.includes('precision'));
+  if (hasBassGear) {
+    let excl = $('excludeInput').value.trim();
+    const antiSynth = 'synth bass, synthesizer bass, 808 bass, 808 sub, electronic bass, moog bass, midi bass, synthesized bassline, digital sub bass, keyboard bass, synthetic bass, fake bass, keytar, sub-bass synth';
+    if (!excl.toLowerCase().includes('synth bass')) {
+      $('excludeInput').value = excl ? `${excl}, ${antiSynth}` : antiSynth;
+      logLine('Filtro acústico activado: Baneo estricto de sintetizadores de bajo y 808 para garantizar sonido de bajo real.');
+    }
+  }
+
   $('studioGearDetails').open = false;
-  logLine(`Equipamiento añadido al prompt de estilo: ${gearStr}`);
+  logLine(`Equipamiento analógico de estudio añadido al prompt: ${arr.join(', ')}`);
 });
 
 /* ---------- SELECTOR DE RITMO & MÉTRICA ---------- */
@@ -3183,6 +3279,17 @@ function renderScannedHymns() {
         </select>
       </div>
 
+      <!-- SELECTOR DE TEMPO Y VELOCIDAD (BPM) -->
+      <div style="margin-top:8px">
+        <label style="font-size:11px;color:#A78BFA;font-weight:600">⏱️ Tempo / Velocidad de Interpretación (BPM):</label>
+        <select class="hymn-tempo-select" style="width:100%;padding:6px;border-radius:6px;background:rgba(0,0,0,0.3);color:var(--text);border:1px solid var(--border);font-size:11.5px;margin-top:2px">
+          <option value="54" selected>🐢 Lento Devocional (54 BPM - Partitura Original)</option>
+          <option value="64">🕊️ Andante Solemne (64 BPM - Un poco más fluido)</option>
+          <option value="76">🚶 Moderato Devocional (76 BPM - Ritmo constante)</option>
+          <option value="90">⚡ Alegre / Marcha Triunfal (90 BPM - Rápido)</option>
+        </select>
+      </div>
+
       <details style="margin-top:8px">
         <summary style="font-size:11.5px;color:#A78BFA;cursor:pointer;font-weight:600">Ver / Editar Letra Extraída de la Partitura</summary>
         <textarea class="hymn-lyrics-input" style="width:100%;min-height:90px;font-size:11.5px;margin-top:6px;padding:6px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;white-space:pre">${esc(h.lyrics)}</textarea>
@@ -3248,15 +3355,26 @@ window.removeScannedHymn = function(idx) {
   renderScannedHymns();
 };
 
-function buildHymnStylePrompt(orig, preset) {
+function buildHymnStylePrompt(orig, preset, customBpm) {
   const meter = orig.meter || '4/4';
+  const bpm = customBpm ? parseInt(customBpm, 10) : 54;
   let tempo = orig.tempo || 'Andante';
   const key = orig.key || 'Do Mayor';
   const chords = orig.chords || '';
 
-  // En compás 12/8 devocional tradicional, forzar tempo lento y sereno para evitar aceleraciones:
+  // En compás 12/8 devocional tradicional o himno 297, ajustar descripción de tempo según BPM elegido:
   if (meter === '12/8' || (orig.title && (orig.title.includes('297') || orig.title.toLowerCase().includes('quiero verle')))) {
-    tempo = 'slow reverent 12/8 compound meter, slow andante gospel hymn tempo, 54 BPM dotted-quarter note, relaxed peaceful sway, unhurried sacred pacing, zero rush, solemn and peaceful';
+    if (bpm <= 56) {
+      tempo = 'slow reverent 12/8 compound meter, slow andante gospel hymn tempo, 54 BPM dotted-quarter note, relaxed peaceful sway, unhurried sacred pacing, zero rush, solemn and peaceful';
+    } else if (bpm <= 68) {
+      tempo = `reverent andante in 12/8 compound meter, gentle flowing tempo, ${bpm} BPM, steady unhurried sacred pacing`;
+    } else if (bpm <= 80) {
+      tempo = `moderato devotional in 12/8 compound meter, uplifting moderate tempo, ${bpm} BPM, reverent church pace`;
+    } else {
+      tempo = `allegro triumphant in 12/8 compound meter, joyful lively tempo, ${bpm} BPM, spirited hymnody`;
+    }
+  } else {
+    tempo = `tempo ${bpm} BPM, ${orig.tempo || 'Andante'}`;
   }
 
   // REGLA FUNDAMENTAL: El compás, tempo, armonía y tonalidad de la partitura NUNCA se alteran:
@@ -3306,7 +3424,9 @@ window.generateSingleHymn = async function(idx) {
   const chosenPreset = cardChoice || globalPreset;
 
   const globalVocal = $('batchVocalChoice') ? $('batchVocalChoice').value : 'choir';
-  const style = buildHymnStylePrompt(orig, chosenPreset);
+  const cardTempoSelect = card ? card.querySelector('.hymn-tempo-select') : null;
+  const chosenBpm = cardTempoSelect ? parseInt(cardTempoSelect.value, 10) : 54;
+  const style = buildHymnStylePrompt(orig, chosenPreset, chosenBpm);
 
   const btn = $(`btnGenSingle_${idx}`);
   const cardProgBox = $(`hymnProgressBox_${idx}`);
@@ -3353,16 +3473,17 @@ window.generateSingleHymn = async function(idx) {
   fd.append('model', 'chirp-v5');
   fd.append('pronunciation', '');
   fd.append('obfuscate', 'false');
+  fd.append('target_bpm', chosenBpm.toString());
 
   if (orig.skeleton_file) {
     fd.append('skeleton_file', orig.skeleton_file);
     fd.append('ignore_audio', 'false');
     fd.append('audio_influence', '65');
-    fd.append('exclude_styles', 'fast tempo, uptempo, rushing, hurried, dance beat, fast swing, pop drums, electronic, cumbia, trap, syncopation');
+    fd.append('exclude_styles', 'fast tempo, uptempo, rushing, hurried, dance beat, fast swing, pop drums, electronic, cumbia, trap, syncopation, synth bass, synthesizer bass, 808 bass, electronic bass, fake bass');
   } else {
     fd.append('ignore_audio', 'true');
     fd.append('audio_influence', '0');
-    fd.append('exclude_styles', 'cumbia, trap, electronic, metal, distortion, latin percussion');
+    fd.append('exclude_styles', 'cumbia, trap, electronic, metal, distortion, latin percussion, synth bass, synthesizer bass, 808 bass, electronic bass, fake bass');
   }
 
   try {
@@ -3460,8 +3581,10 @@ window.loadHymnIntoMainCreator = function(idx) {
   const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
   const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'vienna_orchestra';
   const chosenPreset = cardChoice || globalPreset;
+  const cardTempoSelect = card ? card.querySelector('.hymn-tempo-select') : null;
+  const chosenBpm = cardTempoSelect ? parseInt(cardTempoSelect.value, 10) : 54;
 
-  const style = buildHymnStylePrompt(orig, chosenPreset);
+  const style = buildHymnStylePrompt(orig, chosenPreset, chosenBpm);
 
   if ($('titleInput')) $('titleInput').value = title;
   if ($('lyricsInput')) $('lyricsInput').value = lyrics;
@@ -3727,8 +3850,8 @@ $('genForm').addEventListener('submit', async e => {
   if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
     bandExtras.push('prominent acoustic drum kit with crisp snare crack');
   }
-  if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass')) {
-    bandExtras.push('root-fifth alternating bass line');
+  if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
+    bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, zero synth bass');
   }
   if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
     bandExtras.push('crisp acoustic rhythm guitar strumming');
@@ -3789,6 +3912,13 @@ $('genForm').addEventListener('submit', async e => {
   if ($('chkNoLatin') && $('chkNoLatin').checked) {
     const antiLatin = 'ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa';
     finalExclude = finalExclude ? `${finalExclude}, ${antiLatin}` : antiLatin;
+  }
+  
+  // Baneo obligatorio de sintetizadores de bajo cuando la pista lleva bajo real
+  const hasAnyBass = ($('chkBass') && $('chkBass').checked) || finalStyle.toLowerCase().includes('bass') || finalStyle.toLowerCase().includes('bajo');
+  if (hasAnyBass) {
+    const antiSynth = 'synth bass, synthesizer bass, 808 bass, 808 sub, electronic bass, moog bass, midi bass, synthesized bassline, digital sub bass, keyboard bass, synthetic bass, fake bass, keytar, sub-bass synth';
+    finalExclude = finalExclude ? `${finalExclude}, ${antiSynth}` : antiSynth;
   }
   fd.append('exclude_styles', finalExclude);
   fd.append('vocal_gender', gender);
