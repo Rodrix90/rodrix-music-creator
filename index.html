@@ -3502,8 +3502,12 @@ window.generateSingleHymn = async function(idx) {
   try {
     const res = await fetch('/api/transform', { method: 'POST', body: fd });
     if (!res.ok) {
-      const errJson = await res.json().catch(()=>({}));
-      throw new Error(errJson.detail || ('HTTP ' + res.status));
+      let errDetail = 'Error del servidor (HTTP ' + res.status + ')';
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.detail) errDetail = errJson.detail;
+      } catch (_) {}
+      throw new Error(errDetail);
     }
     const data = await res.json();
     const taskId = data.task_id;
@@ -3689,7 +3693,14 @@ if ($('btnLaunchBatch')) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hymns: hymnsToGenerate })
       });
-      if (!res.ok) throw new Error('Error al iniciar cola de generación');
+      if (!res.ok) {
+        let errDetail = 'Error al iniciar cola de generación (HTTP ' + res.status + ')';
+        try {
+          const errJson = await res.json();
+          if (errJson && errJson.detail) errDetail = errJson.detail;
+        } catch (_) {}
+        throw new Error(errDetail);
+      }
       const data = await res.json();
       currentBatchId = data.batch_id;
       

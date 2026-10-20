@@ -105,26 +105,11 @@ def get_current_user(request: Request):
     return email
 
 def obfuscate_lyrics(text: str) -> str:
+    """Limpia y normaliza el texto de la letra manteniendo intactas las etiquetas de estructura sin caracteres invisibles."""
     if not text:
-        return text
-    processed_lines = []
-    for line in text.split('\n'):
-        stripped = line.strip()
-        # Keep structural brackets like [Verse], [Chorus], [Intro] unchanged so Suno parser recognizes them
-        if (stripped.startswith('[') and stripped.endswith(']')) or (stripped.startswith('(') and stripped.endswith(')')):
-            processed_lines.append(line)
-            continue
-            
-        obfuscated = ""
-        for i, char in enumerate(line):
-            if char.isalnum():
-                marker = '\u200C' if i % 2 == 0 else '\u200B'
-                obfuscated += char + marker
-            else:
-                obfuscated += char
-        processed_lines.append(obfuscated)
-        
-    return "\n".join(processed_lines)
+        return ""
+    lines = [line.strip() for line in text.split('\n')]
+    return "\n".join(lines).strip()
 
 async def upload_to_catbox_async(file_path: str) -> str | None:
     url = "https://catbox.moe/user/api.php"
@@ -262,65 +247,80 @@ async def transform_audio(
     target_bpm: int = Form(0),
     current_user: str = Depends(get_current_user)
 ):
-    if not UDIO_API_KEY:
-        raise HTTPException(status_code=400, detail="Falta UDIO_API_KEY")
+    try:
+        if not UDIO_API_KEY:
+            raise HTTPException(status_code=400, detail="Falta configurar UDIO_API_KEY")
 
-    prune_tasks()
+        prune_tasks()
 
-    audio_content = None
-    audio_filename = None
-    resolved_skeleton = None
-    if skeleton_file:
-        cand = skeleton_file.lstrip("/\\")
-        if os.path.exists(cand):
-            resolved_skeleton = cand
-        else:
-            base_cand = os.path.join(os.path.dirname(os.path.abspath(__file__)), cand)
-            if os.path.exists(base_cand):
-                resolved_skeleton = base_cand
+        audio_content = None
+        audio_filename = None
+        resolved_skeleton = None
+        if skeleton_file:
+            cand = skeleton_file.lstrip("/\\")
+            if os.path.exists(cand):
+                resolved_skeleton = cand
+            else:
+                base_cand = os.path.join(os.path.dirname(os.path.abspath(__file__)), cand)
+                if os.path.exists(base_cand):
+                    resolved_skeleton = base_cand
 
-    if audio and not ignore_audio:
-        audio_content = await audio.read()
-        audio_filename = audio.filename
-    elif resolved_skeleton:
-        if target_bpm and target_bpm > 30 and target_bpm != 54:
-            ratio = max(0.5, min(2.0, target_bpm / 54.0))
-            temp_out = os.path.join(tempfile.gettempdir(), f"skel_{uuid.uuid4().hex[:8]}.mp3")
-            try:
-                subprocess.run(
-                    ["ffmpeg", "-y", "-i", resolved_skeleton, "-filter:a", f"atempo={ratio:.3f}", temp_out],
-                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                )
-                with open(temp_out, "rb") as sf:
-                    audio_content = sf.read()
+        if audio and not ignore_audio:
+            audio_content = await audio.read()
+            audio_filename = audio.filename
+        elif resolved_skeleton:
+            # Solo aplicar ratio de BPM si el esqueleto base es hymn_297.wav (grabado originalmente a 54 BPM).
+            # Para archivos MIDI (midi_*.wav) o pistas subidas, ya tienen su tempo nativo y no deben forzarse a ratio 54.0.
+            is_fixed_54_bpm = "hymn_297" in resolved_skeleton.lower()
+            if is_fixed_54_bpm and target_bpm and target_bpm > 30 and target_bpm != 54:
+                ratio = max(0.5, min(2.0, target_bpm / 54.0))
+                temp_out = os.path.join(tempfile.gettempdir(), f"skel_{uuid.uuid4().hex[:8]}.wav")
                 try:
-                    os.remove(temp_out)
-                except Exception:
-                    pass
-            except Exception as e:
-                print(f"[Skeleton Tempo] Error escalando BPM: {e}")
+                    ffmpeg_bin = "ffmpeg"
+                    if os.path.exists("ffmpeg.exe"):
+                        ffmpeg_bin = os.path.abspath("ffmpeg.exe")
+                    elif os.path.exists(os.path.join(os.path.dirname(__file__), "ffmpeg.exe")):
+                        ffmpeg_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "ffmpeg.exe"))
+
+                    subprocess.run(
+                        [ffmpeg_bin, "-y", "-i", resolved_skeleton, "-filter:a", f"atempo={ratio:.3f}", temp_out],
+                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+                    with open(temp_out, "rb") as sf:
+                        audio_content = sf.read()
+                    try:
+                        os.remove(temp_out)
+                    except Exception:
+                        pass
+                except Exception as e:
+                    print(f"[Skeleton Tempo] Error escalando BPM: {e}")
+                    with open(resolved_skeleton, "rb") as sf:
+                        audio_content = sf.read()
+            else:
                 with open(resolved_skeleton, "rb") as sf:
                     audio_content = sf.read()
-        else:
-            with open(resolved_skeleton, "rb") as sf:
-                audio_content = sf.read()
-        audio_filename = os.path.basename(resolved_skeleton)
-        ignore_audio = False
-        if audio_influence < 50:
-            audio_influence = 65
+            audio_filename = os.path.basename(resolved_skeleton)
+            ignore_audio = False
+            if audio_influence < 50:
+                audio_influence = 65
 
-    import uuid
-    task_id = str(uuid.uuid4())
-    TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
+        task_id = str(uuid.uuid4())
+        TASKS[task_id] = {"status": "IN_PROGRESS", "logs": "", "tracks": [], "detail": ""}
 
-    background_tasks.add_task(
-        run_transform_task,
-        task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
-        include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-        style_influence, audio_influence, model, pronunciation, obfuscate
-    )
-    
-    return {"status": "started", "task_id": task_id}
+        background_tasks.add_task(
+            run_transform_task,
+            task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
+            include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
+            style_influence, audio_influence, model, pronunciation, obfuscate
+        )
+        
+        return {"status": "started", "task_id": task_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al preparar la pista para generación: {str(e)}")
 
 @app.get("/api/status/{task_id}")
 async def get_task_status(task_id: str):
@@ -894,8 +894,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         
     upload_url = None
     backup_upload_url = None
-    temp_file_path = None
-    bypassed_file_path = None
+    created_temp_files = []
     
     try:
         if audio_content and not ignore_audio:
@@ -905,31 +904,32 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 if fext:
                     ext = fext
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
-            bypassed_file_path = f"bypassed_{uuid.uuid4().hex}.mp3"
+            created_temp_files.append(temp_file_path)
             
             with open(temp_file_path, "wb") as f:
                 f.write(audio_content)
                 
             if bypass_copyright:
-                log_msg("Procesando audio con FFmpeg para evadir Huella Acústica (Copyright)...")
+                bypassed_file_path = f"bypassed_{uuid.uuid4().hex}.mp3"
+                created_temp_files.append(bypassed_file_path)
+                log_msg("Procesando modulación de audio con FFmpeg...")
                 bypass_result = await asyncio.to_thread(bypass_audio_fingerprint, temp_file_path, bypassed_file_path)
                 if bypass_result == "SUCCESS" and os.path.exists(bypassed_file_path):
                     target_upload_file = bypassed_file_path
-                    log_msg("FFmpeg terminó exitosamente. Usando audio modificado.")
+                    log_msg("Audio procesado exitosamente con FFmpeg.")
                 else:
                     target_upload_file = temp_file_path
-                    log_msg(f"FALLO FFmpeg ({bypass_result}). Subiendo audio original SIN bypass.")
+                    log_msg(f"Aviso FFmpeg: {bypass_result}. Utilizando audio original.")
             else:
                 target_upload_file = temp_file_path
-                log_msg("Usando audio original limpio (sin modulación de huella acústica).")
+                log_msg("Utilizando archivo de audio original sin modulación.")
                 
-            log_msg("Subiendo MP3 a CDN de alta velocidad (Catbox) para evitar demoras/timeouts...")
+            log_msg("Subiendo audio de referencia a servidor temporal de alta velocidad...")
             upload_url = await upload_to_catbox_async(target_upload_file)
             if not upload_url:
                 log_msg("Catbox no disponible, usando servidor alternativo (Uguu)...")
                 upload_url = await upload_to_uguu_async(target_upload_file)
             else:
-                # Opcional: obtener URL de respaldo en Uguu por si Udio tiene problemas con Catbox
                 try:
                     backup_upload_url = await upload_to_uguu_async(target_upload_file)
                 except Exception:
@@ -939,12 +939,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 raise Exception("Fallo al subir el audio a servidor temporal.")
             if not upload_url and backup_upload_url:
                 upload_url = backup_upload_url
-            log_msg(f"Audio subido exitosamente a: {upload_url}")
-            
-            for p in [temp_file_path, bypassed_file_path]:
-                if p and os.path.exists(p):
-                    try: os.remove(p)
-                    except: pass
+            log_msg(f"Audio de referencia vinculado exitosamente: {upload_url}")
                     
         # ----------
         # Helper: expand known instrument/effect keywords into richer descriptions
@@ -1538,59 +1533,40 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             except Exception as e:
                 err_str = str(e)
                 err_lower = err_str.lower()
-                is_timeout_or_transient = any(
+                
+                # 1. Comprobar rechazo por catálogo o copyright
+                is_catalog_or_copyright = any(
+                    k in err_lower for k in [
+                        "matches an existing recording in our catalog",
+                        "existing recording in our catalog",
+                        "matches an existing recording",
+                        "copyrighted material",
+                        "copyright"
+                    ]
+                )
+                if is_catalog_or_copyright:
+                    log_msg("Generación detenida: La API rechazó el audio o la letra por coincidir con una grabación comercial registrada en el catálogo de Udio.")
+                    TASKS[task_id]["detail"] = "Rechazo de catálogo/copyright: La pista coincide con una grabación comercial registrada en el catálogo de Udio. Modifica la referencia o melodía para continuar."
+                    TASKS[task_id]["status"] = "ERROR"
+                    save_local_log()
+                    return
+
+                # 2. Reintentos ÚNICAMENTE para errores transitorios de red o servidor (máximo 3 intentos)
+                is_transient_error = any(
                     k in err_lower for k in [
                         "408", "request timeout", "timeout", "timed out",
                         "502", "503", "504", "gateway timeout", "bad gateway",
                         "internal error", "500", "429", "too many requests"
                     ]
                 )
-                is_catalog_or_copyright = any(
-                    k in err_lower for k in [
-                        "copyright", "copyrighted material", "matches an existing recording",
-                        "existing recording in our catalog", "catalog", "refunded"
-                    ]
-                )
-                if is_catalog_or_copyright and attempt < max_retries - 1:
-                    log_msg("Filtro de Catálogo/Copyright detectado por Udio ('matches an existing recording in our catalog').")
-                    log_msg("Activando modulación de huella acústica (anti-fingerprint), ofuscación de letra y renombramiento de versión...")
-                    
-                    # 1. Modificar título para evitar coincidencia exacta con catálogo comercial
-                    raw_title = payload.get("title", "")
-                    if "(Versión Alabanza)" not in raw_title and "(Versión)" not in raw_title:
-                        payload["title"] = f"{raw_title} (Versión)"
-                    
-                    # 2. Ofuscar texto de la letra contra coincidencia de strings
-                    raw_prompt = payload.get("prompt", "")
-                    payload["prompt"] = obfuscate_lyrics(raw_prompt)
-                    
-                    # 3. Modular audio de referencia si existe para romper la huella acústica de catálogo
-                    if upload_url and temp_file_path and os.path.exists(temp_file_path):
-                        bypassed_retry = f"retry_bypassed_{uuid.uuid4().hex}.mp3"
-                        res_bp = await asyncio.to_thread(bypass_audio_fingerprint, temp_file_path, bypassed_retry)
-                        if res_bp == "SUCCESS" and os.path.exists(bypassed_retry):
-                            new_url = await upload_to_catbox_async(bypassed_retry) or await upload_to_uguu_async(bypassed_retry)
-                            if new_url:
-                                payload["upload_url"] = new_url
-                                log_msg(f"Audio de referencia modulado con éxito para bypass de catálogo: {new_url}")
-                        if os.path.exists(bypassed_retry):
-                            try: os.remove(bypassed_retry)
-                            except: pass
-                            
-                    await asyncio.sleep(2)
-                    continue
-                elif is_timeout_or_transient and attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 7
-                    log_msg(f"Servidor de Udio ocupado o con timeout temporal ({err_str[:90]}). Reintentando intento {attempt+2}/{max_retries} en {wait_sec}s...")
-                    # Si fue un timeout con upload_url y tenemos backup_upload_url, alternar a la URL de respaldo
+                if is_transient_error and attempt < max_retries - 1:
+                    wait_sec = (attempt + 1) * 6
+                    log_msg(f"Fallo transitorio de conexión con el servidor ({err_str[:90]}). Reintentando {attempt+2}/{max_retries} en {wait_sec}s...")
                     if upload_url and backup_upload_url and payload.get("upload_url") == upload_url:
-                        log_msg(f"Cambiando a URL de audio secundaria para evitar timeout: {backup_upload_url}")
                         payload["upload_url"] = backup_upload_url
                     await asyncio.sleep(wait_sec)
                     continue
                 else:
-                    if "copyrighted material" in err_lower or "copyright" in err_lower:
-                        raise Exception("La API bloqueó la canción por derechos de autor (Copyright). Hemos activado el filtro anti-copyright, pero si persiste, prueba modificar o parafrasear algunas frases o estrofas conocidas.")
                     raise e
     except Exception as e:
         log_msg(f"ERROR: {str(e)}")
@@ -1598,6 +1574,12 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         TASKS[task_id]["detail"] = str(e)
         TASKS[task_id]["status"] = "ERROR"
     finally:
+        for p in created_temp_files:
+            if p and os.path.exists(p):
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
         import gc
         gc.collect()
 
