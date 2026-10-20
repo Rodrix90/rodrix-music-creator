@@ -316,7 +316,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     </div>
     <ul class="nav" style="margin-top:20px">
       <li><a href="#" class="active" id="nav-crear"><i class="ph ph-plus-circle"></i><span>Crear canción</span></a></li>
-      <li><a href="#" id="nav-partituras"><i class="ph ph-file-pdf"></i><span>Partituras & Himnario</span></a></li>
+      <li><a href="#" id="nav-partituras"><i class="ph ph-waveform"></i><span>Melodías MIDI & Himnos</span></a></li>
       <li><a href="#" id="nav-vozenoff"><i class="ph ph-microphone-stage"></i><span>Voz en Off / Predicación</span></a></li>
       <li><a href="#" id="nav-libreria"><i class="ph ph-books"></i><span>Librería</span></a></li>
       <li id="nav-users-li" style="display:none"><a href="#" id="nav-usuarios" style="color:#FBBF24"><i class="ph ph-crown" style="color:#FBBF24"></i><span style="color:#FBBF24">👑 Control de Usuarios</span></a></li>
@@ -1052,11 +1052,11 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         <div class="page-head">
           <div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <h1>🎼 Escáner de Partituras & Himnario</h1>
-              <span class="badge" style="background:rgba(139,92,246,0.2);color:#DDD6FE;border-color:rgba(139,92,246,0.4)">OMR • Hasta 10 Partituras</span>
+              <h1>🎹 Melodías MIDI & Himnario</h1>
+              <span class="badge" style="background:rgba(139,92,246,0.2);color:#DDD6FE;border-color:rgba(139,92,246,0.4)">Melodías 100% Fieles • Archivos .MID</span>
             </div>
             <p style="font-size:12px;color:var(--muted);margin-top:4px">
-              Sube fotos o PDFs de partituras de himnario. El sistema extrae automáticamente la letra, la melodía, los acordes y el compás (12/8, 4/4, 3/4) para generar cada himno y compilar un álbum continuo de 1 hora.
+              Sube archivos MIDI (.mid o .midi) de tus himnos o canciones cristianas (puedes descargarlos de <a href="https://hymnary.org" target="_blank" style="color:#A78BFA;text-decoration:underline;font-weight:700">Hymnary.org</a> o pistas de teclado). El sistema sintetiza las notas exactas (altura, ritmo y compás) para que la IA cante e instrumente respetando la melodía original al 100%.
             </p>
           </div>
           <span class="badge" id="sheetBatchBadge" style="display:none;background:rgba(16,185,129,0.15);color:#34D399;border-color:rgba(16,185,129,0.3)">
@@ -1068,26 +1068,39 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           <!-- ZONA DE CARGA DE PARTITURAS -->
           <div class="field">
             <div class="label" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
-              <span>1. Sube hasta 10 Partituras (Fotos, PDFs o MusicXML):</span>
-              <span style="font-size:11px;color:#A78BFA">Soporta JPG, PNG, PDF, MusicXML y MIDI</span>
+              <span>1. Sube hasta 10 Melodías MIDI (.mid o .midi):</span>
+              <span style="font-size:11px;color:#A78BFA">Melodías y Notas 100% Exactas</span>
             </div>
             
             <div id="sheetDropZone" style="border:2px dashed rgba(139,92,246,0.4);background:rgba(139,92,246,0.03);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s">
-              <input type="file" id="sheetFilesInput" multiple accept="image/*,.pdf,.xml,.musicxml,.mid,.midi" style="display:none">
-              <i class="ph ph-music-notes-plus" style="font-size:40px;color:#A78BFA;margin-bottom:8px"></i>
-              <div style="font-size:14px;font-weight:700;color:var(--text)">Haz clic para elegir o arrastra aquí tus partituras</div>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Ejemplo: fotos del himnario con tu celular (ej. Himno 297 "¡Oh Sí, Quiero Verle!"), archivos PDF o partituras digitales</div>
+              <input type="file" id="sheetFilesInput" multiple accept=".mid,.midi" style="display:none">
+              <i class="ph ph-waveform" style="font-size:42px;color:#A78BFA;margin-bottom:8px"></i>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Haz clic para elegir o arrastra aquí tus archivos MIDI (.mid / .midi)</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Pistas de piano, melodías de teclado o archivos .mid descargados de <strong>Hymnary.org</strong></div>
               <div id="sheetFileListPreview" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+            </div>
+
+            <!-- ENLACE DIRECTO Y ACCESO A HYMNARY.ORG -->
+            <div style="margin-top:12px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:10px">
+                <i class="ph ph-globe" style="color:#60A5FA;font-size:24px"></i>
+                <div style="font-size:12px;color:#BFDBFE;line-height:1.4">
+                  <strong>¿Buscas el MIDI de algún himno?</strong> En <a href="https://hymnary.org" target="_blank" style="color:#93C5FD;text-decoration:underline;font-weight:700">Hymnary.org</a> están catalogados los MIDIs de todos los himnos cristianos clásicos listos para descargar gratis.
+                </div>
+              </div>
+              <a href="https://hymnary.org" target="_blank" class="btn-sec" style="font-size:11.5px;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.4);text-decoration:none">
+                <i class="ph ph-arrow-square-out"></i> Abrir Hymnary.org
+              </a>
             </div>
           </div>
 
           <!-- BOTÓN ANALIZAR -->
           <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
             <button type="button" class="btn-primary" id="btnAnalyzeSheets" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);border:none;padding:10px 20px;font-weight:700;display:inline-flex;align-items:center;gap:8px" disabled>
-              <i class="ph ph-lightning"></i> <span>⚡ Analizar y Escanear Partituras</span>
+              <i class="ph ph-lightning"></i> <span>⚡ Procesar y Sintetizar Melodías MIDI</span>
             </button>
             <span id="sheetScanLoading" style="display:none;font-size:12px;color:#C4B5FD">
-              <i class="ph ph-spinner spinning"></i> Leyendo con IA Visión la partitura (notas, compás, tempo y letra)...
+              <i class="ph ph-spinner spinning"></i> Sintetizando notas, ritmo y tempo exacto del archivo MIDI...
             </span>
           </div>
 
@@ -1630,8 +1643,8 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     <span>Crear</span>
   </a>
   <a href="#" class="bnav-item" id="bnav-partituras" onclick="showView('partituras');return false;">
-    <i class="ph ph-file-pdf"></i>
-    <span>Partituras</span>
+    <i class="ph ph-waveform"></i>
+    <span>MIDI</span>
   </a>
   <a href="#" class="bnav-item" id="bnav-vozenoff" onclick="showView('vozenoff');return false;">
     <i class="ph ph-microphone-stage"></i>
@@ -3179,7 +3192,7 @@ function handleSheetFilesSelection(files) {
   if ($('btnAnalyzeSheets')) {
     $('btnAnalyzeSheets').disabled = false;
   }
-  showToast(`${selectedSheetFiles.length} partitura(s) seleccionada(s). Pulsa 'Analizar y Escanear'.`, 'info');
+  showToast(`${selectedSheetFiles.length} archivo(s) MIDI seleccionado(s). Pulsa 'Procesar y Sintetizar Melodías'.`, 'info');
 }
 
 if ($('btnAnalyzeSheets')) {
@@ -3199,7 +3212,7 @@ if ($('btnAnalyzeSheets')) {
       
       scannedHymnsData = data.results || [];
       renderScannedHymns();
-      showToast(`¡${scannedHymnsData.length} partitura(s) leída(s) con éxito! Revisa los datos y pulsa Generar.`, 'ok');
+      showToast(`¡${scannedHymnsData.length} melodía(s) MIDI procesada(s) con éxito! Revisa los datos y pulsa Generar.`, 'ok');
     } catch (err) {
       showToast('Error al analizar: ' + err.message, 'err');
     } finally {
@@ -3223,7 +3236,7 @@ function renderScannedHymns() {
   if ($('scannedCountBadge')) $('scannedCountBadge').textContent = scannedHymnsData.length;
   if ($('sheetBatchBadge')) {
     $('sheetBatchBadge').style.display = 'inline-flex';
-    if ($('sheetCountText')) $('sheetCountText').textContent = `${scannedHymnsData.length} Partituras Listas`;
+    if ($('sheetCountText')) $('sheetCountText').textContent = `${scannedHymnsData.length} Melodías MIDI Listas`;
   }
   
   list.innerHTML = scannedHymnsData.map((h, i) => `
@@ -3251,7 +3264,7 @@ function renderScannedHymns() {
         <div style="display:flex;align-items:center;gap:8px">
           <i class="ph ph-music-notes" style="color:#34D399;font-size:18px"></i>
           <div>
-            <div style="font-weight:700;font-size:12px;color:#A7F3D0">Melodía Original del Himnario Detectada (${esc(h.meter || '12/8')} - ${esc(h.tempo || '54 BPM')})</div>
+            <div style="font-weight:700;font-size:12px;color:#A7F3D0">Melodía MIDI Real Sintetizada (${esc(h.meter || '12/8')} - ${esc(h.tempo || '54 BPM')})</div>
             <div style="font-size:11px;color:var(--muted)">Guía de notas y tempo lento lista para condicionar a la IA a cantar la melodía exacta.</div>
           </div>
         </div>

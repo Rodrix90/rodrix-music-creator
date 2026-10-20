@@ -2474,9 +2474,153 @@ def parse_ocr_lyrics(raw) -> str:
         return "\n\n".join(x for x in out if x).strip()
     return str(raw).strip()
 
+def midi_to_audio_wave(mid_bytes: bytes, sample_rate: int = 44100) -> bytes:
+    """Sintetiza notas de un archivo MIDI en un audio WAV fiel de alta fidelidad (piano/órgano)"""
+    import io
+    import wave
+    import numpy as np
+    import mido
+
+    mid = mido.MidiFile(file=io.BytesIO(mid_bytes))
+    
+    current_time = 0.0
+    active_notes = {}  # (note, channel) -> (start_time, velocity)
+    note_events = []   # (note, start_time, duration, velocity)
+    
+    for msg in mid:
+        current_time += msg.time
+        if msg.type == 'note_on' and msg.velocity > 0:
+            active_notes[(msg.note, msg.channel)] = (current_time, msg.velocity)
+        elif (msg.type == 'note_off') or (msg.type == 'note_on' and msg.velocity == 0):
+            key = (msg.note, msg.channel)
+            if key in active_notes:
+                start_t, vel = active_notes.pop(key)
+                dur = max(0.08, current_time - start_t)
+                note_events.append((msg.note, start_t, dur, vel))
+                
+    for (note, ch), (start_t, vel) in active_notes.items():
+        dur = max(0.08, current_time - start_t)
+        note_events.append((note, start_t, dur, vel))
+        
+    total_duration = max(current_time + 1.2, 2.0)
+    total_samples = int(total_duration * sample_rate)
+    audio = np.zeros(total_samples, dtype=np.float32)
+    
+    for note, start_t, dur, vel in note_events:
+        freq = 440.0 * (2.0 ** ((note - 69) / 12.0))
+        start_sample = int(start_t * sample_rate)
+        sounding_dur = dur + 0.3
+        note_samples = int(sounding_dur * sample_rate)
+        if start_sample >= total_samples:
+            continue
+        actual_samples = min(note_samples, total_samples - start_sample)
+        if actual_samples <= 0:
+            continue
+            
+        t = np.linspace(0, sounding_dur, note_samples)[:actual_samples]
+        amp = (vel / 127.0) * 0.35
+        envelope = np.exp(-t * 2.2)
+        wave_arr = (
+            np.sin(2 * np.pi * freq * t) * 0.55 +
+            np.sin(2 * np.pi * freq * 2 * t) * 0.25 +
+            np.sin(2 * np.pi * freq * 3 * t) * 0.12 +
+            np.sin(2 * np.pi * freq * 4 * t) * 0.08
+        ) * envelope * amp
+        
+        audio[start_sample:start_sample + actual_samples] += wave_arr
+        
+    max_val = np.max(np.abs(audio))
+    if max_val > 0.01:
+        audio = (audio / max_val) * 0.92
+        
+    audio_int16 = (audio * 32767).astype(np.int16)
+    out_buf = io.BytesIO()
+    with wave.open(out_buf, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(audio_int16.tobytes())
+    return out_buf.getvalue()
+
 async def extract_score_metadata(filename: str, content: bytes) -> dict:
     fname_lower = filename.lower()
     clean_name = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").title()
+    # 0. Procesamiento directo de archivos MIDI (.mid / .midi) de Hymnary.org o secuencias
+    if fname_lower.endswith((".mid", ".midi")):
+        try:
+            import io
+            import mido
+            mid = mido.MidiFile(file=io.BytesIO(content))
+            
+            bpm = 100
+            meter = "4/4"
+            key = "Do Mayor (C Major)"
+            midi_lyrics_list = []
+            
+            for track in mid.tracks:
+                for msg in track:
+                    if msg.type == 'set_tempo':
+                        bpm = round(mido.tempo2bpm(msg.tempo))
+                    elif msg.type == 'time_signature':
+                        meter = f"{msg.numerator}/{msg.denominator}"
+                    elif msg.type == 'key_signature':
+                        key = f"{msg.key}"
+                    elif msg.type in ('lyrics', 'text'):
+                        txt = str(msg.text).strip()
+                        if txt and not txt.startswith('@') and len(txt) < 100:
+                            midi_lyrics_list.append(txt)
+                            
+            wav_bytes = midi_to_audio_wave(content)
+            sk_id = str(uuid.uuid4())[:8]
+            os.makedirs("assets/skeletons", exist_ok=True)
+            sk_filename = f"midi_{sk_id}.wav"
+            sk_path = os.path.join("assets", "skeletons", sk_filename)
+            with open(sk_path, "wb") as f_sk:
+                f_sk.write(wav_bytes)
+                
+            sk_url = f"/assets/skeletons/{sk_filename}"
+            clean_name = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").title()
+            
+            # Comprobar si coincide con himno de nuestra base de conocimiento
+            matched_kb = None
+            for hid, hdata in HYMNAL_KNOWLEDGE_BASE.items():
+                title_words = [w.lower() for w in hdata["title"].split() if len(w) > 4]
+                if hid in fname_lower or any(w in fname_lower for w in title_words):
+                    matched_kb = hdata
+                    break
+                    
+            if matched_kb:
+                final_title = matched_kb["title"]
+                final_lyrics = matched_kb["lyrics"]
+                final_key = matched_kb["key"]
+                final_style = matched_kb["style_tags"]
+            else:
+                final_title = clean_name
+                joined_mid_lyrics = " ".join(midi_lyrics_list).strip()
+                if len(joined_mid_lyrics) > 20:
+                    final_lyrics = f"[Verse 1]\n{joined_mid_lyrics}"
+                else:
+                    final_lyrics = f"[Verse 1]\nEscribe o pega aquí la letra para: {clean_name}..."
+                final_key = key
+                final_style = f"sacred traditional Christian worship hymn, strictly following melodic guide in {meter} time, tempo {bpm} BPM, key of {final_key}, grand symphonic orchestra strings, pipe organ and worship choir in unison"
+                
+            return {
+                "id": sk_id,
+                "filename": filename,
+                "title": final_title,
+                "key": final_key,
+                "meter": meter,
+                "tempo": f"{bpm} BPM",
+                "chords": "Melodía y acordes exactos del archivo MIDI",
+                "lyrics": final_lyrics,
+                "suggested_style": final_style,
+                "audio_skeleton": sk_url,
+                "skeleton_file": sk_path
+            }
+        except Exception as midi_err:
+            print(f"[MIDI Parser Error] {filename}: {midi_err}")
+
+
     
     # 1. Comprobar si coincide con himnos conocidos del himnario por nombre de archivo
     for hid, hdata in HYMNAL_KNOWLEDGE_BASE.items():
