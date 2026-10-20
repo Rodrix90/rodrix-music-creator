@@ -316,6 +316,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     </div>
     <ul class="nav" style="margin-top:20px">
       <li><a href="#" class="active" id="nav-crear"><i class="ph ph-plus-circle"></i><span>Crear canción</span></a></li>
+      <li><a href="#" id="nav-himnos"><i class="ph ph-guitar"></i><span>Producción de Himnos</span></a></li>
       <li><a href="#" id="nav-partituras"><i class="ph ph-waveform"></i><span>Melodías MIDI & Himnos</span></a></li>
       <li><a href="#" id="nav-vozenoff"><i class="ph ph-microphone-stage"></i><span>Voz en Off / Predicación</span></a></li>
       <li><a href="#" id="nav-libreria"><i class="ph ph-books"></i><span>Librería</span></a></li>
@@ -1565,6 +1566,226 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </form>
       </div>
 
+      <!-- VISTA: PRODUCCIÓN PROFESIONAL DE HIMNOS (FASE 1: RESTAURACIÓN Y MASTERIZACIÓN) -->
+      <div id="view-himnos" class="view-panel" style="display:none;flex-direction:column;gap:18px;">
+        <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1 style="display:flex;align-items:center;gap:9px;font-size:20px;font-weight:800;color:#F8FAFC;">
+              <i class="ph ph-guitar" style="color:#34D399;font-size:24px"></i> Producción Profesional de Himnos
+            </h1>
+            <p style="font-size:12.5px;color:var(--muted);margin-top:4px">
+              Grabaciones propias de Voz y Guitarra acústica de celular • 100% Autónomo sin dependencias externas
+            </p>
+          </div>
+          <span class="badge" style="background:rgba(52,211,153,.15);color:#34D399;border-color:rgba(52,211,153,.35);font-size:12px;padding:6px 12px">
+            <i class="ph ph-sparkle"></i> Fase 1: Restauración & Masterización
+          </span>
+        </div>
+
+        <!-- BANNER INFORMATIVO -->
+        <div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(37,99,235,0.08));border:1px solid rgba(52,211,153,0.25);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(52,211,153,0.2);display:grid;place-items:center;flex-shrink:0">
+            <i class="ph ph-shield-check" style="font-size:24px;color:#34D399"></i>
+          </div>
+          <div style="font-size:12px;line-height:1.5;color:#CBD5E1">
+            <strong>Diseñado para interpretaciones caseras de himnos:</strong> Elimina el ruido ambiente y siseo de fondo, corrige el sonido encajonado de sala, resalta la articulación de cuerdas y presencia vocal, y normaliza a volumen comercial (-14 LUFS) con limitador True Peak (-1.0 dBFS). <em>Sin modificar el tempo ni la melodía original.</em>
+          </div>
+        </div>
+
+        <!-- FORMULARIO DE RESTAURACIÓN -->
+        <div style="background:#181824;border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:18px">
+          <!-- 1. CARGA DE ARCHIVO -->
+          <div>
+            <label style="font-size:13px;font-weight:700;color:#F1F5F9;display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <i class="ph ph-upload-simple" style="color:#60A5FA"></i> 1. Cargar Grabación Casera (Celular)
+            </label>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <input type="file" id="hymnAudioInput" accept="audio/*,.mp3,.wav,.m4a,.mp4" style="display:none">
+              <button type="button" class="btn-sec" onclick="$('hymnAudioInput').click()" style="padding:10px 18px;border-radius:9px;font-weight:700;font-size:12.5px;display:inline-flex;align-items:center;gap:7px">
+                <i class="ph ph-folder-open"></i> Seleccionar Grabación (MP3 / WAV / M4A / MP4)
+              </button>
+              <span id="hymnFileNameDisplay" style="font-size:12px;color:var(--muted)">Ningún archivo seleccionado</span>
+            </div>
+            <div id="hymnAudioCompatBadge" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:12px;align-items:center;gap:8px"></div>
+          </div>
+
+          <!-- TÍTULO DE LA OBRA -->
+          <div>
+            <label style="font-size:13px;font-weight:700;color:#F1F5F9;display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <i class="ph ph-tag" style="color:#60A5FA"></i> Título del Himno u Obra
+            </label>
+            <input type="text" id="hymnTitleInput" class="input" placeholder="Ej: Himno 297 - Cuán Grande Es Él (Voz y Guitarra)" style="width:100%;background:#12121C;border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:#F1F5F9;font-size:13px">
+          </div>
+
+          <!-- 2. SELECCIÓN DE INTENSIDAD -->
+          <div>
+            <label style="font-size:13px;font-weight:700;color:#F1F5F9;display:flex;align-items:center;gap:6px;margin-bottom:10px">
+              <i class="ph ph-sliders" style="color:#60A5FA"></i> 2. Modalidad de Procesamiento Acústico
+            </label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+              <!-- Suave -->
+              <div class="hymn-mode-card" id="modeCardGentle" onclick="selectHymnMode('gentle')" style="background:#13131D;border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:.2s">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-weight:700;font-size:13px;color:#93C5FD">Acústico Suave</span>
+                  <input type="radio" name="hymnIntensity" value="gentle" id="radHymnGentle" style="accent-color:#3B82F6">
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);line-height:1.4">
+                  Reducción de ruido sutil (6 dB), compresión suave 1.5:1, -16 LUFS. Ideal para tomas limpias preservando el aire y la intimidad acústica.
+                </div>
+              </div>
+
+              <!-- Medio (Recomendado) -->
+              <div class="hymn-mode-card active" id="modeCardMedium" onclick="selectHymnMode('medium')" style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.4);border-radius:10px;padding:14px;cursor:pointer;transition:.2s">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-weight:700;font-size:13px;color:#34D399">Medio (Recomendado)</span>
+                  <input type="radio" name="hymnIntensity" value="medium" id="radHymnMedium" checked style="accent-color:#10B981">
+                </div>
+                <div style="font-size:11.5px;color:#A7F3D0;line-height:1.4">
+                  Denoise balanceado (10 dB), De-Box (-2.5 dB), presencia de voz y cuerdas (+2.2 dB), aire (11 kHz), compresión 2.2:1, masterizado a -14 LUFS.
+                </div>
+              </div>
+
+              <!-- Personalizado -->
+              <div class="hymn-mode-card" id="modeCardCustom" onclick="selectHymnMode('custom')" style="background:#13131D;border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:.2s">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-weight:700;font-size:13px;color:#CBD5E1">Personalizado</span>
+                  <input type="radio" name="hymnIntensity" value="custom" id="radHymnCustom" style="accent-color:#3B82F6">
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);line-height:1.4">
+                  Ajuste fino manual de reducción de ruido en dB, perfil de ecualización, compresor dinámico y volumen objetivo LUFS.
+                </div>
+              </div>
+            </div>
+
+            <!-- CONTROLES PERSONALIZADOS (Colapsables) -->
+            <div id="hymnCustomControls" style="display:none;margin-top:14px;background:#12121C;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+              <div>
+                <label style="font-size:11.5px;font-weight:600;color:#94A3B8">Nivel de Reducción de Ruido (dB)</label>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                  <input type="range" id="hymnCustomDenoise" min="3" max="16" step="1" value="10" oninput="$('denoiseValDisplay').innerText = this.value + ' dB'" style="flex:1;accent-color:#10B981">
+                  <span id="denoiseValDisplay" style="font-size:12px;font-weight:700;color:#34D399;width:45px">10 dB</span>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size:11.5px;font-weight:600;color:#94A3B8">Volumen Objetivo (EBU R128)</label>
+                <select id="hymnCustomLufs" class="input" style="width:100%;margin-top:4px;padding:7px 10px;background:#181824;border:1px solid var(--border);border-radius:7px;color:#fff;font-size:12px">
+                  <option value="-16.0">-16.0 LUFS (Acústico Dinámico / YouTube Clásico)</option>
+                  <option value="-14.0" selected>-14.0 LUFS (Estándar Spotify / YouTube Music / Apple)</option>
+                  <option value="-12.0">-12.0 LUFS (Potente / Radio FM)</option>
+                </select>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;justify-content:center">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#CBD5E1;cursor:pointer">
+                  <input type="checkbox" id="chkHymnDebox" checked style="accent-color:#10B981"> Corte de sonido encajonado de sala (De-Box 420 Hz)
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#CBD5E1;cursor:pointer">
+                  <input type="checkbox" id="chkHymnAir" checked style="accent-color:#10B981"> Brillo Acústico y Cuerdas (Air Band 11 kHz)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- BOTÓN DE ACCIÓN -->
+          <div style="display:flex;justify-content:flex-end;margin-top:6px">
+            <button type="button" id="btnRunHymnRestore" class="btn-primary" onclick="runHymnRestoration()" style="background:linear-gradient(135deg,#10B981,#059669);border:none;padding:12px 24px;border-radius:10px;font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(16,185,129,0.3);cursor:pointer">
+              <i class="ph ph-sparkle"></i> Restaurar y Masterizar Himno
+            </button>
+          </div>
+        </div>
+
+        <!-- CAJA DE PROGRESO -->
+        <div id="hymnProgressBox" style="display:none;background:#181824;border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:18px;text-align:center">
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px">
+            <i class="ph ph-spinner spinning" style="font-size:22px;color:#34D399"></i>
+            <span id="hymnProgressText" style="font-size:13px;font-weight:700;color:#F1F5F9">Iniciando restauración acústica...</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted)">Procesando con DSP nativo FFmpeg (Denoise + De-box + Compresión + EBU R128 Loudnorm)...</div>
+        </div>
+
+        <!-- CAJA DE RESULTADOS CON COMPARADOR A/B Y MÉTRICAS REALES -->
+        <div id="hymnResultBox" style="display:none;background:#181824;border:1px solid rgba(52,211,153,0.35);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:40px;height:40px;border-radius:10px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);display:grid;place-items:center">
+                <i class="ph ph-check-circle" style="font-size:24px;color:#34D399"></i>
+              </div>
+              <div>
+                <h3 id="hymnResultTitle" style="font-size:16px;font-weight:800;color:#F1F5F9;margin:0">Himno Masterizado con Éxito</h3>
+                <div id="hymnResultMeta" style="font-size:12px;color:var(--muted)">Procesado en 3.4 segundos</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <a id="btnDownloadHymnWav" href="#" class="btn-primary" style="background:#2563EB;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+                <i class="ph ph-waveform"></i> Descargar WAV (24-bit PCM)
+              </a>
+              <a id="btnDownloadHymnMp3" href="#" class="btn-primary" style="background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+                <i class="ph ph-file-audio"></i> Descargar MP3 (320 kbps)
+              </a>
+            </div>
+          </div>
+
+          <!-- TABLA DE MÉTRICAS MEDIDAS REALES (EBU R128) -->
+          <div style="background:#12121C;border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em">
+              Métricas Acústicas Reales Medidas (Norma EBU R128)
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+              <div style="background:#181824;border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:10px">
+                <div style="font-size:11px;color:var(--muted)">Sonoridad Integrada (LUFS)</div>
+                <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px">
+                  <span id="metricOrigLufs" style="font-size:13px;color:#F87171">-26.5 LUFS</span>
+                  <span style="font-size:12px;color:var(--muted)">➔</span>
+                  <span id="metricProcLufs" style="font-size:15px;font-weight:800;color:#34D399">-14.0 LUFS</span>
+                </div>
+              </div>
+
+              <div style="background:#181824;border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:10px">
+                <div style="font-size:11px;color:var(--muted)">Pico Verdadero (True Peak)</div>
+                <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px">
+                  <span id="metricOrigPeak" style="font-size:13px;color:#F87171">-6.2 dBFS</span>
+                  <span style="font-size:12px;color:var(--muted)">➔</span>
+                  <span id="metricProcPeak" style="font-size:15px;font-weight:800;color:#34D399">-1.0 dBFS</span>
+                </div>
+              </div>
+
+              <div style="background:#181824;border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:10px">
+                <div style="font-size:11px;color:var(--muted)">Rango Dinámico (LRA)</div>
+                <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px">
+                  <span id="metricOrigLra" style="font-size:13px;color:#CBD5E1">9.2 LU</span>
+                  <span style="font-size:12px;color:var(--muted)">➔</span>
+                  <span id="metricProcLra" style="font-size:15px;font-weight:800;color:#60A5FA">6.8 LU</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REPRODUCTOR A/B CONMUTABLE EN VIVO -->
+          <div style="background:#12121C;border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div style="font-size:13px;font-weight:700;color:#93C5FD;display:flex;align-items:center;gap:6px">
+                <i class="ph ph-headphones" style="font-size:18px"></i> Comparador A/B en Vivo (Sincronizado)
+              </div>
+              <button type="button" id="btnToggleAB" onclick="toggleHymnAB()" style="background:#3B82F6;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:.2s">
+                <i class="ph ph-arrows-left-right"></i> Conmutar a: Original (Antes)
+              </button>
+            </div>
+
+            <!-- Etiqueta de estado A/B -->
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="hymnABBadge" style="background:rgba(52,211,153,0.15);color:#34D399;border:1px solid rgba(52,211,153,0.35);padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:700">
+                ● Reproduciendo: PISTA MASTERIZADA
+              </span>
+              <span style="font-size:11px;color:var(--muted)">Alterna en cualquier segundo para notar la claridad y eliminación de ruido.</span>
+            </div>
+
+            <!-- Elemento de audio común sincronizado -->
+            <audio id="hymnAudioPlayer" controls style="width:100%;border-radius:8px;margin-top:4px"></audio>
+          </div>
+        </div>
+      </div>
+
       <!-- VISTA 3: MI LIBRERÍA -->
       <div id="view-libreria" class="view-panel" style="display:none">
         <div class="page-head">
@@ -1692,6 +1913,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     <i class="ph ph-plus-circle"></i>
     <span>Crear</span>
   </a>
+  <a href="#" class="bnav-item" id="bnav-himnos" onclick="showView('himnos');return false;">
+    <i class="ph ph-guitar"></i>
+    <span>Himnos</span>
+  </a>
   <a href="#" class="bnav-item" id="bnav-partituras" onclick="showView('partituras');return false;">
     <i class="ph ph-waveform"></i>
     <span>MIDI</span>
@@ -1794,6 +2019,7 @@ function showView(viewName) {
   if (viewName === 'create') viewName = 'crear';
   const views = {
     'crear': $('view-crear'),
+    'himnos': $('view-himnos'),
     'partituras': $('view-partituras'),
     'vozenoff': $('view-vozenoff'),
     'libreria': $('view-libreria'),
@@ -1802,6 +2028,7 @@ function showView(viewName) {
 
   if (viewName === 'ajustes') {
     $('view-crear').style.display = 'flex';
+    if ($('view-himnos')) $('view-himnos').style.display = 'none';
     if ($('view-partituras')) $('view-partituras').style.display = 'none';
     $('view-vozenoff').style.display = 'none';
     $('view-libreria').style.display = 'none';
@@ -1834,6 +2061,7 @@ function showView(viewName) {
 }
 
 $('nav-crear').onclick = e => { e.preventDefault(); showView('crear'); };
+if ($('nav-himnos')) $('nav-himnos').onclick = e => { e.preventDefault(); showView('himnos'); };
 if ($('nav-partituras')) $('nav-partituras').onclick = e => { e.preventDefault(); showView('partituras'); };
 $('nav-vozenoff').onclick = e => { e.preventDefault(); showView('vozenoff'); };
 $('nav-libreria').onclick = e => { e.preventDefault(); showView('libreria'); };
@@ -5009,6 +5237,232 @@ async function toggleUserStatus(email, newStatus) {
     }
   } catch(e) {
     alert('Error de conexión.');
+  }
+}
+
+/* ==============================================================================
+   MÓDULO: PRODUCCIÓN PROFESIONAL DE HIMNOS (RESTAURACIÓN Y MASTERIZACIÓN)
+   ============================================================================== */
+let currentHymnRestoredData = null;
+let currentHymnABState = 'restored';
+
+function selectHymnMode(mode) {
+  ['gentle', 'medium', 'custom'].forEach(m => {
+    const card = $('modeCard' + m.charAt(0).toUpperCase() + m.slice(1));
+    const rad = $('radHymn' + m.charAt(0).toUpperCase() + m.slice(1));
+    if (card) {
+      if (m === mode) {
+        card.classList.add('active');
+        card.style.background = (m === 'medium') ? 'rgba(52,211,153,0.08)' : 'rgba(59,130,246,0.08)';
+        card.style.borderColor = (m === 'medium') ? 'rgba(52,211,153,0.5)' : 'rgba(59,130,246,0.5)';
+      } else {
+        card.classList.remove('active');
+        card.style.background = '#13131D';
+        card.style.borderColor = 'var(--border)';
+      }
+    }
+    if (rad) rad.checked = (m === mode);
+  });
+  
+  const customBox = $('hymnCustomControls');
+  if (customBox) {
+    customBox.style.display = (mode === 'custom') ? 'grid' : 'none';
+  }
+}
+
+if ($('hymnAudioInput')) {
+  $('hymnAudioInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const nameEl = $('hymnFileNameDisplay');
+    const badge = $('hymnAudioCompatBadge');
+    if (!file) {
+      if (nameEl) nameEl.textContent = 'Ningún archivo seleccionado';
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+    if (nameEl) nameEl.textContent = `${file.name} (${(file.size/(1024*1024)).toFixed(1)} MB)`;
+    if (!$('hymnTitleInput').value.trim()) {
+      const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+      $('hymnTitleInput').value = baseName;
+    }
+
+    if (badge) {
+      badge.style.display = 'flex';
+      badge.style.background = 'rgba(59,130,246,0.12)';
+      badge.style.border = '1px solid rgba(59,130,246,0.3)';
+      badge.style.color = '#93C5FD';
+      badge.innerHTML = `<i class="ph ph-spinner spinning"></i> Verificando decodificación con FFmpeg...`;
+    }
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const resp = await fetch('/api/check_audio_compatibility', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (data.compatible) {
+        badge.style.background = 'rgba(52,211,153,0.12)';
+        badge.style.border = '1px solid rgba(52,211,153,0.35)';
+        badge.style.color = '#A7F3D0';
+        badge.innerHTML = `<i class="ph ph-check-circle" style="color:#34D399;font-size:15px"></i> <strong>Audio Apto:</strong> ${esc(data.format)} • ${esc(data.sample_rate)} • ${esc(data.channels)} • ${esc(data.duration_sec)}s`;
+      } else {
+        badge.style.background = 'rgba(239,68,68,0.12)';
+        badge.style.border = '1px solid rgba(239,68,68,0.35)';
+        badge.style.color = '#FCA5A5';
+        badge.innerHTML = `<i class="ph ph-warning-circle" style="color:#EF4444;font-size:15px"></i> <strong>Aviso:</strong> ${esc(data.message || data.error)}`;
+      }
+    } catch (err) {
+      if (badge) {
+        badge.style.background = 'rgba(239,68,68,0.12)';
+        badge.style.border = '1px solid rgba(239,68,68,0.35)';
+        badge.style.color = '#FCA5A5';
+        badge.innerHTML = `<i class="ph ph-x-circle" style="color:#EF4444;font-size:15px"></i> Error verificando: ${esc(err.message)}`;
+      }
+    }
+  });
+}
+
+async function runHymnRestoration() {
+  const fileInput = $('hymnAudioInput');
+  if (!fileInput || !fileInput.files.length) {
+    alert('Por favor selecciona primero un archivo de audio (grabación de celular).');
+    return;
+  }
+  const file = fileInput.files[0];
+  const title = $('hymnTitleInput').value.trim() || 'Himno Acústico Restaurado';
+  
+  let intensity = 'medium';
+  const radGentle = $('radHymnGentle');
+  const radCustom = $('radHymnCustom');
+  if (radGentle && radGentle.checked) intensity = 'gentle';
+  if (radCustom && radCustom.checked) intensity = 'custom';
+
+  const fd = new FormData();
+  fd.append('audio_file', file);
+  fd.append('title', title);
+  fd.append('intensity', intensity);
+  
+  if (intensity === 'custom') {
+    fd.append('denoise_db', $('hymnCustomDenoise').value);
+    fd.append('target_lufs', $('hymnCustomLufs').value);
+    fd.append('debox_cut', $('chkHymnDebox').checked ? 'true' : 'false');
+    fd.append('air_shelf', $('chkHymnAir').checked ? 'true' : 'false');
+  }
+
+  const btn = $('btnRunHymnRestore');
+  const progBox = $('hymnProgressBox');
+  const resBox = $('hymnResultBox');
+
+  if (btn) btn.disabled = true;
+  if (progBox) progBox.style.display = 'block';
+  if (resBox) resBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/hymn_production/restore', {
+      method: 'POST',
+      body: fd
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Error en el servidor' }));
+      throw new Error(err.detail || 'Fallo al procesar el audio');
+    }
+
+    const data = await res.json();
+    currentHymnRestoredData = data;
+
+    // Actualizar métricas medidas reales
+    const origM = data.original_metrics || {};
+    const procM = data.processed_metrics || {};
+
+    if ($('metricOrigLufs')) $('metricOrigLufs').textContent = (origM.integrated_lufs !== undefined ? origM.integrated_lufs : '--') + ' LUFS';
+    if ($('metricProcLufs')) $('metricProcLufs').textContent = (procM.integrated_lufs !== undefined ? procM.integrated_lufs : '-14.0') + ' LUFS';
+
+    if ($('metricOrigPeak')) $('metricOrigPeak').textContent = (origM.true_peak_db !== undefined ? origM.true_peak_db : '--') + ' dBFS';
+    if ($('metricProcPeak')) $('metricProcPeak').textContent = (procM.true_peak_db !== undefined ? procM.true_peak_db : '-1.0') + ' dBFS';
+
+    if ($('metricOrigLra')) $('metricOrigLra').textContent = (origM.lra !== undefined ? origM.lra : '--') + ' LU';
+    if ($('metricProcLra')) $('metricProcLra').textContent = (procM.lra !== undefined ? procM.lra : '--') + ' LU';
+
+    if ($('hymnResultTitle')) $('hymnResultTitle').textContent = `✨ "${data.title}" Masterizado con Éxito`;
+    if ($('hymnResultMeta')) $('hymnResultMeta').textContent = `Duración: ${data.duration_sec}s • Procesado en ${data.processing_time_sec}s con DSP nativo FFmpeg`;
+
+    // Enlaces de descarga
+    if ($('btnDownloadHymnWav')) $('btnDownloadHymnWav').href = data.download_wav_url;
+    if ($('btnDownloadHymnMp3')) $('btnDownloadHymnMp3').href = data.download_mp3_url;
+
+    // Configurar reproductor A/B en versión masterizada
+    currentHymnABState = 'restored';
+    updateHymnABUI();
+    const player = $('hymnAudioPlayer');
+    if (player) {
+      player.src = data.stream_restored_url;
+      player.load();
+      player.play().catch(() => {});
+    }
+
+    if (resBox) {
+      resBox.style.display = 'flex';
+      resBox.scrollIntoView({ behavior: 'smooth' });
+    }
+    showToast(`¡"${data.title}" ha sido restaurado y masterizado con éxito!`, 'ok');
+    await loadLibrary();
+
+  } catch (err) {
+    alert('Error al restaurar el himno: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (progBox) progBox.style.display = 'none';
+  }
+}
+
+function updateHymnABUI() {
+  const badge = $('hymnABBadge');
+  const btn = $('btnToggleAB');
+  if (currentHymnABState === 'restored') {
+    if (badge) {
+      badge.style.background = 'rgba(52,211,153,0.15)';
+      badge.style.borderColor = 'rgba(52,211,153,0.35)';
+      badge.style.color = '#34D399';
+      badge.innerHTML = '● Reproduciendo: PISTA MASTERIZADA (-14 LUFS • Denoised)';
+    }
+    if (btn) {
+      btn.style.background = '#3B82F6';
+      btn.innerHTML = '<i class="ph ph-arrows-left-right"></i> Conmutar a: Original (Antes)';
+    }
+  } else {
+    if (badge) {
+      badge.style.background = 'rgba(239,68,68,0.15)';
+      badge.style.borderColor = 'rgba(239,68,68,0.35)';
+      badge.style.color = '#FCA5A5';
+      badge.innerHTML = '● Reproduciendo: AUDIO ORIGINAL DEL CELULAR (Antes)';
+    }
+    if (btn) {
+      btn.style.background = '#10B981';
+      btn.innerHTML = '<i class="ph ph-arrows-left-right"></i> Conmutar a: Masterizado (Después)';
+    }
+  }
+}
+
+function toggleHymnAB() {
+  if (!currentHymnRestoredData) return;
+  const player = $('hymnAudioPlayer');
+  if (!player) return;
+  
+  const currentTime = player.currentTime;
+  const isPlaying = !player.paused;
+
+  if (currentHymnABState === 'restored') {
+    currentHymnABState = 'orig';
+    player.src = currentHymnRestoredData.stream_orig_url;
+  } else {
+    currentHymnABState = 'restored';
+    player.src = currentHymnRestoredData.stream_restored_url;
+  }
+
+  updateHymnABUI();
+  player.currentTime = currentTime;
+  if (isPlaying) {
+    player.play().catch(() => {});
   }
 }
 

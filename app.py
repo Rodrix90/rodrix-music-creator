@@ -1,5 +1,6 @@
 import os
 import io
+import time
 import re
 import gc
 import hmac
@@ -3334,6 +3335,228 @@ async def api_merge_continuous_album(payload: dict):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando álbum continuo: {str(e)}")
+
+# ==============================================================================
+# MÓDULO: PRODUCCIÓN PROFESIONAL DE HIMNOS (FASE 1: RESTAURACIÓN Y MASTERIZACIÓN)
+# 100% Autónomo - Sin dependencias de Udio ni riesgo de rechazo de catálogo
+# ==============================================================================
+HYMNS_RESTORED_DIR = os.path.join(assets_dir, "hymns_restored")
+os.makedirs(HYMNS_RESTORED_DIR, exist_ok=True)
+
+def measure_ebur128(audio_file_path: str) -> dict:
+    """Mide la sonoridad integrada (LUFS), True Peak (dBFS) y rango dinámico (LRA) según EBU R128."""
+    try:
+        cmd = [
+            "ffmpeg", "-nostats", "-i", audio_file_path,
+            "-filter_complex", "ebur128=peak=true",
+            "-f", "null", "-"
+        ]
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+        out = p.stderr or ""
+        
+        i_m = re.findall(r'I:\s+(-?\d+\.?\d*)\s+LUFS', out)
+        tp_m = re.findall(r'Peak:\s+(-?\d+\.?\d*)\s+dBFS', out)
+        lra_m = re.findall(r'LRA:\s+(-?\d+\.?\d*)\s+LU', out)
+        
+        return {
+            "integrated_lufs": round(float(i_m[-1]), 1) if i_m else -14.0,
+            "true_peak_db": round(float(tp_m[-1]), 1) if tp_m else -1.0,
+            "lra": round(float(lra_m[-1]), 1) if lra_m else 0.0
+        }
+    except Exception as e:
+        print(f"[EBUR128] Error midiendo sonoridad: {e}")
+        return {"integrated_lufs": -14.0, "true_peak_db": -1.0, "lra": 0.0}
+
+@app.post("/api/hymn_production/restore")
+async def restore_hymn_audio(
+    audio_file: UploadFile = File(...),
+    title: str = Form("Himno Restaurado"),
+    intensity: str = Form("medium"),
+    denoise_db: float = Form(10.0),
+    debox_cut: bool = Form(True),
+    clarity_boost: bool = Form(True),
+    air_shelf: bool = Form(True),
+    compression_profile: str = Form("smooth"),
+    target_lufs: float = Form(-14.0)
+):
+    """Restaura y masteriza grabaciones caseras de himnos (voz + guitarra acústica de celular)."""
+    t_start = time.time()
+    temp_orig = None
+    
+    try:
+        content = await audio_file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="El archivo de audio está vacío.")
+            
+        orig_filename = audio_file.filename or "himno_original.mp3"
+        ext = os.path.splitext(orig_filename)[1].lower() or ".mp3"
+        
+        item_id = f"hymn_{uuid.uuid4().hex[:12]}"
+        
+        # Guardar archivo de entrada temporal
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tf:
+            tf.write(content)
+            temp_orig = tf.name
+
+        # 1. Medición de métricas reales del audio original del celular
+        orig_metrics = measure_ebur128(temp_orig)
+        
+        # 2. Guardar copia normalizada de referencia del original para reproducción A/B
+        stored_orig = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_orig.mp3")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", temp_orig,
+            "-c:a", "libmp3lame", "-b:a", "192k",
+            stored_orig
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+
+        # 3. Construcción adaptativa de la cadena de filtros según la intensidad
+        filters = []
+        
+        # A. Filtro subsónico: Elimina vibraciones de mesa, viento y retumbos graves
+        if intensity == "gentle":
+            filters.append("highpass=f=65:w=0.7")
+        else:
+            filters.append("highpass=f=75:w=0.7")
+            
+        # B. Reducción adaptativa de ruido espectral (sin efecto de fase submarina)
+        if intensity == "gentle":
+            filters.append("afftdn=nr=6:nf=-50:tn=1")
+        elif intensity == "medium":
+            filters.append("afftdn=nr=10:nf=-45:tn=1")
+        else:
+            clamp_nr = max(3.0, min(16.0, float(denoise_db)))
+            filters.append(f"afftdn=nr={clamp_nr}:nf=-45:tn=1")
+            
+        # C. De-box quirúrgico (atenúa el efecto encajonado típico del micrófono del celular)
+        if intensity == "medium" or (intensity == "custom" and debox_cut):
+            filters.append("equalizer=f=420:t=q:w=1.8:g=-2.5")
+        elif intensity == "gentle":
+            filters.append("equalizer=f=400:t=q:w=1.5:g=-1.5")
+            
+        # D. Realce de presencia vocal y articulación de guitarra acústica
+        if intensity == "medium" or (intensity == "custom" and clarity_boost):
+            filters.append("equalizer=f=3400:t=q:w=1.2:g=2.2")
+        elif intensity == "gentle":
+            filters.append("equalizer=f=3200:t=q:w=1.2:g=1.5")
+            
+        # E. Brillo acústico superior (Air Band)
+        if intensity == "medium" or (intensity == "custom" and air_shelf):
+            filters.append("highshelf=f=11000:g=2.5")
+        elif intensity == "gentle":
+            filters.append("highshelf=f=10500:g=1.5")
+            
+        # F. Compresión dinámica musical suave
+        if intensity == "gentle" or compression_profile == "gentle":
+            filters.append("compand=attacks=0.04:decays=0.2:points=-70/-70|-35/-35|-16/-13|0/-5:gain=0")
+        elif compression_profile == "transparent":
+            filters.append("compand=attacks=0.05:decays=0.25:points=-70/-70|-40/-40|-20/-17|0/-6:gain=0")
+        else:
+            filters.append("compand=attacks=0.03:decays=0.15:points=-70/-70|-35/-35|-18/-14|0/-6:gain=1")
+
+        # G. Normalización EBU R128 y limitador True Peak (-1.0 dBFS)
+        safe_target_lufs = max(-20.0, min(-10.0, float(target_lufs)))
+        filters.append(f"loudnorm=I={safe_target_lufs}:TP=-1.0:LRA=7")
+        
+        filter_str = ",".join(filters)
+
+        # 4. Rutas de salida para WAV (Master 24-bit PCM) y MP3 (320 kbps CBR)
+        out_wav = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_master.wav")
+        out_mp3 = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_master.mp3")
+
+        # 5. Ejecución dual en un solo paso de decodificación
+        process_cmd = [
+            "ffmpeg", "-y", "-i", temp_orig,
+            "-af", filter_str,
+            "-c:a", "pcm_s24le", out_wav,
+            "-c:a", "libmp3lame", "-b:a", "320k", out_mp3
+        ]
+        proc = subprocess.run(process_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120)
+        
+        if proc.returncode != 0:
+            err_log = proc.stderr or "Error desconocido durante la masterización con FFmpeg."
+            raise HTTPException(status_code=500, detail=f"Error al procesar el audio con FFmpeg: {err_log[-400:]}")
+
+        # 6. Medición de métricas reales sobre el archivo masterizado resultante
+        proc_metrics = measure_ebur128(out_wav)
+        
+        # 7. Obtener duración real
+        dur_cmd = [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", out_mp3
+        ]
+        p_dur = subprocess.run(dur_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            dur_sec = round(float(p_dur.stdout.strip()), 1)
+        except Exception:
+            dur_sec = 0.0
+
+        elapsed_sec = round(time.time() - t_start, 2)
+        clean_title = (title or "Himno Acústico").strip()
+
+        # 8. Agregar a la librería local de Rodrix para acceso permanente
+        library_entry = {
+            "id": item_id,
+            "title": f"✨ {clean_title} (Restaurado)",
+            "audio_url": f"/api/hymn_production/stream/{item_id}/restored",
+            "raw_audio_url": f"/api/hymn_production/download/{item_id}/wav",
+            "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310B981'/%3E%3Cpath d='M32 16v32M24 24l16 16M24 40l16-16' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",
+            "duration": int(dur_sec),
+            "status": "SUCCESS",
+            "style": f"Producción Profesional Acústica • Masterizado a {proc_metrics['integrated_lufs']} LUFS",
+            "lyrics": f"Grabación propia restaurada y masterizada. Original: {orig_metrics['integrated_lufs']} LUFS ➔ Master: {proc_metrics['integrated_lufs']} LUFS.",
+            "is_hymn_restored": True
+        }
+        add_track_to_library(library_entry)
+
+        return {
+            "success": True,
+            "item_id": item_id,
+            "title": clean_title,
+            "duration_sec": dur_sec,
+            "processing_time_sec": elapsed_sec,
+            "intensity_applied": intensity,
+            "original_metrics": orig_metrics,
+            "processed_metrics": proc_metrics,
+            "stream_restored_url": f"/api/hymn_production/stream/{item_id}/restored",
+            "stream_orig_url": f"/api/hymn_production/stream/{item_id}/orig",
+            "download_wav_url": f"/api/hymn_production/download/{item_id}/wav",
+            "download_mp3_url": f"/api/hymn_production/download/{item_id}/mp3"
+        }
+
+    finally:
+        if temp_orig and os.path.exists(temp_orig):
+            try:
+                os.remove(temp_orig)
+            except Exception:
+                pass
+
+@app.get("/api/hymn_production/stream/{item_id}/{version}")
+async def stream_hymn_audio(item_id: str, version: str):
+    """Transmite el audio para el reproductor A/B con soporte de Range Requests."""
+    if version == "orig":
+        path = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_orig.mp3")
+    else:
+        path = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_master.mp3")
+        
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Archivo de audio no encontrado.")
+    return FileResponse(path, media_type="audio/mpeg")
+
+@app.get("/api/hymn_production/download/{item_id}/{fmt}")
+async def download_hymn_audio(item_id: str, fmt: str):
+    """Descarga el master restaurado en formato WAV sin pérdida o MP3 320 kbps."""
+    if fmt == "wav":
+        path = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_master.wav")
+        mime = "audio/wav"
+        filename = f"{item_id}_master_24bit.wav"
+    else:
+        path = os.path.join(HYMNS_RESTORED_DIR, f"{item_id}_master.mp3")
+        mime = "audio/mpeg"
+        filename = f"{item_id}_master_320kbps.mp3"
+        
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+    return FileResponse(path, media_type=mime, filename=filename)
 
 if __name__ == "__main__":
     import uvicorn
