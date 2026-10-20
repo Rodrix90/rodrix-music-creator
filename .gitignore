@@ -9,6 +9,9 @@ __pycache__/
 .pytest_cache/
 .textarea_caches/
 
+# Backups Locales
+*.bak*
+
 # Almacenamiento Local de Audios (No subir a la nube)
 downloads/
 temp_*/

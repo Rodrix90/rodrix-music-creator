@@ -913,6 +913,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <label class="label"><span>Audio Influence</span><span class="val" id="aiVal">25%</span></label>
               <input type="range" id="audioInfluence" min="0" max="100" value="25">
             </div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.4;background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);margin-bottom:8px">
+              <i class="ph ph-info" style="color:var(--accent);vertical-align:middle;margin-right:3px"></i>
+              <strong>Fidelidad melódica:</strong> La IA sintetiza una interpretación generativa nueva basada en la guía de audio; no garantiza una reproducción nota por nota de una partitura fija.
+            </div>
             <div class="field">
               <label class="label">Audio de referencia (Extend / Remix)</label>
               <div class="file-row">
@@ -4130,12 +4134,15 @@ function stopProgress(ok, txt){
 }
 function setBusy(b){
   $('submitBtn').disabled = b;
+  $('submitBtn').style.opacity = b ? '0.6' : '1';
+  $('submitBtn').style.pointerEvents = b ? 'none' : 'auto';
   $('cancelBtn').style.display = b ? 'block' : 'none';
 }
 
 /* ---------- Generar ---------- */
 $('genForm').addEventListener('submit', async e => {
   e.preventDefault();
+  if ($('submitBtn').disabled) return;
   const fd = new FormData();
   const instr = $('instrumental').checked;
 
@@ -4236,6 +4243,8 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('model', $('modelInput').value);
   fd.append('pronunciation', $('pronInput').value);
   fd.append('obfuscate', $('obfuscate').checked);
+  const clientOpId = 'op_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+  fd.append('client_operation_id', clientOpId);
   if ($('audioInput').files[0]) {
     fd.append('audio', $('audioInput').files[0]);
   } else if (window.activeLoadedSkeleton) {
@@ -4254,6 +4263,9 @@ $('genForm').addEventListener('submit', async e => {
     if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
     if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.detail || ('HTTP ' + r.status)); }
     const j = await r.json();
+    if (j.duplicate_prevented) {
+      logLine('Aviso: ' + (j.message || 'Solicitud idéntica detectada. Reutilizando tarea activa.'), 'warn');
+    }
     currentTask = j.task_id;
     pollTimer = setInterval(poll, 3000); poll();
   } catch (err) {

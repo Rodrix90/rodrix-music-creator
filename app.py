@@ -219,6 +219,7 @@ def add_track_to_library(track_info):
         save_library(library)
 
 TASKS = {}
+RECENT_OPERATIONS = {}
 
 def prune_tasks():
     global TASKS
@@ -226,6 +227,13 @@ def prune_tasks():
         keys_to_remove = list(TASKS.keys())[:-25]
         for k in keys_to_remove:
             TASKS.pop(k, None)
+
+def prune_recent_operations():
+    global RECENT_OPERATIONS
+    now = time.time()
+    expired = [k for k, v in RECENT_OPERATIONS.items() if now - v[1] > 60]
+    for k in expired:
+        RECENT_OPERATIONS.pop(k, None)
 
 @app.post("/api/transform")
 async def transform_audio(
@@ -248,6 +256,7 @@ async def transform_audio(
     skeleton_file: str = Form(""),
     target_bpm: int = Form(0),
     is_public_domain: bool = Form(False),
+    client_operation_id: str = Form(""),
     current_user: str = Depends(get_current_user)
 ):
     try:
@@ -255,6 +264,7 @@ async def transform_audio(
             raise HTTPException(status_code=400, detail="Falta configurar UDIO_API_KEY")
 
         prune_tasks()
+        prune_recent_operations()
 
         audio_content = None
         audio_filename = None
@@ -271,6 +281,56 @@ async def transform_audio(
         if audio and not ignore_audio:
             audio_content = await audio.read()
             audio_filename = audio.filename
+            if audio_content and len(audio_content) > 0:
+                # Validación local del audio mediante FFprobe antes de registrar tarea o llamar al proveedor
+                temp_validate_path = None
+                try:
+                    ext = os.path.splitext(audio_filename or "audio.tmp")[1].lower() or ".tmp"
+                    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tf:
+                        tf.write(audio_content)
+                        temp_validate_path = tf.name
+                    
+                    probe_cmd = [
+                        "ffprobe", "-v", "error",
+                        "-select_streams", "a:0",
+                        "-show_entries", "stream=codec_name,duration,channels,sample_rate",
+                        "-show_entries", "format=duration,size",
+                        "-of", "json",
+                        temp_validate_path
+                    ]
+                    proc = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=12)
+                    if proc.returncode != 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"El archivo de audio '{audio_filename}' no pudo ser validado por FFprobe. Compruebe que sea un archivo de audio soportado."
+                        )
+                    probe_data = json.loads(proc.stdout) if proc.stdout else {}
+                    streams = probe_data.get("streams", [])
+                    if not streams:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"El archivo '{audio_filename}' no contiene una pista de audio decodificable."
+                        )
+                    
+                    # Comprobar límite documentado del proveedor: 8 minutos (480 segundos)
+                    fmt = probe_data.get("format", {})
+                    dur_str = fmt.get("duration") or streams[0].get("duration")
+                    if dur_str:
+                        try:
+                            dur_sec = float(dur_str)
+                            if dur_sec > 480.0:
+                                raise HTTPException(
+                                    status_code=400,
+                                    detail=f"El audio excede el límite máximo de 8 minutos (480 s) permitido por el proveedor. Duración detectada: {int(dur_sec)} s."
+                                )
+                        except ValueError:
+                            pass
+                finally:
+                    if temp_validate_path and os.path.exists(temp_validate_path):
+                        try:
+                            os.remove(temp_validate_path)
+                        except Exception:
+                            pass
         elif resolved_skeleton:
             # Solo aplicar ratio de BPM si el esqueleto base es hymn_297.wav (grabado originalmente a 54 BPM).
             # Para archivos MIDI (midi_*.wav) o pistas subidas, ya tienen su tempo nativo y no deben forzarse a ratio 54.0.
@@ -307,6 +367,30 @@ async def transform_audio(
             if audio_influence < 50:
                 audio_influence = 65
 
+        # Prevención de solicitudes duplicadas concurrentes por cliente / operación
+        if client_operation_id:
+            op_key = f"{current_user}:{client_operation_id}"
+        else:
+            if audio_content:
+                # Huella digital real del contenido del archivo (evita confundir dos archivos distintos de igual tamaño)
+                audio_sample = audio_content[:65536] + audio_content[-65536:] if len(audio_content) > 131072 else audio_content
+                content_hash = hashlib.sha256(audio_sample).hexdigest()
+            else:
+                content_hash = "no_audio"
+            payload_str = f"{current_user}:{title}:{style}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}"
+            op_key = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+
+        now_ts = time.time()
+        if op_key in RECENT_OPERATIONS:
+            existing_task_id, op_time = RECENT_OPERATIONS[op_key]
+            if (now_ts - op_time < 15) and (existing_task_id in TASKS) and (TASKS[existing_task_id].get("status") in ["IN_PROGRESS", "QUEUED"]):
+                return {
+                    "status": "started",
+                    "task_id": existing_task_id,
+                    "duplicate_prevented": True,
+                    "message": "Solicitud idéntica detectada. Reutilizando la tarea en curso para evitar consumos duplicados."
+                }
+
         task_id = str(uuid.uuid4())
         TASKS[task_id] = {
             "id": task_id,
@@ -318,6 +402,8 @@ async def transform_audio(
             "is_public_domain": is_public_domain,
             "audio_filename": audio_filename or "N/A"
         }
+
+        RECENT_OPERATIONS[op_key] = (task_id, now_ts)
 
         background_tasks.add_task(
             run_transform_task,
@@ -1354,9 +1440,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 style = f"{genre_anchor}, {style}"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
-        # Compute weights
-        actual_style_weight = 0.85 if is_drum_solo else round(style_influence / 100.0, 2)
-        actual_weirdness = 0.20 if is_drum_solo else round(weirdness / 100.0, 2)
+        # Compute weights cleanly clamped to documented ranges 0.00 - 1.00
+        actual_style_weight = 0.85 if is_drum_solo else max(0.0, min(1.0, round(float(style_influence) / 100.0, 2)))
+        actual_weirdness = 0.20 if is_drum_solo else max(0.0, min(1.0, round(float(weirdness) / 100.0, 2)))
+        actual_audio_weight = max(0.0, min(1.0, round(float(audio_influence) / 100.0, 2)))
 
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
@@ -1373,7 +1460,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "title": title,
                 "make_instrumental": is_instrumental,
                 "style_weight": actual_style_weight,
-                "audio_weight": round(audio_influence / 100.0, 2),
+                "audio_weight": actual_audio_weight,
                 "weirdness_constraint": actual_weirdness
             }
             if vocal_gender in ["male", "female"]:
@@ -1557,32 +1644,71 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 err_str = str(e)
                 err_lower = err_str.lower()
                 
-                # 1. Comprobar rechazo por catálogo o copyright
-                is_catalog_or_copyright = any(
+                # 1. Distinguir categorías específicas de error del proveedor
+                is_catalog_match = any(
                     k in err_lower for k in [
                         "matches an existing recording in our catalog",
                         "existing recording in our catalog",
-                        "matches an existing recording",
-                        "copyrighted material",
-                        "copyright"
+                        "matches an existing recording"
                     ]
                 )
-                if is_catalog_or_copyright:
+                is_moderation_flag = any(
+                    k in err_lower for k in [
+                        "moderation", "flagged", "content policy", "policy violation",
+                        "sensitive content", "prohibited content", "banned words"
+                    ]
+                )
+                is_credit_exhaustion = any(
+                    k in err_lower for k in [
+                        "402", "insufficient credits", "no hay créditos suficientes", "out of credits", "quota exceeded"
+                    ]
+                )
+
+                if is_catalog_match:
                     rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    log_msg(f"Generación rechazada por catálogo comercial ({err_str}). Guardando diagnóstico técnico.")
+                    log_msg(f"Generación rechazada por coincidencia de catálogo comercial ({err_str}). Guardando diagnóstico técnico.")
                     diagnostic_info = {
                         "task_id": task_id,
                         "title": title,
                         "model": model,
                         "date_utc": rejection_date,
                         "exact_error_message": err_str,
+                        "error_type": "CATALOG_MATCH",
                         "is_public_domain": is_public_domain,
                         "audio_filename": audio_filename or "N/A",
                         "has_audio_reference": bool(upload_url)
                     }
                     TASKS[task_id]["catalog_rejection"] = True
                     TASKS[task_id]["diagnostic_info"] = diagnostic_info
-                    TASKS[task_id]["detail"] = "Rechazo de catálogo comercial: La API de Udio identificó que la melodía coincide con una grabación comercial registrada y reembolsó los créditos. Puedes descargar el informe técnico de diagnóstico para solicitar revisión al proveedor."
+                    TASKS[task_id]["detail"] = "Rechazo de catálogo comercial: El proveedor identificó una coincidencia con una grabación registrada en su catálogo. Verifique su saldo y registros en el panel de udioapi.pro. Puede descargar el informe técnico de diagnóstico (.txt) para consultar al soporte del proveedor."
+                    TASKS[task_id]["status"] = "ERROR"
+                    save_local_log()
+                    return
+
+                elif is_moderation_flag:
+                    log_msg(f"Generación rechazada por filtros de moderación/texto ({err_str}).")
+                    diagnostic_info = {
+                        "task_id": task_id,
+                        "title": title,
+                        "model": model,
+                        "date_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                        "exact_error_message": err_str,
+                        "error_type": "CONTENT_MODERATION",
+                        "is_public_domain": is_public_domain,
+                        "audio_filename": audio_filename or "N/A",
+                        "has_audio_reference": bool(upload_url)
+                    }
+                    TASKS[task_id]["catalog_rejection"] = False
+                    TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                    TASKS[task_id]["detail"] = f"Moderación de contenido: El proveedor rechazó la solicitud por sus filtros de política o texto ({err_str}). Revise la letra y las etiquetas de estilo."
+                    TASKS[task_id]["status"] = "ERROR"
+                    save_local_log()
+                    return
+
+                elif is_credit_exhaustion:
+                    log_msg("Generación detenida: Saldo de créditos insuficiente en la cuenta de la API.")
+                    TASKS[task_id]["catalog_rejection"] = False
+                    TASKS[task_id]["detail"] = "Créditos insuficientes: La cuenta de udioapi.pro no dispone de créditos para completar la tarea (Error 402). Verifique su suscripción."
                     TASKS[task_id]["status"] = "ERROR"
                     save_local_log()
                     return
@@ -1808,11 +1934,12 @@ Este informe no contiene claves privadas ni datos sensibles.
     sanitized_logs = re.sub(r'(key|token|secret)=([a-zA-Z0-9_\-]{8,})', r'\1=[PROTECTED]', sanitized_logs, flags=re.IGNORECASE)
 
     status_name = task.get("status", "DESCONOCIDO")
+    error_type = diag.get("error_type", "CATALOG_MATCH" if is_catalog else "GENERIC")
 
-    if is_catalog:
+    if is_catalog or error_type == "CATALOG_MATCH":
         encabezado_tipo = "COINCIDENCIA DE CATÁLOGO COMERCIAL (FILTRO DE AUDIO REGISTRADO)"
-        clasificacion = """Rechazo automatizado por huella acústica / catálogo comercial registrado en Udio.
-Los créditos de la cuenta fueron automáticamente reembolsados por el proveedor."""
+        clasificacion = """Rechazo automatizado por coincidencia de huella acústica con catálogo registrado en el proveedor.
+Consulte su saldo y registros de tareas en el panel de udioapi.pro para verificar el estado de los créditos."""
         procedimiento = f"""Si esta obra es una interpretación propia de un himno clásico, obra tradicional
 en dominio público o una composición con los debidos derechos, puedes solicitar
 una revisión al equipo técnico del proveedor de la API siguiendo estos pasos:
@@ -1829,9 +1956,20 @@ una revisión al equipo técnico del proveedor de la API siguiendo estos pasos:
 
 3. El equipo de soporte evaluará la solicitud para la excepción o habilitación
    correspondiente en su filtro de catálogo automatizado."""
+    elif error_type == "CONTENT_MODERATION":
+        encabezado_tipo = "MODERACIÓN DE CONTENIDO / POLÍTICA DE TEXTO"
+        clasificacion = """La tarea fue rechazada por los filtros de moderación o política del proveedor.
+Esto ocurre habitualmente si la letra o las etiquetas contienen palabras sensibles, nombres de artistas o lenguaje restringido."""
+        procedimiento = """Recomendaciones para resolver esta observación:
+1. Revise la letra y reemplace palabras que puedan disparar filtros de seguridad.
+2. Elimine nombres propios de artistas en las etiquetas de estilo.
+3. Vuelva a intentar la generación con el texto revisado."""
     else:
         encabezado_tipo = f"ESTADO DE TAREA: {status_name}"
         clasificacion = f"Detalle registrado: {exact_err}"
+        procedimiento = """Si el problema persiste:
+1. Compruebe el estado del servicio en el panel de udioapi.pro.
+2. Si se trata de un error técnico persistente, contacte al soporte del proveedor indicando el Task ID."""
         procedimiento = """Este informe contiene el estado técnico completo y los registros de ejecución de la tarea.
 Puede conservarlo para trazabilidad o para revisar cualquier advertencia del sistema."""
 
