@@ -245,6 +245,7 @@ async def transform_audio(
     obfuscate: bool = Form(False),
     skeleton_file: str = Form(""),
     target_bpm: int = Form(0),
+    is_public_domain: bool = Form(False),
     current_user: str = Depends(get_current_user)
 ):
     try:
@@ -311,7 +312,7 @@ async def transform_audio(
             run_transform_task,
             task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
             include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-            style_influence, audio_influence, model, pronunciation, obfuscate
+            style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain
         )
         
         return {"status": "started", "task_id": task_id}
@@ -803,7 +804,7 @@ async def serve_cached_audio(task_id: str):
             return RedirectResponse(url=url)
     raise HTTPException(status_code=404, detail="Audio no disponible")
 
-async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation="", obfuscate=False):
+async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation="", obfuscate=False, is_public_domain=False):
     def log_msg(msg):
         import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
@@ -1545,8 +1546,21 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     ]
                 )
                 if is_catalog_or_copyright:
-                    log_msg("Generación detenida: La API rechazó el audio o la letra por coincidir con una grabación comercial registrada en el catálogo de Udio.")
-                    TASKS[task_id]["detail"] = "Rechazo de catálogo/copyright: La pista coincide con una grabación comercial registrada en el catálogo de Udio. Modifica la referencia o melodía para continuar."
+                    rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    log_msg(f"Generación rechazada por catálogo comercial ({err_str}). Guardando diagnóstico técnico.")
+                    diagnostic_info = {
+                        "task_id": task_id,
+                        "title": title,
+                        "model": model,
+                        "date_utc": rejection_date,
+                        "exact_error_message": err_str,
+                        "is_public_domain": is_public_domain,
+                        "audio_filename": audio_filename or "N/A",
+                        "has_audio_reference": bool(upload_url)
+                    }
+                    TASKS[task_id]["catalog_rejection"] = True
+                    TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                    TASKS[task_id]["detail"] = "Rechazo de catálogo comercial: La API de Udio identificó que la melodía coincide con una grabación comercial registrada y reembolsó los créditos. Puedes descargar el informe técnico de diagnóstico para solicitar revisión al proveedor."
                     TASKS[task_id]["status"] = "ERROR"
                     save_local_log()
                     return
@@ -1582,6 +1596,163 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     pass
         import gc
         gc.collect()
+
+
+# -----------------------------------------------------------------------------
+# PRUEBA TÉCNICA DE COMPATIBILIDAD DE AUDIO (M4A, MP4, MP3, WAV)
+# -----------------------------------------------------------------------------
+@app.post("/api/check_audio_compatibility")
+async def check_audio_compatibility(file: UploadFile = File(...)):
+    """Verifica técnicamente que un archivo M4A, MP4, MP3 o WAV se decodifique correctamente."""
+    try:
+        content = await file.read()
+        if not content:
+            return JSONResponse(status_code=400, content={"compatible": False, "error": "El archivo está vacío."})
+            
+        filename = file.filename or "audio"
+        ext = os.path.splitext(filename)[1].lower()
+        size_mb = round(len(content) / (1024 * 1024), 2)
+        
+        import mutagen
+        bio = io.BytesIO(content)
+        mf = mutagen.File(bio)
+        
+        if mf is None or not hasattr(mf, "info") or mf.info is None:
+            # Fallback nativo para archivos WAV usando módulo estándar wave
+            if ext in [".wav", ".wave"]:
+                try:
+                    import wave
+                    bio.seek(0)
+                    with wave.open(bio, 'rb') as wf:
+                        channels = wf.getnchannels()
+                        rate = wf.getframerate()
+                        frames = wf.getnframes()
+                        length_sec = round(frames / float(rate), 2)
+                        return {
+                            "compatible": True,
+                            "filename": filename,
+                            "format": "WAV",
+                            "channels": "Estéreo" if channels >= 2 else "Mono",
+                            "sample_rate": f"{rate} Hz",
+                            "duration_sec": length_sec,
+                            "file_size_mb": size_mb,
+                            "message": f"Archivo WAV decodificado correctamente ({length_sec}s, {rate} Hz, {channels} canales)."
+                        }
+                except Exception as wav_err:
+                    return {
+                        "compatible": False,
+                        "filename": filename,
+                        "format": "WAV",
+                        "error": f"Cabecera WAV inválida o corrupta: {wav_err}",
+                        "message": "El archivo WAV no se pudo decodificar correctamente."
+                    }
+                    
+            return {
+                "compatible": False,
+                "filename": filename,
+                "format": ext.lstrip(".").upper() or "Desconocido",
+                "error": "No se reconoció un flujo de audio válido en el contenedor.",
+                "message": f"El archivo {filename} no contiene un formato de audio compatible o está dañado."
+            }
+            
+        length_sec = round(getattr(mf.info, "length", 0.0), 2)
+        sample_rate = getattr(mf.info, "sample_rate", 44100)
+        channels = getattr(mf.info, "channels", 2)
+        channels_str = "Estéreo" if channels >= 2 else "Mono"
+        fmt_name = type(mf).__name__.replace("MP3", "MP3").replace("MP4", "M4A/MP4").replace("Wave", "WAV")
+        
+        return {
+            "compatible": True,
+            "filename": filename,
+            "format": fmt_name,
+            "channels": channels_str,
+            "sample_rate": f"{sample_rate} Hz",
+            "duration_sec": length_sec,
+            "file_size_mb": size_mb,
+            "message": f"Archivo {fmt_name} decodificado correctamente ({length_sec}s, {sample_rate} Hz, {channels_str})."
+        }
+    except Exception as e:
+        return {
+            "compatible": False,
+            "filename": file.filename,
+            "error": str(e),
+            "message": f"Error al verificar compatibilidad de audio: {str(e)}"
+        }
+
+# -----------------------------------------------------------------------------
+# INFORME TÉCNICO DE DIAGNÓSTICO (RECHAZO DE CATÁLOGO COMERCIAL)
+# -----------------------------------------------------------------------------
+@app.get("/api/diagnostic_report/{task_id}")
+async def get_diagnostic_report(task_id: str):
+    """Genera y descarga un informe técnico de diagnóstico sin credenciales ni claves privadas."""
+    task = TASKS.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Informe de diagnóstico no encontrado para esta tarea.")
+        
+    diag = task.get("diagnostic_info", {})
+    title = diag.get("title", task.get("title", "Obra sin título"))
+    model = diag.get("model", "N/A")
+    date_str = diag.get("date_utc", datetime.datetime.now(datetime.timezone.utc).isoformat())
+    exact_err = diag.get("exact_error_message", task.get("detail", "Coincidencia de catálogo"))
+    is_pd = diag.get("is_public_domain", False)
+    has_audio = diag.get("has_audio_reference", False)
+    audio_file = diag.get("audio_filename", "N/A")
+    
+    report_text = f"""================================================================================
+INFORME TÉCNICO DE DIAGNÓSTICO - COINCIDENCIA DE CATÁLOGO COMERCIAL
+Rodrix Music Creator (Generación Musical Asistida por IA)
+================================================================================
+
+DATOS DE LA SOLICITUD:
+--------------------------------------------------------------------------------
+Identificador de Tarea (Task ID) : {task_id}
+Fecha y Hora de la Solicitud (UTC): {date_str}
+Título de la Obra               : {title}
+Modelo de Generación            : {model}
+Declaración de Dominio Público  : {'SÍ (Grabación propia de obra tradicional/autorizada)' if is_pd else 'NO declarada'}
+Audio de Referencia Vinculado   : {'SÍ' if has_audio else 'NO'}
+Archivo de Referencia Original  : {audio_file}
+
+RESPUESTA REGISTRADA DEL PROVEEDOR (UDIO API):
+--------------------------------------------------------------------------------
+Mensaje de Rechazo Exacto:
+"{exact_err}"
+
+Clasificación del Estado:
+Rechazo automatizado por huella acústica / catálogo comercial registrado en Udio.
+Los créditos de la cuenta fueron reembolsados por el proveedor.
+
+PROCEDIMIENTO PARA SOLICITAR REVISIÓN MANUAL AL PROVEEDOR:
+--------------------------------------------------------------------------------
+Si esta obra es una interpretación propia de un himno clásico, obra tradicional
+en dominio público o una composición con los debidos derechos, puedes solicitar
+una revisión al equipo técnico del proveedor de la API siguiendo estos pasos:
+
+1. Redacta una solicitud dirigida al equipo de soporte de la API:
+   - Canal de soporte: support@udioapi.pro (o mesa de ayuda del proveedor).
+   - Asunto: Solicitud de revisión de catálogo comercial - Task ID {task_id}
+
+2. Adjunta a tu solicitud:
+   - El presente Informe Técnico de Diagnóstico.
+   - Datos de la obra tradicional (título, autor original, año o indicación de dominio público).
+   - Aclaración explícita de que el audio cargado es una grabación o secuencia propia
+     y no un fonograma comercial protegido de terceros.
+
+3. El equipo de soporte evaluará la solicitud para la excepción o habilitación
+   correspondiente en su filtro de catálogo automatizado.
+
+================================================================================
+Generado por Rodrix Music Creator.
+Este documento no contiene credenciales, claves de API ni datos confidenciales.
+================================================================================
+"""
+    return PlainTextResponse(
+        report_text,
+        headers={
+            "Content-Disposition": f'attachment; filename="diagnostico_{task_id}.txt"'
+        }
+    )
+
 
 @app.get("/api/latest-logs")
 async def get_latest_logs():

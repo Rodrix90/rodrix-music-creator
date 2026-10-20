@@ -918,6 +918,16 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <input type="file" id="audioInput" accept="audio/*,.m4a,.mp4,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac">
                 <button type="button" class="icon-btn" id="clearAudio" title="Quitar audio"><i class="ph ph-x"></i></button>
               </div>
+              <div id="audioCompatBadge" style="display:none;margin-top:6px;font-size:11.5px;padding:6px 10px;border-radius:6px;align-items:center;gap:6px"></div>
+              <div style="margin-top:8px">
+                <label class="check" style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="checkbox" id="chkPublicDomain">
+                  <span>📜 Declarar que el audio es una grabación propia de obra en dominio público o autorizada</span>
+                </label>
+                <div style="font-size:11px;color:var(--muted);margin-left:22px;margin-top:2px">
+                  Acredita ante el sistema que se trata de una interpretación propia (ej. himno tradicional o composición autorizada) sin másters comerciales de terceros.
+                </div>
+              </div>
               <div id="loadedSkeletonBadge" style="display:none;margin-top:6px;background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);border-radius:6px;padding:6px 10px;font-size:11.5px;color:#A7F3D0;align-items:center;justify-content:space-between">
                 <span style="display:inline-flex;align-items:center;gap:6px">
                   <i class="ph ph-music-notes" style="color:#34D399"></i>
@@ -1078,6 +1088,14 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <div style="font-size:14px;font-weight:700;color:var(--text)">Haz clic para elegir o arrastra aquí tus archivos MIDI (.mid / .midi)</div>
               <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Pistas de piano, melodías de teclado o archivos .mid descargados de <strong>Hymnary.org</strong></div>
               <div id="sheetFileListPreview" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+            </div>
+
+            <!-- DECLARACIÓN DE OBRA PROPIA / DOMINIO PÚBLICO -->
+            <div style="margin-top:10px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:8px;padding:8px 12px">
+              <label class="check" style="font-size:12px;color:#DDD6FE;display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="chkMidiPublicDomain" checked>
+                <span>📜 Declarar que los archivos MIDI son interpretaciones de obras tradicionales en dominio público o autorizadas</span>
+              </label>
             </div>
 
             <!-- ENLACE DIRECTO Y ACCESO A HYMNARY.ORG -->
@@ -1635,6 +1653,38 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     </div> <!-- .center-inner -->
   </main> <!-- .center -->
 </div> <!-- .app -->
+
+<!-- MODAL DE DIAGNÓSTICO Y REVISIÓN DE COINCIDENCIA DE CATÁLOGO COMERCIAL -->
+<div id="catalogRejectionModal" class="modal-backdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)">
+  <div style="background:#1A1B26;border:1px solid rgba(239,68,68,0.4);border-radius:14px;max-width:560px;width:100%;padding:22px;box-shadow:0 15px 40px rgba(0,0,0,0.7);color:#E2E8F0">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div style="width:42px;height:42px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);display:grid;place-items:center;flex-shrink:0">
+        <i class="ph ph-shield-warning" style="font-size:26px;color:#EF4444"></i>
+      </div>
+      <div>
+        <h2 style="font-size:15px;font-weight:700;color:#FCA5A5;margin:0">Aviso de Coincidencia en Catálogo Comercial</h2>
+        <div style="font-size:11.5px;color:#94A3B8">Filtro automatizado del proveedor Udio API</div>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:#CBD5E1;line-height:1.5;margin-bottom:14px">
+      La API identificó que la melodía coincide con una grabación comercial registrada en su catálogo automatizado y <strong>reembolsó los créditos</strong>. Al tratarse de una grabación propia de un himno clásico o composición en dominio público, puedes solicitar una revisión manual al proveedor.
+    </p>
+    <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;line-height:1.55">
+      <strong style="color:#A78BFA;display:flex;align-items:center;gap:5px"><i class="ph ph-list-checks"></i> Pasos para solicitar revisión al proveedor:</strong>
+      <ol style="margin:8px 0 0 18px;padding:0;color:#CBD5E1">
+        <li>Descarga el <strong>Informe de Diagnóstico</strong> adjunto (incluye el ID de tarea, fecha y mensaje exacto sin datos sensibles).</li>
+        <li>Envía un correo a soporte de la API: <code style="color:#60A5FA;font-weight:700">support@udioapi.pro</code>.</li>
+        <li>Indica que se trata de una interpretación propia de una obra tradicional de dominio público (ej. himno del siglo XIX).</li>
+      </ol>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
+      <button type="button" class="btn-sec" onclick="closeCatalogRejectionModal()" style="padding:7px 16px;border-radius:8px;font-size:12px">Cerrar</button>
+      <a id="btnDownloadDiagReport" href="#" class="btn-primary" style="background:#DC2626;color:#fff;border:none;padding:7px 18px;border-radius:8px;font-weight:700;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;text-decoration:none" download>
+        <i class="ph ph-file-text"></i> Descargar Informe (.txt)
+      </a>
+    </div>
+  </div>
+</div>
 
 <!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVIL (Y APK) -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav">
@@ -3486,6 +3536,7 @@ window.generateSingleHymn = async function(idx) {
   fd.append('model', 'chirp-v5');
   fd.append('pronunciation', '');
   fd.append('obfuscate', 'true');
+  fd.append('is_public_domain', ($('chkMidiPublicDomain') && $('chkMidiPublicDomain').checked) ? 'true' : 'false');
   fd.append('target_bpm', chosenBpm.toString());
 
   if (orig.skeleton_file) {
@@ -3930,6 +3981,7 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('title', $('titleInput').value.trim());
   fd.append('include_lyrics', !instr);
   fd.append('bypass_copyright', $('bypass').checked);
+  fd.append('is_public_domain', ($('chkPublicDomain') && $('chkPublicDomain').checked) ? 'true' : 'false');
 
   // Exclusiones activas
   let finalExclude = $('excludeInput').value.trim();
@@ -3978,6 +4030,67 @@ $('genForm').addEventListener('submit', async e => {
   }
 });
 
+
+/* Verificación de Compatibilidad de Audio (M4A, MP4, MP3, WAV) */
+if ($('audioInput')) {
+  $('audioInput').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    const badge = $('audioCompatBadge');
+    if (!file) {
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+    
+    if (badge) {
+      badge.style.display = 'flex';
+      badge.style.background = 'rgba(59,130,246,0.12)';
+      badge.style.border = '1px solid rgba(59,130,246,0.3)';
+      badge.style.color = '#93C5FD';
+      badge.innerHTML = `<i class="ph ph-spinner spinning"></i> Verificando decodificación del archivo ${esc(file.name)}...`;
+    }
+    
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const resp = await fetch('/api/check_audio_compatibility', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (data.compatible) {
+        badge.style.background = 'rgba(52,211,153,0.12)';
+        badge.style.border = '1px solid rgba(52,211,153,0.35)';
+        badge.style.color = '#A7F3D0';
+        badge.innerHTML = `<i class="ph ph-check-circle" style="color:#34D399;font-size:15px"></i> <strong>Audio Verificado:</strong> ${esc(data.format)} • ${esc(data.sample_rate)} • ${esc(data.channels)} • ${esc(data.duration_sec)}s`;
+      } else {
+        badge.style.background = 'rgba(239,68,68,0.12)';
+        badge.style.border = '1px solid rgba(239,68,68,0.35)';
+        badge.style.color = '#FCA5A5';
+        badge.innerHTML = `<i class="ph ph-warning-circle" style="color:#EF4444;font-size:15px"></i> <strong>Advertencia de Compatibilidad:</strong> ${esc(data.message || data.error)}`;
+      }
+    } catch (err) {
+      if (badge) {
+        badge.style.background = 'rgba(239,68,68,0.12)';
+        badge.style.border = '1px solid rgba(239,68,68,0.35)';
+        badge.style.color = '#FCA5A5';
+        badge.innerHTML = `<i class="ph ph-x-circle" style="color:#EF4444;font-size:15px"></i> Error al verificar archivo: ${esc(err.message)}`;
+      }
+    }
+  });
+}
+
+function showCatalogRejectionModal(taskId) {
+  const m = $('catalogRejectionModal');
+  const btn = $('btnDownloadDiagReport');
+  if (btn) {
+    btn.href = `/api/diagnostic_report/${encodeURIComponent(taskId)}`;
+    btn.download = `diagnostico_${taskId}.txt`;
+  }
+  if (m) m.style.display = 'flex';
+}
+
+function closeCatalogRejectionModal() {
+  const m = $('catalogRejectionModal');
+  if (m) m.style.display = 'none';
+}
+
 async function poll(){
   if (!currentTask) return;
   try {
@@ -3989,6 +4102,9 @@ async function poll(){
       finish(); stopProgress(true, '¡Canción lista!'); await loadLibrary();
     } else if (t.status === 'ERROR') {
       finish(); logLine('ERROR: ' + (t.detail || 'falló la generación'), 'err'); stopProgress(false, 'Error');
+      if (t.catalog_rejection) {
+        showCatalogRejectionModal(currentTask || t.id);
+      }
     } else if (t.status === 'CANCELLED') {
       finish(); stopProgress(false, 'Cancelado');
     }
