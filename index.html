@@ -1968,6 +1968,31 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
       </button>
     </div>
 
+    <!-- SECCIÓN SOPORTE UDIO (EXCLUSIVA PARA RODRYANDY) -->
+    <div id="modalAdminSupportSection" style="display:none;background:rgba(37,99,235,0.08);border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:6px">
+          <i class="ph ph-headset" style="color:#60A5FA;font-size:16px"></i>
+          <span style="font-size:12px;font-weight:700;color:#93C5FD;letter-spacing:0.3px;text-transform:uppercase">Soporte UDIO</span>
+        </div>
+        <span style="font-size:10px;background:rgba(37,99,235,0.25);color:#BFDBFE;padding:2px 6px;border-radius:4px;font-weight:600">rodryandy</span>
+      </div>
+      
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(15,23,42,0.6);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.06)">
+        <i class="ph ph-envelope-simple" style="color:var(--muted);font-size:14px"></i>
+        <a href="mailto:support@udioapi.pro" style="color:var(--text);font-size:12px;font-family:monospace;text-decoration:none;word-break:break-all">support@udioapi.pro</a>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
+        <button type="button" onclick="contactUdioSupport('gmail')" class="btn-primary" style="background:linear-gradient(135deg,#2563EB,#1D4ED8);font-size:12px;font-weight:700;padding:8px 12px;justify-content:center;gap:6px" title="Abrir nueva pestaña de Gmail redactando solicitud">
+          <i class="ph ph-arrow-square-out" style="font-size:14px"></i> Contactar soporte (Gmail)
+        </button>
+        <button type="button" onclick="contactUdioSupport('mailto')" class="btn-sec" style="font-size:11px;padding:6px 10px;justify-content:center;gap:4px;color:var(--muted)" title="Abrir cliente de correo predeterminado del sistema">
+          <i class="ph ph-envelope"></i> Usar correo del dispositivo (mailto)
+        </button>
+      </div>
+    </div>
+
     <div style="display:flex;flex-direction:column;gap:8px">
       <button type="button" onclick="forceAppRefresh()" class="btn-sec" style="font-size:12px;padding:10px;justify-content:center;color:var(--ok);border-color:rgba(52,211,153,.3)">
         <i class="ph ph-arrows-clockwise"></i> 🔄 Actualizar App / Limpiar Caché
@@ -2080,6 +2105,33 @@ function toggleProfileModal() {
   const modal = $('profileModal');
   if (!modal) return;
   modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+}
+
+async function contactUdioSupport(mode) {
+  try {
+    const res = await fetch('/api/admin/support_info');
+    if (!res.ok) {
+      alert('Acceso restringido: Solo el usuario administrador rodryandy puede acceder al soporte de UDIO.');
+      return;
+    }
+    const info = await res.json();
+    const to = encodeURIComponent(info.email || 'support@udioapi.pro');
+    const su = encodeURIComponent(info.subject || 'Rodrix Music Creator - Solicitud de soporte');
+    const body = encodeURIComponent(info.body || 'Hola, necesito asistencia con una generación realizada mediante Rodrix Music Creator. Adjunto los datos del problema y el identificador de tarea del proveedor.');
+
+    if (mode === 'gmail') {
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${body}`;
+      const win = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        window.location.href = `mailto:${to}?subject=${su}&body=${body}`;
+      }
+    } else {
+      window.location.href = `mailto:${to}?subject=${su}&body=${body}`;
+    }
+  } catch (err) {
+    console.error('Error al contactar soporte UDIO:', err);
+    window.location.href = 'mailto:support@udioapi.pro?subject=Rodrix%20Music%20Creator%20-%20Solicitud%20de%20soporte';
+  }
 }
 
 function forceAppRefresh() {
@@ -5173,6 +5225,7 @@ async function loadUserInfo() {
         if ($('adminBadgeDesktop')) $('adminBadgeDesktop').style.display = 'inline-block';
         if ($('modalAdminBadge')) $('modalAdminBadge').style.display = 'inline-block';
         if ($('modalAdminAction')) $('modalAdminAction').style.display = 'flex';
+        if ($('modalAdminSupportSection')) $('modalAdminSupportSection').style.display = 'flex';
       }
     }
   } catch(e){

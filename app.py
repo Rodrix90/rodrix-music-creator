@@ -2505,6 +2505,21 @@ async def admin_get_users(current_user: str = Depends(get_current_user)):
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
     )
 
+@app.get("/api/admin/support_info")
+async def admin_get_support_info(current_user: str = Depends(get_current_user)):
+    """Devuelve datos oficiales de soporte UDIO exclusivamente al usuario administrador rodryandy."""
+    if current_user.strip().lower() != ADMIN_EMAIL.strip().lower():
+        raise HTTPException(status_code=403, detail="Acceso denegado: solo el usuario rodryandy puede acceder al soporte UDIO.")
+    return JSONResponse(
+        content={
+            "authorized": True,
+            "email": "support@udioapi.pro",
+            "subject": "Rodrix Music Creator - Solicitud de soporte",
+            "body": "Hola, necesito asistencia con una generación realizada mediante Rodrix Music Creator. Adjunto los datos del problema y el identificador de tarea del proveedor."
+        },
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
 @app.post("/api/admin/toggle_user")
 async def admin_toggle_user(request: Request, current_user: str = Depends(get_current_user)):
     if current_user != ADMIN_EMAIL:
