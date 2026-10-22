@@ -106,12 +106,15 @@ def get_current_user(request: Request):
     
     return email
 
-def obfuscate_lyrics(text: str) -> str:
-    """Limpia y normaliza el texto de la letra manteniendo intactas las etiquetas de estructura sin caracteres invisibles."""
+def clean_lyrics_text(text: str) -> str:
+    """Limpia y normaliza el texto de la letra manteniendo intactas las estrofas y etiquetas estructurales."""
     if not text:
         return ""
     lines = [line.strip() for line in text.split('\n')]
     return "\n".join(lines).strip()
+
+# Alias de compatibilidad hacia atrás
+obfuscate_lyrics = clean_lyrics_text
 
 async def upload_to_catbox_async(file_path: str) -> str | None:
     url = "https://catbox.moe/user/api.php"
@@ -286,7 +289,7 @@ async def transform_audio(
                 temp_validate_path = None
                 try:
                     ext = os.path.splitext(audio_filename or "audio.tmp")[1].lower() or ".tmp"
-                    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tf:
+                    with tempfile.NamedTemporaryFile(prefix="rodrix_val_", suffix=ext, delete=False) as tf:
                         tf.write(audio_content)
                         temp_validate_path = tf.name
                     
@@ -612,7 +615,8 @@ async def run_voiceover_task(
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
         line = f"[{timestamp}] {msg}"
         print(line, flush=True)
-        TASKS[task_id]["logs"] += line + "\n"
+        if task_id in TASKS:
+            TASKS[task_id]["logs"] = TASKS[task_id].get("logs", "") + line + "\n"
 
     temp_files = []
     try:
@@ -918,7 +922,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
         line = f"[{timestamp}] {msg}"
         print(line, flush=True)
-        TASKS[task_id]["logs"] += line + "\n"
+        if task_id in TASKS:
+            TASKS[task_id]["logs"] = TASKS[task_id].get("logs", "") + line + "\n"
         
     def save_local_log():
         import datetime
@@ -960,16 +965,17 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 final_lyrics = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", sound, final_lyrics, flags=re.IGNORECASE)
                 log_msg(f"Pronunciación: '{word}' -> '{sound}'")
     if not is_instrumental:
-        # Determine prefix and vocal accent
-        if "argentin" in style.lower() or "pentecostal" in style.lower() or "avivamiento" in style.lower():
-            prefix = "[Language: Spanish]\n[Vocals: Coro de iglesia argentino, acento argentino natural, canto congregacional fervoroso al unísono, voces sinceras de templo, sin acento caribeño ni centroamericano]\n"
-        elif "mexican" in style.lower() or "mexicano" in style.lower():
-            prefix = "[Language: Spanish]\n[Vocals: Mexican Spanish accent]\n"
-        elif "coro" in style.lower() or "choir" in style.lower():
-            prefix = "[Language: Spanish]\n[Vocals: Coro congregacional de iglesia, acento argentino y latino natural, voces sinceras y apasionadas]\n"
-        else:
-            prefix = "[Language: Spanish]\n[Vocals: Natural Latin American Spanish, clear tone, no castilian lisp, no caribbean accent]\n"
-        
+        # Determine vocal format requested by user
+        gender_desc = "masculina " if vocal_gender == "male" else ("femenina " if vocal_gender == "female" else "")
+        wants_solo_vocal = any(w in style.lower() for w in [
+            "voz solista", "solo vocal", "solo voice", "solo vocals", "lead vocal", "lead vocals",
+            "vocalista solista", "sin coro", "no choir", "solo singer"
+        ])
+        wants_choir = not wants_solo_vocal and (
+            any(w in style.lower() for w in ["pentecostal", "coro congregacional", "coros congregacionales", "coro de alabanza", "coros de alabanza", "canto congregacional", "coro de iglesia", "church choir", "coro de avivamiento", "coros de avivamiento"])
+            or bool(re.search(r'\b(coro|coros|choir)\b', style.lower()))
+        )
+
         # Limpieza inteligente defensiva: Si la letra contiene líneas de acordes sueltos (ej: D Bm G A),
         # extraerlos para enriquecer el estilo armónico y evitar que la voz intente cantar las notas.
         if final_lyrics:
@@ -995,11 +1001,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 log_msg(f"Acordes detectados y sincronizados en la mezcla: {prog_str}")
             final_lyrics = "\n".join(cleaned_lines)
 
-        if obfuscate and final_lyrics:
-            log_msg("Ofuscando letra para evitar detección de copyright...")
-            final_lyrics = prefix + obfuscate_lyrics(final_lyrics)
-        elif final_lyrics and not final_lyrics.strip().startswith("[Language") and not final_lyrics.strip().startswith("[Vocals"):
-            final_lyrics = prefix + final_lyrics
+        if final_lyrics:
+            if obfuscate:
+                log_msg("Normalizando espaciado y formato de la letra...")
+            final_lyrics = clean_lyrics_text(final_lyrics)
         
     upload_url = None
     backup_upload_url = None
@@ -1073,8 +1078,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "coro pentecostal": "driving acoustic drum kit rhythm, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm, root-fifth alternating acoustic bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
                 "coros pentecostales": "driving acoustic drum kit rhythm, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm, root-fifth alternating acoustic bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
                 "pentecostal": "driving acoustic drum kit, prominent cracking Ludwig snare on 2 and 4, heavy kick drum on 1 and 3, tight closed hi-hat eighth notes, Charlie Watts clean drumming, no drum solos, gospel 2-step 4/4 beat, 118 bpm, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
-                "avivamiento": "driving acoustic drum kit, prominent cracking Ludwig snare on 2 and 4, heavy kick drum on 1 and 3, tight closed hi-hat eighth notes, Charlie Watts clean drumming, no drum solos, gospel 2-step 4/4 beat, 118 bpm, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
-                "coros de avivamiento": "driving acoustic drum kit, prominent cracking Ludwig snare on 2 and 4, heavy kick drum on 1 and 3, tight closed hi-hat eighth notes, Charlie Watts clean drumming, no drum solos, gospel 2-step 4/4 beat, 118 bpm, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
+                "avivamiento": "revival worship, passionate communal praise, uplifting sacred delivery",
+                "coros de avivamiento": "revival church choruses, uplifting congregational praise, vibrant communal singing",
                 "coro pentecostal de avivamiento": "driving acoustic drum kit rhythm, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm, root-fifth alternating acoustic bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
                 "alabanza rapida": "driving acoustic drum kit, fuerte golpe de caja Ludwig en 2 y 4, bombo pesado en 1 y 3, hi-hat cerrado, ritmo gospel 4/4, 118 bpm, Charlie Watts, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
                 "alabanza rápida": "driving acoustic drum kit, fuerte golpe de caja Ludwig en 2 y 4, bombo pesado en 1 y 3, hi-hat cerrado, ritmo gospel 4/4, 118 bpm, Charlie Watts, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
@@ -1224,34 +1229,69 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         # Clean structural tags from style string (they belong in lyrics, not style)
         style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
 
-        # Detect user custom BPM (e.g. 83.3 BPM, 85 bpm, 120 bpm)
+        # Detect user custom BPM (e.g. 83.3 BPM, 85 bpm, 120 bpm) explícito
         custom_bpm_match = re.search(r'\b(\d+(?:\.\d+)?)\s*bpm\b', style, re.IGNORECASE)
         custom_bpm = float(custom_bpm_match.group(1)) if custom_bpm_match else None
 
         if custom_bpm:
-            # Strip out any conflicting preset BPMs like 135 bpm, 68 bpm, 125 bpm
+            # Eliminar BPM repetidos o conflictivos del estilo
             style = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', style, flags=re.IGNORECASE)
             style = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', style, flags=re.IGNORECASE)
-            if custom_bpm < 95:
-                bpm_tag = f"{custom_bpm:.1f} BPM, andante tempo, worship ballad"
-            elif custom_bpm > 120:
-                bpm_tag = f"{custom_bpm:.1f} BPM, driving tempo, upbeat praise"
-            else:
-                bpm_tag = f"{custom_bpm:.1f} BPM, moderato tempo"
-            log_msg(f"Tempo del usuario detectado y respetado estrictamente: {custom_bpm:.1f} BPM")
+            bpm_tag = f"{custom_bpm:.1f} BPM"
+            log_msg(f"Tempo explícito del usuario respetado: {custom_bpm:.1f} BPM")
         else:
             bpm_tag = ""
 
-        # Detect Christian / Worship / Devotional context for genre anchoring
+        # Presets especiales preexistentes
         is_drum_solo = any(w in style.lower() for w in [
             "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
             "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
             "pure drums", "drum test", "drum sound test"
         ])
-        is_worship = not is_drum_solo and any(w in style.lower() for w in ["devotional", "worship", "worshipful", "himno", "adoracion", "adoración", "alabanza", "coro", "pentecostal", "iglesia", "cristiano", "christian", "oracion", "oración"])
-        is_pentecostal = not is_drum_solo and any(w in style.lower() for w in ["pentecostal", "avivamiento", "coro pentecostal", "coros pentecostales"])
         is_solo_piano_prayer = not is_drum_solo and (any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"])))
         is_vals_vienes = not is_drum_solo and any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
+        is_pentecostal = not is_drum_solo and any(w in style.lower() for w in ["pentecostal", "coro pentecostal", "coros pentecostales", "himno pentecostal"])
+
+        # Comprobación rigurosa de marcadores contemporáneos / género moderno
+        is_explicit_modern = any(w in style.lower() for w in [
+            "musica moderna", "música moderna", "estilo moderno", "produccion moderna", "producción moderna",
+            "contemporaneo", "contemporáneo", "contemporary", "pop rock", "pop contemporaneo", "pop contemporáneo",
+            "indie rock", "indie pop", "balada moderna", "balada contemporanea", "balada contemporánea",
+            "rock moderno", "modern worship", "alabanza contemporanea", "alabanza contemporánea"
+        ])
+
+        # Comprobación inequívoca de himno sacro tradicional
+        is_explicit_traditional_hymn = any(w in style.lower() for w in [
+            "himno tradicional", "traditional hymn", "himno clasico", "himno clásico",
+            "himnario tradicional", "himnario clásico", "himnario clasico", "sacred hymn",
+            "himno liturgico", "himno litúrgico", "himno solemne"
+        ])
+
+        # Comprobación de coro congregacional / avivamiento
+        is_explicit_congregational = any(w in style.lower() for w in [
+            "coro congregacional", "coros congregacionales", "coro de alabanza", "coros de alabanza",
+            "alabanza congregacional", "canto congregacional", "coro de iglesia", "coro de avivamiento",
+            "coros de avivamiento", "avivamiento", "congregational praise", "congregational worship"
+        ])
+
+        # Identificación de familias musicales (definen carácter, interpretación y acústica sin imponer instrumentos ni alterar el compás propio)
+        # - Himno tradicional: exclusivamente cuando se define como tradicional/clásico o contiene la palabra 'himno' sin marcadores modernos ni congregacionales.
+        is_traditional_hymn = (
+            not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal
+            and (is_explicit_traditional_hymn or (re.search(r'\bhimno\b', style.lower()) and not is_explicit_modern and not is_explicit_congregational))
+        )
+
+        # - Coro congregacional / avivamiento: respeta el compás y tempo nativo del tema sin imponer 4/4 ni 2-step
+        is_congregational = (
+            not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal and not is_traditional_hymn
+            and is_explicit_congregational
+        )
+
+        # - Composición moderna: producciones contemporáneas (incluso si la letra o título aluden poéticamente a un 'himno' o 'canción')
+        is_modern_composition = (
+            not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_traditional_hymn and not is_congregational
+            and is_explicit_modern
+        )
 
         if is_drum_solo:
             genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 bpm unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
@@ -1260,34 +1300,60 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
-            target_bpm = f"{custom_bpm:.1f} BPM" if custom_bpm else "118 BPM steady tempo"
-            genre_anchor = f"driving acoustic drum kit rhythm, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bass boom-chick, driving acoustic rhythm guitar strum, passionate Argentine church choir singing in unison, natural Spanish vocals, no a cappella, no missing drums, no tambourine solo, no handclaps solo, no murga, no comparsa, no carnaval, no batucada, no candombe, no bombo de murga, no marcha militar, no latin rhythm, no syncopation, no tumbao, no salsa, no cumbia, no caribbean rhythm, no caribbean accent"
-        elif custom_bpm and custom_bpm < 100 and is_worship:
-            # Slower/moderate worship requested by user (e.g. 83.3 BPM) -> NEVER force fast 135 BPM!
-            genre_anchor = f"sacred Christian worship, {bpm_tag}, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, no cumbia, no latin rhythm"
-        elif is_worship:
-            genre_anchor = f"sacred Christian worship hymn, {bpm_tag or 'straight 4/4 rhythm'}, clean acoustic and electric instruments, church acoustic, no cumbia"
-        elif bpm_tag and not is_drum_solo:
+            target_bpm = bpm_tag or "steady tempo"
+            genre_anchor = f"driving acoustic praise rhythm, gospel 2-step straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bass, passionate Argentine church choir singing in unison, natural Spanish vocals, zero drum solos, zero chaotic fills"
+        elif is_traditional_hymn:
+            tempo_str = f", {bpm_tag}" if bpm_tag else ""
+            genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
+        elif is_congregational:
+            tempo_str = f", {bpm_tag}" if bpm_tag else ""
+            genre_anchor = f"congregational Christian praise{tempo_str}, dynamic and uplifting atmosphere, church acoustic resonance, passionate communal delivery"
+        elif is_modern_composition:
+            tempo_str = f", {bpm_tag}" if bpm_tag else ""
+            genre_anchor = f"contemporary studio production{tempo_str}, modern live room acoustics, clear studio definition, expressive natural delivery"
+        elif bpm_tag:
             genre_anchor = bpm_tag
         else:
             genre_anchor = ""
 
-        # Vocal styling in style prompt:
+        # Vocal styling in style prompt (respetando estrictamente selecciones de voz solista vs coro):
         if is_instrumental:
             if "instrumental" not in style.lower():
                 style = style + ", instrumental, no vocals"
         else:
-            if "argentin" in style.lower() or "pentecostal" in style.lower() or "avivamiento" in style.lower():
-                vocal_tag = "Argentine church choir, natural Argentine Spanish accent, passionate congregational singing in unison, no caribbean accent, no central american accent"
-            elif "mexican" in style.lower() or "mexicano" in style.lower():
-                vocal_tag = "mexican spanish vocals"
-            elif "coro" in style.lower() or "choir" in style.lower():
-                vocal_tag = "congregational church choir, Argentine Spanish singing"
+            gender_kw = "male " if vocal_gender == "male" else ("female " if vocal_gender == "female" else "")
+            if wants_solo_vocal:
+                if "argentin" in style.lower():
+                    vocal_tag = f"natural {gender_kw}Argentine Spanish solo vocals, clean expressive singing, no autotune, no choir"
+                elif "mexican" in style.lower() or "mexicano" in style.lower():
+                    vocal_tag = f"natural {gender_kw}Mexican Spanish solo vocals, clean tone, no autotune, no choir"
+                else:
+                    vocal_tag = f"clear natural {gender_kw}solo Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent, no choir"
+            elif wants_choir:
+                if "argentin" in style.lower() or is_pentecostal:
+                    vocal_tag = "Argentine church choir, natural Argentine Spanish accent, passionate congregational singing in unison, no caribbean accent, no central american accent"
+                elif "mexican" in style.lower() or "mexicano" in style.lower():
+                    vocal_tag = "mexican spanish church choir"
+                else:
+                    vocal_tag = "congregational church choir, passionate singing in unison"
             else:
-                vocal_tag = "clear natural Spanish vocals, neutral tone, no castilian lisp, no caribbean accent"
+                # Voz solista por defecto cuando no se pide coro expresamente
+                if "argentin" in style.lower():
+                    vocal_tag = f"natural {gender_kw}Argentine Spanish vocals, clean expressive singing, no autotune"
+                elif "mexican" in style.lower() or "mexicano" in style.lower():
+                    vocal_tag = f"natural {gender_kw}Mexican Spanish vocals, no autotune"
+                else:
+                    vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
             
-            if "spanish vocals" not in style.lower() and "choir" not in style.lower():
-                style = f"{style}, {vocal_tag}"
+            if wants_solo_vocal:
+                if "spanish vocals" not in style.lower() and "solo vocals" not in style.lower():
+                    style = f"{style}, {vocal_tag}"
+            elif wants_choir:
+                if "church choir" not in style.lower() and "choir" not in style.lower():
+                    style = f"{style}, {vocal_tag}"
+            else:
+                if "spanish vocals" not in style.lower():
+                    style = f"{style}, {vocal_tag}"
 
         # ----------
         # Rigorous Style Exclusion (Negative Prompting)
@@ -1345,11 +1411,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 ]:
                     neg_tags_list.append(bass_anti)
 
-            # If Christian / Worship, always enforce anti-cumbia negative tags automatically
-            if is_worship:
-                for mandatory_anti_cumbia in ["cumbia", "ritmo cumbia", "grupero", "cumbia sonidera", "accordion", "acordeon", "guiro", "timbales", "latin rhythm", "tropical rhythm", "reggaeton"]:
-                    neg_tags_list.append(mandatory_anti_cumbia)
-
             if is_solo_piano_prayer:
                 for solo_anti in ["drums", "drum kit", "percussion", "bass", "electric guitar", "synths", "brass", "orchestra", "strings", "cumbia", "singing", "vocals", "voices"]:
                     neg_tags_list.append(solo_anti)
@@ -1400,10 +1461,6 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
             if is_drum_solo:
                 for req_no in ["no guitars", "no bass", "no piano", "no synths", "no vocals", "no melody", "no chords"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if is_worship:
-                for req_no in ["no cumbia", "no accordion", "no latin rhythm"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if is_solo_piano_prayer:
