@@ -408,7 +408,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div class="preset-desc">Música de fondo para orar e intercesión. Sonidos épicos de adoración, 100% instrumental sin voces ni percusión.</div>
                 
                 <!-- Selector de Tipo de Piano y Sonido Épico -->
-                <div id="prayerPianoSoundOptions" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-wrap:wrap;gap:6px">
+                <div id="prayerPianoSoundOptions" onclick="event.stopPropagation()" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-wrap:wrap;gap:6px">
                   <div style="font-size:10.5px;font-weight:700;color:#93C5FD;width:100%;display:flex;align-items:center;gap:4px">
                     <i class="ph ph-sparkle"></i> Tipo de Piano / Sonido Épico:
                   </div>
@@ -1883,7 +1883,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <h1>📚 Mi Librería Musical y Predicaciones</h1>
             <p style="font-size:12px;color:var(--muted);margin-top:4px">Tus canciones generadas, audios pastorales y masters listos para escuchar y descargar.</p>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span id="gdriveStatusBadge" style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:6px 10px;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80" title="Respaldo eterno en tu cuenta de Google Drive 5TB">
+              <i class="ph ph-cloud-check" style="font-size:14px"></i> <span id="gdriveStatusText">Drive 5 TB Activo</span>
+            </span>
+            <button type="button" class="btn-sec" id="syncDriveBtn" onclick="syncGDriveNow()" style="padding:6px 12px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px" title="Sincronizar canciones con Google Drive 5 TB">
+              <i class="ph ph-cloud-arrow-up"></i> Respaldar en Drive
+            </button>
             <a href="/api/download/apk" class="btn-sec" style="padding:6px 14px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);" title="Descargar versión actualizada de la app Rodrix con WhatsApp directo">
               <i class="ph ph-android-logo"></i> Actualizar App
             </a>
@@ -2259,8 +2265,8 @@ const WORSHIP_PRESETS = {
     instrumental: false
   },
   piano_oracion: {
-    style: "piano de oracion, roland mks-20 preset elec piano 2, legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Spectrasonics Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental, slow 60 bpm, reverent, solo piano instrumental",
-    exclude: "vocals, singing, voice, speech, words, lyrics, choir, drums, drum kit, percussion, bass guitar, synthesizer, electric guitar, acoustic guitar, brass, horns, strings orchestra, beat, groove, rhythm, cumbia, uptempo",
+    style: "vintage 1980s digital electric piano, Roland MKS-20 preset 3 E-Piano 2, Spectrasonics Keyscape electric piano, lush analog stereo chorus, sparkling glassy crystalline bell tine attack, warm mellow electronic piano body, reverent Christian prayer worship background, slow 60 bpm, pure electric piano instrumental, no acoustic piano",
+    exclude: "acoustic piano, acoustic grand piano, upright piano, vocals, singing, voice, speech, lyrics, choir, drums, drum kit, percussion, bass guitar, synthesizer lead, electric guitar, brass, horns, cumbia, uptempo",
     instrumental: true
   },
   vals_vienes: {
@@ -2273,22 +2279,26 @@ const WORSHIP_PRESETS = {
 const PRAYER_PIANO_SOUNDS = {
   mks20: {
     name: "Roland MKS-20 (E.Piano 2)",
-    style: "piano de oracion, roland mks-20 preset elec piano 2, legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Spectrasonics Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental, slow 60 bpm, reverent, solo piano instrumental",
+    style: "vintage 1980s digital electric piano, Roland MKS-20 preset 3 E-Piano 2, Spectrasonics Keyscape electric piano, lush analog stereo chorus, sparkling glassy crystalline bell tine attack, warm mellow electronic piano body, reverent Christian prayer worship background, slow 60 bpm, pure electric piano instrumental, no acoustic piano",
+    exclude: "acoustic piano, acoustic grand piano, upright piano, vocals, singing, choir, drums, drum kit, percussion, bass guitar, synthesizer lead, electric guitar, brass, horns, cumbia, uptempo",
     gear: "roland mks-20 e-piano 2"
   },
   galaxydx: {
     name: "Galaxy DX (Épico Híbrido)",
-    style: "piano de oracion, galaxy dx worship piano, Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound, slow 60 bpm, reverent, solo piano instrumental",
+    style: "Galaxy DX epic hybrid worship piano, acoustic grand piano layered with sparkling Yamaha DX7 FM crystal bells and warm ambient synth pad cushion, shimmering ethereal hall reverb, slow 60 bpm, devotional worship instrumental",
+    exclude: "vocals, singing, choir, drums, percussion, bass guitar, electric guitar, saxophone, brass, distortion, dry piano, cumbia, uptempo",
     gear: "galaxy dx"
   },
   motifxs: {
     name: "Yamaha Motif XS Grand",
-    style: "piano de oracion, yamaha motif xs, Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background, slow 60 bpm, reverent, solo piano instrumental",
+    style: "Yamaha Motif XS Power Grand, modern compressed church worship piano layered with warm analog strings choir pad, spatial stereo delay and expansive cathedral hall reverb, wide stereo soundstage, slow 60 bpm, contemporary church prayer instrumental",
+    exclude: "vocals, singing, choir, drums, percussion, bass guitar, electric guitar, saxophone, brass, distortion, Rhodes electric piano, cumbia, uptempo",
     gear: "yamaha motif xs"
   },
   acustico: {
     name: "Piano de Cola Acústico",
-    style: "piano de oracion, solo acoustic concert grand piano, Yamaha CFX / Steinway Model D, rich resonant wooden soundboard, crystal clear brilliant highs, deep warm bass, lush prayer hall acoustics, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, solo piano instrumental",
+    style: "100% pure solo acoustic concert grand piano, Yamaha CFX / Steinway Model D acoustic grand, natural wooden soundboard resonance, pure acoustic piano tone, deep concert hall reverb, slow 60 bpm, reverent, solo acoustic piano instrumental, no electric piano, no DX bells, no synth pads, zero chorus",
+    exclude: "electric piano, digital piano, Rhodes, DX7, synthesizer, synth pad, vocals, singing, choir, drums, percussion, bass, guitars, brass, chorus effect, cumbia, uptempo",
     gear: "yamaha cfx grand"
   }
 };
@@ -2320,7 +2330,11 @@ if ($('btnClearPreset')) {
 }
 
 document.querySelectorAll('.preset-card').forEach(card => {
-  card.addEventListener('click', () => {
+  card.addEventListener('click', (e) => {
+    // Si el clic fue en un radio button o label dentro de opciones de sonido, no alternar la tarjeta
+    if (e && e.target && e.target.closest('#prayerPianoSoundOptions')) {
+      return;
+    }
     const wasActive = card.classList.contains('active');
     
     // Si ya estaba activo, un segundo clic lo desactiva (toggle)
@@ -2609,12 +2623,24 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
     const pSound = PRAYER_PIANO_SOUNDS[soundKey];
     if (!pSound) return;
     
-    const cardOracion = document.querySelector('.preset-card[data-preset="piano_oracion"]');
-    const isOracionActive = cardOracion && cardOracion.classList.contains('active');
+    // Asignar el estilo y las exclusiones específicas del instrumento seleccionado
+    $('styleInput').value = pSound.style;
+    if (pSound.exclude) {
+      $('excludeInput').value = pSound.exclude;
+    }
     
-    // Si contiene piano de oracion o el preset de oracion esta activo, actualiza el estilo
-    if (isOracionActive || ($('styleInput') && $('styleInput').value.toLowerCase().includes('piano de oracion'))) {
-      $('styleInput').value = pSound.style;
+    // Activar visualmente la tarjeta de Piano de Oración si no lo estaba
+    const cardOracion = document.querySelector('.preset-card[data-preset="piano_oracion"]');
+    if (cardOracion && !cardOracion.classList.contains('active')) {
+      document.querySelectorAll('.preset-card').forEach(c => {
+        c.classList.remove('active');
+        const b = c.querySelector('.btn-preset-use');
+        if (b) b.innerHTML = '<i class="ph ph-lightning"></i> Cargar';
+      });
+      cardOracion.classList.add('active');
+      const b = cardOracion.querySelector('.btn-preset-use');
+      if (b) b.innerHTML = '<i class="ph ph-check"></i> Activo';
+      if ($('btnClearPreset')) $('btnClearPreset').style.display = 'inline-flex';
     }
     
     // Sincronizar con el rack de estudio
@@ -5306,7 +5332,61 @@ $('libList').addEventListener('click', async e => {
   }
 });
 document.addEventListener('click', () => document.querySelectorAll('.menu.open').forEach(x => x.classList.remove('open')));
-$('refreshLib').addEventListener('click', loadLibrary);
+$('refreshLib').addEventListener('click', () => {
+  loadLibrary();
+  checkGDriveStatus();
+});
+
+async function checkGDriveStatus() {
+  try {
+    const res = await fetch('/api/gdrive/status');
+    const data = await res.json();
+    const badge = $('gdriveStatusBadge');
+    const text = $('gdriveStatusText');
+    if (!badge || !text) return;
+    if (data.status === 'connected') {
+      badge.style.background = 'rgba(34,197,94,0.12)';
+      badge.style.borderColor = 'rgba(34,197,94,0.3)';
+      badge.style.color = '#4ade80';
+      text.innerText = `Drive 5 TB Conectado (${data.synced_tracks}/${data.total_tracks} respaldados)`;
+    } else {
+      badge.style.background = 'rgba(234,179,8,0.12)';
+      badge.style.borderColor = 'rgba(234,179,8,0.3)';
+      badge.style.color = '#fde047';
+      text.innerText = 'Drive 5 TB: Inicia sesión para vincular';
+    }
+  } catch (e) {
+    console.log('Error chequeando estado Drive:', e);
+  }
+}
+
+async function syncGDriveNow() {
+  const btn = $('syncDriveBtn');
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Respaldando...';
+  }
+  try {
+    const res = await fetch('/api/gdrive/sync', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'success') {
+      alert(`¡Librería respaldada exitosamente en tu Google Drive 5 TB!\nTotal canciones: ${data.total_tracks}`);
+      loadLibrary();
+      checkGDriveStatus();
+    } else {
+      alert('Aviso al respaldar: ' + (data.message || 'Error desconocido'));
+    }
+  } catch (e) {
+    alert('Error al conectar con Google Drive: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+setTimeout(checkGDriveStatus, 2000);
 
 if ($('selectAllTracksChk')) {
   $('selectAllTracksChk').addEventListener('change', (e) => {

@@ -10,3 +10,4 @@ itsdangerous
 fal-client
 mido
 numpy
+google-auth

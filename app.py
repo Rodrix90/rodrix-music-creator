@@ -55,18 +55,282 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY.decode('utf-8'))
 # Instanciar OAuth globalmente
 oauth = OAuth()
 
+# ==============================================================================
+# PERSISTENCIA EN GOOGLE DRIVE 5 TB (Google One / AI Pro)
+# ==============================================================================
+GDRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "1HwAsh0C4ngWaA88rEjtTnBIYNp2eypK8")
+GDRIVE_CLIENT_ID = "813430947107-3aa7i4809aj47jpm0okp92me855l1tt0.apps.googleusercontent.com"
+GDRIVE_TOKEN_FILE = "gdrive_token.json"
+TRACKS_DIR = "tracks_storage"
+os.makedirs(TRACKS_DIR, exist_ok=True)
+LIBRARY_FILE = "library.json"
+
+def load_gdrive_tokens():
+    tokens = {}
+    if os.path.exists(GDRIVE_TOKEN_FILE):
+        try:
+            with open(GDRIVE_TOKEN_FILE, "r", encoding="utf-8") as f:
+                tokens = json.load(f)
+        except Exception as e:
+            print(f"[GDRIVE] Error leyendo {GDRIVE_TOKEN_FILE}: {e}")
+    if "refresh_token" not in tokens and os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN"):
+        tokens["refresh_token"] = os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN")
+    return tokens
+
+def save_gdrive_tokens(tokens):
+    try:
+        current = load_gdrive_tokens()
+        current.update(tokens)
+        with open(GDRIVE_TOKEN_FILE, "w", encoding="utf-8") as f:
+            json.dump(current, f, indent=2)
+    except Exception as e:
+        print(f"[GDRIVE] Error guardando tokens: {e}")
+
+async def gdrive_get_access_token():
+    tokens = load_gdrive_tokens()
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        return None
+    
+    access_token = tokens.get("access_token")
+    expires_at = tokens.get("expires_at", 0)
+    if access_token and time.time() < (expires_at - 60):
+        return access_token
+        
+    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+    if not client_secret:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": GDRIVE_CLIENT_ID,
+                    "client_secret": client_secret,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token"
+                }
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                new_token = data.get("access_token")
+                expires_in = data.get("expires_in", 3600)
+                tokens["access_token"] = new_token
+                tokens["expires_at"] = time.time() + expires_in
+                save_gdrive_tokens(tokens)
+                return new_token
+            else:
+                print(f"[GDRIVE] Error refrescando token: {resp.status_code} {resp.text}")
+    except Exception as e:
+        print(f"[GDRIVE] Excepción refrescando token: {e}")
+    return None
+
+async def gdrive_find_file(filename, folder_id=GDRIVE_FOLDER_ID, token=None):
+    if not token:
+        token = await gdrive_get_access_token()
+    if not token:
+        return None
+    try:
+        query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(
+                "https://www.googleapis.com/drive/v3/files",
+                params={"q": query, "fields": "files(id, name, mimeType, webViewLink, webContentLink)"},
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if resp.status_code == 200:
+                files = resp.json().get("files", [])
+                if files:
+                    return files[0]
+    except Exception as e:
+        print(f"[GDRIVE] Error buscando {filename}: {e}")
+    return None
+
+async def gdrive_upload_or_update(filename, content_bytes, mime_type="application/octet-stream", folder_id=GDRIVE_FOLDER_ID):
+    token = await gdrive_get_access_token()
+    if not token:
+        return None
+    
+    existing = await gdrive_find_file(filename, folder_id, token)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            if existing:
+                file_id = existing["id"]
+                patch_url = f"https://www.googleapis.com/upload/drive/v3/files/{file_id}?uploadType=media"
+                resp = await client.patch(
+                    patch_url,
+                    content=content_bytes,
+                    headers={**headers, "Content-Type": mime_type}
+                )
+                if resp.status_code == 200:
+                    print(f"[GDRIVE] Archivo {filename} actualizado en Drive (ID: {file_id}).")
+                    return resp.json()
+                else:
+                    print(f"[GDRIVE] Error actualizando {filename}: {resp.status_code} {resp.text}")
+            else:
+                boundary = "-------RodrixBoundary" + uuid.uuid4().hex
+                metadata = json.dumps({"name": filename, "parents": [folder_id]})
+                
+                body = (
+                    f"--{boundary}\r\n"
+                    f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+                    f"{metadata}\r\n"
+                    f"--{boundary}\r\n"
+                    f"Content-Type: {mime_type}\r\n\r\n"
+                ).encode("utf-8") + content_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+                
+                post_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink"
+                resp = await client.post(
+                    post_url,
+                    content=body,
+                    headers={
+                        **headers,
+                        "Content-Type": f"multipart/related; boundary={boundary}"
+                    }
+                )
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    print(f"[GDRIVE] Archivo {filename} subido a Drive (ID: {res_json.get('id')}).")
+                    return res_json
+                else:
+                    print(f"[GDRIVE] Error subiendo {filename}: {resp.status_code} {resp.text}")
+    except Exception as e:
+        print(f"[GDRIVE] Excepción subiendo {filename}: {e}")
+    return None
+
+async def gdrive_download_file_bytes(file_id, token=None):
+    if not token:
+        token = await gdrive_get_access_token()
+    if not token:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if resp.status_code == 200:
+                return resp.content
+    except Exception as e:
+        print(f"[GDRIVE] Error descargando {file_id}: {e}")
+    return None
+
+def load_library():
+    if os.path.exists(LIBRARY_FILE):
+        try:
+            with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+def save_library(library_data):
+    try:
+        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+            json.dump(library_data, f, indent=4)
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(gdrive_sync_library_to_cloud(library_data))
+        except Exception:
+            pass
+    except Exception as e:
+        print("Error guardando librería:", e)
+
+def add_track_to_library(track_info):
+    library = load_library()
+    idx = next((i for i, t in enumerate(library) if t.get("id") == track_info.get("id")), None)
+    if idx is not None:
+        library[idx] = track_info
+    else:
+        library.append(track_info)
+    save_library(library)
+
+async def gdrive_sync_library_to_cloud(library_data=None):
+    if library_data is None:
+        library_data = load_library()
+    if not library_data:
+        return
+    token = await gdrive_get_access_token()
+    if not token:
+        return
+    try:
+        content_bytes = json.dumps(library_data, indent=2, ensure_ascii=False).encode("utf-8")
+        await gdrive_upload_or_update("library.json", content_bytes, "application/json")
+        print(f"[GDRIVE] Librería ({len(library_data)} canciones) respaldada en Google Drive 5TB.")
+    except Exception as e:
+        print(f"[GDRIVE] Error al sincronizar librería a Drive: {e}")
+
+async def gdrive_sync_library_from_cloud():
+    token = await gdrive_get_access_token()
+    if not token:
+        return
+    try:
+        file_info = await gdrive_find_file("library.json", GDRIVE_FOLDER_ID, token)
+        if not file_info:
+            print("[GDRIVE] No se encontró library.json previo en Google Drive.")
+            return
+        file_id = file_info["id"]
+        data_bytes = await gdrive_download_file_bytes(file_id, token)
+        if not data_bytes:
+            return
+        cloud_lib = json.loads(data_bytes.decode("utf-8"))
+        if not isinstance(cloud_lib, list):
+            return
+            
+        local_lib = load_library()
+        merged = {t.get("id"): t for t in cloud_lib if t.get("id")}
+        for t in local_lib:
+            if t.get("id"):
+                merged[t.get("id")] = t
+                
+        final_lib = list(merged.values())
+        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+            json.dump(final_lib, f, indent=4)
+        print(f"[GDRIVE] ¡Librería restaurada exitosamente desde Google Drive! ({len(final_lib)} pistas recuperadas).")
+    except Exception as e:
+        print(f"[GDRIVE] Error al restaurar librería desde Drive: {e}")
+
+async def gdrive_upload_track_audio(task_id: str, file_path: str, title: str = ""):
+    if not os.path.exists(file_path):
+        return None
+    token = await gdrive_get_access_token()
+    if not token:
+        return None
+    try:
+        filename = f"{task_id}.mp3"
+        with open(file_path, "rb") as f:
+            content = f.read()
+        res = await gdrive_upload_or_update(filename, content, "audio/mpeg")
+        if res and res.get("id"):
+            return {
+                "file_id": res["id"],
+                "link": res.get("webViewLink") or f"https://drive.google.com/file/d/{res['id']}/view"
+            }
+    except Exception as e:
+        print(f"[GDRIVE] Error respaldando audio de pista {task_id} en Drive: {e}")
+    return None
+
 @app.on_event("startup")
 async def startup_event():
-    # Registrar el cliente de Google usando tu ID REAL inyectado directamente
+    # Registrar el cliente de Google usando tu ID REAL inyectado directamente con permiso para tu Google Drive (5 TB)
     oauth.register(
         name='google',
         client_id="813430947107-3aa7i4809aj47jpm0okp92me855l1tt0.apps.googleusercontent.com",
         client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={
-            'scope': 'openid email profile'
+            'scope': 'openid email profile https://www.googleapis.com/auth/drive.file'
         }
     )
+    # Restaurar librería persistente desde Google Drive (5 TB)
+    try:
+        await gdrive_sync_library_from_cloud()
+    except Exception as e:
+        print(f"[GDRIVE] Aviso en inicio al leer Google Drive: {e}")
 
 USERS_FILE = "users.json"
 ADMIN_EMAIL = "rodryandy@gmail.com"
@@ -196,25 +460,6 @@ def convert_audio_to_mp3(input_path: str, output_path: str) -> bool:
         print(f"Error convirtiendo audio a MP3: {e}")
         return False
 
-# Funciones de persistencia para la librería
-LIBRARY_FILE = "library.json"
-
-def load_library():
-    if os.path.exists(LIBRARY_FILE):
-        try:
-            with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
-
-def save_library(library_data):
-    try:
-        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
-            json.dump(library_data, f, indent=4)
-    except Exception as e:
-        print("Error guardando librería:", e)
-
 def log_conversion(payload, response_status, error_msg=None, tracks=None):
     os.makedirs("logs", exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -235,12 +480,6 @@ def log_conversion(payload, response_status, error_msg=None, tracks=None):
         if tracks:
             f.write("--- TRACKS RECIBIDOS ---\n")
             f.write(json.dumps(tracks, indent=2, ensure_ascii=False) + "\n")
-
-def add_track_to_library(track_info):
-    library = load_library()
-    if not any(t.get("id") == track_info.get("id") for t in library):
-        library.append(track_info)
-        save_library(library)
 
 TASKS = {}
 RECENT_OPERATIONS = {}
@@ -894,9 +1133,6 @@ async def run_voiceover_task(
         gc.collect()
 
 
-TRACKS_DIR = "tracks_storage"
-os.makedirs(TRACKS_DIR, exist_ok=True)
-
 async def cache_track_audio(task_id: str, remote_url: str) -> str:
     """Download audio when fresh and cache locally so it never expires and serves reliably (streamed in chunks to save RAM)."""
     if not remote_url:
@@ -931,6 +1167,19 @@ async def serve_cached_audio(task_id: str):
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
     if track:
+        # 1. Recuperar desde Google Drive 5TB si el servidor se reinició
+        gdrive_id = track.get("gdrive_id")
+        if gdrive_id:
+            try:
+                gbytes = await gdrive_download_file_bytes(gdrive_id)
+                if gbytes and len(gbytes) > 1000:
+                    os.makedirs(TRACKS_DIR, exist_ok=True)
+                    with open(local_path, "wb") as f:
+                        f.write(gbytes)
+                    return FileResponse(path=local_path, media_type="audio/mpeg")
+            except Exception as e:
+                print(f"[GDRIVE] Error recuperando audio de Drive para {task_id}: {e}")
+        # 2. Redirigir a URL externa original
         url = track.get("raw_audio_url") or track.get("audio_url")
         if url and url.startswith("http"):
             from fastapi.responses import RedirectResponse
@@ -1118,9 +1367,9 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "alabanza rápida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
                 "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
-                "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
-                "piano de oración": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
-                "piano devocional": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+                "piano de oracion": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+                "piano de oración": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+                "piano devocional": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
                 "vals vienes": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
                 "vals vienés": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
                 "himno vals vienes": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
@@ -1378,17 +1627,16 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         if is_drum_solo:
             genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 bpm unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
         elif is_solo_piano_prayer:
-            piano_desc = "solo acoustic concert grand piano with deep lush hall reverb"
-            if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape"]):
-                piano_desc = "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Spectrasonics Keyscape library) with lush built-in analog chorus and crystalline worship bell tone"
+            if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "e-piano 2"]):
+                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, vintage Roland MKS-20 digital electric piano preset 3 Elec Piano 2 (Spectrasonics Keyscape library) with lush built-in analog chorus and crystalline glassy bell tone, pure electric piano instrumental, emotional, peaceful, no acoustic piano, no drums, no bass, no guitars, no synths"
             elif any(w in style.lower() for w in ["galaxy dx", "galaxydx"]):
-                piano_desc = "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells and warm celestial pad cushion"
+                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, Galaxy DX epic hybrid worship piano, acoustic grand piano layered with sparkling DX7 crystal bells and warm celestial pad cushion, emotional, peaceful, no drums, no bass, no guitars"
             elif any(w in style.lower() for w in ["motif xs", "motif", "motif power grand"]):
-                piano_desc = "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and wide hall reverb"
+                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and wide hall reverb, emotional, peaceful, no drums, no bass, no guitars"
             elif "rhodes" in style.lower():
-                piano_desc = "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus and analog tremolo"
-
-            genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, {piano_desc}, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
+                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus and analog tremolo, emotional, peaceful, no drums, no bass, no guitars"
+            else:
+                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, pure solo acoustic concert grand piano (Yamaha CFX / Steinway D) with natural wooden hall resonance, pure acoustic piano instrumental, emotional, peaceful, contemplative, no electric piano, no synths, no drums, no bass, no guitars"
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
@@ -1792,6 +2040,19 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                                     "obfuscate": obfuscate,
                                     "exclude_styles": exclude_styles
                                 }
+
+                                # Respaldo permanente en tu almacenamiento Google One / AI Pro (5 TB)
+                                if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
+                                    try:
+                                        log_msg(f"Respaldando pista en Google Drive 5TB...")
+                                        g_res = await gdrive_upload_track_audio(tid, local_track_file, ttitle)
+                                        if g_res and g_res.get("file_id"):
+                                            track_info["gdrive_id"] = g_res["file_id"]
+                                            track_info["gdrive_link"] = g_res.get("link")
+                                            log_msg(f"¡Copia respaldada en Google Drive! ID: {g_res['file_id']}")
+                                    except Exception as e:
+                                        log_msg(f"Aviso al respaldar en Google Drive: {e}")
+
                                 final_tracks.append(track_info)
                                 add_track_to_library(track_info)
                                 log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid})")
@@ -2197,7 +2458,51 @@ async def get_latest_logs():
 @app.get("/api/library")
 async def api_get_library(current_user: str = Depends(get_current_user)):
     library = load_library()
+    # Si la librería local está vacía, intentar restaurar desde Google Drive
+    if not library:
+        try:
+            await gdrive_sync_library_from_cloud()
+            library = load_library()
+        except Exception:
+            pass
     return JSONResponse(content={"status": "success", "tracks": library[::-1]})
+
+@app.get("/api/gdrive/status")
+async def api_gdrive_status(current_user: str = Depends(get_current_user)):
+    tokens = load_gdrive_tokens()
+    has_token = bool(tokens.get("refresh_token") or tokens.get("access_token"))
+    library = load_library()
+    synced_count = sum(1 for t in library if t.get("gdrive_id"))
+    return JSONResponse(content={
+        "status": "connected" if has_token else "disconnected",
+        "has_token": has_token,
+        "folder_id": GDRIVE_FOLDER_ID,
+        "total_tracks": len(library),
+        "synced_tracks": synced_count,
+        "admin_email": ADMIN_EMAIL
+    })
+
+@app.post("/api/gdrive/sync")
+async def api_gdrive_manual_sync(current_user: str = Depends(get_current_user)):
+    try:
+        await gdrive_sync_library_from_cloud()
+        library = load_library()
+        token = await gdrive_get_access_token()
+        if token:
+            for t in library:
+                if not t.get("gdrive_id"):
+                    tid = t.get("id")
+                    local_p = os.path.join(TRACKS_DIR, f"{tid}.mp3")
+                    if os.path.exists(local_p) and os.path.getsize(local_p) > 1000:
+                        res = await gdrive_upload_track_audio(tid, local_p, t.get("title", ""))
+                        if res and res.get("file_id"):
+                            t["gdrive_id"] = res["file_id"]
+                            t["gdrive_link"] = res.get("link")
+            save_library(library)
+            await gdrive_sync_library_to_cloud(library)
+        return JSONResponse(content={"status": "success", "total_tracks": len(library), "synced_tracks": sum(1 for t in library if t.get("gdrive_id"))})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.delete("/api/library/{task_id}")
 async def api_delete_from_library(task_id: str, current_user: str = Depends(get_current_user)):
@@ -2253,6 +2558,18 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return local_path
         
+    # 1. Recuperar directamente desde Google Drive (5 TB)
+    if track and track.get("gdrive_id"):
+        try:
+            gbytes = await gdrive_download_file_bytes(track["gdrive_id"])
+            if gbytes and len(gbytes) > 1000:
+                os.makedirs(TRACKS_DIR, exist_ok=True)
+                with open(local_path, "wb") as f:
+                    f.write(gbytes)
+                return local_path
+        except Exception as e:
+            print(f"[GDRIVE] Error descargando pista desde Drive para {task_id}: {e}")
+
     urls_to_try = []
     if track.get("cloud_backup") and str(track["cloud_backup"]).startswith("http"):
         urls_to_try.append(track["cloud_backup"])
@@ -2720,7 +3037,13 @@ async def login_via_google(request: Request):
     redirect_uri = str(request.base_url) + "api/auth/callback"
     if "localhost" not in str(request.base_url):
         redirect_uri = redirect_uri.replace("http://", "https://")
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    # Solicitar acceso offline y consentimiento para obtener refresh_token permanente hacia Google Drive 5TB
+    return await oauth.google.authorize_redirect(
+        request, 
+        redirect_uri, 
+        access_type="offline", 
+        prompt="consent"
+    )
 
 @app.get("/api/auth/callback")
 async def auth_callback(request: Request):
@@ -2745,6 +3068,23 @@ async def auth_callback(request: Request):
                     "created_at": users.get(email, {}).get("created_at", now_str)
                 }
                 save_users(users)
+                
+                # Guardar tokens de Google Drive 5TB de Rodrigo para respaldo eterno
+                gdrive_tokens = {}
+                if token.get('refresh_token'):
+                    gdrive_tokens['refresh_token'] = token.get('refresh_token')
+                if token.get('access_token'):
+                    gdrive_tokens['access_token'] = token.get('access_token')
+                if token.get('expires_at'):
+                    gdrive_tokens['expires_at'] = token.get('expires_at')
+                if gdrive_tokens:
+                    save_gdrive_tokens(gdrive_tokens)
+                    print("[GDRIVE] ¡Tokens de Google Drive 5TB guardados exitosamente!")
+                    try:
+                        asyncio.create_task(gdrive_sync_library_from_cloud())
+                    except Exception as e:
+                        print(f"[GDRIVE] Error disparando sincronización tras login: {e}")
+                
                 request.session['user'] = user
                 return RedirectResponse(url="/")
             

@@ -14,6 +14,7 @@ __pycache__/
 
 # Almacenamiento Local de Audios (No subir a la nube)
 downloads/
+tracks_storage/
 temp_*/
 *.mp3
 *.wav
@@ -21,5 +22,11 @@ ffmpeg.exe
 !assets/ambient/*.mp3
 !assets/skeletons/*.mp3
 !assets/skeletons/*.wav
-
 !assets/audio/bass/*.mp3
+
+# Credenciales y Tokens de Google Drive
+*service_account*.json
+*credentials*.json
+google_drive_credentials.json
+gdrive_token.json
+*token*.json
