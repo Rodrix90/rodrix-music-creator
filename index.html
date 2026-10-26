@@ -2265,8 +2265,8 @@ const WORSHIP_PRESETS = {
     instrumental: false
   },
   piano_oracion: {
-    style: "vintage 1980s digital electric piano, Roland MKS-20 preset 3 E-Piano 2, Spectrasonics Keyscape electric piano, lush analog stereo chorus, sparkling glassy crystalline bell tine attack, warm mellow electronic piano body, reverent Christian prayer worship background, slow 60 bpm, pure electric piano instrumental, no acoustic piano",
-    exclude: "acoustic piano, acoustic grand piano, upright piano, vocals, singing, voice, speech, lyrics, choir, drums, drum kit, percussion, bass guitar, synthesizer lead, electric guitar, brass, horns, cumbia, uptempo",
+    style: "pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, 60 bpm slow devotional worship tempo, unaccompanied solo performance, zero other instruments",
+    exclude: "drums, drum kit, percussion, bass, bass guitar, acoustic guitar, electric guitar, synths, synth pad, strings, orchestra, choir, voices, vocals, singing, brass, horns, cumbia, uptempo, backing band",
     instrumental: true
   },
   vals_vienes: {
@@ -2279,26 +2279,26 @@ const WORSHIP_PRESETS = {
 const PRAYER_PIANO_SOUNDS = {
   mks20: {
     name: "Roland MKS-20 (E.Piano 2)",
-    style: "vintage 1980s digital electric piano, Roland MKS-20 preset 3 E-Piano 2, Spectrasonics Keyscape electric piano, lush analog stereo chorus, sparkling glassy crystalline bell tine attack, warm mellow electronic piano body, reverent Christian prayer worship background, slow 60 bpm, pure electric piano instrumental, no acoustic piano",
-    exclude: "acoustic piano, acoustic grand piano, upright piano, vocals, singing, choir, drums, drum kit, percussion, bass guitar, synthesizer lead, electric guitar, brass, horns, cumbia, uptempo",
+    style: "pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, 60 bpm slow devotional worship tempo, unaccompanied solo performance, zero other instruments",
+    exclude: "drums, drum kit, percussion, bass, bass guitar, acoustic guitar, electric guitar, synths, synth pad, strings, orchestra, choir, voices, vocals, singing, brass, horns, cumbia, uptempo, backing band",
     gear: "roland mks-20 e-piano 2"
   },
   galaxydx: {
     name: "Galaxy DX (Épico Híbrido)",
-    style: "Galaxy DX epic hybrid worship piano, acoustic grand piano layered with sparkling Yamaha DX7 FM crystal bells and warm ambient synth pad cushion, shimmering ethereal hall reverb, slow 60 bpm, devotional worship instrumental",
-    exclude: "vocals, singing, choir, drums, percussion, bass guitar, electric guitar, saxophone, brass, distortion, dry piano, cumbia, uptempo",
+    style: "pure solo hybrid worship piano, acoustic concert grand piano layered with Yamaha DX7 FM electric piano tines, crystalline bell tone, deep church hall reverb, 60 bpm slow tempo, pure solo piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments",
+    exclude: "drums, drum kit, percussion, bass, bass guitar, acoustic guitar, electric guitar, synths, synth pad, strings, orchestra, choir, voices, vocals, singing, brass, horns, cumbia, uptempo, backing band",
     gear: "galaxy dx"
   },
   motifxs: {
     name: "Yamaha Motif XS Grand",
-    style: "Yamaha Motif XS Power Grand, modern compressed church worship piano layered with warm analog strings choir pad, spatial stereo delay and expansive cathedral hall reverb, wide stereo soundstage, slow 60 bpm, contemporary church prayer instrumental",
-    exclude: "vocals, singing, choir, drums, percussion, bass guitar, electric guitar, saxophone, brass, distortion, Rhodes electric piano, cumbia, uptempo",
+    style: "pure solo Yamaha Motif XS Power Grand piano, crisp modern worship concert grand piano, crystal clear attack, expansive cathedral hall reverb, slow 60 bpm, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments",
+    exclude: "drums, drum kit, percussion, bass, bass guitar, acoustic guitar, electric guitar, synths, synth pad, strings, orchestra, choir, voices, vocals, singing, brass, horns, cumbia, uptempo, backing band",
     gear: "yamaha motif xs"
   },
   acustico: {
     name: "Piano de Cola Acústico",
-    style: "100% pure solo acoustic concert grand piano, Yamaha CFX / Steinway Model D acoustic grand, natural wooden soundboard resonance, pure acoustic piano tone, deep concert hall reverb, slow 60 bpm, reverent, solo acoustic piano instrumental, no electric piano, no DX bells, no synth pads, zero chorus",
-    exclude: "electric piano, digital piano, Rhodes, DX7, synthesizer, synth pad, vocals, singing, choir, drums, percussion, bass, guitars, brass, chorus effect, cumbia, uptempo",
+    style: "100% pure solo acoustic concert grand piano, Yamaha CFX / Steinway Model D 9-foot grand piano, natural wooden acoustic resonance, pristine acoustic piano touch, lush hall reverb, slow 60 bpm, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments",
+    exclude: "electric piano, digital piano, Rhodes, DX7, synthesizer, synth pad, drums, drum kit, percussion, bass, bass guitar, electric guitar, acoustic guitar, strings, orchestra, choir, voices, vocals, singing, brass, horns, cumbia, uptempo, backing band",
     gear: "yamaha cfx grand"
   }
 };
@@ -2405,8 +2405,27 @@ document.querySelectorAll('.preset-card').forEach(card => {
         const soundKey = selectedRadio ? selectedRadio.value : 'mks20';
         const pSound = PRAYER_PIANO_SOUNDS[soundKey] || PRAYER_PIANO_SOUNDS.mks20;
         $('styleInput').value = pSound.style;
-        $('excludeInput').value = WORSHIP_PRESETS.piano_oracion.exclude;
+        $('excludeInput').value = pSound.exclude || WORSHIP_PRESETS.piano_oracion.exclude;
         
+        // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
+        if ($('chkDrums')) $('chkDrums').checked = false;
+        if ($('chkBass')) $('chkBass').checked = false;
+        if ($('chkGuitar')) $('chkGuitar').checked = false;
+        if ($('chkOrgan')) $('chkOrgan').checked = false;
+        if ($('chkPiano')) $('chkPiano').checked = true;
+        if ($('chkCrashToms')) $('chkCrashToms').checked = false;
+        if ($('chkSplashRide')) $('chkSplashRide').checked = false;
+        if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
+        if ($('chkBassSlap')) $('chkBassSlap').checked = false;
+        if ($('chkBassPickup')) $('chkBassPickup').checked = false;
+
+        // Forzar modo instrumental puro
+        if ($('instrumental')) $('instrumental').checked = true;
+        $('lyricsInput').disabled = true;
+        $('lyricsInput').style.opacity = .4;
+        $('lyricsInput').value = '';
+        $('lyricsInput').placeholder = "[Solo Piano Instrumental - 100% Sin otros instrumentos]";
+
         const targetGearId = pSound.gear;
         const pianoGear = document.querySelector(`.gear-card[data-gear="${targetGearId}"]`);
         if (typeof activeGear !== 'undefined') {
@@ -2628,6 +2647,25 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
     if (pSound.exclude) {
       $('excludeInput').value = pSound.exclude;
     }
+    
+    // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
+    if ($('chkDrums')) $('chkDrums').checked = false;
+    if ($('chkBass')) $('chkBass').checked = false;
+    if ($('chkGuitar')) $('chkGuitar').checked = false;
+    if ($('chkOrgan')) $('chkOrgan').checked = false;
+    if ($('chkPiano')) $('chkPiano').checked = true;
+    if ($('chkCrashToms')) $('chkCrashToms').checked = false;
+    if ($('chkSplashRide')) $('chkSplashRide').checked = false;
+    if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
+    if ($('chkBassSlap')) $('chkBassSlap').checked = false;
+    if ($('chkBassPickup')) $('chkBassPickup').checked = false;
+
+    // Forzar modo instrumental puro
+    if ($('instrumental')) $('instrumental').checked = true;
+    $('lyricsInput').disabled = true;
+    $('lyricsInput').style.opacity = .4;
+    $('lyricsInput').value = '';
+    $('lyricsInput').placeholder = "[Solo Piano Instrumental - 100% Sin otros instrumentos]";
     
     // Activar visualmente la tarjeta de Piano de Oración si no lo estaba
     const cardOracion = document.querySelector('.preset-card[data-preset="piano_oracion"]');
@@ -4446,58 +4484,69 @@ $('genForm').addEventListener('submit', async e => {
     finalStyle = `grand Viennese waltz hymn in 3/4 time, authentic Viennese oom-pah-pah 3/4 lilt, Strauss style, ${finalStyle}`;
   }
 
-  // Banda activa
+  const activePresetCard = document.querySelector('.preset-card.active');
+  const activePreset = activePresetCard ? activePresetCard.dataset.preset : '';
+  const isSoloPianoPrayerMode = (
+    activePreset === 'piano_oracion' ||
+    /piano\s+de\s+oraci[oó]n|solo\s+piano|prayer\s+piano|pure\s+piano|mks-?20|keyscape/i.test(finalStyle)
+  );
+
+  // Banda activa (sólo si NO es solo piano de oración)
   const bandExtras = [];
-  if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
-    bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, no distant drums');
-  }
-  if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
-    bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
-  }
-  if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
-    bandExtras.push('crisp acoustic rhythm guitar strumming');
-  }
-  if ($('chkPiano') && $('chkPiano').checked && !finalStyle.toLowerCase().includes('piano')) {
-    bandExtras.push('acoustic grand piano');
-  }
-  if ($('chkOrgan') && $('chkOrgan').checked && !finalStyle.toLowerCase().includes('organ')) {
-    bandExtras.push('Hammond B3 organ');
-  }
-  if (bandExtras.length > 0) {
-    finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
+  if (!isSoloPianoPrayerMode) {
+    if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
+      bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, no distant drums');
+    }
+    if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
+      bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
+    }
+    if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
+      bandExtras.push('crisp acoustic rhythm guitar strumming');
+    }
+    if ($('chkPiano') && $('chkPiano').checked && !finalStyle.toLowerCase().includes('piano')) {
+      bandExtras.push('acoustic grand piano');
+    }
+    if ($('chkOrgan') && $('chkOrgan').checked && !finalStyle.toLowerCase().includes('organ')) {
+      bandExtras.push('Hammond B3 organ');
+    }
+    if (bandExtras.length > 0) {
+      finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
+    }
   }
 
-  // Articulación rítmica detallada (Hi-Hat, Platillos, Toms, Slap, Pick-up)
+  // Articulación rítmica detallada (sólo si NO es solo piano de oración)
   const rhythmArticulations = [];
-  const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
-  const hiHatVal = selectedHiHat ? selectedHiHat.value : '8th';
+  if (!isSoloPianoPrayerMode) {
+    const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
+    const hiHatVal = selectedHiHat ? selectedHiHat.value : '8th';
 
-  if (hiHatVal === '8th' && !finalStyle.toLowerCase().includes('eighth note') && !finalStyle.toLowerCase().includes('corchea')) {
-    rhythmArticulations.push('steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
-  } else if (hiHatVal === '4th' && !finalStyle.toLowerCase().includes('quarter-note') && !finalStyle.toLowerCase().includes('negras')) {
-    rhythmArticulations.push('heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
-  } else if (hiHatVal === '16th' && !finalStyle.toLowerCase().includes('16th-note') && !finalStyle.toLowerCase().includes('semicorchea')) {
-    rhythmArticulations.push('fast driving 16th-note hi-hat subdivision pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
-  }
+    if (hiHatVal === '8th' && !finalStyle.toLowerCase().includes('eighth note') && !finalStyle.toLowerCase().includes('corchea')) {
+      rhythmArticulations.push('steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
+    } else if (hiHatVal === '4th' && !finalStyle.toLowerCase().includes('quarter-note') && !finalStyle.toLowerCase().includes('negras')) {
+      rhythmArticulations.push('heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
+    } else if (hiHatVal === '16th' && !finalStyle.toLowerCase().includes('16th-note') && !finalStyle.toLowerCase().includes('semicorchea')) {
+      rhythmArticulations.push('fast driving 16th-note hi-hat subdivision pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
+    }
 
-  if ($('chkCrashToms') && $('chkCrashToms').checked && !finalStyle.toLowerCase().includes('crash cymbal')) {
-    rhythmArticulations.push('explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills');
-  }
-  if ($('chkSplashRide') && $('chkSplashRide').checked && !finalStyle.toLowerCase().includes('splash cymbal') && !finalStyle.toLowerCase().includes('ride bell')) {
-    rhythmArticulations.push('crisp splash cymbal accents, articulate ride cymbal bell pings');
-  }
-  if ($('chkTomGrooves') && $('chkTomGrooves').checked && !finalStyle.toLowerCase().includes('floor tom groove')) {
-    rhythmArticulations.push('driving rhythmic floor tom groove and articulate rack tom patterns');
-  }
-  if ($('chkBassSlap') && $('chkBassSlap').checked && !finalStyle.toLowerCase().includes('slap and pop')) {
-    rhythmArticulations.push('funky punchy slap and pop electric bass accents on fills and chord transitions');
-  }
-  if ($('chkBassPickup') && $('chkBassPickup').checked && !finalStyle.toLowerCase().includes('pick-up') && !finalStyle.toLowerCase().includes('passing tone')) {
-    rhythmArticulations.push('expressive chromatic pick-up notes and walking bass passing tones into downbeats');
-  }
+    if ($('chkCrashToms') && $('chkCrashToms').checked && !finalStyle.toLowerCase().includes('crash cymbal')) {
+      rhythmArticulations.push('explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills');
+    }
+    if ($('chkSplashRide') && $('chkSplashRide').checked && !finalStyle.toLowerCase().includes('splash cymbal') && !finalStyle.toLowerCase().includes('ride bell')) {
+      rhythmArticulations.push('crisp splash cymbal accents, articulate ride cymbal bell pings');
+    }
+    if ($('chkTomGrooves') && $('chkTomGrooves').checked && !finalStyle.toLowerCase().includes('floor tom groove')) {
+      rhythmArticulations.push('driving rhythmic floor tom groove and articulate rack tom patterns');
+    }
+    if ($('chkBassSlap') && $('chkBassSlap').checked && !finalStyle.toLowerCase().includes('slap and pop')) {
+      rhythmArticulations.push('funky punchy slap and pop electric bass accents on fills and chord transitions');
+    }
+    if ($('chkBassPickup') && $('chkBassPickup').checked && !finalStyle.toLowerCase().includes('pick-up') && !finalStyle.toLowerCase().includes('passing tone')) {
+      rhythmArticulations.push('expressive chromatic pick-up notes and walking bass passing tones into downbeats');
+    }
 
-  if (rhythmArticulations.length > 0) {
-    finalStyle = `${finalStyle}, ${rhythmArticulations.join(', ')}`;
+    if (rhythmArticulations.length > 0) {
+      finalStyle = `${finalStyle}, ${rhythmArticulations.join(', ')}`;
+    }
   }
 
   // Sincronización Armónica de Acordes / Tablatura
@@ -4531,14 +4580,14 @@ $('genForm').addEventListener('submit', async e => {
   }
 
   let lyricsToSend = '';
-  if (instr) {
-    lyricsToSend = userLyrics ? (userLyrics.toLowerCase().includes('[instrumental]') ? userLyrics : `[Instrumental]\n\n${userLyrics}`) : '[Instrumental]';
+  if (instr || isSoloPianoPrayerMode) {
+    lyricsToSend = isSoloPianoPrayerMode ? '[Instrumental - Solo Piano]' : (userLyrics ? (userLyrics.toLowerCase().includes('[instrumental]') ? userLyrics : `[Instrumental]\n\n${userLyrics}`) : '[Instrumental]');
   } else {
     lyricsToSend = userLyrics;
   }
   fd.append('lyrics', lyricsToSend);
   fd.append('title', $('titleInput').value.trim());
-  fd.append('include_lyrics', !instr);
+  fd.append('include_lyrics', (instr || isSoloPianoPrayerMode) ? 'false' : 'true');
   fd.append('bypass_copyright', $('bypass').checked);
   fd.append('is_public_domain', ($('chkPublicDomain') && $('chkPublicDomain').checked) ? 'true' : 'false');
 

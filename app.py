@@ -1579,7 +1579,19 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
             "pure drums", "drum test", "drum sound test"
         ])
-        is_solo_piano_prayer = not is_drum_solo and (any(w in style.lower() for w in ["solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", "prayer piano", "pure piano", "solo piano instrumental"]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"])))
+        is_solo_piano_prayer = not is_drum_solo and (
+            any(w in style.lower() for w in [
+                "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
+                "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
+                "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
+            ]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
+        )
+        if is_solo_piano_prayer:
+            is_instrumental = True
+            wants_solo_vocal = False
+            wants_choir = False
+            final_lyrics = "[Instrumental - Solo Piano]"
+
         is_vals_vienes = not is_drum_solo and any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
         is_pentecostal = not is_drum_solo and any(w in style.lower() for w in ["pentecostal", "coro pentecostal", "coros pentecostales", "himno pentecostal"])
 
@@ -1628,15 +1640,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 bpm unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
         elif is_solo_piano_prayer:
             if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "e-piano 2"]):
-                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, vintage Roland MKS-20 digital electric piano preset 3 Elec Piano 2 (Spectrasonics Keyscape library) with lush built-in analog chorus and crystalline glassy bell tone, pure electric piano instrumental, emotional, peaceful, no acoustic piano, no drums, no bass, no guitars, no synths"
+                genre_anchor = f"pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, {bpm_tag or '60 BPM slow tempo'}, reverent devotional worship, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             elif any(w in style.lower() for w in ["galaxy dx", "galaxydx"]):
-                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, Galaxy DX epic hybrid worship piano, acoustic grand piano layered with sparkling DX7 crystal bells and warm celestial pad cushion, emotional, peaceful, no drums, no bass, no guitars"
+                genre_anchor = f"pure solo hybrid worship piano, acoustic concert grand piano layered with Yamaha DX7 FM electric piano tines, crystalline bell tone, {bpm_tag or '60 BPM slow tempo'}, deep church hall reverb, pure solo piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             elif any(w in style.lower() for w in ["motif xs", "motif", "motif power grand"]):
-                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and wide hall reverb, emotional, peaceful, no drums, no bass, no guitars"
+                genre_anchor = f"pure solo Yamaha Motif XS Power Grand piano, crisp modern worship concert grand piano, crystal clear attack, expansive cathedral hall reverb, {bpm_tag or '60 BPM slow tempo'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             elif "rhodes" in style.lower():
-                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus and analog tremolo, emotional, peaceful, no drums, no bass, no guitars"
+                genre_anchor = f"pure solo Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus, {bpm_tag or '60 BPM slow tempo'}, pure solo electric piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             else:
-                genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, pure solo acoustic concert grand piano (Yamaha CFX / Steinway D) with natural wooden hall resonance, pure acoustic piano instrumental, emotional, peaceful, contemplative, no electric piano, no synths, no drums, no bass, no guitars"
+                genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM slow tempo'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
@@ -1757,7 +1769,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     neg_tags_list.append(bass_anti)
 
             if is_solo_piano_prayer:
-                for solo_anti in ["drums", "drum kit", "percussion", "bass", "electric guitar", "synths", "brass", "orchestra", "strings", "cumbia", "singing", "vocals", "voices"]:
+                for solo_anti in [
+                    "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms",
+                    "bass", "bass guitar", "electric bass", "acoustic bass", "synth bass", "upright bass",
+                    "guitar", "electric guitar", "acoustic guitar", "guitars",
+                    "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
+                    "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
+                    "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
+                    "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
+                ]:
                     neg_tags_list.append(solo_anti)
 
             if is_vals_vienes:
@@ -1816,7 +1836,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if is_solo_piano_prayer:
-                for req_no in ["no drums", "no vocals", "no singing", "no electric guitar", "no bass", "no synths"]:
+                for req_no in ["solo piano only", "no drums", "no percussion", "no bass", "no guitars", "no synths", "no strings", "no pads", "no choir", "no vocals"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if is_vals_vienes:
@@ -1830,12 +1850,21 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if active_critical:
                 key_bans_str = ", ".join(active_critical)
 
-            # For drum solos, DO NOT put words like 'guitars' or 'bass' in the positive style string
+            # For drum solos and solo prayer piano, DO NOT put other instruments in positive style
             if is_drum_solo:
-                # Remove any accidental mention of guitars, bass, melody, or rock band from positive style
                 clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', style, flags=re.IGNORECASE)
                 clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
                 style = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, zero melodic instruments, unaccompanied percussion"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            elif is_solo_piano_prayer:
+                clean_style = re.sub(
+                    r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                    '',
+                    style,
+                    flags=re.IGNORECASE
+                )
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
             else:
                 combined_parts = [p for p in [genre_anchor, key_bans_str, style] if p]
@@ -1845,7 +1874,19 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             neg_final_str = ", ".join(dedup_neg)
             log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
         else:
-            if genre_anchor and not is_drum_solo:
+            if is_solo_piano_prayer:
+                clean_style = re.sub(
+                    r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                    '',
+                    style,
+                    flags=re.IGNORECASE
+                )
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            elif genre_anchor and not is_drum_solo:
+                style = f"{genre_anchor}, {style}"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
                 style = f"{genre_anchor}, {style}"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
