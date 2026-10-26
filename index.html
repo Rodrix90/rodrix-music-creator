@@ -373,8 +373,8 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="preset-title"><i class="ph ph-fire"></i><span>Coro Pentecostal</span></div>
                   <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
                 </div>
-                <div class="preset-desc">Ritmo dos pasos de avivamiento pentecostal tradicional (118 BPM, 4/4 cuadrado, tempo 4/4 snare 2-4, kick 1-3, hit-hat). Batería acústica Charlie Watts (bombo seco en 1 y 3, golpe seco de caja Ludwig en 2 y 4 con palmas congregacionales), bajo raíz-quinta, guitarra acústica y coro argentino al unísono (sin murga, comparsa ni ritmos latinos).</div>
-                <span class="preset-tag">Gospel 2-Step • Charlie Watts • Acento Argentino • 118 BPM</span>
+                <div class="preset-desc">Ritmo dos pasos tradicional (118 BPM, 4/4 cuadrado, tempo 4/4 snare 2-4, kick 1-3, hi-hat). Batería acústica al frente bien marcada y presente (caja Ludwig en 2 y 4, bombo seco en 1 y 3), bajo eléctrico real (cuerdas reales, cero synth), guitarra acústica y coro congregacional al unísono (sin afro-gospel, sin melismas, sin murga ni ritmos latinos).</div>
+                <span class="preset-tag">Dos Pasos 2-Step • Batería al Frente • Bajo Real • 118 BPM</span>
               </div>
               <div class="preset-card" data-preset="adoracion">
                 <div class="preset-head">
@@ -734,10 +734,10 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <span style="font-size:10.5px;color:var(--muted)">Fija la métrica exacta para que la batería nunca falle</span>
             </div>
             <div class="rhythm-bar" id="rhythmBar">
-              <div class="rhythm-pill active" data-rhythm="gospel_2step">
+              <div class="rhythm-pill" data-rhythm="dos_pasos">
                 <i class="ph ph-metronome"></i>
                 <div>
-                  <div style="color:var(--text);font-weight:700">Gospel 2-Step</div>
+                  <div style="color:var(--text);font-weight:700">Alabanza 2-Step</div>
                   <div style="font-size:10px">Bombo 1-3 • Caja 2-4 (118 BPM)</div>
                 </div>
               </div>
@@ -755,7 +755,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div style="font-size:10px">Compás ternario • Strauss</div>
                 </div>
               </div>
-              <div class="rhythm-pill" data-rhythm="libre">
+              <div class="rhythm-pill active" data-rhythm="libre">
                 <i class="ph ph-sliders"></i>
                 <div>
                   <div style="color:var(--text);font-weight:700">Personalizado</div>
@@ -918,10 +918,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <strong>Fidelidad melódica:</strong> La IA sintetiza una interpretación generativa nueva basada en la guía de audio; no garantiza una reproducción nota por nota de una partitura fija.
             </div>
             <div class="field">
-              <label class="label">Audio de referencia (Extend / Remix)</label>
+              <label class="label">Audio de referencia (Extend / Remix / Upload & Cover)</label>
               <div class="file-row">
-                <input type="file" id="audioInput" accept="audio/*,.m4a,.mp4,.aac,.opus,.ogg,.oga,.wav,.mp3,.flac">
+                <input type="file" id="audioInput" accept="audio/*,.m4a,.mp3,.wav,.mp4,.aac,.opus,.ogg,.oga,.flac">
                 <button type="button" class="icon-btn" id="clearAudio" title="Quitar audio"><i class="ph ph-x"></i></button>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">
+                Formatos aceptados: <strong>M4A</strong> (grabadora de voz de celular / iPhone / Samsung), <strong>WAV</strong> y <strong>MP3</strong>.
               </div>
               <div id="audioCompatBadge" style="display:none;margin-top:6px;font-size:11.5px;padding:6px 10px;border-radius:6px;align-items:center;gap:6px"></div>
               <div style="margin-top:8px">
@@ -2153,8 +2156,8 @@ function forceAppRefresh() {
 /* ---------- PRESETS DE CULTO & LITURGIA ---------- */
 const WORSHIP_PRESETS = {
   pentecostal: {
-    style: "driving acoustic drum kit rhythm, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm tempo, root-fifth alternating acoustic bass boom-chick, driving acoustic rhythm guitar strum, passionate Argentine church choir singing in unison, natural Spanish vocals, no a cappella, no missing drums, no tambourine solo, no handclaps solo, no murga, no comparsa, no carnaval, no batucada, no candombe, no bombo de murga, no marcha militar, no latin rhythm, no syncopation, no tumbao, no cumbia, no caribbean accent",
-    exclude: "a cappella, acappella, no drums, missing drums, handclaps only, tambourine only, percussion only, tambourine dominant, handclaps dominant, murga, comparsa, carnaval, batucada, candombe, bombo de murga, tamboril, marcha militar, marching band, brass band, fanfare, loose percussion, muddy drums, ritmo latino, percusion latina, sincopa, syncopation, tumbao, contratiempos latinos, cumbia, merengue, salsa, bachata, reggaeton, dembow, tropical rhythm, ska, reggae skank, acento centroamericano, acento caribeño, modismos caribeños, voz caribeña, guitarra funk, sintetizadores modernos, autotune, bateria loca, redobles pesados",
+    style: "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals keeping steady eighth notes, crash cymbal downbeats, dynamic acoustic tom rolls and drum fills, loud upfront drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm tempo, authentic physical electric bass guitar with roundwound strings and Ampeg SVT, root-fifth alternating bass boom-chick, driving acoustic rhythm guitar strum, passionate Argentine church choir singing in unison, natural Spanish vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no a cappella, no missing drums, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no tambourine solo, no handclaps solo, no murga, no comparsa, no carnaval, no batucada, no candombe, no bombo de murga, no marcha militar, no latin rhythm, no syncopation, no tumbao, no cumbia, no caribbean accent",
+    exclude: "missing snare, quiet snare, weak snare, no snare, silent snare, muffled snare, missing cymbals, quiet cymbals, no cymbals, missing hi-hat, kick drum only, bass drum only, no drum fills, afro gospel, black gospel, soul, neo-soul, melisma, vocal runs, r&b runs, blues scale, gospel shouts, synth bass, synthesizer bass, synthbass, 808 bass, 808 sub, electronic bass, distant drums, quiet drums, muffled drums, drums in background, a cappella, acappella, no drums, missing drums, handclaps only, tambourine only, percussion only, tambourine dominant, handclaps dominant, murga, comparsa, carnaval, batucada, candombe, bombo de murga, tamboril, marcha militar, marching band, brass band, fanfare, loose percussion, muddy drums, ritmo latino, percusion latina, sincopa, syncopation, tumbao, contratiempos latinos, cumbia, merengue, salsa, bachata, reggaeton, dembow, tropical rhythm, ska, reggae skank, acento centroamericano, acento caribeño, modismos caribeños, voz caribeña, guitarra funk, sintetizadores modernos, autotune, bateria loca",
     instrumental: false
   },
   adoracion: {
@@ -2251,7 +2254,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
         }
       }
       if (card.dataset.preset === 'pentecostal') {
-        const rPill = document.querySelector('.rhythm-pill[data-rhythm="gospel_2step"]');
+        const rPill = document.querySelector('.rhythm-pill[data-rhythm="dos_pasos"]') || document.querySelector('.rhythm-pill[data-rhythm="gospel_2step"]');
         if (rPill) {
           document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
           rPill.classList.add('active');
@@ -2414,12 +2417,12 @@ document.querySelectorAll('.rhythm-pill').forEach(pill => {
     document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     const r = pill.dataset.rhythm;
-    if (r === 'gospel_2step') {
+    if (r === 'dos_pasos' || r === 'gospel_2step') {
       if ($('chkDrums')) $('chkDrums').checked = true;
       if ($('chkBass')) $('chkBass').checked = true;
       if ($('chkGuitar')) $('chkGuitar').checked = true;
       if ($('chkNoLatin')) $('chkNoLatin').checked = true;
-      showToast('Patrón fijado: Gospel 2-Step (Bombo 1-3, Caja 2-4 a 118 BPM)', 'info');
+      showToast('Patrón fijado: Alabanza 2-Step (Bombo 1-3, Caja 2-4 a 118 BPM, batería al frente y bajo real)', 'info');
     } else if (r === 'worship_ballad') {
       if ($('chkDrums')) $('chkDrums').checked = true;
       if ($('chkNoLatin')) $('chkNoLatin').checked = true;
@@ -4203,8 +4206,8 @@ $('genForm').addEventListener('submit', async e => {
   const activeRhythmPill = document.querySelector('.rhythm-pill.active');
   const rhythmType = activeRhythmPill ? activeRhythmPill.dataset.rhythm : 'libre';
   
-  if (rhythmType === 'gospel_2step' && !finalStyle.toLowerCase().includes('gospel 2-step')) {
-    finalStyle = `driving acoustic drum kit rhythm, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat, gospel 2-step straight 4/4 rhythm, steady 118 bpm, ${finalStyle}`;
+  if ((rhythmType === 'dos_pasos' || rhythmType === 'gospel_2step') && !finalStyle.toLowerCase().includes('dos pasos') && !finalStyle.toLowerCase().includes('two-step')) {
+    finalStyle = `full live acoustic praise drum kit, tempo 4/4, loud cutting snare drum backbeat cracking hard on beats 2 and 4, heavy kick drum on 1 and 3, bright metallic hi-hat cymbals, crash cymbal downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar, zero synth bass, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, no black gospel, no soul, no missing snare, no quiet snare, no missing cymbals, no kick drum only, ${finalStyle}`;
   } else if (rhythmType === 'worship_ballad' && !finalStyle.toLowerCase().includes('ballad')) {
     finalStyle = `sacred Christian worship ballad, gentle 68 bpm, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, ${finalStyle}`;
   } else if (rhythmType === 'waltz_34' && !finalStyle.toLowerCase().includes('waltz') && !finalStyle.toLowerCase().includes('vals')) {
@@ -4214,10 +4217,10 @@ $('genForm').addEventListener('submit', async e => {
   // Banda activa
   const bandExtras = [];
   if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
-    bandExtras.push('prominent acoustic drum kit with crisp snare crack, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat');
+    bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, no distant drums');
   }
   if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
-    bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, zero synth bass');
+    bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
   }
   if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
     bandExtras.push('crisp acoustic rhythm guitar strumming');

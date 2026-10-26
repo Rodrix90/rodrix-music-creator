@@ -175,6 +175,27 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     except Exception as e:
         return f"ERROR inesperado: {str(e)}"
 
+def convert_audio_to_mp3(input_path: str, output_path: str) -> bool:
+    """Convierte cualquier formato de audio soportado (M4A, AAC, WAV, etc.) a MP3 estéreo 320 kbps para máxima compatibilidad."""
+    ffmpeg_bin = "ffmpeg"
+    if os.path.exists("ffmpeg.exe"):
+        ffmpeg_bin = os.path.abspath("ffmpeg.exe")
+    elif os.path.exists(os.path.join(os.path.dirname(__file__), "ffmpeg.exe")):
+        ffmpeg_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "ffmpeg.exe"))
+
+    ffmpeg_cmd = [
+        ffmpeg_bin, "-threads", "1", "-y",
+        "-i", input_path,
+        "-vn", "-ar", "44100", "-ac", "2", "-b:a", "320k",
+        output_path
+    ]
+    try:
+        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, timeout=180)
+        return True
+    except Exception as e:
+        print(f"Error convirtiendo audio a MP3: {e}")
+        return False
+
 # Funciones de persistencia para la librería
 LIBRARY_FILE = "library.json"
 
@@ -1016,7 +1037,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             if audio_filename:
                 _, fext = os.path.splitext(audio_filename)
                 if fext:
-                    ext = fext
+                    ext = fext.lower()
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
             created_temp_files.append(temp_file_path)
             
@@ -1035,8 +1056,20 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     target_upload_file = temp_file_path
                     log_msg(f"Aviso FFmpeg: {bypass_result}. Utilizando audio original.")
             else:
-                target_upload_file = temp_file_path
-                log_msg("Utilizando archivo de audio original sin modulación.")
+                # Si el usuario subió M4A, AAC, u otro formato, normalizar con FFmpeg a MP3 para máxima compatibilidad con el proveedor
+                if ext in [".m4a", ".aac", ".mp4", ".ogg", ".opus", ".flac", ".wma"]:
+                    norm_mp3_path = f"norm_{uuid.uuid4().hex}.mp3"
+                    created_temp_files.append(norm_mp3_path)
+                    log_msg(f"Normalizando audio {ext.upper()} a MP3 con FFmpeg...")
+                    conv_ok = await asyncio.to_thread(convert_audio_to_mp3, temp_file_path, norm_mp3_path)
+                    if conv_ok and os.path.exists(norm_mp3_path):
+                        target_upload_file = norm_mp3_path
+                        log_msg("Audio normalizado exitosamente a MP3 de alta fidelidad.")
+                    else:
+                        target_upload_file = temp_file_path
+                else:
+                    target_upload_file = temp_file_path
+                    log_msg("Utilizando archivo de audio original.")
                 
             log_msg("Subiendo audio de referencia a servidor temporal de alta velocidad...")
             upload_url = await upload_to_catbox_async(target_upload_file)
@@ -1075,14 +1108,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
                 "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
                 "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "driving acoustic drum kit rhythm, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm, root-fifth alternating acoustic bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
-                "coros pentecostales": "driving acoustic drum kit rhythm, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm, root-fifth alternating acoustic bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
-                "pentecostal": "driving acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, prominent cracking Ludwig snare on 2 and 4, heavy kick drum on 1 and 3, tight closed hi-hat eighth notes, Charlie Watts clean drumming, no drum solos, gospel 2-step 4/4 beat, 118 bpm, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
+                "coro pentecostal": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
+                "coros pentecostales": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
+                "pentecostal": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat on beats 2 and 4, punchy rimshots, heavy kick drum on 1 and 3, bright hi-hat cymbals, crash cymbals, dynamic acoustic drum fills, loud upfront drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, 118 bpm, authentic physical electric bass guitar, zero synth bass, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
                 "avivamiento": "revival worship, passionate communal praise, uplifting sacred delivery",
                 "coros de avivamiento": "revival church choruses, uplifting congregational praise, vibrant communal singing",
-                "coro pentecostal de avivamiento": "driving acoustic drum kit rhythm, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, prominent cracking 14x5 Ludwig Supraphonic snare drum hitting hard on beats 2 and 4, heavy 22-inch kick drum pounding on beats 1 and 3, tight closed 14-inch dark Zildjian hi-hat keeping steady straight eighth notes, clean economical Charlie Watts acoustic drumming, zero drum solos, zero chaotic fills, gospel 2-step straight 4/4 rhythm, steady 118 bpm, root-fifth alternating acoustic bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
-                "alabanza rapida": "driving acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, fuerte golpe de caja Ludwig en 2 y 4, bombo pesado en 1 y 3, hi-hat cerrado, ritmo gospel 4/4, 118 bpm, Charlie Watts, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
-                "alabanza rápida": "driving acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, fuerte golpe de caja Ludwig en 2 y 4, bombo pesado en 1 y 3, hi-hat cerrado, ritmo gospel 4/4, 118 bpm, Charlie Watts, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
+                "coro pentecostal de avivamiento": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
+                "alabanza rapida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
+                "alabanza rápida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
                 "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
                 "piano de oracion": "solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
@@ -1123,10 +1156,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "contrabajo acústico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
                 # Teclados y Pianos
                 "yamaha cfx grand": "Yamaha CFX 9-foot concert grand piano, crystal clear brilliant highs, majestic resonant bass, acoustic concert hall reverb",
-                "fender rhodes mark i": "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo, lush neo-soul worship vibe",
+                "fender rhodes mark i": "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo, lush devotional worship ambience",
                 "rhodes": "vintage Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo",
-                "hammond b3": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, gospel overdrive warmth",
-                "hammond b3 + leslie": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, gospel overdrive warmth",
+                "hammond b3": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
+                "hammond b3 + leslie": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
                 "roland juno-106": "Roland Juno-106 analog polyphonic synthesizer, lush stereo chorus pad, warm atmospheric worship soundscape",
                 # Guitarras
                 "martin d-28": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
@@ -1301,7 +1334,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
             target_bpm = bpm_tag or "steady tempo"
-            genre_anchor = f"driving acoustic praise rhythm, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, gospel 2-step straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bass, passionate Argentine church choir singing in unison, natural Spanish vocals, zero drum solos, zero chaotic fills"
+            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, audible hi-hat cymbals, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, zero synth bass, traditional two-step praise straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bassline, church choir singing in unison, natural Spanish vocals, no black gospel, no soul, no melisma, no missing snare, no quiet snare, no missing cymbals"
         elif is_traditional_hymn:
             tempo_str = f", {bpm_tag}" if bpm_tag else ""
             genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
@@ -1421,7 +1454,14 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
 
             if is_pentecostal:
                 for pent_anti in [
-                    "a cappella", "acappella", "no drums", "missing drums", "handclaps only", "tambourine only",
+                    "missing snare", "quiet snare", "weak snare", "no snare", "silent snare", "muffled snare",
+                    "missing cymbals", "quiet cymbals", "no cymbals", "missing hi-hat", "kick drum only", "bass drum only",
+                    "handclaps only", "no drum fills", "distant drums", "quiet drums", "muffled drums", "drums in background", "buried drums", "soft drums",
+                    "afro gospel", "black gospel", "african american gospel", "soul", "neo-soul",
+                    "blues scale", "melisma", "vocal runs", "r&b runs", "gospel shouts", "ad-libs",
+                    "synth bass", "synthesizer bass", "synthbass", "808 bass", "808 sub", "sub bass synth",
+                    "electronic bass", "moog bass", "midi bass", "synthesized bassline", "digital sub bass",
+                    "a cappella", "acappella", "no drums", "missing drums", "tambourine only",
                     "percussion only", "tambourine dominant", "handclaps dominant",
                     "murga", "comparsa", "carnaval", "batucada", "candombe", "bombo de murga",
                     "tamboril", "marcha militar", "marching band", "brass band", "fanfare", "loose percussion",
@@ -1429,7 +1469,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     "syncopation", "sincopa", "tumbao", "contratiempos latinos", "offbeat accents",
                     "cumbia", "merengue", "salsa", "bachata", "reggaeton", "dembow", "tropical rhythm",
                     "reggae skank", "ska", "caribbean accent", "acento caribeño", "acento centroamericano",
-                    "modismos caribeños", "caribbean vocals", "chaotic drums", "heavy rock drums",
+                    "modismos caribeños", "caribbean vocals", "heavy rock drums",
                     "drum solos", "noisy drums", "electronic drums", "digital triggers", "drum machine",
                     "double bass drum", "blast beats", "overproduced drums", "latin groove", "muddy drums"
                 ]:
@@ -1472,7 +1512,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if is_pentecostal:
-                for req_no in ["no missing drums", "no tambourine dominant", "no handclaps solo", "no murga", "no comparsa", "no batucada", "no loose percussion", "no latin rhythm", "no syncopation", "no cumbia", "no caribbean accent", "no tumbao", "no chaotic drums"]:
+                for req_no in ["no missing snare", "no quiet snare", "no missing cymbals", "no kick drum only", "no distant drums", "no synth bass", "no black gospel", "no afro gospel", "no soul", "no melisma", "no vocal runs", "no missing drums", "no tambourine dominant", "no handclaps solo", "no murga", "no comparsa", "no batucada", "no loose percussion", "no latin rhythm", "no syncopation", "no cumbia", "no caribbean accent", "no tumbao", "no chaotic drums"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
             if active_critical:
