@@ -1161,10 +1161,59 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "hammond b3": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
                 "hammond b3 + leslie": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
                 "roland juno-106": "Roland Juno-106 analog polyphonic synthesizer, lush stereo chorus pad, warm atmospheric worship soundscape",
+                "roland mks-20": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+                "roland mks-20 e-piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+                "roland mks-20 preset elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+                "keyscape": "Spectrasonics Keyscape pristine multi-sampled keyboard library, authentic vintage keyboards",
+                "keyscape mks-20": "Spectrasonics Keyscape Roland MKS-20 preset Elec Piano 2 (E.Piano 2), pristine multi-sampled digital piano, authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like tine attack, warm resonant low-end, deep sacred worship hall reverb, classic Christian worship and prayer atmosphere",
+                "keyscape elec piano 2": "Spectrasonics Keyscape Roland MKS-20 preset Elec Piano 2 (E.Piano 2), pristine multi-sampled digital piano, authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like tine attack, warm resonant low-end, deep sacred worship hall reverb, classic Christian worship and prayer atmosphere",
+                "mks-20": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+                "mks-20 elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+                "elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+                "galaxy dx": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
+                "galaxy dx piano": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
+                "galaxy dx worship piano": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
+                "yamaha motif xs": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
+                "motif xs": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
+                "motif power grand": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
                 # Guitarras
                 "martin d-28": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
                 "martin d-28 acustica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
                 "martin d-28 acústica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
+                # Articulación de Batería, Platillos y Bajo
+                "hi-hat en corcheas": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hihat en corcheas": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "dos golpes por tempo": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "2 golpes por tempo": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hihat 8th": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hi-hat en negras": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hihat en negras": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "un golpe por tempo": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "1 golpe por tempo": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hihat 4th": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hi-hat en semicorcheas": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hihat en semicorcheas": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "cuatro golpes por tempo": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "4 golpes por tempo": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "hihat 16th": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+                "crashes y redobles": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
+                "crashes y toms": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
+                "crashes and fills": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
+                "platillos splash": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+                "platillo splash": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+                "splash y ride": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+                "splash y ride bell": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+                "grooves en toms": "driving rhythmic floor tom groove and articulate rack tom patterns",
+                "groove en toms": "driving rhythmic floor tom groove and articulate rack tom patterns",
+                "tom grooves": "driving rhythmic floor tom groove and articulate rack tom patterns",
+                "bajo slap": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+                "adorno slap": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+                "slap bass": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+                "slap y pop": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+                "bajo pick-up": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+                "pick-up": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+                "pickup bass": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+                "notas de paso": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
             }
             parts = [p.strip() for p in style_str.split(",") if p.strip()]
             enriched_parts = []
@@ -1329,12 +1378,27 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         if is_drum_solo:
             genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 bpm unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
         elif is_solo_piano_prayer:
-            genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, solo acoustic concert grand piano with deep lush hall reverb, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
+            piano_desc = "solo acoustic concert grand piano with deep lush hall reverb"
+            if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape"]):
+                piano_desc = "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Spectrasonics Keyscape library) with lush built-in analog chorus and crystalline worship bell tone"
+            elif any(w in style.lower() for w in ["galaxy dx", "galaxydx"]):
+                piano_desc = "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells and warm celestial pad cushion"
+            elif any(w in style.lower() for w in ["motif xs", "motif", "motif power grand"]):
+                piano_desc = "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and wide hall reverb"
+            elif "rhodes" in style.lower():
+                piano_desc = "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus and analog tremolo"
+
+            genre_anchor = f"sacred prayer background music, {bpm_tag or '60 BPM slow tempo'}, {piano_desc}, pure piano instrumental, emotional, peaceful, contemplative, no drums, no bass, no guitars, no synths"
         elif is_vals_vienes:
             genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
             target_bpm = bpm_tag or "steady tempo"
-            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, audible hi-hat cymbals, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, zero synth bass, traditional two-step praise straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bassline, church choir singing in unison, natural Spanish vocals, no black gospel, no soul, no melisma, no missing snare, no quiet snare, no missing cymbals"
+            hihat_desc = "bright metallic hi-hat cymbals keeping steady eighth notes (two strokes per beat)"
+            if any(w in style.lower() for w in ["quarter-note hi-hat", "negras", "one stroke per beat", "1 golpe"]):
+                hihat_desc = "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)"
+            elif any(w in style.lower() for w in ["16th-note", "semicorcheas", "four strokes per beat", "4 golpes"]):
+                hihat_desc = "fast driving 16th-note hi-hat pattern (four strokes per beat)"
+            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, zero synth bass, traditional two-step praise straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bassline, church choir singing in unison, natural Spanish vocals, no black gospel, no soul, no melisma, no missing snare, no quiet snare, no missing cymbals"
         elif is_traditional_hymn:
             tempo_str = f", {bpm_tag}" if bpm_tag else ""
             genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"

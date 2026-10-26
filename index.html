@@ -405,8 +405,28 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <div class="preset-title"><i class="ph ph-piano-keys"></i><span>Piano de Oración</span></div>
                   <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
                 </div>
-                <div class="preset-desc">Música de fondo para orar. Piano de cola acústico con reverb profunda, tempo lento meditativo, 100% instrumental sin voces.</div>
-                <span class="preset-tag" style="color:#60A5FA;background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.25);">Solo Piano • Reverb • Instrumental</span>
+                <div class="preset-desc">Música de fondo para orar e intercesión. Sonidos épicos de adoración, 100% instrumental sin voces ni percusión.</div>
+                
+                <!-- Selector de Tipo de Piano y Sonido Épico -->
+                <div id="prayerPianoSoundOptions" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-wrap:wrap;gap:6px">
+                  <div style="font-size:10.5px;font-weight:700;color:#93C5FD;width:100%;display:flex;align-items:center;gap:4px">
+                    <i class="ph ph-sparkle"></i> Tipo de Piano / Sonido Épico:
+                  </div>
+                  <label class="band-chip" style="font-size:11px;padding:4px 8px" title="El legendario sonido clásico de adoración y gospel (Marcos Witt) con chorus analógico (Librería Keyscape)">
+                    <input type="radio" name="prayer_piano_type" value="mks20" checked> 🎹 Roland MKS-20 (E.Piano 2)
+                  </label>
+                  <label class="band-chip" style="font-size:11px;padding:4px 8px" title="Híbrido de cola acústico con campanas DX7 y pad celestial envolvente">
+                    <input type="radio" name="prayer_piano_type" value="galaxydx"> ✨ Galaxy DX (Épico Híbrido)
+                  </label>
+                  <label class="band-chip" style="font-size:11px;padding:4px 8px" title="Power Grand con pad de cuerdas amplio y reverb épico">
+                    <input type="radio" name="prayer_piano_type" value="motifxs"> 🌟 Yamaha Motif XS Grand
+                  </label>
+                  <label class="band-chip" style="font-size:11px;padding:4px 8px" title="Piano de cola acústico de concierto puro y reverente">
+                    <input type="radio" name="prayer_piano_type" value="acustico"> 🎼 Cola Acústico Concierto
+                  </label>
+                </div>
+
+                <span class="preset-tag" style="color:#60A5FA;background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.25);margin-top:8px">Solo Teclado/Piano • Reverb • Instrumental</span>
               </div>
               <div class="preset-card" data-preset="vals_vienes">
                 <div class="preset-head">
@@ -673,6 +693,39 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                     </div>
                     <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
                   </div>
+                  <div class="gear-card" data-gear="roland mks-20 e-piano 2">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(147,197,253,0.12)">
+                      <i class="ph ph-piano-keys" style="font-size:24px;color:#93C5FD"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Roland MKS-20 E.Piano 2</div>
+                      <div class="gear-model">Librería Keyscape • Módulo SAS</div>
+                      <div class="gear-sound">Épico de adoración & gospel clásico (Marcos Witt)</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
+                  <div class="gear-card" data-gear="galaxy dx">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(196,181,253,0.12)">
+                      <i class="ph ph-sparkle" style="font-size:24px;color:#C4B5FD"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Galaxy DX Worship Piano</div>
+                      <div class="gear-model">Híbrido Acústico + Campanas DX</div>
+                      <div class="gear-sound">Brillo cristalino, pad celestial envolvente</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
+                  <div class="gear-card" data-gear="yamaha motif xs">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(251,191,36,0.12)">
+                      <i class="ph ph-waves" style="font-size:24px;color:#FBBF24"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Yamaha Motif XS Grand</div>
+                      <div class="gear-model">Power Grand + Pad de Culto</div>
+                      <div class="gear-sound">Sonido épico contemporáneo con reverb expansivo</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
                 </div>
               </div>
 
@@ -774,6 +827,36 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <label class="band-chip"><input type="checkbox" id="chkPiano"> 🎹 Piano de Cola</label>
                 <label class="band-chip"><input type="checkbox" id="chkOrgan"> 🎵 Órgano Hammond B3</label>
                 <label class="band-chip" style="border-color:rgba(239,68,68,0.3);color:#FCA5A5"><input type="checkbox" id="chkNoLatin" checked> 🚫 Cero Percusión Latina</label>
+              </div>
+            </div>
+
+            <!-- ARTICULACIÓN RÍTMICA & ADORNOS (BATERÍA & BAJO) -->
+            <div style="margin-top:10px;padding:9px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:6px">
+                  <i class="ph ph-metronome" style="color:#A78BFA"></i>
+                  <span>🥁 Articulación Rítmica & Adornos:</span>
+                </div>
+                <span style="font-size:10px;color:#A78BFA">Batería & Bajo al detalle</span>
+              </div>
+              
+              <!-- Hi-Hat Subdivision Selector -->
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <span style="font-size:11px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
+                  <i class="ph ph-circle-dashed" style="color:#FBBF24"></i> Hit-Hat:
+                </span>
+                <label class="band-chip" id="chipHiHat8th" title="2 golpes por tiempo (Corcheas: 1-y 2-y 3-y 4-y)"><input type="radio" name="hihat_mode" value="8th" checked> ⚡ 2 golpes x tempo (Corcheas)</label>
+                <label class="band-chip" id="chipHiHat4th" title="1 golpe por tiempo (Negras: 1-2-3-4 marcado)"><input type="radio" name="hihat_mode" value="4th"> 🎯 1 golpe x tempo (Negras)</label>
+                <label class="band-chip" id="chipHiHat16th" title="4 golpes por tiempo (Semicorcheas rápidas)"><input type="radio" name="hihat_mode" value="16th"> 🌪️ 4 golpes x tempo (Semicorcheas)</label>
+              </div>
+
+              <!-- Acentos de Percusión & Adornos de Bajo -->
+              <div class="band-strip" style="gap:6px;margin-top:2px">
+                <label class="band-chip" title="Crashes potentes en caídas y redobles dinámicos de toms"><input type="checkbox" id="chkCrashToms" checked> 💥 Crashes & Redobles</label>
+                <label class="band-chip" title="Acentos de platillo Splash y campana del Ride"><input type="checkbox" id="chkSplashRide"> 🔔 Platillos Splash & Ride Bell</label>
+                <label class="band-chip" title="Groove rítmico en toms de piso"><input type="checkbox" id="chkTomGrooves"> 🥁 Grooves en Toms</label>
+                <label class="band-chip" title="Adornos Slap & Pop en el bajo eléctrico"><input type="checkbox" id="chkBassSlap"> 🎸 Bajo: Slap & Pop</label>
+                <label class="band-chip" title="Notas de paso y arrastres Pick-up en el bajo"><input type="checkbox" id="chkBassPickup" checked> 🎶 Bajo: Pick-up & Paso</label>
               </div>
             </div>
           </div>
@@ -2176,7 +2259,7 @@ const WORSHIP_PRESETS = {
     instrumental: false
   },
   piano_oracion: {
-    style: "piano de oracion, solo acoustic concert grand piano, deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, sacred Christian prayer background, slow 60 bpm, reverent, solo piano instrumental",
+    style: "piano de oracion, roland mks-20 preset elec piano 2, legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Spectrasonics Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental, slow 60 bpm, reverent, solo piano instrumental",
     exclude: "vocals, singing, voice, speech, words, lyrics, choir, drums, drum kit, percussion, bass guitar, synthesizer, electric guitar, acoustic guitar, brass, horns, strings orchestra, beat, groove, rhythm, cumbia, uptempo",
     instrumental: true
   },
@@ -2184,6 +2267,29 @@ const WORSHIP_PRESETS = {
     style: "himno vals vienes, grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first violins, second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, rubato phrasing, majestic introduction and grand coda, sacred reverent Christian hymn melody, Vienna Philharmonic hall acoustic",
     exclude: "cumbia, ritmo cumbia, 4/4 drum beat, straight 4/4 rock beat, modern drum kit, trap beat, 808 bass, electric guitars, synthesizers, autotune, robotic voice, distortion, reggaeton, dembow, salsa, bachata",
     instrumental: false
+  }
+};
+
+const PRAYER_PIANO_SOUNDS = {
+  mks20: {
+    name: "Roland MKS-20 (E.Piano 2)",
+    style: "piano de oracion, roland mks-20 preset elec piano 2, legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Spectrasonics Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental, slow 60 bpm, reverent, solo piano instrumental",
+    gear: "roland mks-20 e-piano 2"
+  },
+  galaxydx: {
+    name: "Galaxy DX (Épico Híbrido)",
+    style: "piano de oracion, galaxy dx worship piano, Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound, slow 60 bpm, reverent, solo piano instrumental",
+    gear: "galaxy dx"
+  },
+  motifxs: {
+    name: "Yamaha Motif XS Grand",
+    style: "piano de oracion, yamaha motif xs, Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background, slow 60 bpm, reverent, solo piano instrumental",
+    gear: "yamaha motif xs"
+  },
+  acustico: {
+    name: "Piano de Cola Acústico",
+    style: "piano de oracion, solo acoustic concert grand piano, Yamaha CFX / Steinway Model D, rich resonant wooden soundboard, crystal clear brilliant highs, deep warm bass, lush prayer hall acoustics, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, solo piano instrumental",
+    gear: "yamaha cfx grand"
   }
 };
 
@@ -2263,6 +2369,10 @@ document.querySelectorAll('.preset-card').forEach(card => {
         if ($('chkBass')) $('chkBass').checked = true;
         if ($('chkGuitar')) $('chkGuitar').checked = true;
         if ($('chkNoLatin')) $('chkNoLatin').checked = true;
+        const hiHat8th = document.querySelector('input[name="hihat_mode"][value="8th"]');
+        if (hiHat8th) hiHat8th.checked = true;
+        if ($('chkCrashToms')) $('chkCrashToms').checked = true;
+        if ($('chkBassPickup')) $('chkBassPickup').checked = true;
       } else if (card.dataset.preset === 'adoracion') {
         const rPill = document.querySelector('.rhythm-pill[data-rhythm="worship_ballad"]');
         if (rPill) {
@@ -2277,19 +2387,28 @@ document.querySelectorAll('.preset-card').forEach(card => {
         }
       }
       if (card.dataset.preset === 'piano_oracion') {
-        const pianoGear = document.querySelector('.gear-card[data-gear="yamaha cfx grand"]');
-        if (pianoGear && typeof activeGear !== 'undefined') {
+        const selectedRadio = document.querySelector('input[name="prayer_piano_type"]:checked');
+        const soundKey = selectedRadio ? selectedRadio.value : 'mks20';
+        const pSound = PRAYER_PIANO_SOUNDS[soundKey] || PRAYER_PIANO_SOUNDS.mks20;
+        $('styleInput').value = pSound.style;
+        $('excludeInput').value = WORSHIP_PRESETS.piano_oracion.exclude;
+        
+        const targetGearId = pSound.gear;
+        const pianoGear = document.querySelector(`.gear-card[data-gear="${targetGearId}"]`);
+        if (typeof activeGear !== 'undefined') {
           document.querySelectorAll('.gear-card').forEach(c => {
             c.classList.remove('active');
             const icon = c.querySelector('.btn-gear-toggle i');
             if (icon) icon.className = 'ph ph-plus';
           });
           activeGear.clear();
-          pianoGear.classList.add('active');
-          activeGear.add('yamaha cfx grand');
-          const icon = pianoGear.querySelector('.btn-gear-toggle i');
-          if (icon) icon.className = 'ph ph-check';
-          if ($('rackChainText')) $('rackChainText').textContent = 'YAMAHA CFX GRAND';
+          if (pianoGear) {
+            pianoGear.classList.add('active');
+            activeGear.add(targetGearId);
+            const icon = pianoGear.querySelector('.btn-gear-toggle i');
+            if (icon) icon.className = 'ph ph-check';
+          }
+          if ($('rackChainText')) $('rackChainText').textContent = targetGearId.toUpperCase();
         }
       }
       if (card.dataset.preset === 'vals_vienes') {
@@ -2432,6 +2551,93 @@ document.querySelectorAll('.rhythm-pill').forEach(pill => {
       if ($('chkNoLatin')) $('chkNoLatin').checked = true;
       showToast('Patrón fijado: Vals Vienés 3/4', 'info');
     }
+  });
+});
+
+/* ---------- SELECTOR DE SUBDIVISIÓN DE HI-HAT & ARTICULACIONES ---------- */
+function updateHiHatInStylePrompt(hiHatMode) {
+  const styleEl = $('styleInput');
+  if (!styleEl || !styleEl.value.trim()) return;
+  let text = styleEl.value;
+
+  const patterns = [
+    /steady closed hi-hat keeping straight eighth notes \(two strokes per beat[^\)]*\)/gi,
+    /heavy steady quarter-note hi-hat pulse on every beat \(one stroke per beat[^\)]*\)/gi,
+    /fast driving 16th-note hi-hat subdivision pattern \(four strokes per beat[^\)]*\)/gi,
+    /bright metallic hi-hat cymbals keeping steady eighth notes/gi,
+    /bright metallic hi-hat cymbals/gi
+  ];
+
+  let replacement = '';
+  if (hiHatMode === '8th') {
+    replacement = 'bright metallic hi-hat cymbals keeping steady eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and)';
+  } else if (hiHatMode === '4th') {
+    replacement = 'heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)';
+  } else if (hiHatMode === '16th') {
+    replacement = 'fast driving 16th-note hi-hat subdivision pattern (four strokes per beat)';
+  }
+
+  for (const pat of patterns) {
+    if (pat.test(text)) {
+      text = text.replace(pat, replacement);
+      styleEl.value = text;
+      return;
+    }
+  }
+}
+
+document.querySelectorAll('input[name="hihat_mode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (radio.checked) {
+      updateHiHatInStylePrompt(radio.value);
+      if (radio.value === '8th') {
+        showToast('Hi-Hat: 2 golpes por tempo (Corcheas: 1-y 2-y 3-y 4-y)', 'info');
+      } else if (radio.value === '4th') {
+        showToast('Hi-Hat: 1 golpe por tempo (Negras: 1-2-3-4)', 'info');
+      } else if (radio.value === '16th') {
+        showToast('Hi-Hat: 4 golpes por tempo (Semicorcheas rápidas)', 'info');
+      }
+    }
+  });
+});
+
+/* ---------- SELECTOR DE TIPO DE PIANO PARA ORACIÓN ---------- */
+document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    const soundKey = radio.value;
+    const pSound = PRAYER_PIANO_SOUNDS[soundKey];
+    if (!pSound) return;
+    
+    const cardOracion = document.querySelector('.preset-card[data-preset="piano_oracion"]');
+    const isOracionActive = cardOracion && cardOracion.classList.contains('active');
+    
+    // Si contiene piano de oracion o el preset de oracion esta activo, actualiza el estilo
+    if (isOracionActive || ($('styleInput') && $('styleInput').value.toLowerCase().includes('piano de oracion'))) {
+      $('styleInput').value = pSound.style;
+    }
+    
+    // Sincronizar con el rack de estudio
+    const targetGearId = pSound.gear;
+    const pianoGear = document.querySelector(`.gear-card[data-gear="${targetGearId}"]`);
+    if (typeof activeGear !== 'undefined') {
+      document.querySelectorAll('.gear-card').forEach(c => {
+        c.classList.remove('active');
+        const icon = c.querySelector('.btn-gear-toggle i');
+        if (icon) icon.className = 'ph ph-plus';
+      });
+      activeGear.clear();
+      if (pianoGear) {
+        pianoGear.classList.add('active');
+        activeGear.add(targetGearId);
+        const icon = pianoGear.querySelector('.btn-gear-toggle i');
+        if (icon) icon.className = 'ph ph-check';
+      }
+      if ($('rackChainText')) $('rackChainText').textContent = targetGearId.toUpperCase();
+    }
+    
+    showToast(`Sonido fijado: ${pSound.name}`, 'info');
+    logLine(`Piano de Oración configurado con: ${pSound.name}`);
   });
 });
 
@@ -4233,6 +4439,39 @@ $('genForm').addEventListener('submit', async e => {
   }
   if (bandExtras.length > 0) {
     finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
+  }
+
+  // Articulación rítmica detallada (Hi-Hat, Platillos, Toms, Slap, Pick-up)
+  const rhythmArticulations = [];
+  const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
+  const hiHatVal = selectedHiHat ? selectedHiHat.value : '8th';
+
+  if (hiHatVal === '8th' && !finalStyle.toLowerCase().includes('eighth note') && !finalStyle.toLowerCase().includes('corchea')) {
+    rhythmArticulations.push('steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
+  } else if (hiHatVal === '4th' && !finalStyle.toLowerCase().includes('quarter-note') && !finalStyle.toLowerCase().includes('negras')) {
+    rhythmArticulations.push('heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
+  } else if (hiHatVal === '16th' && !finalStyle.toLowerCase().includes('16th-note') && !finalStyle.toLowerCase().includes('semicorchea')) {
+    rhythmArticulations.push('fast driving 16th-note hi-hat subdivision pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
+  }
+
+  if ($('chkCrashToms') && $('chkCrashToms').checked && !finalStyle.toLowerCase().includes('crash cymbal')) {
+    rhythmArticulations.push('explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills');
+  }
+  if ($('chkSplashRide') && $('chkSplashRide').checked && !finalStyle.toLowerCase().includes('splash cymbal') && !finalStyle.toLowerCase().includes('ride bell')) {
+    rhythmArticulations.push('crisp splash cymbal accents, articulate ride cymbal bell pings');
+  }
+  if ($('chkTomGrooves') && $('chkTomGrooves').checked && !finalStyle.toLowerCase().includes('floor tom groove')) {
+    rhythmArticulations.push('driving rhythmic floor tom groove and articulate rack tom patterns');
+  }
+  if ($('chkBassSlap') && $('chkBassSlap').checked && !finalStyle.toLowerCase().includes('slap and pop')) {
+    rhythmArticulations.push('funky punchy slap and pop electric bass accents on fills and chord transitions');
+  }
+  if ($('chkBassPickup') && $('chkBassPickup').checked && !finalStyle.toLowerCase().includes('pick-up') && !finalStyle.toLowerCase().includes('passing tone')) {
+    rhythmArticulations.push('expressive chromatic pick-up notes and walking bass passing tones into downbeats');
+  }
+
+  if (rhythmArticulations.length > 0) {
+    finalStyle = `${finalStyle}, ${rhythmArticulations.join(', ')}`;
   }
 
   // Sincronización Armónica de Acordes / Tablatura
