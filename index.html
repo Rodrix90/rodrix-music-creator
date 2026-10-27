@@ -770,6 +770,137 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 </div>
               </div>
 
+              <!-- Amplificadores Valvulares & Gabinetes (IR) -->
+              <div class="gear-section" id="ampRackSection">
+                <div class="gear-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                  <span><i class="ph ph-lightning"></i> Amplificadores Valvulares & Gabinetes (IR)</span>
+                  <span style="font-size:10.5px;color:#FBBF24;font-weight:600;text-transform:none;display:inline-flex;align-items:center;gap:4px">
+                    <i class="ph ph-cpu"></i> DSP Analógico + Respuestas Impulsionales (0 Créditos)
+                  </span>
+                </div>
+
+                <!-- Filtro de Amplificador por Instrumento -->
+                <div style="display:flex;gap:6px;margin:8px 0 10px;align-items:center;flex-wrap:wrap">
+                  <span style="font-size:11px;color:var(--muted);font-weight:600">Filtrar por:</span>
+                  <button type="button" class="amp-filter-btn active" data-filter="all" onclick="filterAmplifiers('all', this)" style="padding:3px 10px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer">Todos (5)</button>
+                  <button type="button" class="amp-filter-btn" data-filter="guitar" onclick="filterAmplifiers('guitar', this)" style="padding:3px 10px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🎸 Guitarras (3)</button>
+                  <button type="button" class="amp-filter-btn" data-filter="bass" onclick="filterAmplifiers('bass', this)" style="padding:3px 10px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🔊 Bajos (2)</button>
+                </div>
+
+                <!-- Grid de Amplificadores -->
+                <div class="gear-grid" id="ampGearGrid">
+                  <!-- Marshall JCM800 -->
+                  <div class="gear-card amp-card active" data-amp="marshall_jcm800" data-inst-type="guitar" onclick="selectAmpCard('marshall_jcm800')">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(245,158,11,0.12)">
+                      <i class="ph ph-speaker-high" style="font-size:24px;color:#F59E0B"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Marshall JCM800 2203</div>
+                      <div class="gear-model">Valvular 100W • 3x 12AX7 + 4x EL34</div>
+                      <div class="gear-sound">Crunch británico legendario y garra de alabanza</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-check"></i></div>
+                  </div>
+
+                  <!-- Mesa/Boogie Dual Rectifier -->
+                  <div class="gear-card amp-card" data-amp="mesa_dual_rectifier" data-inst-type="guitar" onclick="selectAmpCard('mesa_dual_rectifier')">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(220,38,38,0.12)">
+                      <i class="ph ph-lightning" style="font-size:24px;color:#EF4444"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Mesa Dual Rectifier</div>
+                      <div class="gear-model">High Gain Valvular • 5x 12AX7 + 4x 6L6</div>
+                      <div class="gear-sound">Distorsión moderna masiva y graves densos</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
+
+                  <!-- Fender Twin Reverb -->
+                  <div class="gear-card amp-card" data-amp="fender_twin_reverb" data-inst-type="guitar" onclick="selectAmpCard('fender_twin_reverb')">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,0.12)">
+                      <i class="ph ph-sparkle" style="font-size:24px;color:#60A5FA"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Fender Twin Reverb '65</div>
+                      <div class="gear-model">All-Tube 85W • 4x 12AX7 + 4x 6L6GC</div>
+                      <div class="gear-sound">El sonido limpio definitivo: campanilleo de adoración</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
+
+                  <!-- Ampeg SVT -->
+                  <div class="gear-card amp-card" data-amp="ampeg_svt" data-inst-type="bass" onclick="selectAmpCard('ampeg_svt')">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(16,185,129,0.12)">
+                      <i class="ph ph-waveform" style="font-size:24px;color:#34D399"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Ampeg SVT Classic</div>
+                      <div class="gear-model">Bajo Valvular 300W • 6x 6550 Tubes</div>
+                      <div class="gear-sound">Pegada demoledora, medios con rugido valvular</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
+
+                  <!-- Markbass Little Mark -->
+                  <div class="gear-card amp-card" data-amp="markbass_little_mark" data-inst-type="bass" onclick="selectAmpCard('markbass_little_mark')">
+                    <div class="gear-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(245,158,11,0.12)">
+                      <i class="ph ph-sliders" style="font-size:24px;color:#FBBF24"></i>
+                    </div>
+                    <div class="gear-info">
+                      <div class="gear-name">Markbass Little Mark</div>
+                      <div class="gear-model">Híbrido Válvula + Neodimio MPT</div>
+                      <div class="gear-sound">Claridad Hi-Fi con contorno VPF para Slap veloz</div>
+                    </div>
+                    <div class="btn-gear-toggle"><i class="ph ph-plus"></i></div>
+                  </div>
+                </div>
+
+                <!-- Panel de Controles del Amplificador (Chasis Virtual) -->
+                <div id="ampChassisBox" style="margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(15,23,42,0.85);border:1px solid rgba(255,255,255,0.1);box-shadow:inset 0 1px 4px rgba(0,0,0,0.6)">
+                  <!-- Cabecera del Chasis: Nombre, Switch Bypass con LED y Selector de Gabinete IR -->
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;margin-bottom:12px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <!-- LED & Interruptor de Bypass -->
+                      <button type="button" id="ampBypassToggleBtn" onclick="toggleAmpBypass()" style="padding:5px 12px;border-radius:6px;border:1px solid #10B981;background:rgba(16,185,129,0.15);color:#34D399;font-weight:700;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                        <span id="ampLedIndicator" style="width:9px;height:9px;border-radius:50%;background:#10B981;box-shadow:0 0 8px #10B981;display:inline-block"></span>
+                        <span id="ampBypassLabel">AMP ACTIVO</span>
+                      </button>
+                      <div>
+                        <div id="ampChassisTitle" style="font-size:13px;font-weight:700;color:#F3F4F6">Marshall JCM800 2203 (Lead Series 100W)</div>
+                        <div id="ampChassisTubes" style="font-size:10.5px;color:#9CA3AF">3x 12AX7 Preamp • 4x EL34 Power Tubes</div>
+                      </div>
+                    </div>
+                    <!-- Selector de Gabinete IR -->
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <label for="ampCabinetSelect" style="font-size:11px;color:#D1D5DB;font-weight:600"><i class="ph ph-speaker-high"></i> Gabinete / IR:</label>
+                      <select id="ampCabinetSelect" onchange="onAmpCabinetChange(this.value)" style="padding:5px 8px;font-size:11px;border-radius:6px;background:var(--card);color:var(--text);border:1px solid var(--border);max-width:280px">
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Knobs / Potenciómetros del Tone Stack -->
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(85px, 1fr));gap:10px;margin-bottom:14px;text-align:center" id="ampKnobsContainer">
+                  </div>
+
+                  <!-- Barra de Preescucha A/B y Feedback Perceptual -->
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:rgba(30,41,59,0.6);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <button type="button" class="btn-sec" id="ampPlayPreviewBtn" onclick="toggleAmpPreviewPlay(this)" style="padding:6px 14px;font-size:11.5px;font-weight:700;color:#FBBF24;border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.12);cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                        <i class="ph ph-headphones"></i> <span>Preescucha A/B</span>
+                      </button>
+                      <div class="amp-ab-switch" style="display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);font-size:11px">
+                        <button type="button" id="ampBtnSelectDry" onclick="setAmpABMode('dry')" style="padding:4px 9px;background:rgba(255,255,255,0.05);color:#9CA3AF;border:none;cursor:pointer">Señal Seca (Dry)</button>
+                        <button type="button" id="ampBtnSelectWet" onclick="setAmpABMode('wet')" class="active" style="padding:4px 9px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:700">Amp + Cab IR (Wet)</button>
+                      </div>
+                    </div>
+                    <div id="ampStatusText" style="font-size:11px;color:#94A3B8;display:inline-flex;align-items:center;gap:5px">
+                      <i class="ph ph-check-circle" style="color:#10B981"></i> Listo para preescuchar
+                    </div>
+                  </div>
+                  <audio id="ampAudioPlayer" style="display:none"></audio>
+                </div>
+              </div>
+
               <!-- Resumen y botón para inyectar -->
               <div class="rack-summary">
                 <div>
@@ -1256,6 +1387,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <span>🎼 Generar Composición Multipista Gratis (Guardar en Biblioteca)</span>
             </button>
             <span id="freeActiveCountBadge" class="badge" style="background:rgba(16,185,129,0.16);color:#6EE7B7;border:1px solid rgba(16,185,129,0.35);font-size:11px">5 instrumentos activos</span>
+            <span id="freeStudioAmpBadge" class="badge" style="background:rgba(245,158,11,0.15);color:#FBBF24;border:1px solid rgba(245,158,11,0.3);font-size:11px;cursor:pointer" onclick="$('studioGearDetails').open=true; $('ampRackSection')?.scrollIntoView({behavior:'smooth'})" title="Configurar amplificadores en el Rack de Estudio"><i class="ph ph-lightning"></i> Amps: Marshall JCM800 + Ampeg SVT</span>
           </div>
           <audio id="freeStudioAudioPlayer" controls style="height:34px;max-width:300px;display:none"></audio>
         </div>
@@ -2465,10 +2597,28 @@ const GEAR_DETAILED_PROMPTS = {
 
 $('applyGearBtn').addEventListener('click', () => {
   const arr = Array.from(activeGear);
-  if (!arr.length) { alert('Selecciona primero al menos un instrumento o consola del rack.'); return; }
+  const ampPrompts = [];
+  if (typeof ampState !== 'undefined') {
+    if (ampState.guitar && !ampState.guitar.bypass) {
+      const gAmp = (typeof AMPS_CATALOG !== 'undefined') ? AMPS_CATALOG.find(a => a.id === ampState.guitar.amp_id) : null;
+      const gCab = (typeof CABS_CATALOG !== 'undefined') ? CABS_CATALOG.find(c => c.id === ampState.guitar.cabinet_id) : null;
+      if (gAmp) ampPrompts.push(`${gAmp.name} with ${gCab ? gCab.name : '4x12 cabinet'}, warm tube harmonics and analog character`);
+    }
+    if (ampState.bass && !ampState.bass.bypass) {
+      const bAmp = (typeof AMPS_CATALOG !== 'undefined') ? AMPS_CATALOG.find(a => a.id === ampState.bass.amp_id) : null;
+      const bCab = (typeof CABS_CATALOG !== 'undefined') ? CABS_CATALOG.find(c => c.id === ampState.bass.cabinet_id) : null;
+      if (bAmp) ampPrompts.push(`${bAmp.name} with ${bCab ? bCab.name : '8x10 cabinet'}, articulate low-end punch and tube drive`);
+    }
+  }
+
+  if (!arr.length && !ampPrompts.length) {
+    alert('Selecciona primero al menos un instrumento, amplificador o consola del rack.');
+    return;
+  }
   let cur = $('styleInput').value.trim();
   
   const expandedList = arr.map(g => GEAR_DETAILED_PROMPTS[g] || g);
+  if (ampPrompts.length) expandedList.push(...ampPrompts);
   const gearStr = expandedList.join(', ');
   
   if (cur) {
@@ -2490,7 +2640,7 @@ $('applyGearBtn').addEventListener('click', () => {
   }
 
   $('studioGearDetails').open = false;
-  logLine(`Equipamiento analógico de estudio añadido al prompt: ${arr.join(', ')}`);
+  logLine(`Equipamiento analógico y amplificadores añadidos al prompt: ${gearStr}`);
 });
 
 /* ---------- SELECTOR DE RITMO & MÉTRICA ---------- */
@@ -6018,6 +6168,7 @@ async function previewFreeInstrument(instId, btnEl) {
         progression_style,
         bars: 4,
         volume,
+        amp_configs: (typeof getActiveAmpConfigs === 'function') ? getActiveAmpConfigs() : null,
         ...flags
       })
     });
@@ -6078,6 +6229,7 @@ async function generateFreeMultitrackSong() {
         bars,
         tracks,
         save_to_library: true,
+        amp_configs: (typeof getActiveAmpConfigs === 'function') ? getActiveAmpConfigs() : null,
         ...flags
       })
     });
@@ -6125,7 +6277,330 @@ if ($('userBpmInput') && $('freeBpmInput')) {
   });
 }
 
+/* ---------- SISTEMA DE AMPLIFICADORES VIRTUALES & GABINETES (IR) ---------- */
+let AMPS_CATALOG = [];
+let CABS_CATALOG = [];
+let currentAmpPreviewAudio = null;
+let currentAmpPreviewData = null;
+let currentAmpABMode = 'wet'; // 'wet' o 'dry'
+
+const DEFAULT_AMP_SYSTEM_STATE = {
+  active_amp_id: 'marshall_jcm800',
+  current_type: 'guitar',
+  guitar: {
+    amp_id: 'marshall_jcm800',
+    cabinet_id: 'cab_marshall_1960a',
+    controls: { gain: 7.0, bass: 2.0, middle: 1.0, treble: 2.0, presence: 6.0, master: 7.0 },
+    bypass: false
+  },
+  bass: {
+    amp_id: 'ampeg_svt',
+    cabinet_id: 'cab_ampeg_svt810',
+    controls: { gain: 6.0, bass: 3.5, middle: 3.0, treble: 1.5, presence: 5.0, master: 7.5 },
+    bypass: false
+  }
+};
+
+let ampState = (() => {
+  try {
+    const saved = localStorage.getItem('rodrix_amp_state_v3');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_AMP_SYSTEM_STATE));
+})();
+
+function saveAmpSystemState() {
+  try {
+    localStorage.setItem('rodrix_amp_state_v3', JSON.stringify(ampState));
+  } catch(e) {}
+  updateAmpBadge();
+}
+
+async function initAmplifiersRack() {
+  try {
+    const r = await fetch('/api/amps/catalog');
+    if (!r.ok) return;
+    const data = await r.json();
+    AMPS_CATALOG = data.amplifiers || [];
+    CABS_CATALOG = data.cabinets || [];
+    renderAmpChassis(ampState.active_amp_id || 'marshall_jcm800');
+    updateAmpBadge();
+  } catch (e) {
+    console.warn('Error cargando catálogo de amplificadores:', e);
+  }
+}
+
+function filterAmplifiers(cat, btnEl) {
+  document.querySelectorAll('.amp-filter-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = 'var(--card)';
+    b.style.color = 'var(--text)';
+  });
+  if (btnEl) {
+    btnEl.classList.add('active');
+    btnEl.style.background = 'var(--accent)';
+    btnEl.style.color = '#fff';
+  }
+  document.querySelectorAll('.amp-card').forEach(card => {
+    const type = card.dataset.instType;
+    if (cat === 'all' || type === cat) {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+function selectAmpCard(ampId) {
+  const amp = AMPS_CATALOG.find(a => a.id === ampId);
+  if (!amp) return;
+  ampState.active_amp_id = ampId;
+  const instType = amp.instrument_type; // 'guitar' o 'bass'
+  ampState.current_type = instType;
+
+  if (!ampState[instType]) ampState[instType] = {};
+  ampState[instType].amp_id = ampId;
+  if (!ampState[instType].cabinet_id || !amp.available_cabinets.includes(ampState[instType].cabinet_id)) {
+    ampState[instType].cabinet_id = amp.default_cabinet;
+  }
+  if (!ampState[instType].controls) ampState[instType].controls = {};
+  Object.keys(amp.controls).forEach(k => {
+    if (typeof ampState[instType].controls[k] === 'undefined') {
+      ampState[instType].controls[k] = amp.controls[k].default;
+    }
+  });
+
+  saveAmpSystemState();
+  renderAmpChassis(ampId);
+}
+
+function renderAmpChassis(ampId) {
+  const amp = AMPS_CATALOG.find(a => a.id === ampId) || AMPS_CATALOG[0];
+  if (!amp) return;
+
+  // Actualizar tarjeta activa en grid
+  document.querySelectorAll('.amp-card').forEach(c => {
+    const isAct = c.dataset.amp === amp.id;
+    c.classList.toggle('active', isAct);
+    c.style.borderColor = isAct ? (amp.color || 'var(--accent)') : 'var(--border)';
+    const icon = c.querySelector('.btn-gear-toggle i');
+    if (icon) icon.className = isAct ? 'ph ph-check' : 'ph ph-plus';
+  });
+
+  const instType = amp.instrument_type;
+  const cfg = ampState[instType] || {};
+
+  // Título y válvulas
+  if ($('ampChassisTitle')) $('ampChassisTitle').textContent = amp.name;
+  if ($('ampChassisTubes')) $('ampChassisTubes').textContent = amp.tubes;
+
+  // Estado del Bypass
+  const isBypassed = Boolean(cfg.bypass);
+  const bypassBtn = $('ampBypassToggleBtn');
+  const led = $('ampLedIndicator');
+  const bypassLbl = $('ampBypassLabel');
+  if (bypassBtn && led && bypassLbl) {
+    if (isBypassed) {
+      bypassBtn.style.borderColor = '#6B7280';
+      bypassBtn.style.background = 'rgba(107,114,128,0.15)';
+      bypassBtn.style.color = '#9CA3AF';
+      led.style.background = '#4B5563';
+      led.style.boxShadow = 'none';
+      bypassLbl.textContent = 'AMP BYPASS (OFF)';
+    } else {
+      bypassBtn.style.borderColor = '#10B981';
+      bypassBtn.style.background = 'rgba(16,185,129,0.15)';
+      bypassBtn.style.color = '#34D399';
+      led.style.background = '#10B981';
+      led.style.boxShadow = '0 0 8px #10B981';
+      bypassLbl.textContent = 'AMP ACTIVO (ON)';
+    }
+  }
+
+  // Desplegable de Gabinetes IR
+  const cabSel = $('ampCabinetSelect');
+  if (cabSel) {
+    const availCabs = amp.available_cabinets || [];
+    cabSel.innerHTML = availCabs.map(cid => {
+      const cMeta = CABS_CATALOG.find(c => c.id === cid) || { name: cid };
+      const isSel = (cfg.cabinet_id === cid);
+      return `<option value="${esc(cid)}" ${isSel ? 'selected' : ''}>${esc(cMeta.name)}</option>`;
+    }).join('');
+  }
+
+  // Controles / Knobs Tone Stack
+  const knobsCont = $('ampKnobsContainer');
+  if (knobsCont) {
+    const controls = amp.controls || {};
+    knobsCont.innerHTML = Object.keys(controls).map(cKey => {
+      const meta = controls[cKey];
+      const curVal = (cfg.controls && typeof cfg.controls[cKey] !== 'undefined') ? cfg.controls[cKey] : meta.default;
+      const displayVal = (meta.unit === 'dB') ? (curVal > 0 ? `+${curVal} dB` : `${curVal} dB`) : curVal;
+      return `
+        <div style="background:rgba(0,0,0,0.3);padding:8px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;align-items:center;gap:4px">
+          <label style="font-size:10.5px;font-weight:700;color:#E2E8F0;text-transform:uppercase;letter-spacing:0.5px">${esc(meta.label)}</label>
+          <input type="range" min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${curVal}"
+                 oninput="onAmpControlInput('${cKey}', this.value, '${meta.unit}')"
+                 style="width:90%;accent-color:${amp.color || 'var(--accent)'};cursor:pointer">
+          <span id="ampVal_${cKey}" style="font-size:11px;font-weight:700;color:${amp.color || '#6EE7B7'}">${displayVal}</span>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function onAmpControlInput(controlKey, val, unit) {
+  const amp = AMPS_CATALOG.find(a => a.id === ampState.active_amp_id) || AMPS_CATALOG[0];
+  if (!amp) return;
+  const instType = amp.instrument_type;
+  if (!ampState[instType]) ampState[instType] = {};
+  if (!ampState[instType].controls) ampState[instType].controls = {};
+  const numVal = parseFloat(val);
+  ampState[instType].controls[controlKey] = numVal;
+
+  const valEl = $('ampVal_' + controlKey);
+  if (valEl) {
+    valEl.textContent = (unit === 'dB') ? (numVal > 0 ? `+${numVal} dB` : `${numVal} dB`) : numVal;
+  }
+  saveAmpSystemState();
+}
+
+function onAmpCabinetChange(cabId) {
+  const amp = AMPS_CATALOG.find(a => a.id === ampState.active_amp_id);
+  if (!amp) return;
+  const instType = amp.instrument_type;
+  if (!ampState[instType]) ampState[instType] = {};
+  ampState[instType].cabinet_id = cabId;
+  saveAmpSystemState();
+}
+
+function toggleAmpBypass() {
+  const amp = AMPS_CATALOG.find(a => a.id === ampState.active_amp_id);
+  if (!amp) return;
+  const instType = amp.instrument_type;
+  if (!ampState[instType]) ampState[instType] = {};
+  ampState[instType].bypass = !ampState[instType].bypass;
+  saveAmpSystemState();
+  renderAmpChassis(amp.id);
+  showToast(ampState[instType].bypass ? `Amplificador ${amp.short_name} en Bypass (Señal directa)` : `Amplificador ${amp.short_name} Activado`, 'info');
+}
+
+function getActiveAmpConfigs() {
+  return {
+    guitar: ampState.guitar,
+    bass: ampState.bass
+  };
+}
+
+function updateAmpBadge() {
+  const badge = $('freeStudioAmpBadge');
+  if (!badge) return;
+  const gAmp = AMPS_CATALOG.find(a => a.id === ampState.guitar?.amp_id);
+  const bAmp = AMPS_CATALOG.find(a => a.id === ampState.bass?.amp_id);
+  const gName = ampState.guitar?.bypass ? 'Bypass' : (gAmp?.short_name || 'Marshall JCM800');
+  const bName = ampState.bass?.bypass ? 'Bypass' : (bAmp?.short_name || 'Ampeg SVT');
+  badge.innerHTML = `<i class="ph ph-lightning"></i> Amps: ${gName} + ${bName}`;
+}
+
+async function toggleAmpPreviewPlay(btnEl) {
+  const player = $('ampAudioPlayer');
+  if (!player) return;
+
+  if (!player.paused && currentAmpPreviewAudio) {
+    player.pause();
+    if (btnEl) btnEl.innerHTML = '<i class="ph ph-headphones"></i> <span>Preescucha A/B</span>';
+    return;
+  }
+
+  const amp = AMPS_CATALOG.find(a => a.id === ampState.active_amp_id) || AMPS_CATALOG[0];
+  if (!amp) return;
+  const instType = amp.instrument_type;
+  const cfg = ampState[instType] || {};
+
+  const origHtml = btnEl ? btnEl.innerHTML : '';
+  if (btnEl) btnEl.innerHTML = '<i class="ph ph-spinner ph-spin"></i> <span>Procesando...</span>';
+
+  try {
+    const r = await fetch('/api/amps/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amp_id: amp.id,
+        cabinet_id: cfg.cabinet_id,
+        gain: cfg.controls?.gain,
+        bass: cfg.controls?.bass,
+        middle: cfg.controls?.middle,
+        treble: cfg.controls?.treble,
+        presence: cfg.controls?.presence,
+        master: cfg.controls?.master,
+        bypass: cfg.bypass
+      })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'Error al procesar audio en el amplificador');
+
+    currentAmpPreviewData = j;
+    currentAmpPreviewAudio = true;
+    player.src = (currentAmpABMode === 'dry') ? j.dry_url : j.wet_url;
+    player.play().catch(() => {});
+
+    if (btnEl) btnEl.innerHTML = '<i class="ph ph-pause"></i> <span>Pausar</span>';
+    const statusTxt = $('ampStatusText');
+    if (statusTxt) {
+      statusTxt.innerHTML = `<i class="ph ph-waveform" style="color:#10B981"></i> ${currentAmpABMode === 'wet' ? 'Procesado DSP' : 'Señal Seca DI'} (${j.dsp_time_ms} ms • 0 créditos)`;
+    }
+
+    player.onended = () => {
+      if (btnEl) btnEl.innerHTML = '<i class="ph ph-headphones"></i> <span>Preescucha A/B</span>';
+    };
+  } catch (e) {
+    showToast(e.message || 'Error en preescucha de amplificador', 'err');
+    if (btnEl) btnEl.innerHTML = origHtml;
+  }
+}
+
+function setAmpABMode(mode) {
+  currentAmpABMode = mode;
+  const btnDry = $('ampBtnSelectDry');
+  const btnWet = $('ampBtnSelectWet');
+  if (btnDry && btnWet) {
+    if (mode === 'dry') {
+      btnDry.classList.add('active');
+      btnDry.style.background = 'var(--accent)';
+      btnDry.style.color = '#fff';
+      btnDry.style.fontWeight = '700';
+      btnWet.classList.remove('active');
+      btnWet.style.background = 'rgba(255,255,255,0.05)';
+      btnWet.style.color = '#9CA3AF';
+      btnWet.style.fontWeight = 'normal';
+    } else {
+      btnWet.classList.add('active');
+      btnWet.style.background = 'var(--accent)';
+      btnWet.style.color = '#fff';
+      btnWet.style.fontWeight = '700';
+      btnDry.classList.remove('active');
+      btnDry.style.background = 'rgba(255,255,255,0.05)';
+      btnDry.style.color = '#9CA3AF';
+      btnDry.style.fontWeight = 'normal';
+    }
+  }
+
+  const player = $('ampAudioPlayer');
+  if (player && currentAmpPreviewData) {
+    const curTime = player.currentTime;
+    const isPlaying = !player.paused;
+    player.src = (mode === 'dry') ? currentAmpPreviewData.dry_url : currentAmpPreviewData.wet_url;
+    player.currentTime = curTime;
+    if (isPlaying) player.play().catch(() => {});
+    const statusTxt = $('ampStatusText');
+    if (statusTxt) {
+      statusTxt.innerHTML = `<i class="ph ph-waveform" style="color:#10B981"></i> ${mode === 'wet' ? 'Procesado DSP' : 'Señal Seca DI'} (${currentAmpPreviewData.dsp_time_ms} ms • 0 créditos)`;
+    }
+  }
+}
+
 initFreeInstrumentsStudio();
+initAmplifiersRack();
 </script>
 </body>
 </html>

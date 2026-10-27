@@ -3955,6 +3955,12 @@ async def api_health_check():
             "total_instruments": 20,
             "total_variants": 21,
             "zero_cost": True
+        },
+        "virtual_amps": {
+            "enabled": True,
+            "total_amps": 5,
+            "total_cabinets": 10,
+            "zero_cost": True
         }
     })
 
@@ -5606,6 +5612,7 @@ async def api_free_instrument_preview(request: Request):
     tom_grooves = bool(data.get("tom_grooves", True))
     crash_toms = bool(data.get("crash_toms", True))
     bass_pickup = bool(data.get("bass_pickup", True))
+    amp_configs = data.get("amp_configs") or data.get("amp_config") or None
 
     safe_key = re.sub(r"[^a-zA-Z0-9]", "", musical_key) or "G"
     preview_fname = f"prev_{inst_id}_{bpm}_{safe_key}_{progression_style}_{bars}b_{int(round(volume*100))}.mp3"
@@ -5623,6 +5630,7 @@ async def api_free_instrument_preview(request: Request):
         tom_grooves=tom_grooves,
         crash_toms=crash_toms,
         bass_pickup=bass_pickup,
+        amp_configs=amp_configs,
     )
 
     inst_meta = free_instruments_engine.INSTRUMENT_BY_ID[inst_id]
@@ -5675,7 +5683,9 @@ async def api_free_instruments_generate(request: Request):
     tom_grooves = bool(data.get("tom_grooves", True))
     crash_toms = bool(data.get("crash_toms", True))
     bass_pickup = bool(data.get("bass_pickup", True))
+    amp_configs = data.get("amp_configs") or data.get("amp_config") or None
     save_to_library = bool(data.get("save_to_library", True))
+    amp_configs = data.get("amp_configs") or data.get("amp_config") or None
 
     normalized_tracks = []
     for item in raw_tracks:
@@ -5712,6 +5722,7 @@ async def api_free_instruments_generate(request: Request):
         tom_grooves=tom_grooves,
         crash_toms=crash_toms,
         bass_pickup=bass_pickup,
+        amp_configs=amp_configs,
     )
 
     inst_names = [t["short_name"] + f" ({t['volume_pct']}%)" for t in synth_res["tracks"]]
@@ -5746,6 +5757,7 @@ async def api_free_instruments_generate(request: Request):
         "lyrics": lyrics_notes,
         "free_tracks": synth_res["tracks"],
         "licenses_used": synth_res["licenses_used"],
+        "amp_configs": synth_res.get("amp_configs_applied") or amp_configs,
         "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "updated_at": time.time(),
     }
@@ -5784,6 +5796,57 @@ async def api_free_instruments_generate(request: Request):
         },
         "synthesis_metrics": synth_res,
     })
+
+
+# ==============================================================================
+# MOTOR DE AMPLIFICADORES VIRTUALES Y GABINETES (IR) — RACK DE ESTUDIO
+# ==============================================================================
+import virtual_amp_engine
+
+
+@app.get("/api/amps/catalog")
+async def api_amps_catalog():
+    """Devuelve el catálogo de los 5 amplificadores virtuales y gabinetes de estudio (IR)."""
+    return JSONResponse(
+        content=virtual_amp_engine.get_amp_catalog_payload(),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+
+@app.post("/api/amps/preview")
+async def api_amps_preview(request: Request):
+    """
+    Procesa la señal DI de guitarra o bajo a través del amplificador y gabinete IR seleccionados,
+    generando los archivos de preescucha A/B (Dry / Wet) en tiempo real con 0 créditos.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    amp_id = str(data.get("amp_id") or "marshall_jcm800").strip().lower()
+    res = await asyncio.to_thread(
+        virtual_amp_engine.generate_amp_preview,
+        amp_id=amp_id,
+        amp_config=data,
+    )
+    return JSONResponse(content=res)
+
+
+@app.get("/api/amps/preview-audio/{filename}")
+async def api_serve_amp_preview_audio(filename: str):
+    clean_name = os.path.basename(filename)
+    full_p = os.path.join(virtual_amp_engine.AMP_PREVIEWS_DIR, clean_name)
+    if not os.path.exists(full_p):
+        guitar_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "audio", "guitar", clean_name)
+        bass_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "audio", "bass", clean_name)
+        if os.path.exists(guitar_p):
+            full_p = guitar_p
+        elif os.path.exists(bass_p):
+            full_p = bass_p
+        else:
+            raise HTTPException(status_code=404, detail="Audio de preescucha de amplificador no encontrado")
+    return FileResponse(path=full_p, media_type="audio/mpeg", filename=clean_name)
 
 
 if __name__ == "__main__":

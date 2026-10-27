@@ -1387,6 +1387,7 @@ def synthesize_multitrack_composition(
     output_wav_path: Optional[str] = None,
     output_flac_path: Optional[str] = None,
     cache_dir: Optional[str] = None,
+    amp_configs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Sintetiza una composición musical multipista combinando cualquier subconjunto
@@ -1470,6 +1471,27 @@ def synthesize_multitrack_composition(
             if inst.get("chorus"):
                 inst_buf = _apply_stereo_chorus(inst_buf)
 
+            # PROCESAMIENTO ANALÓGICO CON AMPLIFICADOR VIRTUAL Y GABINETE (IR)
+            amp_applied_id = None
+            cab_applied_id = None
+            amp_cfg = tcfg.get("amp")
+            if not amp_cfg and amp_configs:
+                if inst_id in amp_configs:
+                    amp_cfg = amp_configs[inst_id]
+                elif inst["family"] == "Guitarras" and "guitar" in amp_configs:
+                    amp_cfg = amp_configs["guitar"]
+                elif inst["family"] in ("Bajos", "Sintetizadores") and "bass" in amp_configs and "bajo" in inst_id:
+                    amp_cfg = amp_configs["bass"]
+
+            if amp_cfg and not amp_cfg.get("bypass", False):
+                try:
+                    import virtual_amp_engine
+                    inst_buf = virtual_amp_engine.process_audio_through_amplifier(inst_buf, amp_cfg)
+                    amp_applied_id = amp_cfg.get("amp_id")
+                    cab_applied_id = amp_cfg.get("cabinet_id")
+                except Exception:
+                    pass
+
             master_mix += inst_buf * vol
             total_synth_ms += inst_ms
 
@@ -1486,6 +1508,8 @@ def synthesize_multitrack_composition(
                 "attribution": inst["attribution"],
                 "synth_ms": round(inst_ms, 1),
                 "peak_ram_mb": round(inst_peak_ram, 2),
+                "amp_applied": amp_applied_id,
+                "cabinet_applied": cab_applied_id,
             })
 
         # Fade-out suave en los últimos 0.35s para evitar clics al final
@@ -1548,6 +1572,7 @@ def synthesize_multitrack_composition(
         "estimated_combined_ram_mb": round(process_rss_mb + max_child_ram_mb, 2),
         "render_512mb_safe": (process_rss_mb + max_child_ram_mb) < 420.0,
         "licenses_used": list(licenses_map.values()),
+        "amp_configs_applied": amp_configs,
     }
 
 
