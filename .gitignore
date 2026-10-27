@@ -42,3 +42,9 @@ rodrix_persistence.db*
 *.tmp_*
 backups_*/
 para chatgpt*
+
+# Bancos SoundFont y Caché Local de Síntesis (Se aprovisionan automáticamente en Docker/Render)
+soundfonts_cache/
+*.sf2
+*.7z
+*.flac

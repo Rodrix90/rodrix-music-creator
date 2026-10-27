@@ -1168,6 +1168,120 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           </div>
         </details>
       </form>
+
+      <!-- ESTUDIO MULTIPISTA DE 20 INSTRUMENTOS GRATUITOS (MOTOR MIDI + FLUIDSYNTH — 0 CRÉDITOS) -->
+      <div class="form-card" id="freeInstrumentsStudioCard" style="margin-top:16px;border:1px solid rgba(16,185,129,0.4);background:linear-gradient(180deg,rgba(6,78,59,0.18),rgba(15,23,42,0.85));padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.45);display:grid;place-items:center;color:#34D399;font-size:20px">
+              <i class="ph ph-piano-keys"></i>
+            </span>
+            <div>
+              <h2 style="font-size:15px;font-weight:800;color:#ECFDF5;margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span>🎹 Estudio Multipista: 20 Instrumentos Gratuitos</span>
+                <span class="badge" style="background:rgba(16,185,129,0.22);color:#6EE7B7;border:1px solid rgba(16,185,129,0.45);font-size:10.5px">0 Créditos Udio/FAL • FluidSynth 2.6</span>
+              </h2>
+              <div style="font-size:11.5px;color:#A7F3D0">
+                Selecciona, escucha individualmente y combina hasta 20 instrumentos reales (SF2 libres) con BPM exacto y volumen por pista.
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn-sec" onclick="applyFreePreset('alabanza_band')" style="font-size:11px;padding:5px 10px;border-color:rgba(52,211,153,0.35);color:#A7F3D0">🎸 Banda Juvenil</button>
+            <button type="button" class="btn-sec" onclick="applyFreePreset('adoracion_set')" style="font-size:11px;padding:5px 10px;border-color:rgba(52,211,153,0.35);color:#A7F3D0">🕊️ Adoración</button>
+            <button type="button" class="btn-sec" onclick="applyFreePreset('acustico_cajon')" style="font-size:11px;padding:5px 10px;border-color:rgba(52,211,153,0.35);color:#A7F3D0">🥁 Acústico &amp; Cajón</button>
+            <button type="button" class="btn-sec" onclick="applyFreePreset('oracion_piano')" style="font-size:11px;padding:5px 10px;border-color:rgba(52,211,153,0.35);color:#A7F3D0">🎹 Piano Oración</button>
+            <button type="button" class="btn-sec" onclick="applyFreePreset('orquesta_sacro')" style="font-size:11px;padding:5px 10px;border-color:rgba(52,211,153,0.35);color:#A7F3D0">🎻 Orquesta &amp; Campanas</button>
+          </div>
+        </div>
+
+        <!-- Controles Globales de Composición Multipista -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;background:rgba(0,0,0,0.28);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.07);margin-bottom:12px">
+          <div class="field" style="margin:0">
+            <label class="label" for="freeTitleInput" style="font-size:11px">Título de la Composición</label>
+            <input type="text" id="freeTitleInput" value="Alabanza Multipista (Estudio Gratuito)" style="padding:6px 9px;font-size:12px">
+          </div>
+          <div class="field" style="margin:0">
+            <label class="label" for="freeBpmInput" style="font-size:11px">Tempo Exacto (BPM)</label>
+            <input type="number" id="freeBpmInput" min="40" max="220" step="1" value="125" style="padding:6px 9px;font-size:12px;font-weight:700;color:#6EE7B7">
+          </div>
+          <div class="field" style="margin:0">
+            <label class="label" for="freeKeySelect" style="font-size:11px">Tonalidad</label>
+            <select id="freeKeySelect" style="width:100%;padding:6px 9px;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border);font-size:12px">
+              <option value="G" selected>Sol Mayor (G)</option>
+              <option value="C">Do Mayor (C)</option>
+              <option value="D">Re Mayor (D)</option>
+              <option value="E">Mi Mayor (E)</option>
+              <option value="F">Fa Mayor (F)</option>
+              <option value="A">La Mayor (A)</option>
+              <option value="B">Si Mayor (B)</option>
+              <option value="Em">Mi menor (Em)</option>
+              <option value="Am">La menor (Am)</option>
+              <option value="Bm">Si menor (Bm)</option>
+              <option value="F#m">Fa# menor (F#m)</option>
+              <option value="Dm">Re menor (Dm)</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label class="label" for="freeStyleSelect" style="font-size:11px">Progresión Armónica</label>
+            <select id="freeStyleSelect" style="width:100%;padding:6px 9px;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border);font-size:12px">
+              <option value="alabanza_juvenil" selected>Alabanza Juvenil (I - V - vi - IV)</option>
+              <option value="adoracion_intima">Adoración Profunda (Imaj9 - vi7 - IVmaj9 - V)</option>
+              <option value="coro_pentecostal">Coro Pentecostal (i - VII - VI - V7)</option>
+              <option value="oracion_devocional">Piano de Oración (Imaj9 - V - vi11 - IVmaj9)</option>
+              <option value="himno_solemne">Himno Solemne (I - IV - I - V)</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label class="label" for="freeBarsSelect" style="font-size:11px">Duración (Compases)</label>
+            <select id="freeBarsSelect" style="width:100%;padding:6px 9px;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border);font-size:12px">
+              <option value="4">4 Compases (~8 s)</option>
+              <option value="8" selected>8 Compases (~16 s)</option>
+              <option value="12">12 Compases (~24 s)</option>
+              <option value="16">16 Compases (~32 s)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Grilla de los 20 Instrumentos (21 Variantes con Fingerstyle y Slap & Pop) -->
+        <div id="freeInstrumentsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:8px;max-height:420px;overflow-y:auto;padding-right:4px">
+          <!-- Renderizado dinámico desde /api/free-instruments/catalog -->
+        </div>
+
+        <!-- Barra de Acción y Reproductor Multipista -->
+        <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08)">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button type="button" id="btnGenerateFreeMultitrack" onclick="generateFreeMultitrackSong()" class="btn-primary" style="background:linear-gradient(135deg,#10B981,#059669);border:none;padding:10px 18px;font-weight:800;font-size:13px;border-radius:10px;display:inline-flex;align-items:center;gap:8px;color:#fff;cursor:pointer">
+              <i class="ph ph-music-notes-plus"></i>
+              <span>🎼 Generar Composición Multipista Gratis (Guardar en Biblioteca)</span>
+            </button>
+            <span id="freeActiveCountBadge" class="badge" style="background:rgba(16,185,129,0.16);color:#6EE7B7;border:1px solid rgba(16,185,129,0.35);font-size:11px">5 instrumentos activos</span>
+          </div>
+          <audio id="freeStudioAudioPlayer" controls style="height:34px;max-width:300px;display:none"></audio>
+        </div>
+
+        <!-- Resultado de Síntesis y Exportación Directa (MP3, WAV, FLAC) -->
+        <div id="freeSynthesisResultBox" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.35);font-size:11.5px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div id="freeSynthesisStatusText" style="color:#ECFDF5;font-weight:700"></div>
+            <div id="freeExportLinksBox" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+          <div id="freeSynthesisMetricsText" style="margin-top:4px;color:#A7F3D0;font-size:11px"></div>
+        </div>
+
+        <!-- Licencias y Atribuciones Documentadas -->
+        <details style="margin-top:10px;font-size:11px;color:#94A3B8">
+          <summary style="cursor:pointer;font-weight:700;color:#6EE7B7">📜 Ver Licencias Abiertas y Atribuciones Oficiales (SF2 / Dominio Público / CC-BY)</summary>
+          <div id="freeLicensesList" style="margin-top:6px;padding:8px 10px;background:rgba(0,0,0,0.3);border-radius:8px;line-height:1.5">
+            • <strong>Salamander Grand Piano V3 (Yamaha C5):</strong> CC-BY 3.0 — Autor: Alexander Holm.<br>
+            • <strong>Yamaha CP80 Electric Grand Piano v1.3:</strong> CC-BY 3.0 — Autor: Greg Sullivan.<br>
+            • <strong>FreePats Project (FingerBassYR, FM-Piano1/2, WorldPercussion Cajón/Bongós/Congas/Maracas, LatelyBass, SynthFifths, SweepPad, TubularBells):</strong> CC0 1.0 Public Domain.<br>
+            • <strong>FreePats Clean Electric Guitar (EGuitarFSBS-clean):</strong> CC-BY 4.0 — FreePats Project.<br>
+            • <strong>FreePats Spanish Classical Guitar:</strong> GPLv3+ con excepción MIDI / CC0 — FreePats Project.<br>
+            • <strong>GeneralUser GS v2.0 (Standard Drum Kit, TR-808/909, Slap Bass, Tonewheel Organ, Strings, Flutes):</strong> GeneralUser GS License v2.0 — Autor: S. Christian Collins.
+          </div>
+        </details>
+      </div>
       </div>
 
       <!-- VISTA: ESCÁNER DE PARTITURAS & HIMNARIOS (OMR + BATCH + ÁLBUM 1 HORA) -->
@@ -5749,6 +5863,269 @@ async function toggleUserStatus(email, newStatus) {
 loadLibrary();
 loadDictionary();
 loadUserInfo();
+
+/* ---------- ESTUDIO MULTIPISTA DE 20 INSTRUMENTOS GRATUITOS (FLUIDSYNTH) ---------- */
+let FREE_CATALOG_ITEMS = [];
+const DEFAULT_FREE_ACTIVE = {
+  'piano_cola': 100,
+  'bajo_finger': 100,
+  'bateria_acustica': 100,
+  'guitarra_acustica': 90,
+  'cuerdas': 80
+};
+
+async function initFreeInstrumentsStudio() {
+  const grid = $('freeInstrumentsGrid');
+  if (!grid) return;
+  try {
+    const r = await fetch('/api/free-instruments/catalog');
+    if (!r.ok) return;
+    const data = await r.json();
+    FREE_CATALOG_ITEMS = data.instruments || [];
+    renderFreeInstrumentsGrid();
+  } catch (e) {
+    console.warn('Error cargando catálogo de instrumentos gratuitos:', e);
+  }
+}
+
+function renderFreeInstrumentsGrid() {
+  const grid = $('freeInstrumentsGrid');
+  if (!grid || !FREE_CATALOG_ITEMS.length) return;
+  grid.innerHTML = FREE_CATALOG_ITEMS.map(item => {
+    const isChecked = Object.prototype.hasOwnProperty.call(DEFAULT_FREE_ACTIVE, item.id);
+    const volPct = isChecked ? DEFAULT_FREE_ACTIVE[item.id] : Math.round((item.default_volume || 1.0) * 100);
+    return `
+      <div class="free-inst-card" data-inst-id="${esc(item.id)}" style="padding:8px 10px;border-radius:9px;background:rgba(15,23,42,0.75);border:1px solid ${isChecked ? 'rgba(16,185,129,0.55)' : 'rgba(255,255,255,0.08)'};display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:700;color:#F8FAFC;min-width:0">
+            <input type="checkbox" class="free-inst-chk" data-id="${esc(item.id)}" ${isChecked ? 'checked' : ''} onchange="onFreeInstrumentToggle(this)">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.name)}">${esc(item.name)}</span>
+          </label>
+          <button type="button" class="btn-sec" onclick="previewFreeInstrument('${esc(item.id)}', this)" style="padding:3px 8px;font-size:10.5px;border-radius:6px;color:#6EE7B7;border-color:rgba(16,185,129,0.35);flex-shrink:0" title="Escuchar muestra sintetizada en vivo con el BPM actual (0 créditos)">
+            🔊 Escuchar
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#CBD5E1">
+          <span style="color:#94A3B8;font-size:10.5px;min-width:48px">Vol: <strong id="freeVolVal_${esc(item.id)}" style="color:#6EE7B7">${volPct}%</strong></span>
+          <input type="range" class="free-inst-vol" id="freeVol_${esc(item.id)}" data-id="${esc(item.id)}" min="0" max="150" step="5" value="${volPct}" style="flex:1;accent-color:#10B981" oninput="document.getElementById('freeVolVal_${esc(item.id)}').textContent = this.value + '%'">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:9.5px;color:#64748B">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.bank_name)}">${esc(item.family)}</span>
+          <span style="color:#A7F3D0;background:rgba(16,185,129,0.12);padding:1px 5px;border-radius:4px;flex-shrink:0">${esc(item.license)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  updateFreeActiveCount();
+}
+
+function onFreeInstrumentToggle(chk) {
+  const card = chk.closest('.free-inst-card');
+  if (card) {
+    card.style.borderColor = chk.checked ? 'rgba(16,185,129,0.55)' : 'rgba(255,255,255,0.08)';
+  }
+  updateFreeActiveCount();
+}
+
+function updateFreeActiveCount() {
+  const checked = document.querySelectorAll('.free-inst-chk:checked');
+  if ($('freeActiveCountBadge')) {
+    $('freeActiveCountBadge').textContent = `${checked.length} instrumento(s) activo(s)`;
+  }
+}
+
+function applyFreePreset(presetKey) {
+  const presets = {
+    'alabanza_band': {
+      bpm: 125, key: 'G', style: 'alabanza_juvenil', title: 'Alabanza Juvenil Multipista',
+      tracks: { 'piano_cola': 95, 'bajo_slap': 105, 'bateria_acustica': 105, 'guitarra_distorsionada': 90, 'guitarra_limpia': 85, 'synth_lead': 80 }
+    },
+    'adoracion_set': {
+      bpm: 72, key: 'D', style: 'adoracion_intima', title: 'Adoración Profunda Multipista',
+      tracks: { 'piano_cola': 105, 'piano_sintetizado': 85, 'bajo_finger': 95, 'guitarra_limpia': 85, 'synth_pad': 90, 'cuerdas': 90 }
+    },
+    'acustico_cajon': {
+      bpm: 114, key: 'G', style: 'alabanza_juvenil', title: 'Sesión Acústica con Cajón y Percusión',
+      tracks: { 'guitarra_acustica': 105, 'piano_cola': 90, 'bajo_finger': 100, 'cajon': 110, 'bongos': 85, 'congas': 85, 'maracas': 70, 'flautas': 85 }
+    },
+    'oracion_piano': {
+      bpm: 66, key: 'D', style: 'oracion_devocional', title: 'Piano de Oración & Pad Atmosférico',
+      tracks: { 'piano_cola': 110, 'piano_fm_dx': 80, 'piano_sintetizado': 85, 'synth_pad': 75 }
+    },
+    'orquesta_sacro': {
+      bpm: 88, key: 'C', style: 'himno_solemne', title: 'Himno Sinfónico con Órgano y Campanas',
+      tracks: { 'organo': 100, 'cuerdas': 105, 'flautas': 90, 'campanas': 85, 'piano_cola': 90 }
+    }
+  };
+  const p = presets[presetKey];
+  if (!p) return;
+  if ($('freeBpmInput')) $('freeBpmInput').value = p.bpm;
+  if ($('userBpmInput')) {
+    $('userBpmInput').value = p.bpm;
+    syncBpmToStylePrompt(p.bpm);
+    updateEffectiveConfigSummary();
+  }
+  if ($('freeKeySelect')) $('freeKeySelect').value = p.key;
+  if ($('freeStyleSelect')) $('freeStyleSelect').value = p.style;
+  if ($('freeTitleInput')) $('freeTitleInput').value = p.title;
+
+  document.querySelectorAll('.free-inst-chk').forEach(chk => {
+    const id = chk.dataset.id;
+    const active = Object.prototype.hasOwnProperty.call(p.tracks, id);
+    chk.checked = active;
+    const volEl = $('freeVol_' + id);
+    const valEl = $('freeVolVal_' + id);
+    if (active && volEl && valEl) {
+      volEl.value = p.tracks[id];
+      valEl.textContent = p.tracks[id] + '%';
+    }
+    onFreeInstrumentToggle(chk);
+  });
+  showToast(`Combinación cargada: ${p.title} (${p.bpm} BPM)`, 'info');
+}
+
+function getFreeRhythmFlagsFromStudio() {
+  const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
+  return {
+    hihat_mode: selectedHiHat ? selectedHiHat.value : '8th',
+    tom_grooves: Boolean($('chkTomGrooves') && $('chkTomGrooves').checked),
+    crash_toms: Boolean($('chkCrashToms') && $('chkCrashToms').checked),
+    bass_pickup: Boolean($('chkBassPickup') && $('chkBassPickup').checked)
+  };
+}
+
+async function previewFreeInstrument(instId, btnEl) {
+  const bpm = parseInt($('freeBpmInput')?.value || $('userBpmInput')?.value || '120', 10) || 120;
+  const musical_key = $('freeKeySelect')?.value || 'G';
+  const progression_style = $('freeStyleSelect')?.value || 'alabanza_juvenil';
+  const volPct = parseInt($('freeVol_' + instId)?.value || '100', 10);
+  const volume = Math.max(0.1, Math.min(1.5, volPct / 100.0));
+  const flags = getFreeRhythmFlagsFromStudio();
+
+  const origText = btnEl ? btnEl.innerHTML : '🔊 Escuchar';
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = '⏳...';
+  }
+  try {
+    const r = await fetch('/api/free-instruments/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instrument_id: instId,
+        bpm,
+        musical_key,
+        progression_style,
+        bars: 4,
+        volume,
+        ...flags
+      })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'Error al preescuchar instrumento');
+    const player = $('freeStudioAudioPlayer');
+    if (player) {
+      player.style.display = 'block';
+      player.src = j.audio_url;
+      player.play().catch(() => {});
+    }
+    showToast(`Reproduciendo: ${j.instrument_name} (${j.bpm} BPM • 0 créditos)`, 'success');
+  } catch (e) {
+    showToast(e.message || 'Error al sintetizar preescucha', 'err');
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = origText;
+    }
+  }
+}
+
+async function generateFreeMultitrackSong() {
+  const checked = Array.from(document.querySelectorAll('.free-inst-chk:checked'));
+  if (!checked.length) {
+    showToast('Selecciona al menos un instrumento gratuito para componer.', 'err');
+    return;
+  }
+  const tracks = checked.map(chk => {
+    const id = chk.dataset.id;
+    const volPct = parseInt($('freeVol_' + id)?.value || '100', 10);
+    return { id, volume: Math.max(0.0, Math.min(1.5, volPct / 100.0)) };
+  });
+
+  const title = ($('freeTitleInput')?.value || '').trim() || 'Composición Multipista (Instrumentos Gratuitos)';
+  const bpm = parseInt($('freeBpmInput')?.value || $('userBpmInput')?.value || '125', 10) || 125;
+  const musical_key = $('freeKeySelect')?.value || 'G';
+  const progression_style = $('freeStyleSelect')?.value || 'alabanza_juvenil';
+  const bars = parseInt($('freeBarsSelect')?.value || '8', 10) || 8;
+  const flags = getFreeRhythmFlagsFromStudio();
+
+  const btn = $('btnGenerateFreeMultitrack');
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> <span>Sintetizando pistas con FluidSynth (0 créditos)...</span>';
+  }
+
+  try {
+    const r = await fetch('/api/free-instruments/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        bpm,
+        musical_key,
+        progression_style,
+        bars,
+        tracks,
+        save_to_library: true,
+        ...flags
+      })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'Error generando composición multipista');
+
+    const player = $('freeStudioAudioPlayer');
+    if (player && j.track?.audio_url) {
+      player.style.display = 'block';
+      player.src = j.track.audio_url;
+      player.play().catch(() => {});
+    }
+
+    const resBox = $('freeSynthesisResultBox');
+    const stText = $('freeSynthesisStatusText');
+    const dlBox = $('freeExportLinksBox');
+    const metText = $('freeSynthesisMetricsText');
+    if (resBox && stText && dlBox && metText) {
+      resBox.style.display = 'block';
+      const pStatus = j.track?.persistence_status === 'PERSISTED_GDRIVE' ? '✅ Respaldado en Google Drive 5TB' : '💾 Guardado en Biblioteca';
+      stText.textContent = `🎵 "${j.track.title}" (${j.synthesis_metrics.duration_sec}s • ${j.synthesis_metrics.bpm} BPM • ${pStatus})`;
+      dlBox.innerHTML = `
+        <a href="${esc(j.download_urls.mp3)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#6EE7B7;border-color:rgba(16,185,129,0.4)">⬇ MP3</a>
+        <a href="${esc(j.download_urls.wav)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#93C5FD;border-color:rgba(59,130,246,0.4)">⬇ WAV</a>
+        <a href="${esc(j.download_urls.flac)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#C4B5FD;border-color:rgba(139,92,246,0.4)">⬇ FLAC</a>
+      `;
+      metText.textContent = `Pistas mezcladas: ${j.synthesis_metrics.tracks_count} | Tiempo síntesis: ${j.synthesis_metrics.total_synth_ms} ms | Pico RAM FluidSynth: ${j.synthesis_metrics.peak_child_ram_mb} MB | Costo API: 0 créditos`;
+    }
+
+    await loadLibrary();
+    showToast('¡Composición multipista generada y guardada con 0 créditos!', 'success');
+  } catch (e) {
+    showToast(e.message || 'Error en generación multipista', 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+
+if ($('userBpmInput') && $('freeBpmInput')) {
+  $('userBpmInput').addEventListener('change', () => {
+    $('freeBpmInput').value = $('userBpmInput').value;
+  });
+}
+
+initFreeInstrumentsStudio();
 </script>
 </body>
 </html>
