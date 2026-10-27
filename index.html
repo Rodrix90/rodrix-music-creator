@@ -833,18 +833,23 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 
             <!-- ARTICULACIÓN RÍTMICA & ADORNOS (BATERÍA & BAJO) -->
             <div style="margin-top:10px;padding:9px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:6px">
                   <i class="ph ph-metronome" style="color:#A78BFA"></i>
-                  <span>🥁 Articulación Rítmica & Adornos:</span>
+                  <span>🥁 Articulación Rítmica & Adornos (Prioridad de Usuario):</span>
                 </div>
-                <span style="font-size:10px;color:#A78BFA">Batería & Bajo al detalle</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <label for="userBpmInput" style="font-size:11px;font-weight:700;color:#DDD6FE;display:flex;align-items:center;gap:4px">
+                    <i class="ph ph-gauge" style="color:#FBBF24"></i> Tempo (BPM):
+                  </label>
+                  <input type="number" id="userBpmInput" min="40" max="220" step="1" value="125" style="width:68px;padding:3px 7px;font-size:12px;font-weight:700;border-radius:6px;border:1px solid rgba(167,139,250,0.45);background:rgba(15,23,42,0.85);color:#F8FAFC;text-align:center" title="BPM prioritario del usuario (sobrescribe cualquier valor por defecto del preset)">
+                </div>
               </div>
               
               <!-- Hi-Hat Subdivision Selector -->
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
                 <span style="font-size:11px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
-                  <i class="ph ph-circle-dashed" style="color:#FBBF24"></i> Hit-Hat:
+                  <i class="ph ph-circle-dashed" style="color:#FBBF24"></i> Hi-Hat:
                 </span>
                 <label class="band-chip" id="chipHiHat8th" title="2 golpes por tiempo (Corcheas: 1-y 2-y 3-y 4-y)"><input type="radio" name="hihat_mode" value="8th" checked> ⚡ 2 golpes x tempo (Corcheas)</label>
                 <label class="band-chip" id="chipHiHat4th" title="1 golpe por tiempo (Negras: 1-2-3-4 marcado)"><input type="radio" name="hihat_mode" value="4th"> 🎯 1 golpe x tempo (Negras)</label>
@@ -858,6 +863,22 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <label class="band-chip" title="Groove rítmico en toms de piso"><input type="checkbox" id="chkTomGrooves"> 🥁 Grooves en Toms</label>
                 <label class="band-chip" title="Adornos Slap & Pop en el bajo eléctrico"><input type="checkbox" id="chkBassSlap"> 🎸 Bajo: Slap & Pop</label>
                 <label class="band-chip" title="Notas de paso y arrastres Pick-up en el bajo"><input type="checkbox" id="chkBassPickup" checked> 🎶 Bajo: Pick-up & Paso</label>
+              </div>
+
+              <!-- RESUMEN DE CONFIGURACIÓN EFECTIVA ANTES DE GENERAR -->
+              <div id="effectiveConfigSummary" style="margin-top:9px;padding:8px 10px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.28);border-radius:8px;font-size:11.5px;line-height:1.45">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+                  <span style="font-weight:700;color:#C4B5FD;display:flex;align-items:center;gap:5px">
+                    <i class="ph ph-check-circle" style="color:#34D399"></i> Resumen de Configuración Efectiva (Prioridad Usuario):
+                  </span>
+                  <span id="effConfigPresetBadge" class="badge" style="font-size:10px;background:rgba(52,211,153,0.15);color:#6EE7B7;border:1px solid rgba(52,211,153,0.35)">Modo Libre</span>
+                </div>
+                <div id="effConfigDetails" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:4px 12px;color:#E2E8F0;font-size:11px">
+                  <div><strong style="color:#A78BFA">Tempo:</strong> <span id="effSumBpm">125 BPM</span></div>
+                  <div><strong style="color:#A78BFA">Hi-Hat:</strong> <span id="effSumHiHat">Corcheas (2 golpes/tiempo)</span></div>
+                  <div><strong style="color:#A78BFA">Batería:</strong> <span id="effSumDrums">Crashes & Redobles en transiciones</span></div>
+                  <div><strong style="color:#A78BFA">Bajo:</strong> <span id="effSumBass">Pick-up & Notas de Paso</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -2035,7 +2056,7 @@ const WORSHIP_PRESETS = {
     instrumental: false
   },
   juvenil: {
-    style: "alabanza juvenil pop/rock, modern Christian praise, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, driving 125 bpm, punchy rock drum kit with solid backbeat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, dotted eighth delay lead guitar, modern synths",
+    style: "alabanza juvenil pop/rock, modern Christian praise, tempo 4/4, snare 2-4, kick 1-3, hi-hat, driving 125 bpm, punchy rock drum kit with solid backbeat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, rhythmic delay lead electric guitar, modern synths",
     exclude: "cumbia, accordion, acordeon, norteño, grupero, mariachi, brass horns, dembow, reggaeton, bachata, salsa, autotune",
     instrumental: false
   },
@@ -2162,12 +2183,30 @@ document.querySelectorAll('.preset-card').forEach(card => {
         if (hiHat8th) hiHat8th.checked = true;
         if ($('chkCrashToms')) $('chkCrashToms').checked = true;
         if ($('chkBassPickup')) $('chkBassPickup').checked = true;
+        if ($('userBpmInput')) $('userBpmInput').value = '118';
+      } else if (card.dataset.preset === 'juvenil') {
+        // Preset Alabanza Juvenil como configuración semilla inicial:
+        // Restaura métrica libre 4/4 pop/rock y banda activa si se venía de Piano de Oración o Vals,
+        // sin desactivar ni sobreescribir articulaciones adicionales elegidas por el usuario.
+        const rPill = document.querySelector('.rhythm-pill[data-rhythm="libre"]');
+        if (rPill) {
+          document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
+          rPill.classList.add('active');
+        }
+        if ($('chkDrums')) $('chkDrums').checked = true;
+        if ($('chkBass')) $('chkBass').checked = true;
+        if ($('chkGuitar')) $('chkGuitar').checked = true;
+        if ($('chkNoLatin')) $('chkNoLatin').checked = true;
+        if ($('userBpmInput')) $('userBpmInput').value = '125';
       } else if (card.dataset.preset === 'adoracion') {
         const rPill = document.querySelector('.rhythm-pill[data-rhythm="worship_ballad"]');
         if (rPill) {
           document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
           rPill.classList.add('active');
         }
+        if ($('userBpmInput')) $('userBpmInput').value = '68';
+      } else if (card.dataset.preset === 'himno') {
+        if ($('userBpmInput')) $('userBpmInput').value = '78';
       } else if (card.dataset.preset === 'vals_vienes') {
         const rPill = document.querySelector('.rhythm-pill[data-rhythm="waltz_34"]');
         if (rPill) {
@@ -2181,6 +2220,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
         const pSound = PRAYER_PIANO_SOUNDS[soundKey] || PRAYER_PIANO_SOUNDS.mks20;
         $('styleInput').value = pSound.style;
         $('excludeInput').value = pSound.exclude || WORSHIP_PRESETS.piano_oracion.exclude;
+        if ($('userBpmInput')) $('userBpmInput').value = '60';
         
         // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
         if ($('chkDrums')) $('chkDrums').checked = false;
@@ -2235,6 +2275,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
           if ($('rackChainText')) $('rackChainText').textContent = arr.length ? arr.map(g => g.toUpperCase()).join(' + ') : 'Orquesta Filarmónica Clásica';
         }
       }
+      if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
       logLine(`Preset activado: ${card.querySelector('.preset-head span').textContent}`);
     }
   });
@@ -2362,23 +2403,44 @@ document.querySelectorAll('.rhythm-pill').forEach(pill => {
   });
 });
 
-/* ---------- SELECTOR DE SUBDIVISIÓN DE HI-HAT & ARTICULACIONES ---------- */
+/* ---------- SELECTOR DE SUBDIVISIÓN DE HI-HAT, BPM & RESUMEN DE CONFIGURACIÓN EFECTIVA ---------- */
+function syncBpmToStylePrompt(newBpm) {
+  const bpmNum = parseInt(newBpm, 10);
+  if (!bpmNum || isNaN(bpmNum) || bpmNum < 30 || bpmNum > 260) return;
+  const styleEl = $('styleInput');
+  if (!styleEl || !styleEl.value.trim()) return;
+  let text = styleEl.value;
+  if (/\b\d+(?:\.\d+)?\s*bpm\b/i.test(text)) {
+    text = text.replace(/\b\d+(?:\.\d+)?\s*bpm\b/gi, `${bpmNum} bpm`);
+  } else {
+    text = `${text.replace(/,\s*$/, '')}, ${bpmNum} bpm`;
+  }
+  styleEl.value = text;
+}
+
+function extractBpmFromStylePrompt(text) {
+  if (!text) return null;
+  const matches = Array.from(text.matchAll(/\b(\d+(?:\.\d+)?)\s*bpm\b/gi));
+  if (!matches.length) return null;
+  return Math.round(parseFloat(matches[matches.length - 1][1]));
+}
+
 function updateHiHatInStylePrompt(hiHatMode) {
   const styleEl = $('styleInput');
   if (!styleEl || !styleEl.value.trim()) return;
   let text = styleEl.value;
 
   const patterns = [
-    /steady closed hi-hat keeping straight eighth notes \(two strokes per beat[^\)]*\)/gi,
+    /steady closed (?:eighth-note )?hi-hat (?:pattern|keeping straight eighth notes) \(two strokes per beat[^\)]*\)/gi,
     /heavy steady quarter-note hi-hat pulse on every beat \(one stroke per beat[^\)]*\)/gi,
-    /fast driving 16th-note hi-hat subdivision pattern \(four strokes per beat[^\)]*\)/gi,
+    /fast driving 16th-note hi-hat (?:subdivision )?pattern \(four strokes per beat[^\)]*\)/gi,
     /bright metallic hi-hat cymbals keeping steady eighth notes/gi,
     /bright metallic hi-hat cymbals/gi
   ];
 
   let replacement = '';
   if (hiHatMode === '8th') {
-    replacement = 'bright metallic hi-hat cymbals keeping steady eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and)';
+    replacement = 'steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)';
   } else if (hiHatMode === '4th') {
     replacement = 'heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)';
   } else if (hiHatMode === '16th') {
@@ -2394,10 +2456,129 @@ function updateHiHatInStylePrompt(hiHatMode) {
   }
 }
 
+function getEffectiveUserMusicalConfig() {
+  const activePresetCard = document.querySelector('.preset-card.active');
+  const activePreset = activePresetCard ? (activePresetCard.dataset.preset || '') : '';
+  const presetTitle = activePresetCard
+    ? (activePresetCard.querySelector('.preset-title span')?.textContent || activePreset)
+    : 'Personalizado / Modo Libre';
+
+  const rawStyle = $('styleInput') ? $('styleInput').value.trim() : '';
+  const isSoloPianoPrayerMode = (
+    activePreset === 'piano_oracion' ||
+    /piano\s+de\s+oraci[oó]n|solo\s+piano|prayer\s+piano|pure\s+piano|mks-?20|keyscape/i.test(rawStyle)
+  );
+
+  // Resolver BPM prioritario del usuario
+  const styleBpm = extractBpmFromStylePrompt(rawStyle);
+  const inputBpm = $('userBpmInput') ? parseInt($('userBpmInput').value, 10) : null;
+  const presetDefaultBpms = { juvenil: 125, pentecostal: 118, adoracion: 68, himno: 78, piano_oracion: 60 };
+  const defaultBpm = presetDefaultBpms[activePreset] || 120;
+
+  let effectiveBpm = defaultBpm;
+  if (styleBpm && styleBpm !== defaultBpm) {
+    effectiveBpm = styleBpm;
+  } else if (inputBpm && !isNaN(inputBpm) && inputBpm >= 30 && inputBpm <= 260) {
+    effectiveBpm = inputBpm;
+  } else if (styleBpm) {
+    effectiveBpm = styleBpm;
+  }
+
+  const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
+  const hihatMode = selectedHiHat ? selectedHiHat.value : '8th';
+
+  const crashToms = !isSoloPianoPrayerMode && Boolean($('chkCrashToms') && $('chkCrashToms').checked);
+  const splashRide = !isSoloPianoPrayerMode && Boolean($('chkSplashRide') && $('chkSplashRide').checked);
+  const tomGrooves = !isSoloPianoPrayerMode && Boolean($('chkTomGrooves') && $('chkTomGrooves').checked);
+  const bassSlap = !isSoloPianoPrayerMode && Boolean($('chkBassSlap') && $('chkBassSlap').checked);
+  const bassPickup = !isSoloPianoPrayerMode && Boolean($('chkBassPickup') && $('chkBassPickup').checked);
+
+  return {
+    activePreset,
+    presetTitle,
+    isSoloPianoPrayerMode,
+    effectiveBpm,
+    defaultBpm,
+    isCustomBpm: effectiveBpm !== defaultBpm,
+    hihatMode,
+    crashToms,
+    splashRide,
+    tomGrooves,
+    bassSlap,
+    bassPickup
+  };
+}
+
+function updateEffectiveConfigSummary() {
+  const cfg = getEffectiveUserMusicalConfig();
+  if ($('effConfigPresetBadge')) {
+    $('effConfigPresetBadge').textContent = cfg.activePreset ? `Base: ${cfg.presetTitle}` : 'Modo Libre';
+  }
+  if ($('effSumBpm')) {
+    $('effSumBpm').textContent = `${cfg.effectiveBpm} BPM${cfg.isCustomBpm ? ' (Prioridad usuario)' : ''}`;
+  }
+  if ($('effSumHiHat')) {
+    if (cfg.isSoloPianoPrayerMode) {
+      $('effSumHiHat').textContent = 'Desactivado (Solo Piano)';
+    } else if (cfg.hihatMode === '16th') {
+      $('effSumHiHat').textContent = 'Semicorcheas (4 golpes/tiempo)';
+    } else if (cfg.hihatMode === '4th') {
+      $('effSumHiHat').textContent = 'Negras (1 golpe/tiempo)';
+    } else {
+      $('effSumHiHat').textContent = 'Corcheas (2 golpes/tiempo)';
+    }
+  }
+  if ($('effSumDrums')) {
+    if (cfg.isSoloPianoPrayerMode) {
+      $('effSumDrums').textContent = 'Sin batería (Solo Piano)';
+    } else {
+      const dParts = [];
+      if (cfg.crashToms) dParts.push('Crashes & Redobles en transiciones');
+      if (cfg.tomGrooves) dParts.push('Grooves en Toms (arreglo)');
+      if (cfg.splashRide) dParts.push('Splash & Ride Bell');
+      $('effSumDrums').textContent = dParts.length ? dParts.join(' + ') : 'Base estándar 4/4';
+    }
+  }
+  if ($('effSumBass')) {
+    if (cfg.isSoloPianoPrayerMode) {
+      $('effSumBass').textContent = 'Sin bajo (Solo Piano)';
+    } else if (cfg.bassSlap && cfg.bassPickup) {
+      $('effSumBass').textContent = 'Slap & Pop (principal, sin fingerstyle) + Pick-up & Paso en cambios';
+    } else if (cfg.bassSlap) {
+      $('effSumBass').textContent = 'Slap & Pop prioritario (sin fingerstyle)';
+    } else if (cfg.bassPickup) {
+      $('effSumBass').textContent = 'Pick-up & Notas de Paso en transiciones';
+    } else {
+      $('effSumBass').textContent = 'Base estándar eléctrica';
+    }
+  }
+}
+
+if ($('userBpmInput')) {
+  $('userBpmInput').addEventListener('input', () => {
+    const val = parseInt($('userBpmInput').value, 10);
+    if (val && val >= 40 && val <= 220) {
+      syncBpmToStylePrompt(val);
+      updateEffectiveConfigSummary();
+    }
+  });
+}
+
+if ($('styleInput')) {
+  $('styleInput').addEventListener('input', () => {
+    const styleBpm = extractBpmFromStylePrompt($('styleInput').value);
+    if (styleBpm && $('userBpmInput') && parseInt($('userBpmInput').value, 10) !== styleBpm) {
+      $('userBpmInput').value = String(styleBpm);
+    }
+    updateEffectiveConfigSummary();
+  });
+}
+
 document.querySelectorAll('input[name="hihat_mode"]').forEach(radio => {
   radio.addEventListener('change', () => {
     if (radio.checked) {
       updateHiHatInStylePrompt(radio.value);
+      updateEffectiveConfigSummary();
       if (radio.value === '8th') {
         showToast('Hi-Hat: 2 golpes por tempo (Corcheas: 1-y 2-y 3-y 4-y)', 'info');
       } else if (radio.value === '4th') {
@@ -2408,6 +2589,12 @@ document.querySelectorAll('input[name="hihat_mode"]').forEach(radio => {
     }
   });
 });
+
+['chkCrashToms', 'chkSplashRide', 'chkTomGrooves', 'chkBassSlap', 'chkBassPickup', 'chkDrums', 'chkBass', 'chkGuitar', 'chkPiano', 'chkOrgan', 'chkNoLatin'].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('change', updateEffectiveConfigSummary);
+});
+setTimeout(updateEffectiveConfigSummary, 0);
 
 /* ---------- SELECTOR DE TIPO DE PIANO PARA ORACIÓN ---------- */
 document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
@@ -4246,34 +4433,34 @@ $('genForm').addEventListener('submit', async e => {
   const fd = new FormData();
   const instr = $('instrumental').checked;
 
-  // Enriquecer con Selector de Ritmo y Banda
+  // Resolver configuración efectiva con prioridad absoluta de usuario
+  const effCfg = getEffectiveUserMusicalConfig();
   let finalStyle = $('styleInput').value.trim();
   const activeRhythmPill = document.querySelector('.rhythm-pill.active');
   const rhythmType = activeRhythmPill ? activeRhythmPill.dataset.rhythm : 'libre';
-  
-  if ((rhythmType === 'dos_pasos' || rhythmType === 'gospel_2step') && !finalStyle.toLowerCase().includes('dos pasos') && !finalStyle.toLowerCase().includes('two-step')) {
-    finalStyle = `full live acoustic praise drum kit, tempo 4/4, loud cutting snare drum backbeat cracking hard on beats 2 and 4, heavy kick drum on 1 and 3, bright metallic hi-hat cymbals, crash cymbal downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar, zero synth bass, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, no black gospel, no soul, no missing snare, no quiet snare, no missing cymbals, no kick drum only, ${finalStyle}`;
-  } else if (rhythmType === 'worship_ballad' && !finalStyle.toLowerCase().includes('ballad')) {
-    finalStyle = `sacred Christian worship ballad, gentle 68 bpm, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, ${finalStyle}`;
-  } else if (rhythmType === 'waltz_34' && !finalStyle.toLowerCase().includes('waltz') && !finalStyle.toLowerCase().includes('vals')) {
+  const activePreset = effCfg.activePreset;
+  const isSoloPianoPrayerMode = effCfg.isSoloPianoPrayerMode;
+
+  if ((rhythmType === 'dos_pasos' || rhythmType === 'gospel_2step') && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('dos pasos') && !finalStyle.toLowerCase().includes('two-step')) {
+    finalStyle = `full live acoustic praise drum kit, tempo 4/4, loud cutting snare drum backbeat cracking hard on beats 2 and 4, heavy kick drum on 1 and 3, bright metallic hi-hat cymbals, crash cymbal downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar, zero synth bass, traditional two-step praise straight 4/4 rhythm, ${effCfg.effectiveBpm} bpm, no black gospel, no soul, no missing snare, no quiet snare, no missing cymbals, no kick drum only, ${finalStyle}`;
+  } else if (rhythmType === 'worship_ballad' && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('ballad')) {
+    finalStyle = `sacred Christian worship ballad, ${effCfg.effectiveBpm} bpm, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, ${finalStyle}`;
+  } else if (rhythmType === 'waltz_34' && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('waltz') && !finalStyle.toLowerCase().includes('vals')) {
     finalStyle = `grand Viennese waltz hymn in 3/4 time, authentic Viennese oom-pah-pah 3/4 lilt, Strauss style, ${finalStyle}`;
   }
-
-  const activePresetCard = document.querySelector('.preset-card.active');
-  const activePreset = activePresetCard ? activePresetCard.dataset.preset : '';
-  const isSoloPianoPrayerMode = (
-    activePreset === 'piano_oracion' ||
-    /piano\s+de\s+oraci[oó]n|solo\s+piano|prayer\s+piano|pure\s+piano|mks-?20|keyscape/i.test(finalStyle)
-  );
 
   // Banda activa (sólo si NO es solo piano de oración)
   const bandExtras = [];
   if (!isSoloPianoPrayerMode) {
     if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
-      bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, no distant drums');
+      bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, tempo 4/4, snare 2-4, kick 1-3, hi-hat, no distant drums');
     }
     if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
-      bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
+      if (effCfg.bassSlap) {
+        bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
+      } else {
+        bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
+      }
     }
     if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
       bandExtras.push('crisp acoustic rhythm guitar strumming');
@@ -4286,41 +4473,6 @@ $('genForm').addEventListener('submit', async e => {
     }
     if (bandExtras.length > 0) {
       finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
-    }
-  }
-
-  // Articulación rítmica detallada (sólo si NO es solo piano de oración)
-  const rhythmArticulations = [];
-  if (!isSoloPianoPrayerMode) {
-    const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
-    const hiHatVal = selectedHiHat ? selectedHiHat.value : '8th';
-
-    if (hiHatVal === '8th' && !finalStyle.toLowerCase().includes('eighth note') && !finalStyle.toLowerCase().includes('corchea')) {
-      rhythmArticulations.push('steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
-    } else if (hiHatVal === '4th' && !finalStyle.toLowerCase().includes('quarter-note') && !finalStyle.toLowerCase().includes('negras')) {
-      rhythmArticulations.push('heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
-    } else if (hiHatVal === '16th' && !finalStyle.toLowerCase().includes('16th-note') && !finalStyle.toLowerCase().includes('semicorchea')) {
-      rhythmArticulations.push('fast driving 16th-note hi-hat subdivision pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat');
-    }
-
-    if ($('chkCrashToms') && $('chkCrashToms').checked && !finalStyle.toLowerCase().includes('crash cymbal')) {
-      rhythmArticulations.push('explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills');
-    }
-    if ($('chkSplashRide') && $('chkSplashRide').checked && !finalStyle.toLowerCase().includes('splash cymbal') && !finalStyle.toLowerCase().includes('ride bell')) {
-      rhythmArticulations.push('crisp splash cymbal accents, articulate ride cymbal bell pings');
-    }
-    if ($('chkTomGrooves') && $('chkTomGrooves').checked && !finalStyle.toLowerCase().includes('floor tom groove')) {
-      rhythmArticulations.push('driving rhythmic floor tom groove and articulate rack tom patterns');
-    }
-    if ($('chkBassSlap') && $('chkBassSlap').checked && !finalStyle.toLowerCase().includes('slap and pop')) {
-      rhythmArticulations.push('funky punchy slap and pop electric bass accents on fills and chord transitions');
-    }
-    if ($('chkBassPickup') && $('chkBassPickup').checked && !finalStyle.toLowerCase().includes('pick-up') && !finalStyle.toLowerCase().includes('passing tone')) {
-      rhythmArticulations.push('expressive chromatic pick-up notes and walking bass passing tones into downbeats');
-    }
-
-    if (rhythmArticulations.length > 0) {
-      finalStyle = `${finalStyle}, ${rhythmArticulations.join(', ')}`;
     }
   }
 
@@ -4345,6 +4497,14 @@ $('genForm').addEventListener('submit', async e => {
   }
 
   fd.append('style', finalStyle);
+  fd.append('target_bpm', String(effCfg.effectiveBpm));
+  fd.append('hihat_mode', effCfg.hihatMode);
+  fd.append('art_crash_toms', effCfg.crashToms ? 'true' : 'false');
+  fd.append('art_splash_ride', effCfg.splashRide ? 'true' : 'false');
+  fd.append('art_tom_grooves', effCfg.tomGrooves ? 'true' : 'false');
+  fd.append('art_bass_slap', effCfg.bassSlap ? 'true' : 'false');
+  fd.append('art_bass_pickup', effCfg.bassPickup ? 'true' : 'false');
+  fd.append('active_preset', effCfg.activePreset);
   let userLyrics = $('lyricsInput').value.trim();
 
   // Si el usuario no puso letra en el box principal pero la tablatura tenía letra limpia, usarla automáticamente

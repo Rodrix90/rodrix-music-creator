@@ -11,6 +11,7 @@ import asyncio
 import uuid
 import tempfile
 import subprocess
+from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -1525,6 +1526,13 @@ async def transform_audio(
     obfuscate: bool = Form(False),
     skeleton_file: str = Form(""),
     target_bpm: int = Form(0),
+    hihat_mode: str = Form(""),
+    art_crash_toms: Optional[bool] = Form(None),
+    art_splash_ride: Optional[bool] = Form(None),
+    art_tom_grooves: Optional[bool] = Form(None),
+    art_bass_slap: Optional[bool] = Form(None),
+    art_bass_pickup: Optional[bool] = Form(None),
+    active_preset: str = Form(""),
     is_public_domain: bool = Form(False),
     client_operation_id: str = Form(""),
     current_user: str = Depends(get_current_user)
@@ -1679,7 +1687,9 @@ async def transform_audio(
             run_transform_task,
             task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
             include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
-            style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain
+            style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain,
+            target_bpm, hihat_mode, art_crash_toms, art_splash_ride, art_tom_grooves,
+            art_bass_slap, art_bass_pickup, active_preset
         )
         
         return {"status": "started", "task_id": task_id}
@@ -2205,7 +2215,338 @@ async def serve_cached_audio(task_id: str):
             return RedirectResponse(url=url)
     raise HTTPException(status_code=404, detail="Audio no disponible")
 
-async def run_transform_task(task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio, include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness, style_influence, audio_influence, model, pronunciation="", obfuscate=False, is_public_domain=False):
+def resolve_effective_musical_config(
+    style: str,
+    lyrics: str = "",
+    exclude_styles: str = "",
+    target_bpm: float = 0,
+    hihat_mode: str = "",
+    art_crash_toms: Optional[bool] = None,
+    art_splash_ride: Optional[bool] = None,
+    art_tom_grooves: Optional[bool] = None,
+    art_bass_slap: Optional[bool] = None,
+    art_bass_pickup: Optional[bool] = None,
+    active_preset: str = "",
+    is_solo_piano_prayer: bool = False,
+    is_drum_solo: bool = False,
+    is_vals_vienes: bool = False,
+) -> dict:
+    """
+    Única fuente de verdad (Single Source of Truth) para resolver la configuración
+    efectiva del usuario (BPM, subdivisión de Hi-Hat y articulaciones de batería y bajo)
+    con prioridad absoluta sobre los valores por defecto de cualquier preset.
+    """
+    raw_style = (style or "").strip()
+    raw_lower = raw_style.lower()
+    preset_key = (active_preset or "").strip().lower()
+    if not preset_key:
+        if "alabanza juvenil" in raw_lower or "christian youth praise" in raw_lower:
+            preset_key = "juvenil"
+        elif "pentecostal" in raw_lower:
+            preset_key = "pentecostal"
+        elif "adoracion intima" in raw_lower or "adoración íntima" in raw_lower:
+            preset_key = "adoracion"
+        elif "himno solemne" in raw_lower:
+            preset_key = "himno"
+        elif is_solo_piano_prayer:
+            preset_key = "piano_oracion"
+        elif is_vals_vienes:
+            preset_key = "vals_vienes"
+
+    preset_default_bpms = {
+        "juvenil": 125.0,
+        "pentecostal": 118.0,
+        "adoracion": 68.0,
+        "himno": 78.0,
+        "piano_oracion": 60.0,
+    }
+    default_bpm = preset_default_bpms.get(preset_key)
+
+    # 1. Resolver BPM autoritativo del usuario ANTES de expandir presets
+    raw_bpm_matches = [float(x) for x in re.findall(r'\b(\d+(?:\.\d+)?)\s*bpm\b', raw_style, flags=re.IGNORECASE)]
+    effective_bpm: Optional[float] = None
+    explicit_target = float(target_bpm) if (target_bpm and float(target_bpm) > 0) else None
+
+    if explicit_target is not None:
+        # Si el usuario editó directamente el BPM en el texto de estilo y difiere del default del preset
+        # mientras target_bpm seguía en el default, priorizar el editado por el usuario.
+        user_edited_in_text = next((b for b in reversed(raw_bpm_matches) if default_bpm is None or b != default_bpm), None)
+        if default_bpm is not None and explicit_target == default_bpm and user_edited_in_text is not None:
+            effective_bpm = user_edited_in_text
+        else:
+            effective_bpm = explicit_target
+    elif raw_bpm_matches:
+        user_edited_in_text = next((b for b in reversed(raw_bpm_matches) if default_bpm is None or b != default_bpm), None)
+        effective_bpm = user_edited_in_text if user_edited_in_text is not None else raw_bpm_matches[-1]
+    else:
+        effective_bpm = default_bpm
+
+    if effective_bpm is not None:
+        bpm_str = f"{int(effective_bpm)}" if float(effective_bpm).is_integer() else f"{effective_bpm:.1f}"
+        bpm_tag = f"{bpm_str} BPM"
+    else:
+        bpm_tag = ""
+
+    # 2. Resolver subdivisión de Hi-Hat autoritativa del usuario (sin contradicciones)
+    hm_clean = (hihat_mode or "").strip().lower()
+    if hm_clean in ("4th", "8th", "16th"):
+        effective_hihat = hm_clean
+    elif any(k in raw_lower for k in ("16th-note", "16th note", "sixteenth-note", "semicorchea", "four strokes per beat", "4 golpes", "hihat 16th")):
+        effective_hihat = "16th"
+    elif any(k in raw_lower for k in ("quarter-note", "quarter note", "negras", "one stroke per beat", "1 golpe", "hihat 4th")):
+        effective_hihat = "4th"
+    else:
+        effective_hihat = "8th"
+
+    # 3. Resolver articulaciones de batería y bajo sin desactivar elecciones del usuario
+    if is_solo_piano_prayer:
+        eff_crash_toms = False
+        eff_splash_ride = False
+        eff_tom_grooves = False
+        eff_bass_slap = False
+        eff_bass_pickup = False
+    else:
+        eff_crash_toms = bool(art_crash_toms) if art_crash_toms is not None else any(
+            k in raw_lower for k in ("crash cymbals on transitions", "crashes y redobles", "crashes and fills", "tom rolls and drum fills")
+        )
+        eff_splash_ride = bool(art_splash_ride) if art_splash_ride is not None else any(
+            k in raw_lower for k in ("splash cymbal", "ride cymbal bell", "platillos splash", "splash y ride")
+        )
+        eff_tom_grooves = bool(art_tom_grooves) if art_tom_grooves is not None else any(
+            k in raw_lower for k in ("floor tom groove", "grooves en toms", "groove en toms", "tom grooves")
+        )
+        eff_bass_slap = bool(art_bass_slap) if art_bass_slap is not None else any(
+            k in raw_lower for k in ("slap and pop", "slap & pop", "bajo slap", "slap bass", "slap y pop", "adorno slap")
+        )
+        eff_bass_pickup = bool(art_bass_pickup) if art_bass_pickup is not None else any(
+            k in raw_lower for k in ("pick-up", "pickup bass", "passing tones", "notas de paso")
+        )
+
+    # 4. Construir cláusulas prioritarias sin contradicciones
+    priority_clauses = []
+    if not is_solo_piano_prayer and not is_vals_vienes:
+        if effective_hihat == "16th":
+            hihat_clause = "fast driving 16th-note hi-hat subdivision pattern (four strokes per beat, rapid sixteenth-note hi-hats)"
+        elif effective_hihat == "4th":
+            hihat_clause = "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)"
+        else:
+            hihat_clause = "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
+        priority_clauses.append(hihat_clause)
+    else:
+        hihat_clause = ""
+
+    if not is_solo_piano_prayer and not is_drum_solo:
+        if eff_bass_slap and eff_bass_pickup:
+            bass_clause = (
+                "prominent funky slap and pop electric bass (percussive thumb slaps on main beats and crisp octave pops on accents) "
+                "combined with expressive chromatic pick-up approach notes and melodic bass passing tones leading into chord transitions and downbeats"
+            )
+            priority_clauses.append(bass_clause)
+        elif eff_bass_slap:
+            bass_clause = (
+                "prominent funky slap and pop electric bass lead groove "
+                "(percussive thumb slap and crisp octave finger pop technique, roundwound steel strings)"
+            )
+            priority_clauses.append(bass_clause)
+        elif eff_bass_pickup:
+            bass_clause = "expressive chromatic pick-up bass notes and walking bass passing tones leading into chord transitions and downbeats"
+            priority_clauses.append(bass_clause)
+        else:
+            bass_clause = ""
+    else:
+        bass_clause = ""
+
+    drum_clauses = []
+    if not is_solo_piano_prayer:
+        if eff_tom_grooves:
+            tom_clause = "explicit arrangement with driving rhythmic floor tom groove and articulate rack tom patterns"
+            drum_clauses.append(tom_clause)
+            priority_clauses.append(tom_clause)
+        if eff_crash_toms:
+            crash_clause = "explosive crash cymbals on musical transitions and section downbeats, dynamic acoustic tom rolls and drum fills between sections"
+            drum_clauses.append(crash_clause)
+            priority_clauses.append(crash_clause)
+        if eff_splash_ride:
+            splash_clause = "crisp splash cymbal accents and articulate ride cymbal bell pings"
+            drum_clauses.append(splash_clause)
+            priority_clauses.append(splash_clause)
+
+    return {
+        "preset_key": preset_key,
+        "default_bpm": default_bpm,
+        "effective_bpm": effective_bpm,
+        "bpm_tag": bpm_tag,
+        "effective_hihat": effective_hihat,
+        "hihat_clause": hihat_clause,
+        "crash_toms": eff_crash_toms,
+        "splash_ride": eff_splash_ride,
+        "tom_grooves": eff_tom_grooves,
+        "bass_slap": eff_bass_slap,
+        "bass_pickup": eff_bass_pickup,
+        "bass_clause": bass_clause,
+        "drum_clauses": drum_clauses,
+        "priority_clauses": priority_clauses,
+    }
+
+
+def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
+    """
+    Purga todas las referencias contradictorias de BPM, subdivisiones de hi-hat opuestas
+    y técnicas de bajo incompatibles (como fingerstyle cuando se activa Slap & Pop),
+    garantizando que las elecciones del usuario sean inequívocas.
+    """
+    cleaned = style_str or ""
+
+    # 1. Purgar TODOS los BPM residuales y adjetivos huérfanos de tempo
+    cleaned = re.sub(
+        r'\b(?:driving|steady|gentle|andante|slow|fast)?\s*\d+(?:\.\d+)?\s*bpm(?:\s+tempo|\s+slow\s+tempo|\s+slow\s+devotional\s+worship\s+tempo)?\b',
+        '',
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', cleaned, flags=re.IGNORECASE)
+
+    # 2. Purgar frases previas de subdivisión de hi-hat y evitar términos contradictorios
+    cleaned = re.sub(r'\bhit-hat\b', 'hi-hat', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\bdotted\s+eighth(?:-note)?\s+delay\b', 'rhythmic delay', cleaned, flags=re.IGNORECASE)
+    hihat_purge_patterns = [
+        r'steady closed (?:eighth-note )?hi-hat (?:pattern|keeping straight eighth notes)\s*(?:\([^\)]*\))?',
+        r'bright metallic hi-hat cymbals keeping steady eighth notes\s*(?:\([^\)]*\))?',
+        r'heavy steady quarter-note hi-hat pulse(?: on every beat)?\s*(?:\([^\)]*\))?',
+        r'fast driving 16th-note hi-hat (?:subdivision )?pattern\s*(?:\([^\)]*\))?',
+        r'\((?:two|one|four)\s+strokes\s+per\s+beat[^\)]*\)',
+        r'\b1-and\s+2-and\s+3-and\s+4-and\)*',
+        r'\b1-2-3-4\)*',
+        r'\b(?:eighth-note|eighth\s+notes?|quarter-note|quarter\s+notes?|16th-note|16th\s+notes?|sixteenth-note|sixteenth\s+notes?|corcheas?|negras?|semicorcheas?)\s+hi-?hat\w*\b',
+        r'\bhi-?hat\s+en\s+(?:corcheas?|negras?|semicorcheas?)\b',
+        r'\b(?:1|2|4|un|dos|cuatro)\s+golpes?\s+(?:por|x)\s+tempo\b',
+    ]
+    for pat in hihat_purge_patterns:
+        cleaned = re.sub(pat, '', cleaned, flags=re.IGNORECASE)
+
+    # Si el modo elegido NO es 8th, eliminar cualquier mención residual de eighth/corchea; etc.
+    eff_hh = cfg.get("effective_hihat", "8th")
+    if eff_hh == "16th":
+        cleaned = re.sub(r'\b(?:eighth-note|eighth\s+notes?|eighth|corcheas?|quarter-note|quarter\s+notes?|quarter|negras?)\b', '', cleaned, flags=re.IGNORECASE)
+    elif eff_hh == "4th":
+        cleaned = re.sub(r'\b(?:eighth-note|eighth\s+notes?|eighth|corcheas?|16th-note|16th\s+notes?|16th|sixteenth-note|sixteenth\s+notes?|sixteenth|semicorcheas?)\b', '', cleaned, flags=re.IGNORECASE)
+    elif eff_hh == "8th":
+        cleaned = re.sub(r'\b(?:quarter-note|quarter\s+notes?|quarter|negras?|16th-note|16th\s+notes?|16th|sixteenth-note|sixteenth\s+notes?|sixteenth|semicorcheas?)\b', '', cleaned, flags=re.IGNORECASE)
+
+    # 3. Purgar frases crudas previas de articulación para reinsertarlas con prioridad única al frente
+    raw_art_patterns = [
+        r'explosive crash cymbals on (?:musical )?transitions and (?:section )?downbeats,\s*dynamic acoustic tom rolls and drum fills(?:\s+between sections)?',
+        r'crisp splash cymbal accents(?:,|\s+and)\s*articulate ride cymbal bell pings',
+        r'(?:explicit arrangement with )?driving rhythmic floor tom groove and articulate rack tom patterns',
+        r'funky punchy slap and pop electric bass accents on fills and chord transitions(?:,\s*thumb slap and finger pop embellishments)?',
+        r'expressive chromatic pick-up (?:bass )?notes and walking bass passing tones (?:leading )?into (?:chord transitions and )?downbeats',
+    ]
+    for pat in raw_art_patterns:
+        cleaned = re.sub(pat, '', cleaned, flags=re.IGNORECASE)
+
+    # 4. Si Slap & Pop está activo, eliminar cualquier instrucción incompatible como fingerstyle o flatwound
+    if cfg.get("bass_slap"):
+        incompatible_bass_patterns = [
+            r'played fingerstyle with organic string dynamics(?: and natural fret buzz)?',
+            r'real human fingerstyle bass plucking',
+            r'Jaco Pastorius style lyrical fingerstyle tone',
+            r'lyrical fingerstyle tone',
+            r'real roundwound strings plucked with fingers',
+            r'plucked with fingers',
+            r'pizzicato finger plucked[^,]*',
+            r'muted fleshy thumb and finger pluck',
+            r'\bfingerstyle\b',
+            r'\bfinger\s+plucked\b',
+            r'\bflatwound\s+strings\b',
+            r'root-fifth alternating (?:acoustic )?bass(?:line|\s+boom-chick)?',
+            r'\balternating\s+bass\b',
+            r'\bwalking\s+bass\b',
+        ]
+        for pat in incompatible_bass_patterns:
+            cleaned = re.sub(pat, '', cleaned, flags=re.IGNORECASE)
+
+    # Limpiar comas múltiples y espacios residuales
+    parts = [re.sub(r'\s+', ' ', p).strip(' ,-') for p in cleaned.split(',')]
+    parts = [p for p in parts if p and p.lower() not in ('driving', 'steady', 'gentle', 'andante', 'slow', 'fast')]
+    return ", ".join(parts)
+
+
+def inject_arrangement_cues_into_lyrics(lyrics_str: str, cfg: dict, is_instrumental: bool = False, is_solo_piano_prayer: bool = False, is_drum_solo: bool = False) -> str:
+    """
+    Inyecta indicaciones estructurales en el prompt de letras/estructura para que Udio
+    ejecute los Grooves en Toms, Crashes & Redobles en transiciones y la distribución
+    musical de Bajo (Slap & Pop + Pick-up & Paso) en las secciones correspondientes.
+    """
+    if is_solo_piano_prayer or is_drum_solo:
+        return lyrics_str
+
+    base_lyrics = (lyrics_str or "").strip()
+    cues = []
+    if cfg.get("bpm_tag"):
+        cues.append(cfg["bpm_tag"])
+    eff_hh = cfg.get("effective_hihat")
+    if eff_hh == "16th":
+        cues.append("16th-Note Hi-Hat")
+    elif eff_hh == "4th":
+        cues.append("Quarter-Note Hi-Hat")
+    elif eff_hh == "8th":
+        cues.append("8th-Note Hi-Hat")
+
+    if cfg.get("tom_grooves"):
+        cues.append("Driving Floor Tom Groove Arrangement")
+    if cfg.get("crash_toms"):
+        cues.append("Explosive Crash Cymbals & Tom Rolls on Section Transitions")
+    if cfg.get("splash_ride"):
+        cues.append("Splash & Ride Bell Accents")
+    if cfg.get("bass_slap") and cfg.get("bass_pickup"):
+        cues.append("Slap & Pop Bass on Main Groove + Chromatic Pick-up Passing Tones on Chord Transitions")
+    elif cfg.get("bass_slap"):
+        cues.append("Prominent Funky Slap & Pop Bass")
+    elif cfg.get("bass_pickup"):
+        cues.append("Chromatic Pick-up & Passing Bass Notes on Transitions")
+
+    has_any_special = cfg.get("tom_grooves") or cfg.get("crash_toms") or cfg.get("splash_ride") or cfg.get("bass_slap") or cfg.get("bass_pickup") or eff_hh in ("16th", "4th")
+    if not has_any_special:
+        return base_lyrics
+
+    header_line = f"[Arrangement: {' | '.join(cues)}]"
+    updated = base_lyrics
+
+    if cfg.get("tom_grooves"):
+        updated = re.sub(
+            r'\[(verse|estrofa|verso)([^\]]*)\]',
+            r'[\1\2 - Driving Floor Tom Groove]',
+            updated,
+            flags=re.IGNORECASE,
+        )
+
+    if cfg.get("crash_toms"):
+        transition_tag = "[Drum Fill: Dynamic Acoustic Tom Roll -> Explosive Crash Cymbal Transition]\n"
+        if re.search(r'\[(chorus|coro|bridge|puente)[^\]]*\]', updated, flags=re.IGNORECASE):
+            updated = re.sub(
+                r'(\[(?:chorus|coro|bridge|puente)[^\]]*\])',
+                lambda m: f"{transition_tag}{m.group(1)}",
+                updated,
+                flags=re.IGNORECASE,
+            )
+        else:
+            updated = f"{transition_tag}{updated}" if updated else transition_tag.strip()
+
+    if header_line.lower() not in updated.lower():
+        updated = f"{header_line}\n{updated}" if updated else header_line
+
+    return updated
+
+
+async def run_transform_task(
+    task_id, style, lyrics, title, audio_content, audio_filename, ignore_audio,
+    include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
+    style_influence, audio_influence, model, pronunciation="", obfuscate=False,
+    is_public_domain=False, target_bpm=0, hihat_mode="", art_crash_toms=None,
+    art_splash_ride=None, art_tom_grooves=None, art_bass_slap=None,
+    art_bass_pickup=None, active_preset=""
+):
     def log_msg(msg):
         import datetime
         timestamp = datetime.datetime.now().strftime('%H:%M:%S')
@@ -2394,7 +2735,7 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 "himno vals vienes": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
                 "himno vals vienés": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
                 "himno solemne tradicional": "traditional sacred hymn, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo, classical sacred Christian hymn",
-                "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, driving 125 bpm, punchy acoustic rock drum kit with solid backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, dotted eighth-note delay lead guitar riff, modern synth arpeggio, inspiring youth worship leader and anthemic chorus",
+                "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, punchy acoustic rock drum kit with solid backbeat, tempo 4/4, snare 2-4, kick 1-3, hi-hat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, rhythmic delay lead electric guitar, modern synth arpeggio, inspiring youth worship leader and anthemic praise",
                 "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat",
                 "guitarra bajo batería": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat",
                 # Hardware de Estudio y Consolas
@@ -2571,6 +2912,50 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                     cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
             return cleaned
 
+        # Presets especiales preexistentes (evaluados sobre el estilo original antes de expandir)
+        raw_style_before_enrich = style
+        is_drum_solo = any(w in raw_style_before_enrich.lower() for w in [
+            "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
+            "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
+            "pure drums", "drum test", "drum sound test"
+        ])
+        is_solo_piano_prayer = not is_drum_solo and (
+            active_preset == "piano_oracion"
+            or any(w in raw_style_before_enrich.lower() for w in [
+                "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
+                "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
+                "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
+            ]) or (is_instrumental and "piano" in raw_style_before_enrich.lower() and any(w in raw_style_before_enrich.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
+        )
+        if is_solo_piano_prayer:
+            is_instrumental = True
+            wants_solo_vocal = False
+            wants_choir = False
+            final_lyrics = "[Instrumental - Solo Piano]"
+
+        is_vals_vienes = not is_drum_solo and (active_preset == "vals_vienes" or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"]))
+
+        # Resolver configuración efectiva del usuario con prioridad absoluta ANTES de expandir presets
+        eff_cfg = resolve_effective_musical_config(
+            style=raw_style_before_enrich,
+            lyrics=final_lyrics,
+            exclude_styles=exclude_styles,
+            target_bpm=target_bpm,
+            hihat_mode=hihat_mode,
+            art_crash_toms=art_crash_toms,
+            art_splash_ride=art_splash_ride,
+            art_tom_grooves=art_tom_grooves,
+            art_bass_slap=art_bass_slap,
+            art_bass_pickup=art_bass_pickup,
+            active_preset=active_preset,
+            is_solo_piano_prayer=is_solo_piano_prayer,
+            is_drum_solo=is_drum_solo,
+            is_vals_vienes=is_vals_vienes,
+        )
+        bpm_tag = eff_cfg["bpm_tag"]
+        if eff_cfg["effective_bpm"]:
+            log_msg(f"Tempo autoritativo del usuario aplicado: {bpm_tag}")
+
         style = enrich_style(style)
         style = enrich_voice(style)
         style = sanitize_artist_names(style)
@@ -2579,40 +2964,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
         # Clean structural tags from style string (they belong in lyrics, not style)
         style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
 
-        # Detect user custom BPM (e.g. 83.3 BPM, 85 bpm, 120 bpm) explícito
-        custom_bpm_match = re.search(r'\b(\d+(?:\.\d+)?)\s*bpm\b', style, re.IGNORECASE)
-        custom_bpm = float(custom_bpm_match.group(1)) if custom_bpm_match else None
+        # Purgar BPMs conflictivos, subdivisiones de hi-hat contradictorias y técnicas de bajo incompatibles (fingerstyle vs slap)
+        style = sanitize_and_prioritize_style_with_config(style, eff_cfg)
 
-        if custom_bpm:
-            # Eliminar BPM repetidos o conflictivos del estilo
-            style = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', style, flags=re.IGNORECASE)
-            style = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', style, flags=re.IGNORECASE)
-            bpm_tag = f"{custom_bpm:.1f} BPM"
-            log_msg(f"Tempo explícito del usuario respetado: {custom_bpm:.1f} BPM")
-        else:
-            bpm_tag = ""
-
-        # Presets especiales preexistentes
-        is_drum_solo = any(w in style.lower() for w in [
-            "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
-            "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
-            "pure drums", "drum test", "drum sound test"
-        ])
-        is_solo_piano_prayer = not is_drum_solo and (
-            any(w in style.lower() for w in [
-                "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
-                "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
-                "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
-            ]) or (is_instrumental and "piano" in style.lower() and any(w in style.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
-        )
-        if is_solo_piano_prayer:
-            is_instrumental = True
-            wants_solo_vocal = False
-            wants_choir = False
-            final_lyrics = "[Instrumental - Solo Piano]"
-
-        is_vals_vienes = not is_drum_solo and any(w in style.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
-        is_pentecostal = not is_drum_solo and any(w in style.lower() for w in ["pentecostal", "coro pentecostal", "coros pentecostales", "himno pentecostal"])
+        is_pentecostal = not is_drum_solo and (eff_cfg["preset_key"] == "pentecostal" or any(w in style.lower() for w in ["pentecostal", "coro pentecostal", "coros pentecostales", "himno pentecostal"]))
 
         # Comprobación rigurosa de marcadores contemporáneos / género moderno
         is_explicit_modern = any(w in style.lower() for w in [
@@ -2636,48 +2991,42 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             "coros de avivamiento", "avivamiento", "congregational praise", "congregational worship"
         ])
 
-        # Identificación de familias musicales (definen carácter, interpretación y acústica sin imponer instrumentos ni alterar el compás propio)
-        # - Himno tradicional: exclusivamente cuando se define como tradicional/clásico o contiene la palabra 'himno' sin marcadores modernos ni congregacionales.
         is_traditional_hymn = (
             not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal
             and (is_explicit_traditional_hymn or (re.search(r'\bhimno\b', style.lower()) and not is_explicit_modern and not is_explicit_congregational))
         )
 
-        # - Coro congregacional / avivamiento: respeta el compás y tempo nativo del tema sin imponer 4/4 ni 2-step
         is_congregational = (
             not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal and not is_traditional_hymn
             and is_explicit_congregational
         )
 
-        # - Composición moderna: producciones contemporáneas (incluso si la letra o título aluden poéticamente a un 'himno' o 'canción')
         is_modern_composition = (
             not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_traditional_hymn and not is_congregational
             and is_explicit_modern
         )
 
         if is_drum_solo:
-            genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 bpm unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
+            genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 BPM unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
         elif is_solo_piano_prayer:
             if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "e-piano 2"]):
-                genre_anchor = f"pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, {bpm_tag or '60 BPM slow tempo'}, reverent devotional worship, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+                genre_anchor = f"pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, {bpm_tag or '60 BPM'}, reverent devotional worship, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             elif any(w in style.lower() for w in ["galaxy dx", "galaxydx"]):
-                genre_anchor = f"pure solo hybrid worship piano, acoustic concert grand piano layered with Yamaha DX7 FM electric piano tines, crystalline bell tone, {bpm_tag or '60 BPM slow tempo'}, deep church hall reverb, pure solo piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+                genre_anchor = f"pure solo hybrid worship piano, acoustic concert grand piano layered with Yamaha DX7 FM electric piano tines, crystalline bell tone, {bpm_tag or '60 BPM'}, deep church hall reverb, pure solo piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             elif any(w in style.lower() for w in ["motif xs", "motif", "motif power grand"]):
-                genre_anchor = f"pure solo Yamaha Motif XS Power Grand piano, crisp modern worship concert grand piano, crystal clear attack, expansive cathedral hall reverb, {bpm_tag or '60 BPM slow tempo'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+                genre_anchor = f"pure solo Yamaha Motif XS Power Grand piano, crisp modern worship concert grand piano, crystal clear attack, expansive cathedral hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             elif "rhodes" in style.lower():
-                genre_anchor = f"pure solo Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus, {bpm_tag or '60 BPM slow tempo'}, pure solo electric piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+                genre_anchor = f"pure solo Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus, {bpm_tag or '60 BPM'}, pure solo electric piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
             else:
-                genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM slow tempo'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+                genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
         elif is_vals_vienes:
-            genre_anchor = f"sacred Viennese waltz hymn in 3/4 time, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
+            tempo_str = f", {bpm_tag}" if bpm_tag else ""
+            genre_anchor = f"sacred Viennese waltz hymn in 3/4 time{tempo_str}, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
         elif is_pentecostal:
-            target_bpm = bpm_tag or "steady tempo"
-            hihat_desc = "bright metallic hi-hat cymbals keeping steady eighth notes (two strokes per beat)"
-            if any(w in style.lower() for w in ["quarter-note hi-hat", "negras", "one stroke per beat", "1 golpe"]):
-                hihat_desc = "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)"
-            elif any(w in style.lower() for w in ["16th-note", "semicorcheas", "four strokes per beat", "4 golpes"]):
-                hihat_desc = "fast driving 16th-note hi-hat pattern (four strokes per beat)"
-            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, zero synth bass, traditional two-step praise straight 4/4 rhythm, {target_bpm}, root-fifth alternating acoustic bassline, church choir singing in unison, natural Spanish vocals, no black gospel, no soul, no melisma, no missing snare, no quiet snare, no missing cymbals"
+            target_bpm_str = bpm_tag or "118 BPM"
+            hihat_desc = eff_cfg["hihat_clause"] or "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
+            bass_anchor = eff_cfg["bass_clause"] or "root-fifth alternating acoustic bassline"
+            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, zero synth bass, traditional two-step praise straight 4/4 rhythm, {target_bpm_str}, {bass_anchor}, church choir singing in unison, natural Spanish vocals, no black gospel, no soul, no melisma, no missing snare, no quiet snare, no missing cymbals"
         elif is_traditional_hymn:
             tempo_str = f", {bpm_tag}" if bpm_tag else ""
             genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
@@ -2691,6 +3040,15 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
             genre_anchor = bpm_tag
         else:
             genre_anchor = ""
+
+        # Inyectar indicaciones estructurales de arreglo y transiciones en final_lyrics
+        final_lyrics = inject_arrangement_cues_into_lyrics(
+            final_lyrics,
+            eff_cfg,
+            is_instrumental=is_instrumental,
+            is_solo_piano_prayer=is_solo_piano_prayer,
+            is_drum_solo=is_drum_solo,
+        )
 
         # Vocal styling in style prompt (respetando estrictamente selecciones de voz solista vs coro):
         if is_instrumental:
@@ -2886,7 +3244,8 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
             else:
-                combined_parts = [p for p in [genre_anchor, key_bans_str, style] if p]
+                priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
+                combined_parts = [p for p in [genre_anchor, priority_str, style, key_bans_str] if p]
                 style = ", ".join(combined_parts)
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
@@ -2903,11 +3262,25 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
                 style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif genre_anchor and not is_drum_solo:
-                style = f"{genre_anchor}, {style}"
+            elif not is_drum_solo:
+                priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
+                combined_parts = [p for p in [genre_anchor, priority_str, style] if p]
+                style = ", ".join(combined_parts)
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
-                style = f"{genre_anchor}, {style}"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+
+        # Deduplicar etiquetas separadas por coma preservando el orden de prioridad
+        if not is_solo_piano_prayer and not is_drum_solo:
+            seen_style_tags = set()
+            dedup_style_tags = []
+            for raw_tag in style.split(","):
+                t_clean = re.sub(r'\s+', ' ', raw_tag).strip()
+                if not t_clean:
+                    continue
+                t_key = t_clean.lower()
+                if t_key not in seen_style_tags:
+                    seen_style_tags.add(t_key)
+                    dedup_style_tags.append(t_clean)
+            style = ", ".join(dedup_style_tags)
 
         # Compute weights cleanly clamped to documented ranges 0.00 - 1.00
         actual_style_weight = 0.85 if is_drum_solo else max(0.0, min(1.0, round(float(style_influence) / 100.0, 2)))
@@ -2962,6 +3335,10 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                 payload["negative_prompt"] = neg_final_str
                 payload["exclude_styles"] = neg_final_str
                 payload["excluded_tags"] = neg_final_str
+
+        if task_id in TASKS:
+            TASKS[task_id]["effective_config"] = eff_cfg
+            TASKS[task_id]["resolved_payload"] = payload
 
         log_msg(f"Estilo final enviado: {style[:200]}...")
         if neg_final_str:
