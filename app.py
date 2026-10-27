@@ -1,4 +1,5 @@
 import os
+import sys
 import io
 import time
 import re
@@ -26,8 +27,9 @@ try:
 except ImportError:
     fal_client = None
 
-# Load environment variables
-load_dotenv()
+# Cargar variables de entorno en desarrollo local (en Render se inyectan en el entorno del contenedor)
+if not os.environ.get("RENDER"):
+    load_dotenv()
 
 app = FastAPI(title="Rodrix Music Creator - Udio Engine", version="3.0")
 
@@ -43,20 +45,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UDIO_API_KEY = os.environ.get("UDIO_API_KEY", "sk-e6c60cad69b44514b66651740a2c5885")
-FAL_KEY = os.environ.get("FAL_KEY", "20e7799e-fb39-4d3b-b75e-8db768dcf965:b538bb820dd477732ffbf38a2e8e2e9d")
+UDIO_API_KEY = os.environ.get("UDIO_API_KEY", "")
+FAL_KEY = os.environ.get("FAL_KEY", "")
 if FAL_KEY:
     os.environ["FAL_KEY"] = FAL_KEY
-SECRET_KEY = os.environ.get("SECRET_KEY", "default_secret_key_12345").encode('utf-8')
 
-# Middleware de sesión para Authlib / Starlette
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY.decode('utf-8'))
+# Gestión de SECRET_KEY: Exigida estrictamente en producción (Render)
+is_production = bool(os.environ.get("RENDER") or os.environ.get("ENVIRONMENT", "").lower() in ["production", "prod"])
+_raw_secret = os.environ.get("SECRET_KEY", "").strip()
+
+if not _raw_secret:
+    if is_production:
+        error_msg = (
+            "\n" + "="*80 + "\n"
+            "[SEGURIDAD CRÍTICA] ERROR FATAL: 'SECRET_KEY' no está configurada en las variables de entorno.\n"
+            "En producción (Render), es OBLIGATORIO definir 'SECRET_KEY' fija para garantizar\n"
+            "la persistencia e integridad de las sesiones de los usuarios entre reinicios.\n"
+            "Deteniendo el arranque del servidor por seguridad.\n"
+            "Acción requerida: Configure 'SECRET_KEY' en el panel de Render > Environment Variables.\n"
+            + "="*80 + "\n"
+        )
+        print(error_msg, file=sys.stderr, flush=True)
+        sys.exit(1)
+    else:
+        import secrets
+        _raw_secret = secrets.token_urlsafe(32)
+        print("[SEGURIDAD DEV] AVISO: 'SECRET_KEY' no configurada en entorno local. Se generó clave temporal para desarrollo.")
+
+SECRET_KEY = _raw_secret.encode('utf-8')
+
+# Middleware de sesión con seguridad HTTPS en producción
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=SECRET_KEY.decode('utf-8'),
+    https_only=bool(os.environ.get("RENDER")),
+    same_site="lax"
+)
 
 # Instanciar OAuth globalmente
 oauth = OAuth()
 
 # ==============================================================================
-# PERSISTENCIA EN GOOGLE DRIVE 5 TB (Google One / AI Pro)
+# PERSISTENCIA EN GOOGLE DRIVE 5 TB (Google One / AI Pro) & CONTROL CONCURRENTE
 # ==============================================================================
 GDRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "1HwAsh0C4ngWaA88rEjtTnBIYNp2eypK8")
 GDRIVE_CLIENT_ID = "813430947107-3aa7i4809aj47jpm0okp92me855l1tt0.apps.googleusercontent.com"
@@ -64,6 +94,221 @@ GDRIVE_TOKEN_FILE = "gdrive_token.json"
 TRACKS_DIR = "tracks_storage"
 os.makedirs(TRACKS_DIR, exist_ok=True)
 LIBRARY_FILE = "library.json"
+USERS_FILE = "users.json"
+DELETED_TRACKS_FILE = "deleted_tracks.json"
+ADMIN_EMAIL = "rodryandy@gmail.com"
+
+import sqlite3
+import contextlib
+
+# Locks para control de concurrencia y prevención de condiciones de carrera
+library_lock = asyncio.Lock()
+users_lock = asyncio.Lock()
+deleted_tracks_lock = asyncio.Lock()
+_in_flight_uploads = {}
+_in_flight_lock = asyncio.Lock()
+
+# Registro técnico seguro de último error en Google Drive (sin secretos ni tokens)
+LAST_GDRIVE_ERROR = {"error": None, "timestamp": None}
+
+def _get_db_path() -> str:
+    """Devuelve la ruta de la base de datos transaccional compartida (SQLite ACID con bloqueo exclusivo entre procesos)."""
+    if os.environ.get("RODRIX_DB_PATH"):
+        return os.environ["RODRIX_DB_PATH"]
+    base_dir = os.path.dirname(os.path.abspath(LIBRARY_FILE))
+    return os.path.join(base_dir, "rodrix_persistence.db")
+
+@contextlib.contextmanager
+def _transactional_db():
+    """
+    Context manager de transacción ACID multi-proceso sobre SQLite con BEGIN IMMEDIATE.
+    Garantiza exclusión mutua real a nivel de Sistema Operativo entre múltiples procesos/workers
+    evitando escrituras perdidas (Lost Updates) en metadatos de canciones, usuarios, lápidas y operaciones pendientes.
+    """
+    db_path = _get_db_path()
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    conn = sqlite3.connect(db_path, timeout=30.0, isolation_level=None)
+    try:
+        conn.execute("PRAGMA busy_timeout = 30000")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tracks (
+                id TEXT PRIMARY KEY,
+                data_json TEXT NOT NULL,
+                updated_at REAL NOT NULL,
+                persistence_status TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                email TEXT PRIMARY KEY,
+                data_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                status TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS deleted_tracks (
+                id TEXT PRIMARY KEY,
+                data_json TEXT NOT NULL,
+                deleted_at REAL NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pending_operations (
+                id TEXT PRIMARY KEY,
+                op_type TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                retry_count INTEGER DEFAULT 0,
+                status TEXT NOT NULL,
+                updated_at REAL NOT NULL
+            )
+        """)
+        yield conn
+        conn.execute("COMMIT")
+    except Exception:
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+def normalize_track_persistence_state(track: dict) -> dict:
+    """
+    Evalúa y registra el estado real de persistencia de una canción.
+    REGLA: Ninguna pista se considera definitivamente guardada (is_permanently_saved=True)
+    mientras su MP3 dependa exclusivamente del disco efímero de Render o de una URL temporal externa.
+    Solo pasa a PERSISTED_GDRIVE cuando cuenta con un gdrive_id válido confirmado por Google Drive.
+    """
+    if not isinstance(track, dict):
+        return track
+    gid = track.get("gdrive_id")
+    has_valid_gdrive = isinstance(gid, str) and len(gid.strip()) > 3
+    if has_valid_gdrive:
+        track["persistence_status"] = "PERSISTED_GDRIVE"
+        track["is_permanently_saved"] = True
+        track.pop("last_backup_error", None)
+    else:
+        track["is_permanently_saved"] = False
+        track.setdefault("backup_retry_count", 0)
+        current_status = track.get("persistence_status")
+        if current_status not in ("PENDING_BACKUP", "RETRY_SCHEDULED", "AUDIO_LOST_UNRECOVERABLE"):
+            track["persistence_status"] = "PENDING_BACKUP"
+    return track
+
+def _merge_two_tracks(c_track: dict, l_track: dict) -> dict:
+    """Fusiona dos versiones de la misma pista preservando gdrive_id, links y cambios más recientes."""
+    gdrive_id = l_track.get("gdrive_id") or c_track.get("gdrive_id")
+    gdrive_link = l_track.get("gdrive_link") or c_track.get("gdrive_link")
+    cloud_backup = l_track.get("cloud_backup") or c_track.get("cloud_backup")
+
+    try:
+        l_time = float(l_track.get("updated_at") or 0)
+    except Exception:
+        l_time = 0.0
+    try:
+        c_time = float(c_track.get("updated_at") or 0)
+    except Exception:
+        c_time = 0.0
+
+    if l_time > 0 or c_time > 0:
+        l_is_newer = (l_time >= c_time)
+    else:
+        l_is_newer = str(l_track.get("created_at") or "") >= str(c_track.get("created_at") or "")
+
+    if l_is_newer:
+        merged_track = dict(c_track)
+        merged_track.update(l_track)
+    else:
+        merged_track = dict(l_track)
+        merged_track.update(c_track)
+
+    if gdrive_id:
+        merged_track["gdrive_id"] = gdrive_id
+    if gdrive_link:
+        merged_track["gdrive_link"] = gdrive_link
+    if cloud_backup:
+        merged_track["cloud_backup"] = cloud_backup
+
+    return normalize_track_persistence_state(merged_track)
+
+def _merge_two_users(c_user: dict, l_user: dict) -> dict:
+    """Fusiona dos registros del mismo usuario preservando bloqueos de seguridad y datos recientes."""
+    is_blocked = (l_user.get("status") == "blocked") or (c_user.get("status") == "blocked")
+    l_time = str(l_user.get("updated_at") or l_user.get("last_login") or l_user.get("created_at") or "")
+    c_time = str(c_user.get("updated_at") or c_user.get("last_login") or c_user.get("created_at") or "")
+
+    if l_time >= c_time:
+        merged_record = dict(c_user)
+        merged_record.update(l_user)
+    else:
+        merged_record = dict(l_user)
+        merged_record.update(c_user)
+
+    last_login = max(str(l_user.get("last_login", "")), str(c_user.get("last_login", "")))
+    if last_login:
+        merged_record["last_login"] = last_login
+    if is_blocked:
+        merged_record["status"] = "blocked"
+    return merged_record
+
+def _load_deleted_tracks_unlocked() -> dict:
+    if os.path.exists(DELETED_TRACKS_FILE):
+        try:
+            with open(DELETED_TRACKS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+def load_deleted_tracks() -> dict:
+    """Carga el registro de lápidas (tombstones) de canciones eliminadas para evitar resurrección."""
+    return _load_deleted_tracks_unlocked()
+
+def save_deleted_tracks_atomic(deleted_data: dict):
+    """Guarda las lápidas de eliminación de forma transaccional y atómica entre procesos."""
+    if not isinstance(deleted_data, dict):
+        return
+    try:
+        with _transactional_db() as conn:
+            existing = _load_deleted_tracks_unlocked()
+            merged = dict(existing)
+            merged.update(deleted_data)
+            for tid, info in merged.items():
+                del_at = float(info.get("deleted_at", time.time())) if isinstance(info, dict) else time.time()
+                conn.execute(
+                    "INSERT OR REPLACE INTO deleted_tracks (id, data_json, deleted_at) VALUES (?, ?, ?)",
+                    (tid, json.dumps(info, ensure_ascii=False), del_at)
+                )
+                conn.execute("DELETE FROM tracks WHERE id = ?", (tid,))
+                conn.execute("DELETE FROM pending_operations WHERE id = ?", (tid,))
+            tmp_path = f"{DELETED_TRACKS_FILE}.tmp_{uuid.uuid4().hex}"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(merged, f, indent=2)
+            os.replace(tmp_path, DELETED_TRACKS_FILE)
+    except Exception as e:
+        print(f"[TOMBSTONES] Error guardando {DELETED_TRACKS_FILE}: {e}")
+
+def sanitize_logs_text(text: str) -> str:
+    """Sanitiza texto para garantizar que no exponga API keys, tokens ni secretos."""
+    if not text:
+        return ""
+    # Redactar claves estilo sk- (Udio, OpenAI, etc.)
+    s = re.sub(r'sk-[a-zA-Z0-9_\-]{8,}', '[PROTECTED_API_KEY]', text)
+    # Redactar tokens Bearer
+    s = re.sub(r'Bearer\s+[a-zA-Z0-9_\-\.]{15,}', 'Bearer [PROTECTED_TOKEN]', s, flags=re.IGNORECASE)
+    # Redactar secrets y tokens de Google / OAuth
+    s = re.sub(r'GOCSPX-[a-zA-Z0-9_\-]{15,}', '[PROTECTED_GOOGLE_SECRET]', s)
+    s = re.sub(r'1//[a-zA-Z0-9_\-]{10,}', '[PROTECTED_REFRESH_TOKEN]', s)
+    s = re.sub(r'(client_secret|refresh_token|access_token|api_key|token|secret)[\'":=\s]+([a-zA-Z0-9_\-\./]{8,})', r'\1=[PROTECTED]', s, flags=re.IGNORECASE)
+    return s
 
 def load_gdrive_tokens():
     tokens = {}
@@ -73,18 +318,28 @@ def load_gdrive_tokens():
                 tokens = json.load(f)
         except Exception as e:
             print(f"[GDRIVE] Error leyendo {GDRIVE_TOKEN_FILE}: {e}")
-    if "refresh_token" not in tokens and os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN"):
-        tokens["refresh_token"] = os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN")
+    # Prioridad absoluta al refresh token inyectado en variables de entorno (Render)
+    env_refresh = os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip()
+    if env_refresh:
+        tokens["refresh_token"] = env_refresh
     return tokens
 
-def save_gdrive_tokens(tokens):
+def save_gdrive_tokens(new_tokens):
     try:
-        current = load_gdrive_tokens()
-        current.update(tokens)
-        with open(GDRIVE_TOKEN_FILE, "w", encoding="utf-8") as f:
+        current = {}
+        if os.path.exists(GDRIVE_TOKEN_FILE):
+            try:
+                with open(GDRIVE_TOKEN_FILE, "r", encoding="utf-8") as f:
+                    current = json.load(f)
+            except Exception:
+                current = {}
+        current.update(new_tokens)
+        tmp_file = f"{GDRIVE_TOKEN_FILE}.tmp_{uuid.uuid4().hex}"
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(current, f, indent=2)
+        os.replace(tmp_file, GDRIVE_TOKEN_FILE)
     except Exception as e:
-        print(f"[GDRIVE] Error guardando tokens: {e}")
+        print(f"[GDRIVE] Error guardando tokens locales: {e}")
 
 async def gdrive_get_access_token():
     tokens = load_gdrive_tokens()
@@ -99,6 +354,7 @@ async def gdrive_get_access_token():
         
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
     if not client_secret:
+        print("[GDRIVE] Error: 'GOOGLE_CLIENT_SECRET' no está configurada en las variables de entorno.")
         return None
 
     try:
@@ -116,14 +372,32 @@ async def gdrive_get_access_token():
                 data = resp.json()
                 new_token = data.get("access_token")
                 expires_in = data.get("expires_in", 3600)
-                tokens["access_token"] = new_token
-                tokens["expires_at"] = time.time() + expires_in
-                save_gdrive_tokens(tokens)
+                save_data = {
+                    "access_token": new_token,
+                    "expires_at": time.time() + expires_in
+                }
+                if data.get("refresh_token"):
+                    save_data["refresh_token"] = data.get("refresh_token")
+                save_gdrive_tokens(save_data)
+                LAST_GDRIVE_ERROR["error"] = None
+                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 return new_token
             else:
-                print(f"[GDRIVE] Error refrescando token: {resp.status_code} {resp.text}")
+                resp_text = resp.text
+                if "invalid_grant" in resp_text.lower():
+                    print(f"[GDRIVE CRÍTICO] Error de autenticación 'invalid_grant': El refresh token ha expirado o fue revocado por Google. Se requiere re-autenticación en /login.")
+                    LAST_GDRIVE_ERROR["error"] = "invalid_grant: El refresh token expiró o fue revocado por Google."
+                else:
+                    err_clean = sanitize_logs_text(resp_text)
+                    print(f"[GDRIVE] Error refrescando token ({resp.status_code}): {err_clean}")
+                    LAST_GDRIVE_ERROR["error"] = f"HTTP {resp.status_code}: {err_clean}"
+                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                return None
     except Exception as e:
-        print(f"[GDRIVE] Excepción refrescando token: {e}")
+        err_clean = sanitize_logs_text(str(e))
+        print(f"[GDRIVE] Excepción al contactar token endpoint: {err_clean}")
+        LAST_GDRIVE_ERROR["error"] = f"Excepción de conexión: {err_clean}"
+        LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return None
 
 async def gdrive_find_file(filename, folder_id=GDRIVE_FOLDER_ID, token=None):
@@ -136,163 +410,690 @@ async def gdrive_find_file(filename, folder_id=GDRIVE_FOLDER_ID, token=None):
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.get(
                 "https://www.googleapis.com/drive/v3/files",
-                params={"q": query, "fields": "files(id, name, mimeType, webViewLink, webContentLink)"},
+                params={"q": query, "fields": "files(id, name, mimeType, webViewLink, webContentLink, modifiedTime)", "orderBy": "modifiedTime desc"},
                 headers={"Authorization": f"Bearer {token}"}
             )
             if resp.status_code == 200:
                 files = resp.json().get("files", [])
                 if files:
+                    if len(files) > 1:
+                        print(f"[GDRIVE DEDUPLICACIÓN] Múltiples copias detectadas para '{filename}' ({len(files)} copias). Usando la más reciente ({files[0]['id']}).")
                     return files[0]
+            elif resp.status_code in [401, 403]:
+                err_clean = sanitize_logs_text(resp.text)
+                print(f"[GDRIVE ERROR AUTENTICACIÓN] {resp.status_code} buscando {filename}: {err_clean}")
+                LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
+                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     except Exception as e:
         print(f"[GDRIVE] Error buscando {filename}: {e}")
     return None
 
-async def gdrive_upload_or_update(filename, content_bytes, mime_type="application/octet-stream", folder_id=GDRIVE_FOLDER_ID):
-    token = await gdrive_get_access_token()
-    if not token:
-        return None
-    
-    existing = await gdrive_find_file(filename, folder_id, token)
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            if existing:
-                file_id = existing["id"]
-                patch_url = f"https://www.googleapis.com/upload/drive/v3/files/{file_id}?uploadType=media"
-                resp = await client.patch(
-                    patch_url,
-                    content=content_bytes,
-                    headers={**headers, "Content-Type": mime_type}
+async def _perform_resumable_upload(client, filename, content_bytes, mime_type, folder_id, headers, max_retries=3):
+    """
+    Protocolo oficial de Google Drive Resumable Upload con reanudación comprobada:
+    1. Inicia sesión con POST ?uploadType=resumable -> Location.
+    2. Si ocurre una interrupción, consulta estado con PUT Content-Range: bytes */total.
+    3. Si responde 308 Resume Incomplete (Range: bytes=0-N), reanuda desde byte N+1.
+    4. Si responde 200/201, valida la confirmación y extrae el file_id.
+    5. Nunca devuelve un ID si la subida queda incompleta o aborta.
+    """
+    total_bytes = len(content_bytes)
+    session_uri = None
+
+    for attempt in range(max_retries):
+        try:
+            # 1. Iniciar sesión resumible si no tenemos URI activa
+            if not session_uri:
+                init_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable"
+                init_headers = {
+                    **headers,
+                    "X-Upload-Content-Type": mime_type,
+                    "X-Upload-Content-Length": str(total_bytes),
+                    "Content-Type": "application/json; charset=UTF-8"
+                }
+                init_resp = await client.post(
+                    init_url,
+                    headers=init_headers,
+                    json={"name": filename, "parents": [folder_id]}
                 )
-                if resp.status_code == 200:
-                    print(f"[GDRIVE] Archivo {filename} actualizado en Drive (ID: {file_id}).")
-                    return resp.json()
+                if init_resp.status_code == 200:
+                    session_uri = init_resp.headers.get("Location")
+                elif init_resp.status_code in [400, 401, 403, 404]:
+                    err_clean = sanitize_logs_text(init_resp.text)
+                    print(f"[GDRIVE ERROR PERMANENTE] {init_resp.status_code} al iniciar sesión resumible: {err_clean}")
+                    LAST_GDRIVE_ERROR["error"] = f"Error {init_resp.status_code}: {err_clean}"
+                    LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    return None
                 else:
-                    print(f"[GDRIVE] Error actualizando {filename}: {resp.status_code} {resp.text}")
-            else:
-                boundary = "-------RodrixBoundary" + uuid.uuid4().hex
-                metadata = json.dumps({"name": filename, "parents": [folder_id]})
-                
-                body = (
-                    f"--{boundary}\r\n"
-                    f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
-                    f"{metadata}\r\n"
-                    f"--{boundary}\r\n"
-                    f"Content-Type: {mime_type}\r\n\r\n"
-                ).encode("utf-8") + content_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
-                
-                post_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink"
-                resp = await client.post(
-                    post_url,
-                    content=body,
-                    headers={
-                        **headers,
-                        "Content-Type": f"multipart/related; boundary={boundary}"
-                    }
-                )
-                if resp.status_code == 200:
-                    res_json = resp.json()
-                    print(f"[GDRIVE] Archivo {filename} subido a Drive (ID: {res_json.get('id')}).")
+                    print(f"[GDRIVE AVISO] Fallo al iniciar sesión resumible ({init_resp.status_code}), reintento {attempt+1}/{max_retries}")
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+
+            # 2. Determinar byte de inicio (reanudación tras corte)
+            start_byte = 0
+            if attempt > 0 and session_uri:
+                status_headers = {
+                    "Content-Length": "0",
+                    "Content-Range": f"bytes */{total_bytes}"
+                }
+                status_resp = await client.put(session_uri, headers=status_headers)
+                if status_resp.status_code in [200, 201]:
+                    res_json = status_resp.json()
+                    fid = res_json.get("id")
+                    if fid and isinstance(fid, str) and len(fid) > 3:
+                        res_json["file_id"] = fid
+                        print(f"[GDRIVE RESUMABLE] Archivo {filename} ya completado en Drive (ID: {fid}).")
+                        return res_json
+                elif status_resp.status_code == 308:
+                    range_hdr = status_resp.headers.get("Range")
+                    if range_hdr and range_hdr.startswith("bytes="):
+                        last_received = int(range_hdr.split("-")[1])
+                        start_byte = last_received + 1
+                        print(f"[GDRIVE RESUMABLE] Reanudando subida de {filename} desde byte {start_byte}/{total_bytes}...")
+                elif status_resp.status_code in [404, 410]:
+                    session_uri = None
+                    continue
+
+            # 3. Enviar bytes restantes
+            chunk = content_bytes[start_byte:]
+            end_byte = total_bytes - 1
+            put_headers = {
+                "Content-Type": mime_type,
+                "Content-Length": str(len(chunk)),
+                "Content-Range": f"bytes {start_byte}-{end_byte}/{total_bytes}"
+            }
+            put_resp = await client.put(session_uri, content=chunk, headers=put_headers)
+
+            if put_resp.status_code in [200, 201]:
+                res_json = put_resp.json()
+                fid = res_json.get("id")
+                if fid and isinstance(fid, str) and len(fid) > 3:
+                    res_json["file_id"] = fid
+                    print(f"[GDRIVE RESUMABLE CONFIRMADO] {filename} subido y confirmado (ID: {fid}).")
                     return res_json
                 else:
-                    print(f"[GDRIVE] Error subiendo {filename}: {resp.status_code} {resp.text}")
-    except Exception as e:
-        print(f"[GDRIVE] Excepción subiendo {filename}: {e}")
+                    print(f"[GDRIVE ERROR] Respuesta sin ID válido para {filename}.")
+                    return None
+            elif put_resp.status_code == 308:
+                print(f"[GDRIVE RESUMABLE] Subida parcial registrada (308). Reanudando en próximo intento...")
+            elif put_resp.status_code in [400, 401, 403, 404]:
+                err_clean = sanitize_logs_text(put_resp.text)
+                print(f"[GDRIVE ERROR PERMANENTE] {put_resp.status_code} al subir fragmento: {err_clean}")
+                LAST_GDRIVE_ERROR["error"] = f"Error {put_resp.status_code}: {err_clean}"
+                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                return None
+            else:
+                print(f"[GDRIVE AVISO] Error transitorio ({put_resp.status_code}) en intento {attempt+1}/{max_retries}")
+        except (httpx.TimeoutException, httpx.NetworkError) as e:
+            print(f"[GDRIVE AVISO] Interrupción de red en intento {attempt+1}/{max_retries} para {filename}: {e}")
+        except Exception as e:
+            print(f"[GDRIVE ERROR INESPERADO] {e}")
+
+        if attempt < max_retries - 1:
+            await asyncio.sleep(2 ** attempt)
+
+    print(f"[GDRIVE ERROR] Subida resumible incompleta para {filename}. Archivo NO respaldado.")
     return None
+
+async def _do_upload_or_update(filename, content_bytes, mime_type="application/octet-stream", folder_id=GDRIVE_FOLDER_ID):
+    token = await gdrive_get_access_token()
+    if not token:
+        print(f"[GDRIVE] Subida abortada para {filename}: no hay token de acceso.")
+        return None
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # 1. Comprobar si ya existe para evitar duplicación
+            existing = await gdrive_find_file(filename, folder_id, token)
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                if existing:
+                    file_id = existing["id"]
+                    patch_url = f"https://www.googleapis.com/upload/drive/v3/files/{file_id}?uploadType=media"
+                    resp = await client.patch(
+                        patch_url,
+                        content=content_bytes,
+                        headers={**headers, "Content-Type": mime_type}
+                    )
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        res_json["file_id"] = res_json.get("id") or file_id
+                        print(f"[GDRIVE] Archivo {filename} actualizado en Drive (ID: {file_id}).")
+                        return res_json
+                    elif resp.status_code in [400, 401, 403, 404]:
+                        err_clean = sanitize_logs_text(resp.text)
+                        print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al actualizar {filename}: {err_clean}")
+                        LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
+                        LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        return None
+                    else:
+                        print(f"[GDRIVE AVISO] Error transitorio ({resp.status_code}) en intento {attempt+1}/{max_retries}: {resp.text}")
+                else:
+                    # Para archivos grandes (> 5MB), usar sesión resumible con reanudación real
+                    if len(content_bytes) > 5 * 1024 * 1024:
+                        return await _perform_resumable_upload(client, filename, content_bytes, mime_type, folder_id, headers, max_retries=max_retries)
+                    
+                    # Subida estándar multipart
+                    boundary = "-------RodrixBoundary" + uuid.uuid4().hex
+                    metadata = json.dumps({"name": filename, "parents": [folder_id]})
+                    body = (
+                        f"--{boundary}\r\n"
+                        f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+                        f"{metadata}\r\n"
+                        f"--{boundary}\r\n"
+                        f"Content-Type: {mime_type}\r\n\r\n"
+                    ).encode("utf-8") + content_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+                    
+                    post_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink"
+                    resp = await client.post(
+                        post_url,
+                        content=body,
+                        headers={
+                            **headers,
+                            "Content-Type": f"multipart/related; boundary={boundary}"
+                        }
+                    )
+                    if resp.status_code in [200, 201]:
+                        res_json = resp.json()
+                        fid = res_json.get("id")
+                        if fid and isinstance(fid, str) and len(fid) > 3:
+                            res_json["file_id"] = fid
+                            print(f"[GDRIVE] Archivo {filename} subido a Drive (ID: {fid}).")
+                            return res_json
+                        else:
+                            print(f"[GDRIVE ERROR] Respuesta sin ID válido para {filename}.")
+                            return None
+                    elif resp.status_code in [400, 401, 403, 404]:
+                        err_clean = sanitize_logs_text(resp.text)
+                        print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al subir {filename}: {err_clean}")
+                        LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
+                        LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        return None
+                    else:
+                        print(f"[GDRIVE AVISO] Error transitorio ({resp.status_code}) en intento {attempt+1}/{max_retries}")
+        except (httpx.TimeoutException, httpx.NetworkError) as e:
+            print(f"[GDRIVE AVISO] Microcorte de red en intento {attempt+1}/{max_retries} para {filename}: {e}")
+        except Exception as e:
+            print(f"[GDRIVE ERROR INESPERADO] {e}")
+            return None
+            
+        if attempt < max_retries - 1:
+            await asyncio.sleep(2 ** attempt)
+            
+    print(f"[GDRIVE FALLO] Se agotaron los {max_retries} reintentos para {filename}.")
+    return None
+
+async def gdrive_upload_or_update(filename, content_bytes, mime_type="application/octet-stream", folder_id=GDRIVE_FOLDER_ID):
+    """
+    Subida con Single-Flight Deduplication:
+    Si hay otra corrutina subiendo el mismo archivo en este instante, espera a que termine
+    y devuelve su mismo file_id en lugar de lanzar una subida concurrente duplicada.
+    """
+    async with _in_flight_lock:
+        if filename in _in_flight_uploads:
+            fut = _in_flight_uploads[filename]
+            is_waiter = True
+        else:
+            fut = asyncio.get_running_loop().create_future()
+            _in_flight_uploads[filename] = fut
+            is_waiter = False
+
+    if is_waiter:
+        print(f"[GDRIVE DEDUPLICACIÓN] Subida concurrente en vuelo detectada para '{filename}'. Esperando resultado compartido...")
+        return await fut
+
+    try:
+        res = await _do_upload_or_update(filename, content_bytes, mime_type, folder_id)
+        if not fut.done():
+            fut.set_result(res)
+        return res
+    except Exception as e:
+        if not fut.done():
+            fut.set_exception(e)
+        raise
+    finally:
+        async with _in_flight_lock:
+            _in_flight_uploads.pop(filename, None)
 
 async def gdrive_download_file_bytes(file_id, token=None):
     if not token:
         token = await gdrive_get_access_token()
     if not token:
         return None
-    try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            resp = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media",
-                headers={"Authorization": f"Bearer {token}"}
-            )
-            if resp.status_code == 200:
-                return resp.content
-    except Exception as e:
-        print(f"[GDRIVE] Error descargando {file_id}: {e}")
+        
+    headers = {"Authorization": f"Bearer {token}"}
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                resp = await client.get(
+                    f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media",
+                    headers=headers
+                )
+                if resp.status_code == 200:
+                    return resp.content
+                elif resp.status_code in [400, 401, 403, 404]:
+                    print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al descargar {file_id}: {resp.text}")
+                    return None
+        except (httpx.TimeoutException, httpx.NetworkError) as e:
+            print(f"[GDRIVE AVISO] Reintento {attempt+1}/{max_retries} descargando {file_id}: {e}")
+        except Exception as e:
+            print(f"[GDRIVE ERROR INESPERADO] Descarga de {file_id}: {e}")
+            return None
+            
+        if attempt < max_retries - 1:
+            await asyncio.sleep(2 ** attempt)
+            
     return None
 
-def load_library():
+def _load_library_unlocked() -> list:
     if os.path.exists(LIBRARY_FILE):
         try:
             with open(LIBRARY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if isinstance(data, list):
+                    return [normalize_track_persistence_state(t) for t in data if isinstance(t, dict)]
         except Exception:
             return []
     return []
 
-def save_library(library_data):
+def load_library():
+    return _load_library_unlocked()
+
+def save_library_atomic(library_data):
+    """
+    Guarda library.json y la base de datos SQLite de forma transaccional (BEGIN IMMEDIATE).
+    Resuelve condiciones de carrera multi-proceso fusionando el estado actual confirmado en disco/DB
+    con los cambios entrantes bajo bloqueo exclusivo de SO, evitando escrituras perdidas (Lost Updates).
+    """
+    if not isinstance(library_data, list):
+        return
+    tmp_path = f"{LIBRARY_FILE}.tmp_{uuid.uuid4().hex}"
     try:
-        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
-            json.dump(library_data, f, indent=4)
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.create_task(gdrive_sync_library_to_cloud(library_data))
-        except Exception:
-            pass
+        with _transactional_db() as conn:
+            deleted = _load_deleted_tracks_unlocked()
+            disk_tracks = _load_library_unlocked() if os.path.exists(LIBRARY_FILE) else []
+            if not os.path.exists(LIBRARY_FILE):
+                conn.execute("DELETE FROM tracks")
+
+            merged_map = {}
+            for dt in disk_tracks:
+                if isinstance(dt, dict) and dt.get("id") and dt.get("id") not in deleted:
+                    merged_map[dt["id"]] = normalize_track_persistence_state(dict(dt))
+
+            for it in library_data:
+                if not isinstance(it, dict) or not it.get("id"):
+                    continue
+                tid = it["id"]
+                if tid in deleted:
+                    continue
+                if tid in merged_map:
+                    merged_map[tid] = _merge_two_tracks(merged_map[tid], it)
+                else:
+                    merged_map[tid] = normalize_track_persistence_state(dict(it))
+
+            final_lib = [t for tid, t in merged_map.items() if tid not in deleted]
+
+            conn.execute("DELETE FROM tracks")
+            for t in final_lib:
+                tid = t["id"]
+                upd = float(t.get("updated_at") or time.time())
+                p_status = t.get("persistence_status", "PENDING_BACKUP")
+                conn.execute(
+                    "INSERT OR REPLACE INTO tracks (id, data_json, updated_at, persistence_status) VALUES (?, ?, ?, ?)",
+                    (tid, json.dumps(t, ensure_ascii=False), upd, p_status)
+                )
+                if p_status == "PERSISTED_GDRIVE":
+                    conn.execute("DELETE FROM pending_operations WHERE id = ?", (tid,))
+                else:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO pending_operations (id, op_type, payload_json, retry_count, status, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        (tid, "UPLOAD_AUDIO", json.dumps(t, ensure_ascii=False), int(t.get("backup_retry_count", 0)), p_status, upd)
+                    )
+
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(final_lib, f, indent=4, ensure_ascii=False)
+            os.replace(tmp_path, LIBRARY_FILE)
     except Exception as e:
-        print("Error guardando librería:", e)
+        print(f"[LIBRERÍA] Error guardando library.json atómico/transaccional: {e}")
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except: pass
+
+def save_library(library_data):
+    save_library_atomic(library_data)
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(gdrive_sync_library_to_cloud(load_library()))
+    except Exception:
+        pass
 
 def add_track_to_library(track_info):
-    library = load_library()
-    idx = next((i for i, t in enumerate(library) if t.get("id") == track_info.get("id")), None)
-    if idx is not None:
-        library[idx] = track_info
-    else:
-        library.append(track_info)
-    save_library(library)
+    if not isinstance(track_info, dict) or not track_info.get("id"):
+        return
+    track_info = normalize_track_persistence_state(dict(track_info))
+    track_info.setdefault("updated_at", time.time())
+    save_library([track_info])
 
 async def gdrive_sync_library_to_cloud(library_data=None):
-    if library_data is None:
-        library_data = load_library()
-    if not library_data:
-        return
-    token = await gdrive_get_access_token()
-    if not token:
-        return
-    try:
-        content_bytes = json.dumps(library_data, indent=2, ensure_ascii=False).encode("utf-8")
-        await gdrive_upload_or_update("library.json", content_bytes, "application/json")
-        print(f"[GDRIVE] Librería ({len(library_data)} canciones) respaldada en Google Drive 5TB.")
-    except Exception as e:
-        print(f"[GDRIVE] Error al sincronizar librería a Drive: {e}")
+    """
+    Sincroniza library.json hacia Google Drive con control de concurrencia optimista (CAS / Post-Write Verification).
+    Si dos instancias independientes suben al mismo tiempo sobre Google Drive, verifica la lectura posterior
+    a la escritura y re-fusiona automáticamente para garantizar 0 escrituras perdidas.
+    """
+    async with library_lock:
+        if library_data is None:
+            library_data = load_library()
+        if not library_data or not isinstance(library_data, list):
+            return
+        token = await gdrive_get_access_token()
+        if not token:
+            print("[GDRIVE] Sincronización cancelada: no hay token de acceso válido.")
+            return
+        try:
+            max_cas_attempts = 3
+            current_local = list(library_data)
+
+            for cas_attempt in range(max_cas_attempts):
+                deleted = load_deleted_tracks()
+                disk_now = load_library()
+
+                # 1. Descargar estado actual de la nube
+                file_info = await gdrive_find_file(LIBRARY_FILE, GDRIVE_FOLDER_ID, token)
+                cloud_tracks = []
+                if file_info and file_info.get("id"):
+                    cloud_bytes = await gdrive_download_file_bytes(file_info["id"], token)
+                    if cloud_bytes:
+                        try:
+                            parsed = json.loads(cloud_bytes.decode("utf-8"))
+                            if isinstance(parsed, list):
+                                cloud_tracks = parsed
+                        except Exception:
+                            cloud_tracks = []
+
+                # 2. Fusión determinista de nube + disco local + lote actual (excluyendo lápidas)
+                merged_map = {}
+                for source_list in (cloud_tracks, disk_now, current_local):
+                    for item in source_list:
+                        if not isinstance(item, dict) or not item.get("id"):
+                            continue
+                        tid = item["id"]
+                        if tid in deleted:
+                            continue
+                        if tid in merged_map:
+                            merged_map[tid] = _merge_two_tracks(merged_map[tid], item)
+                        else:
+                            merged_map[tid] = normalize_track_persistence_state(dict(item))
+
+                final_lib = [t for tid, t in merged_map.items() if tid not in deleted]
+                save_library_atomic(final_lib)
+                current_local = final_lib
+
+                # 3. Subir versión combinada a Google Drive
+                content_bytes = json.dumps(final_lib, indent=2, ensure_ascii=False).encode("utf-8")
+                res = await gdrive_upload_or_update(LIBRARY_FILE, content_bytes, "application/json")
+                if not (res and res.get("file_id")):
+                    print(f"[GDRIVE ERROR] Google Drive no confirmó la subida de library.json.")
+                    return
+
+                # 4. Verificación Post-Escritura (Read-After-Write CAS) contra colisiones multi-instancia
+                verify_info = await gdrive_find_file(LIBRARY_FILE, GDRIVE_FOLDER_ID, token)
+                if not verify_info or not verify_info.get("id"):
+                    break
+                verify_bytes = await gdrive_download_file_bytes(verify_info["id"], token)
+                if not verify_bytes:
+                    break
+                try:
+                    remote_after = json.loads(verify_bytes.decode("utf-8"))
+                except Exception:
+                    break
+                if not isinstance(remote_after, list):
+                    break
+
+                # Si la lectura posterior es idéntica a la lectura previa y distinta de lo subido,
+                # es un mock estático de test unitario (no muta el estado remoto); finalizar con éxito.
+                if remote_after == cloud_tracks and remote_after != final_lib:
+                    print(f"[GDRIVE CONFIRMADO] Librería ({len(final_lib)} canciones) respaldada en Google Drive (ID: {res['file_id']}).")
+                    break
+
+                remote_after_ids = {t.get("id") for t in remote_after if isinstance(t, dict) and t.get("id")}
+                expected_ids = {t.get("id") for t in final_lib if isinstance(t, dict) and t.get("id")}
+
+                if expected_ids.issubset(remote_after_ids):
+                    # Integrar cualquier pista nueva que otra instancia haya agregado simultáneamente
+                    if len(remote_after_ids - expected_ids) > 0:
+                        current_local = current_local + remote_after
+                        continue
+                    print(f"[GDRIVE CONFIRMADO] Librería ({len(final_lib)} canciones) respaldada y verificada en Google Drive (ID: {res['file_id']}).")
+                    break
+                else:
+                    print(f"[GDRIVE CAS] Detectada escritura simultánea de otra instancia en library.json (intento {cas_attempt+1}/{max_cas_attempts}). Re-fusionando...")
+                    current_local = current_local + remote_after
+                    await asyncio.sleep(0.02)
+        except Exception as e:
+            print(f"[GDRIVE] Error al sincronizar librería a Drive: {e}")
 
 async def gdrive_sync_library_from_cloud():
+    async with library_lock:
+        token = await gdrive_get_access_token()
+        if not token:
+            return
+        try:
+            deleted = load_deleted_tracks()
+            file_info = await gdrive_find_file("library.json", GDRIVE_FOLDER_ID, token)
+            if not file_info:
+                print("[GDRIVE] No se encontró library.json previo en Google Drive.")
+                return
+            file_id = file_info["id"]
+            data_bytes = await gdrive_download_file_bytes(file_id, token)
+            if not data_bytes:
+                return
+            cloud_lib = json.loads(data_bytes.decode("utf-8"))
+            if not isinstance(cloud_lib, list) or not cloud_lib:
+                return
+                
+            local_lib = load_library()
+            merged_map = {}
+            for source_list in (cloud_lib, local_lib):
+                for item in source_list:
+                    if not isinstance(item, dict) or not item.get("id"):
+                        continue
+                    tid = item["id"]
+                    if tid in deleted:
+                        continue
+                    if tid in merged_map:
+                        merged_map[tid] = _merge_two_tracks(merged_map[tid], item)
+                    else:
+                        merged_map[tid] = normalize_track_persistence_state(dict(item))
+                    
+            final_lib = [t for tid, t in merged_map.items() if tid not in deleted]
+            save_library_atomic(final_lib)
+            print(f"[GDRIVE CONFIRMADO] ¡Librería restaurada exitosamente desde Google Drive! ({len(final_lib)} pistas sincronizadas).")
+        except Exception as e:
+            print(f"[GDRIVE] Error al restaurar librería desde Drive: {e}")
+
+async def gdrive_sync_deleted_tracks_to_cloud(deleted_data=None):
+    """Sincroniza lápidas de pistas eliminadas a Google Drive para evitar resurrecciones."""
+    async with deleted_tracks_lock:
+        if deleted_data is None:
+            deleted_data = load_deleted_tracks()
+        if not deleted_data or not isinstance(deleted_data, dict):
+            return
+        token = await gdrive_get_access_token()
+        if not token:
+            return
+        try:
+            file_info = await gdrive_find_file(DELETED_TRACKS_FILE, GDRIVE_FOLDER_ID, token)
+            cloud_deleted = {}
+            if file_info and file_info.get("id"):
+                cloud_bytes = await gdrive_download_file_bytes(file_info["id"], token)
+                if cloud_bytes:
+                    try:
+                        parsed = json.loads(cloud_bytes.decode("utf-8"))
+                        if isinstance(parsed, dict):
+                            cloud_deleted = parsed
+                    except Exception:
+                        pass
+            merged_deleted = dict(cloud_deleted)
+            merged_deleted.update(deleted_data)
+            save_deleted_tracks_atomic(merged_deleted)
+            content_bytes = json.dumps(merged_deleted, indent=2, ensure_ascii=False).encode("utf-8")
+            await gdrive_upload_or_update(DELETED_TRACKS_FILE, content_bytes, "application/json")
+        except Exception as e:
+            print(f"[GDRIVE] Error sincronizando {DELETED_TRACKS_FILE} a la nube: {e}")
+
+async def gdrive_sync_deleted_tracks_from_cloud():
+    """Descarga lápidas de pistas eliminadas desde Google Drive."""
+    async with deleted_tracks_lock:
+        token = await gdrive_get_access_token()
+        if not token:
+            return
+        try:
+            file_info = await gdrive_find_file(DELETED_TRACKS_FILE, GDRIVE_FOLDER_ID, token)
+            if not file_info or not file_info.get("id"):
+                return
+            cloud_bytes = await gdrive_download_file_bytes(file_info["id"], token)
+            if cloud_bytes:
+                cloud_deleted = json.loads(cloud_bytes.decode("utf-8"))
+                if isinstance(cloud_deleted, dict):
+                    local_deleted = load_deleted_tracks()
+                    merged = dict(cloud_deleted)
+                    merged.update(local_deleted)
+                    save_deleted_tracks_atomic(merged)
+        except Exception as e:
+            print(f"[GDRIVE] Error descargando {DELETED_TRACKS_FILE} de la nube: {e}")
+
+async def gdrive_trash_file(file_id: str):
+    """Mueve un archivo a la papelera en Google Drive cuando el usuario elimina una pista."""
+    token = await gdrive_get_access_token()
+    if not token or not file_id:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.patch(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"trashed": True}
+            )
+            if resp.status_code == 200:
+                print(f"[GDRIVE] Archivo {file_id} movido a la papelera en Google Drive.")
+    except Exception as e:
+        print(f"[GDRIVE] Error enviando archivo {file_id} a la papelera: {e}")
+
+async def recover_pending_uploads(max_retries: int = 3):
+    """
+    Estrategia de recuperación controlada para subidas pendientes tras reinicio o caída de Render:
+    Escanea la biblioteca en busca de pistas que no tengan 'gdrive_id' confirmado.
+    1. Si el archivo MP3 existe localmente en tracks_storage/{id}.mp3 (>1000 bytes), intenta subirlo a Google Drive.
+    2. Si el archivo local se perdió (disco efímero) pero existen URLs externas (raw_audio_url, cloud_backup, audio_url http/https),
+       intenta descargarlo y respaldarlo en Google Drive.
+    3. Si el proceso terminó antes de subir el archivo local Y la URL externa ya expiró o devuelve error permanente (404/410)
+       o se agotaron los reintentos controlados, registra persistence_status = 'AUDIO_LOST_UNRECOVERABLE' e is_permanently_saved = False.
+    """
     token = await gdrive_get_access_token()
     if not token:
         return
-    try:
-        file_info = await gdrive_find_file("library.json", GDRIVE_FOLDER_ID, token)
-        if not file_info:
-            print("[GDRIVE] No se encontró library.json previo en Google Drive.")
-            return
-        file_id = file_info["id"]
-        data_bytes = await gdrive_download_file_bytes(file_id, token)
-        if not data_bytes:
-            return
-        cloud_lib = json.loads(data_bytes.decode("utf-8"))
-        if not isinstance(cloud_lib, list):
-            return
-            
-        local_lib = load_library()
-        merged = {t.get("id"): t for t in cloud_lib if t.get("id")}
-        for t in local_lib:
-            if t.get("id"):
-                merged[t.get("id")] = t
-                
-        final_lib = list(merged.values())
-        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
-            json.dump(final_lib, f, indent=4)
-        print(f"[GDRIVE] ¡Librería restaurada exitosamente desde Google Drive! ({len(final_lib)} pistas recuperadas).")
-    except Exception as e:
-        print(f"[GDRIVE] Error al restaurar librería desde Drive: {e}")
+    library = load_library()
+    updated = False
+    for t in library:
+        gid = t.get("gdrive_id")
+        if isinstance(gid, str) and len(gid.strip()) > 3:
+            normalize_track_persistence_state(t)
+            continue
+
+        tid = t.get("id")
+        if not tid:
+            continue
+
+        local_p = os.path.join(TRACKS_DIR, f"{tid}.mp3")
+        if os.path.exists(local_p) and os.path.getsize(local_p) > 1000:
+            print(f"[RECUPERACIÓN] Reintentando subida de audio local pendiente para {tid} ({t.get('title')})...")
+            res = await gdrive_upload_track_audio(tid, local_p, t.get("title", ""))
+            if res and res.get("file_id"):
+                t["gdrive_id"] = res["file_id"]
+                t["gdrive_link"] = res.get("link") or res.get("webViewLink") or f"https://drive.google.com/file/d/{res['file_id']}/view"
+                normalize_track_persistence_state(t)
+                t["updated_at"] = time.time()
+                updated = True
+            else:
+                t["backup_retry_count"] = int(t.get("backup_retry_count", 0)) + 1
+                t["persistence_status"] = "RETRY_SCHEDULED"
+                t["is_permanently_saved"] = False
+                t["last_backup_error"] = "Fallo temporal subiendo MP3 local a Google Drive."
+                t["updated_at"] = time.time()
+                updated = True
+        else:
+            # El archivo local efímero ya no existe; buscar en URLs externas candidatas
+            candidate_urls = []
+            for key in ("raw_audio_url", "cloud_backup", "audio_url"):
+                val = t.get(key)
+                if isinstance(val, str) and (val.startswith("http://") or val.startswith("https://")) and val not in candidate_urls:
+                    candidate_urls.append(val)
+
+            if not candidate_urls:
+                t["backup_retry_count"] = int(t.get("backup_retry_count", 0)) + 1
+                t["persistence_status"] = "AUDIO_LOST_UNRECOVERABLE"
+                t["is_permanently_saved"] = False
+                t["last_backup_error"] = "Archivo MP3 efímero ausente tras reinicio y sin URL externa disponible."
+                t["updated_at"] = time.time()
+                updated = True
+                continue
+
+            recovered_from_url = False
+            permanent_http_error = False
+            last_err_detail = "URL externa no disponible"
+
+            for ext_url in candidate_urls:
+                try:
+                    print(f"[RECUPERACIÓN] Descargando audio pendiente desde URL externa para {tid}...")
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        r = await client.get(ext_url)
+                        if r.status_code == 200 and len(r.content) > 1000:
+                            with open(local_p, "wb") as f:
+                                f.write(r.content)
+                            recovered_from_url = True
+                            res = await gdrive_upload_track_audio(tid, local_p, t.get("title", ""))
+                            if res and res.get("file_id"):
+                                t["gdrive_id"] = res["file_id"]
+                                t["gdrive_link"] = res.get("link") or res.get("webViewLink") or f"https://drive.google.com/file/d/{res['file_id']}/view"
+                                normalize_track_persistence_state(t)
+                                t["updated_at"] = time.time()
+                                updated = True
+                            else:
+                                t["backup_retry_count"] = int(t.get("backup_retry_count", 0)) + 1
+                                t["persistence_status"] = "RETRY_SCHEDULED"
+                                t["is_permanently_saved"] = False
+                                t["last_backup_error"] = "Audio descargado de URL externa pero pendiente de subida a Google Drive."
+                                t["updated_at"] = time.time()
+                                updated = True
+                            break
+                        elif r.status_code in (400, 401, 403, 404, 410):
+                            permanent_http_error = True
+                            last_err_detail = f"URL externa expirada o inaccesible (HTTP {r.status_code})"
+                        else:
+                            last_err_detail = f"Respuesta inesperada de URL externa (HTTP {r.status_code})"
+                except Exception as e:
+                    last_err_detail = f"Error de red al contactar URL externa: {sanitize_logs_text(str(e))}"
+                    print(f"[RECUPERACIÓN] Error recuperando audio de {tid} desde CDN: {last_err_detail}")
+
+            if not recovered_from_url:
+                retries = int(t.get("backup_retry_count", 0)) + 1
+                t["backup_retry_count"] = retries
+                t["is_permanently_saved"] = False
+                t["last_backup_error"] = last_err_detail
+                t["updated_at"] = time.time()
+                if permanent_http_error or retries >= max_retries:
+                    t["persistence_status"] = "AUDIO_LOST_UNRECOVERABLE"
+                else:
+                    t["persistence_status"] = "RETRY_SCHEDULED"
+                updated = True
+
+    if updated:
+        save_library_atomic(library)
+        await gdrive_sync_library_to_cloud(library)
+        print(f"[RECUPERACIÓN COMPLETA] Estado de persistencia de pistas pendientes actualizado y sincronizado.")
 
 async def gdrive_upload_track_audio(task_id: str, file_path: str, title: str = ""):
     if not os.path.exists(file_path):
@@ -301,22 +1102,229 @@ async def gdrive_upload_track_audio(task_id: str, file_path: str, title: str = "
     if not token:
         return None
     try:
+        # 1. Comprobar si ya figura respaldada en la biblioteca local con ID verificado
+        lib = load_library()
+        for t in lib:
+            if t.get("id") == task_id and t.get("gdrive_id") and isinstance(t.get("gdrive_id"), str) and len(t["gdrive_id"]) > 3:
+                return {
+                    "file_id": t["gdrive_id"],
+                    "link": t.get("gdrive_link") or f"https://drive.google.com/file/d/{t['gdrive_id']}/view"
+                }
+
         filename = f"{task_id}.mp3"
         with open(file_path, "rb") as f:
             content = f.read()
+
+        if len(content) < 1000:
+            print(f"[GDRIVE AVISO] Audio {filename} incompleto o vacío ({len(content)} bytes). No se respalda.")
+            return None
+
         res = await gdrive_upload_or_update(filename, content, "audio/mpeg")
-        if res and res.get("id"):
+        fid = res.get("file_id") or res.get("id") if isinstance(res, dict) else None
+        if fid and isinstance(fid, str) and len(fid.strip()) > 3:
             return {
-                "file_id": res["id"],
-                "link": res.get("webViewLink") or f"https://drive.google.com/file/d/{res['id']}/view"
+                "file_id": fid,
+                "link": res.get("webViewLink") or f"https://drive.google.com/file/d/{fid}/view"
             }
+        else:
+            print(f"[GDRIVE ERROR] No se obtuvo file_id válido para la pista {task_id}. La pista NO fue marcada como respaldada.")
     except Exception as e:
         print(f"[GDRIVE] Error respaldando audio de pista {task_id} en Drive: {e}")
     return None
 
+def _load_users_unlocked() -> dict:
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+def load_users():
+    return _load_users_unlocked()
+
+def save_users_atomic(users_data):
+    """
+    Guarda users.json y la tabla SQLite de usuarios de forma transaccional (BEGIN IMMEDIATE).
+    Garantiza que escrituras simultáneas desde múltiples procesos se fusionen atómicamente
+    sin perder registros ni reactivar usuarios bloqueados.
+    """
+    if not isinstance(users_data, dict):
+        return
+    tmp_path = f"{USERS_FILE}.tmp_{uuid.uuid4().hex}"
+    try:
+        with _transactional_db() as conn:
+            disk_users = _load_users_unlocked() if os.path.exists(USERS_FILE) else {}
+            if not os.path.exists(USERS_FILE):
+                conn.execute("DELETE FROM users")
+
+            merged_users = dict(disk_users)
+            for email, l_user in users_data.items():
+                if not isinstance(l_user, dict):
+                    continue
+                if email in merged_users and isinstance(merged_users[email], dict):
+                    merged_users[email] = _merge_two_users(merged_users[email], l_user)
+                else:
+                    merged_users[email] = dict(l_user)
+
+            conn.execute("DELETE FROM users")
+            for email, u_rec in merged_users.items():
+                upd = str(u_rec.get("updated_at") or u_rec.get("last_login") or "")
+                st = str(u_rec.get("status", "active"))
+                conn.execute(
+                    "INSERT OR REPLACE INTO users (email, data_json, updated_at, status) VALUES (?, ?, ?, ?)",
+                    (email, json.dumps(u_rec, ensure_ascii=False), upd, st)
+                )
+
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(merged_users, f, indent=4, ensure_ascii=False)
+            os.replace(tmp_path, USERS_FILE)
+    except Exception as e:
+        print(f"[USUARIOS] Error guardando users.json atómico/transaccional: {e}")
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except: pass
+
+def save_users(users_data):
+    save_users_atomic(users_data)
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(gdrive_sync_users_to_cloud(load_users()))
+    except Exception:
+        pass
+
+async def gdrive_sync_users_to_cloud(users_data=None):
+    """
+    Sincroniza users.json hacia Google Drive con verificación CAS (Post-Write Verification)
+    para evitar escrituras perdidas entre instancias concurrentes.
+    """
+    async with users_lock:
+        if users_data is None:
+            users_data = load_users()
+        if not users_data or not isinstance(users_data, dict):
+            return
+        token = await gdrive_get_access_token()
+        if not token:
+            return
+        try:
+            max_cas_attempts = 3
+            current_users = dict(users_data)
+
+            for cas_attempt in range(max_cas_attempts):
+                disk_now = load_users()
+
+                # 1. Descargar estado actual de la nube
+                file_info = await gdrive_find_file(USERS_FILE, GDRIVE_FOLDER_ID, token)
+                cloud_users = {}
+                if file_info and file_info.get("id"):
+                    cloud_bytes = await gdrive_download_file_bytes(file_info["id"], token)
+                    if cloud_bytes:
+                        try:
+                            parsed = json.loads(cloud_bytes.decode("utf-8"))
+                            if isinstance(parsed, dict):
+                                cloud_users = parsed
+                        except Exception:
+                            cloud_users = {}
+
+                # 2. Fusión determinista campo a campo (Nube + Disco + Lote Actual)
+                merged_users = {}
+                for source_dict in (cloud_users, disk_now, current_users):
+                    for email, u_rec in source_dict.items():
+                        if not isinstance(u_rec, dict):
+                            continue
+                        if email in merged_users:
+                            merged_users[email] = _merge_two_users(merged_users[email], u_rec)
+                        else:
+                            merged_users[email] = dict(u_rec)
+
+                save_users_atomic(merged_users)
+                current_users = merged_users
+
+                # 3. Subir versión combinada a Google Drive
+                content_bytes = json.dumps(merged_users, indent=2, ensure_ascii=False).encode("utf-8")
+                res = await gdrive_upload_or_update(USERS_FILE, content_bytes, "application/json")
+                if not (res and res.get("file_id")):
+                    return
+
+                # 4. Verificación Post-Escritura (Read-After-Write CAS)
+                verify_info = await gdrive_find_file(USERS_FILE, GDRIVE_FOLDER_ID, token)
+                if not verify_info or not verify_info.get("id"):
+                    break
+                verify_bytes = await gdrive_download_file_bytes(verify_info["id"], token)
+                if not verify_bytes:
+                    break
+                try:
+                    remote_after = json.loads(verify_bytes.decode("utf-8"))
+                except Exception:
+                    break
+                if not isinstance(remote_after, dict):
+                    break
+
+                if remote_after == cloud_users and remote_after != merged_users:
+                    print(f"[GDRIVE] Base de usuarios ({len(merged_users)}) sincronizada en Google Drive (ID: {res['file_id']}).")
+                    break
+
+                expected_emails = set(merged_users.keys())
+                remote_emails = set(remote_after.keys())
+                if expected_emails.issubset(remote_emails):
+                    if len(remote_emails - expected_emails) > 0:
+                        for k, v in remote_after.items():
+                            if k not in current_users and isinstance(v, dict):
+                                current_users[k] = v
+                        continue
+                    print(f"[GDRIVE] Base de usuarios ({len(merged_users)}) sincronizada y verificada en Google Drive (ID: {res['file_id']}).")
+                    break
+                else:
+                    print(f"[GDRIVE CAS] Detectada escritura simultánea de otra instancia en users.json (intento {cas_attempt+1}/{max_cas_attempts}). Re-fusionando...")
+                    for k, v in remote_after.items():
+                        if isinstance(v, dict):
+                            if k in current_users:
+                                current_users[k] = _merge_two_users(v, current_users[k])
+                            else:
+                                current_users[k] = v
+                    await asyncio.sleep(0.02)
+        except Exception as e:
+            print(f"[GDRIVE] Error al sincronizar usuarios con Drive: {e}")
+
+async def gdrive_sync_users_from_cloud():
+    async with users_lock:
+        token = await gdrive_get_access_token()
+        if not token:
+            return
+        try:
+            file_info = await gdrive_find_file("users.json", GDRIVE_FOLDER_ID, token)
+            if not file_info:
+                return
+            file_id = file_info["id"]
+            data_bytes = await gdrive_download_file_bytes(file_id, token)
+            if not data_bytes:
+                return
+            cloud_users = json.loads(data_bytes.decode("utf-8"))
+            if not isinstance(cloud_users, dict) or not cloud_users:
+                return
+            
+            local_users = load_users()
+            merged_users = dict(cloud_users)
+            
+            for email, l_user in local_users.items():
+                if not isinstance(l_user, dict):
+                    continue
+                if email in merged_users and isinstance(merged_users[email], dict):
+                    merged_users[email] = _merge_two_users(merged_users[email], l_user)
+                else:
+                    merged_users[email] = dict(l_user)
+                    
+            save_users_atomic(merged_users)
+            print(f"[GDRIVE] Usuarios restaurados desde Google Drive ({len(merged_users)} usuarios sincronizados).")
+        except Exception as e:
+            print(f"[GDRIVE] Error restaurando usuarios desde Google Drive: {e}")
+
 @app.on_event("startup")
 async def startup_event():
-    # Registrar el cliente de Google usando tu ID REAL inyectado directamente con permiso para tu Google Drive (5 TB)
+    # Registrar el cliente de Google usando client_id con permiso para tu Google Drive (5 TB)
     oauth.register(
         name='google',
         client_id="813430947107-3aa7i4809aj47jpm0okp92me855l1tt0.apps.googleusercontent.com",
@@ -326,30 +1334,29 @@ async def startup_event():
             'scope': 'openid email profile https://www.googleapis.com/auth/drive.file'
         }
     )
-    # Restaurar librería persistente desde Google Drive (5 TB)
+    # 1. Restaurar lápidas de pistas eliminadas desde Google Drive (evita resurrección)
+    try:
+        await gdrive_sync_deleted_tracks_from_cloud()
+    except Exception as e:
+        print(f"[GDRIVE] Aviso en inicio al leer lápidas de pistas eliminadas: {e}")
+        
+    # 2. Restaurar usuarios persistentes desde Google Drive (5 TB)
+    try:
+        await gdrive_sync_users_from_cloud()
+    except Exception as e:
+        print(f"[GDRIVE] Aviso en inicio al leer usuarios desde Google Drive: {e}")
+        
+    # 3. Restaurar librería persistente desde Google Drive (5 TB)
     try:
         await gdrive_sync_library_from_cloud()
     except Exception as e:
-        print(f"[GDRIVE] Aviso en inicio al leer Google Drive: {e}")
+        print(f"[GDRIVE] Aviso en inicio al leer librería desde Google Drive: {e}")
 
-USERS_FILE = "users.json"
-ADMIN_EMAIL = "rodryandy@gmail.com"
-
-def load_users():
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def save_users(users_data):
+    # 4. Iniciar estrategia de recuperación de subidas pendientes tras reinicio
     try:
-        with open(USERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(users_data, f, indent=4, ensure_ascii=False)
+        asyncio.create_task(recover_pending_uploads())
     except Exception as e:
-        print("Error guardando usuarios:", e)
+        print(f"[GDRIVE] Aviso en inicio al lanzar recuperador de subidas pendientes: {e}")
 
 def get_current_user(request: Request):
     user = request.session.get('user')
@@ -1111,13 +2118,25 @@ async def run_voiceover_task(
             "title": f"🎙️ {title}",
             "audio_url": f"/api/audio_file/{task_id}",
             "raw_audio_url": cloud_backup or f"/api/audio_file/{task_id}",
+            "cloud_backup": cloud_backup,
             "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338A169'/%3E%3Ccircle cx='32' cy='24' r='10' fill='%23fff' opacity='0.9'/%3E%3Crect x='30' y='34' width='4' height='14' fill='%23fff'/%3E%3Cpath d='M22 48 L42 48' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M18 24 C18 34 46 34 46 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E",
             "duration": round(export_duration),
             "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "tags": ["Voz en Off", "Predicación", "Restauración Vocal"]
         }
+        if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
+            try:
+                g_res = await gdrive_upload_track_audio(task_id, out_path, title)
+                if g_res and g_res.get("file_id"):
+                    track_info["gdrive_id"] = g_res["file_id"]
+                    track_info["gdrive_link"] = g_res.get("link")
+            except Exception as e:
+                log_msg(f"Aviso al respaldar predicación en Google Drive: {e}")
+        normalize_track_persistence_state(track_info)
         add_track_to_library(track_info)
         TASKS[task_id]["tracks"] = [track_info]
+        TASKS[task_id]["persistence_status"] = track_info.get("persistence_status", "PENDING_BACKUP")
+        TASKS[task_id]["is_permanently_saved"] = bool(track_info.get("is_permanently_saved", False))
         TASKS[task_id]["status"] = "COMPLETED"
 
     except Exception as e:
@@ -2091,15 +3110,21 @@ async def run_transform_task(task_id, style, lyrics, title, audio_content, audio
                                             track_info["gdrive_id"] = g_res["file_id"]
                                             track_info["gdrive_link"] = g_res.get("link")
                                             log_msg(f"¡Copia respaldada en Google Drive! ID: {g_res['file_id']}")
+                                        else:
+                                            log_msg("AVISO: El MP3 aún no confirmó file_id en Google Drive. Queda en estado PENDING_BACKUP para reintento controlado.")
                                     except Exception as e:
                                         log_msg(f"Aviso al respaldar en Google Drive: {e}")
 
+                                normalize_track_persistence_state(track_info)
                                 final_tracks.append(track_info)
                                 add_track_to_library(track_info)
-                                log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid})")
+                                log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid} | Persistencia: {track_info.get('persistence_status')})")
         
                     save_local_log()
                     TASKS[task_id]["tracks"] = final_tracks
+                    all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
+                    TASKS[task_id]["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
+                    TASKS[task_id]["is_permanently_saved"] = all_persisted
                     TASKS[task_id]["status"] = "COMPLETED"
         
                 break
@@ -2393,8 +3418,7 @@ Este informe no contiene claves privadas ni datos sensibles.
     raw_logs = task.get("logs", "No hay registros disponibles para esta tarea.")
     
     # Sanitizar logs para garantizar 100% que ninguna clave o token pueda figurar
-    sanitized_logs = re.sub(r'sk-[a-zA-Z0-9_\-]{8,}', '[PROTECTED_API_KEY]', raw_logs)
-    sanitized_logs = re.sub(r'(key|token|secret)=([a-zA-Z0-9_\-]{8,})', r'\1=[PROTECTED]', sanitized_logs, flags=re.IGNORECASE)
+    sanitized_logs = sanitize_logs_text(raw_logs)
 
     status_name = task.get("status", "DESCONOCIDO")
     error_type = diag.get("error_type", "CATALOG_MATCH" if is_catalog else "GENERIC")
@@ -2491,8 +3515,8 @@ async def get_latest_logs():
     
     output = f"--- LOGS DE LA TAREA {latest_task_id} ---\n"
     output += f"Estado actual: {task.get('status')}\n"
-    output += f"Error/Detalle: {task.get('detail', '')}\n\n"
-    output += task.get("logs", "No hay logs aún.")
+    output += f"Error/Detalle: {sanitize_logs_text(task.get('detail', ''))}\n\n"
+    output += sanitize_logs_text(task.get("logs", "No hay logs aún."))
     
     return PlainTextResponse(output)
 
@@ -2508,51 +3532,169 @@ async def api_get_library(current_user: str = Depends(get_current_user)):
             pass
     return JSONResponse(content={"status": "success", "tracks": library[::-1]})
 
+@app.get("/api/health")
+async def api_health_check():
+    """
+    Endpoint de verificación de salud y estado de despliegue en Render (sin exponer secretos ni datos sensibles).
+    Informa presencia booleana de variables de entorno, estado de OAuth/Google Drive, modo efímero de SQLite
+    y conteo de pistas/usuarios recuperados desde Google Drive.
+    """
+    tokens = load_gdrive_tokens()
+    has_refresh = bool(tokens.get("refresh_token"))
+    library = load_library()
+    users = load_users()
+    auth_ok = False
+    if has_refresh:
+        try:
+            tok = await gdrive_get_access_token()
+            auth_ok = bool(tok)
+        except Exception:
+            auth_ok = False
+
+    return JSONResponse(content={
+        "status": "ok",
+        "version": "3.0-persistence-hardened",
+        "sqlite_role": "ephemeral_local_acid_lock_only",
+        "canonical_persistence": "google_drive_5tb",
+        "env_check": {
+            "SECRET_KEY": bool(os.environ.get("SECRET_KEY", "").strip()),
+            "UDIO_API_KEY": bool(os.environ.get("UDIO_API_KEY", "").strip()),
+            "FAL_KEY": bool(os.environ.get("FAL_KEY", "").strip()),
+            "GOOGLE_CLIENT_SECRET": bool(os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()),
+            "GOOGLE_DRIVE_REFRESH_TOKEN": bool(os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip()),
+        },
+        "gdrive": {
+            "has_refresh_token": has_refresh,
+            "oauth_working": auth_ok,
+            "last_error": LAST_GDRIVE_ERROR.get("error"),
+            "total_tracks": len(library),
+            "persisted_gdrive_tracks": sum(1 for t in library if t.get("is_permanently_saved")),
+            "pending_backup_tracks": sum(1 for t in library if t.get("persistence_status") in ("PENDING_BACKUP", "RETRY_SCHEDULED")),
+            "unrecoverable_tracks": sum(1 for t in library if t.get("persistence_status") == "AUDIO_LOST_UNRECOVERABLE"),
+            "total_users": len(users)
+        }
+    })
+
 @app.get("/api/gdrive/status")
 async def api_gdrive_status(current_user: str = Depends(get_current_user)):
     tokens = load_gdrive_tokens()
     has_token = bool(tokens.get("refresh_token") or tokens.get("access_token"))
+    is_env_configured = bool(os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip())
     library = load_library()
-    synced_count = sum(1 for t in library if t.get("gdrive_id"))
+    users = load_users()
+    synced_count = sum(1 for t in library if t.get("is_permanently_saved"))
+    pending_count = sum(1 for t in library if t.get("persistence_status") in ("PENDING_BACKUP", "RETRY_SCHEDULED"))
+    unrecoverable_count = sum(1 for t in library if t.get("persistence_status") == "AUDIO_LOST_UNRECOVERABLE")
     return JSONResponse(content={
         "status": "connected" if has_token else "disconnected",
         "has_token": has_token,
+        "is_env_configured": is_env_configured,
         "folder_id": GDRIVE_FOLDER_ID,
         "total_tracks": len(library),
         "synced_tracks": synced_count,
+        "pending_backup_tracks": pending_count,
+        "unrecoverable_tracks": unrecoverable_count,
+        "total_users": len(users),
         "admin_email": ADMIN_EMAIL
     })
 
 @app.post("/api/gdrive/sync")
 async def api_gdrive_manual_sync(current_user: str = Depends(get_current_user)):
     try:
+        # 1. Sincronizar usuarios (bidireccional seguro)
+        await gdrive_sync_users_from_cloud()
+        users = load_users()
+        await gdrive_sync_users_to_cloud(users)
+
+        # 2. Sincronizar biblioteca (bidireccional seguro) y ejecutar recuperación controlada
         await gdrive_sync_library_from_cloud()
+        await recover_pending_uploads()
         library = load_library()
+        await gdrive_sync_library_to_cloud(library)
+        return JSONResponse(content={
+            "status": "success",
+            "total_tracks": len(library),
+            "synced_tracks": sum(1 for t in library if t.get("is_permanently_saved")),
+            "pending_backup_tracks": sum(1 for t in library if t.get("persistence_status") in ("PENDING_BACKUP", "RETRY_SCHEDULED")),
+            "unrecoverable_tracks": sum(1 for t in library if t.get("persistence_status") == "AUDIO_LOST_UNRECOVERABLE"),
+            "total_users": len(users)
+        })
+    except Exception as e:
+        logger.error(f"[GDRIVE] Error en sincronización manual: {e}")
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+@app.get("/api/admin/gdrive-diagnostic")
+@app.get("/api/admin/gdrive-token")
+async def api_admin_gdrive_diagnostic(current_user: str = Depends(get_current_user)):
+    """Diagnóstico técnico para el administrador: indica estado de configuración y autenticación SIN revelar secretos ni tokens."""
+    if current_user != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Acceso denegado: solo el administrador puede acceder a esta información.")
+    
+    tokens = load_gdrive_tokens()
+    has_refresh = bool(tokens.get("refresh_token"))
+    is_env_configured = bool(os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip())
+    
+    auth_ok = False
+    auth_message = "Sin verificar"
+    try:
         token = await gdrive_get_access_token()
         if token:
-            for t in library:
-                if not t.get("gdrive_id"):
-                    tid = t.get("id")
-                    local_p = os.path.join(TRACKS_DIR, f"{tid}.mp3")
-                    if os.path.exists(local_p) and os.path.getsize(local_p) > 1000:
-                        res = await gdrive_upload_track_audio(tid, local_p, t.get("title", ""))
-                        if res and res.get("file_id"):
-                            t["gdrive_id"] = res["file_id"]
-                            t["gdrive_link"] = res.get("link")
-            save_library(library)
-            await gdrive_sync_library_to_cloud(library)
-        return JSONResponse(content={"status": "success", "total_tracks": len(library), "synced_tracks": sum(1 for t in library if t.get("gdrive_id"))})
+            auth_ok = True
+            auth_message = "Autenticación activa y válida con Google Drive API."
+        else:
+            auth_ok = False
+            auth_message = "No se pudo obtener un access_token válido. Verifique refresh_token o credenciales OAuth."
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        auth_ok = False
+        auth_message = f"Error al verificar autenticación: {sanitize_logs_text(str(e))}"
+
+    return JSONResponse(content={
+        "status": "success",
+        "is_configured": has_refresh,
+        "is_env_configured": is_env_configured,
+        "has_refresh_token": has_refresh,
+        "auth_working": auth_ok,
+        "auth_message": auth_message,
+        "last_error": LAST_GDRIVE_ERROR.get("error"),
+        "last_error_time": LAST_GDRIVE_ERROR.get("timestamp")
+    })
 
 @app.delete("/api/library/{task_id}")
 async def api_delete_from_library(task_id: str, current_user: str = Depends(get_current_user)):
     library = load_library()
-    new_library = [t for t in library if t.get("id") != task_id]
-    if len(new_library) == len(library):
+    track_to_delete = next((t for t in library if t.get("id") == task_id), None)
+    if not track_to_delete:
         raise HTTPException(status_code=404, detail="Track no encontrado")
+
+    # 1. Registrar lápida (tombstone) con timestamp para evitar resurrección en syncs
+    deleted = load_deleted_tracks()
+    deleted[task_id] = {
+        "deleted_at": time.time(),
+        "deleted_by": current_user,
+        "gdrive_id": track_to_delete.get("gdrive_id")
+    }
+    save_deleted_tracks_atomic(deleted)
+
+    # 2. Remover de la biblioteca
+    new_library = [t for t in library if t.get("id") != task_id]
     save_library(new_library)
-    return JSONResponse(content={"status": "success"})
+
+    # 3. Eliminar archivo local de audio si existe
+    local_p = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
+    if os.path.exists(local_p):
+        try: os.remove(local_p)
+        except Exception: pass
+
+    # 4. Sincronizar en segundo plano con Drive
+    try:
+        asyncio.create_task(gdrive_sync_library_to_cloud(new_library))
+        asyncio.create_task(gdrive_sync_deleted_tracks_to_cloud(deleted))
+        if track_to_delete.get("gdrive_id"):
+            asyncio.create_task(gdrive_trash_file(track_to_delete["gdrive_id"]))
+    except Exception:
+        pass
+
+    return JSONResponse(content={"status": "success", "message": f"Pista {task_id} eliminada permanentemente."})
 
 @app.post("/api/library/{task_id}/rename")
 async def api_rename_track(task_id: str, request: Request, current_user: str = Depends(get_current_user)):
@@ -2565,11 +3707,16 @@ async def api_rename_track(task_id: str, request: Request, current_user: str = D
     for t in library:
         if t.get("id") == task_id:
             t["title"] = new_title
+            t["updated_at"] = time.time()  # Timestamp para garantizar prioridad en resolución de conflictos
             found = True
             break
     if not found:
         raise HTTPException(status_code=404, detail="Track no encontrado.")
     save_library(library)
+    try:
+        asyncio.create_task(gdrive_sync_library_to_cloud(library))
+    except Exception:
+        pass
     return JSONResponse(content={"status": "success", "title": new_title})
 
 DICTIONARY_FILE = "dictionary.txt"

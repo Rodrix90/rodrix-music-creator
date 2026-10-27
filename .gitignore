@@ -30,3 +30,15 @@ ffmpeg.exe
 google_drive_credentials.json
 gdrive_token.json
 *token*.json
+
+# Bases de Datos Locales Transaccionales y Archivos Temporales Atómicos
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+rodrix_persistence.db*
+*.tmp_*
+backups_*/
+para chatgpt*
