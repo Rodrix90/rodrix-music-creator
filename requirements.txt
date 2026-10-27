@@ -10,6 +10,7 @@ itsdangerous
 fal-client
 mido
 numpy
+scipy>=1.11.0,<1.15.0
 google-auth
 py7zr
 psutil
