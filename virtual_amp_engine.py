@@ -481,8 +481,7 @@ def process_audio_through_amplifier(
         return audio_data
 
     # 1. Comprobación de Bypass
-    is_enabled = bool(amp_config.get("enabled", True))
-    if not is_enabled:
+    if amp_config.get("bypass") is True or amp_config.get("enabled") is False:
         return audio_data
 
     amp_id = str(amp_config.get("amp_id") or amp_config.get("id") or "marshall_jcm800").strip().lower()
@@ -492,14 +491,15 @@ def process_audio_through_amplifier(
     amp_meta = AMPLIFIERS_CATALOG[amp_id]
     tonestack_freqs = amp_meta["tonestack_freqs"]
 
-    # Parámetros del panel del usuario
-    gain_knob = float(amp_config.get("gain", amp_meta["controls"]["gain"]["default"]))
-    bass_knob = float(amp_config.get("bass", amp_meta["controls"]["bass"]["default"]))
-    middle_knob = float(amp_config.get("middle", amp_meta["controls"]["middle"]["default"]))
-    treble_knob = float(amp_config.get("treble", amp_meta["controls"]["treble"]["default"]))
-    presence_knob = float(amp_config.get("presence", amp_meta["controls"]["presence"]["default"]))
-    master_knob = float(amp_config.get("master", amp_meta["controls"]["master"]["default"]))
-    cabinet_id = str(amp_config.get("cabinet_id") or amp_meta["default_cabinet"]).strip().lower()
+    # Parámetros del panel del usuario (soporta formato plano o anidado en 'controls')
+    controls = amp_config.get("controls") if isinstance(amp_config.get("controls"), dict) else {}
+    gain_knob = float(amp_config.get("gain") if amp_config.get("gain") is not None else controls.get("gain", amp_meta["controls"]["gain"]["default"]))
+    bass_knob = float(amp_config.get("bass") if amp_config.get("bass") is not None else controls.get("bass", amp_meta["controls"]["bass"]["default"]))
+    middle_knob = float(amp_config.get("middle") if amp_config.get("middle") is not None else controls.get("middle", amp_meta["controls"]["middle"]["default"]))
+    treble_knob = float(amp_config.get("treble") if amp_config.get("treble") is not None else controls.get("treble", amp_meta["controls"]["treble"]["default"]))
+    presence_knob = float(amp_config.get("presence") if amp_config.get("presence") is not None else controls.get("presence", amp_meta["controls"]["presence"]["default"]))
+    master_knob = float(amp_config.get("master") if amp_config.get("master") is not None else controls.get("master", amp_meta["controls"]["master"]["default"]))
+    cabinet_id = str(amp_config.get("cabinet_id") or controls.get("cabinet_id") or amp_meta["default_cabinet"]).strip().lower()
     if cabinet_id not in CABINET_SPECS:
         cabinet_id = amp_meta["default_cabinet"]
 
@@ -566,10 +566,12 @@ def process_audio_through_amplifier(
     # Nivelar salida respecto al nivel de entrada para preservar el balance de mezcla
     wet_peak = float(np.max(np.abs(out)))
     if wet_peak > 1e-6:
-        # Mantener volumen perceptual consistente con headroom
-        target_peak = max(0.2, orig_peak)
-        out = out * (target_peak / wet_peak) * (norm_factor if orig_peak > 1.0 else 1.0)
+        # Mantener volumen perceptual consistente con headroom seguro
+        target_peak = max(0.1, min(32000.0 if orig_peak > 1.0 else 0.98, orig_peak))
+        out = (out / wet_peak) * target_peak
 
+    if np.issubdtype(audio_data.dtype, np.integer):
+        return np.clip(out, -32767, 32767).astype(audio_data.dtype)
     return out.astype(audio_data.dtype)
 
 
@@ -656,18 +658,20 @@ def generate_amp_preview(
     cfg = dict(amp_config or {})
     cfg["amp_id"] = amp_id
 
-    # Normalizar controles
-    gain = float(cfg.get("gain", amp_meta["controls"]["gain"]["default"]))
-    bass = float(cfg.get("bass", amp_meta["controls"]["bass"]["default"]))
-    middle = float(cfg.get("middle", amp_meta["controls"]["middle"]["default"]))
-    treble = float(cfg.get("treble", amp_meta["controls"]["treble"]["default"]))
-    presence = float(cfg.get("presence", amp_meta["controls"]["presence"]["default"]))
-    master = float(cfg.get("master", amp_meta["controls"]["master"]["default"]))
-    cabinet_id = str(cfg.get("cabinet_id") or amp_meta["default_cabinet"]).strip().lower()
+    # Normalizar controles (soporta formato plano o anidado en 'controls')
+    controls = cfg.get("controls") if isinstance(cfg.get("controls"), dict) else {}
+    gain = float(cfg.get("gain") if cfg.get("gain") is not None else controls.get("gain", amp_meta["controls"]["gain"]["default"]))
+    bass = float(cfg.get("bass") if cfg.get("bass") is not None else controls.get("bass", amp_meta["controls"]["bass"]["default"]))
+    middle = float(cfg.get("middle") if cfg.get("middle") is not None else controls.get("middle", amp_meta["controls"]["middle"]["default"]))
+    treble = float(cfg.get("treble") if cfg.get("treble") is not None else controls.get("treble", amp_meta["controls"]["treble"]["default"]))
+    presence = float(cfg.get("presence") if cfg.get("presence") is not None else controls.get("presence", amp_meta["controls"]["presence"]["default"]))
+    master = float(cfg.get("master") if cfg.get("master") is not None else controls.get("master", amp_meta["controls"]["master"]["default"]))
+    cabinet_id = str(cfg.get("cabinet_id") or controls.get("cabinet_id") or amp_meta["default_cabinet"]).strip().lower()
     if cabinet_id not in CABINET_SPECS:
         cabinet_id = amp_meta["default_cabinet"]
     cfg["cabinet_id"] = cabinet_id
-    bypass = bool(cfg.get("bypass", False))
+    cfg["controls"] = {"gain": gain, "bass": bass, "middle": middle, "treble": treble, "presence": presence, "master": master}
+    bypass = bool(cfg.get("bypass", False) or cfg.get("enabled") is False)
 
     target_dir = output_dir or AMP_PREVIEWS_DIR
     os.makedirs(target_dir, exist_ok=True)

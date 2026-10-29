@@ -48,3 +48,9 @@ soundfonts_cache/
 *.sf2
 *.7z
 *.flac
+pruebas_sfz/
+logs/
+deleted_tracks.json
+users.json
+walkman.jpg
+generar_token_gdrive.py

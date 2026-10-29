@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import mido
 import numpy as np
+import scipy.signal
 
 try:
     import psutil
@@ -969,6 +970,17 @@ PROGRESSION_STYLES: Dict[str, Dict[str, Any]] = {
             (7, [0, 5, 7, 12], [12, 11, 9, 11]),      # Vsus4 -> V
         ],
     },
+    "balada_menor": {
+        "name": "Balada Menor Emotiva (i - VI - III - VII)",
+        "default_bpm": 76,
+        "default_key": "Am",
+        "chords": [
+            (0, [0, 3, 7, 12], [12, 15, 19, 15]),     # i
+            (8, [0, 4, 7, 12], [15, 19, 20, 19]),     # VI
+            (3, [0, 4, 7, 12], [15, 19, 22, 19]),     # III
+            (10, [0, 4, 7, 12], [14, 17, 21, 17]),    # VII
+        ],
+    },
     "coro_pentecostal": {
         "name": "Coro Pentecostal de Júbilo (i - VII - VI - V7)",
         "default_bpm": 132,
@@ -978,6 +990,28 @@ PROGRESSION_STYLES: Dict[str, Dict[str, Any]] = {
             (10, [0, 4, 7, 12], [10, 14, 17, 14]),    # VII
             (8, [0, 4, 7, 12], [8, 12, 15, 12]),      # VI
             (7, [0, 4, 7, 10], [11, 14, 19, 16]),     # V7
+        ],
+    },
+    "gospel_dos_pasos": {
+        "name": "Dos Pasos Cristiano / Two-Step Rápido (I - vi - ii - V)",
+        "default_bpm": 140,
+        "default_key": "G",
+        "chords": [
+            (0, [0, 4, 7, 12], [12, 14, 16, 19]),     # I
+            (9, [0, 3, 7, 12], [12, 16, 19, 16]),     # vi
+            (2, [0, 3, 7, 12], [9, 12, 14, 17]),      # ii
+            (7, [0, 4, 7, 10], [11, 14, 17, 19]),     # V7
+        ],
+    },
+    "acustico_folk": {
+        "name": "Acústico Folk / Worship (I - V - IV - I)",
+        "default_bpm": 104,
+        "default_key": "D",
+        "chords": [
+            (0, [0, 4, 7, 12], [12, 14, 16, 19]),     # I
+            (7, [0, 4, 7, 12], [11, 14, 19, 16]),     # V
+            (5, [0, 4, 7, 12], [9, 12, 17, 16]),      # IV
+            (0, [0, 4, 7, 12], [12, 16, 19, 16]),     # I
         ],
     },
     "oracion_devocional": {
@@ -1003,6 +1037,104 @@ PROGRESSION_STYLES: Dict[str, Dict[str, Any]] = {
         ],
     },
 }
+
+
+def parse_musical_prompt(
+    prompt: str = "",
+    title: str = "",
+    default_key: str = "G",
+    default_bpm: int = 120,
+    default_style: str = "alabanza_juvenil",
+    default_bars: int = 8,
+) -> Dict[str, Any]:
+    """
+    Interpreta musicalmente el texto del prompt, título y descripción del usuario.
+    Extrae automáticamente tonalidad (Key), tempo (BPM), progresión armónica y compases,
+    traduciendo la intención del usuario a parámetros musicales reales sin depender de APIs pagas.
+    """
+    text = f"{title} {prompt}".strip().lower()
+
+    # 1. Detección de tonalidad
+    detected_key = default_key
+    key_patterns = [
+        (r'\b(en\s+|key\s+of\s+)?(re\s+menor|d\s*minor|dm)\b', 'Dm'),
+        (r'\b(en\s+|key\s+of\s+)?(la\s+menor|a\s*minor|am)\b', 'Am'),
+        (r'\b(en\s+|key\s+of\s+)?(mi\s+menor|e\s*minor|em)\b', 'Em'),
+        (r'\b(en\s+|key\s+of\s+)?(si\s+menor|b\s*minor|bm)\b', 'Bm'),
+        (r'\b(en\s+|key\s+of\s+)?(fa#\s*menor|f#\s*minor|f#m)\b', 'F#m'),
+        (r'\b(en\s+|key\s+of\s+)?(do\s+menor|c\s*minor|cm)\b', 'Cm'),
+        (r'\b(en\s+|key\s+of\s+)?(sol\s+menor|g\s*minor|gm)\b', 'Gm'),
+        (r'\b(en\s+|key\s+of\s+)?(do\s+mayor|c\s*major|en\s+c\b|tono\s+c\b)\b', 'C'),
+        (r'\b(en\s+|key\s+of\s+)?(re\s+mayor|d\s*major|en\s+d\b|tono\s+d\b)\b', 'D'),
+        (r'\b(en\s+|key\s+of\s+)?(mi\s+mayor|e\s*major|en\s+e\b|tono\s+e\b)\b', 'E'),
+        (r'\b(en\s+|key\s+of\s+)?(fa\s+mayor|f\s*major|en\s+f\b|tono\s+f\b)\b', 'F'),
+        (r'\b(en\s+|key\s+of\s+)?(sol\s+mayor|g\s*major|en\s+g\b|tono\s+g\b)\b', 'G'),
+        (r'\b(en\s+|key\s+of\s+)?(la\s+mayor|a\s*major|en\s+a\b|tono\s+a\b)\b', 'A'),
+        (r'\b(en\s+|key\s+of\s+)?(si\s+mayor|b\s*major|en\s+b\b|tono\s+b\b)\b', 'B'),
+    ]
+    for pat, k in key_patterns:
+        if re.search(pat, text):
+            detected_key = k
+            break
+
+    # 2. Detección de BPM
+    detected_bpm = default_bpm
+    bpm_m = re.search(r'\b(\d{2,3})\s*(bpm|bmp)\b', text)
+    if not bpm_m:
+        bpm_m = re.search(r'\btempo\s*[:=]?\s*(\d{2,3})\b', text)
+    if bpm_m:
+        try:
+            val = int(bpm_m.group(1))
+            if 40 <= val <= 220:
+                detected_bpm = val
+        except Exception:
+            pass
+    else:
+        if re.search(r'\b(muy\s+lento|larghetto|largo)\b', text):
+            detected_bpm = 58
+        elif re.search(r'\b(lento|balada|intimo|suave|despacio)\b', text):
+            detected_bpm = 70
+        elif re.search(r'\b(moderado|andante|medio\s+tiempo)\b', text):
+            detected_bpm = 92
+        elif re.search(r'\b(dos\s*pasos|two[\s-]step|rapido|fast|jubilo|alegre|movido)\b', text):
+            detected_bpm = 138
+
+    # 3. Detección de estilo armónico
+    detected_style = default_style
+    if re.search(r'\b(dos\s*pasos|two[\s-]step|marcha\s+praise)\b', text):
+        detected_style = "gospel_dos_pasos"
+    elif re.search(r'\b(pentecostal|coro|avivamiento|fuego|danzar|gozo)\b', text):
+        detected_style = "coro_pentecostal"
+    elif re.search(r'\b(menor|triste|melancol|nostalg|clamor|profundo)\b', text) or detected_key.endswith('m'):
+        detected_style = "balada_menor"
+    elif re.search(r'\b(oracion|devocional|meditacion|pastoral|solo\s+piano|fondo\s+pastoral)\b', text):
+        detected_style = "oracion_devocional"
+    elif re.search(r'\b(himno|solemne|coral|tradicional|clasico)\b', text):
+        detected_style = "himno_solemne"
+    elif re.search(r'\b(folk|acustico|campfire|strum)\b', text):
+        detected_style = "acustico_folk"
+    elif re.search(r'\b(adoracion|worship|intimo|suave|paz|ballad)\b', text):
+        detected_style = "adoracion_intima"
+    elif re.search(r'\b(alabanza|juvenil|pop|rock|upbeat|moderno)\b', text):
+        detected_style = "alabanza_juvenil"
+
+    # 4. Detección de compases
+    detected_bars = default_bars
+    if re.search(r'\b(32\s*compases|1\s*minuto|minuto|completa|larga)\b', text):
+        detected_bars = 32
+    elif re.search(r'\b(16\s*compases|30\s*segundos|media|verso\s*y\s*coro)\b', text):
+        detected_bars = 16
+    elif re.search(r'\b(8\s*compases|corta|demo|breve)\b', text):
+        detected_bars = 8
+
+    style_name = PROGRESSION_STYLES.get(detected_style, {}).get("name", detected_style)
+    return {
+        "key": detected_key,
+        "bpm": detected_bpm,
+        "progression_style": detected_style,
+        "bars": detected_bars,
+        "description": f"Interpretación musical: {detected_key} @ {detected_bpm} BPM, {style_name}, {detected_bars} compases"
+    }
 
 
 def _build_midi_file(
@@ -1059,6 +1191,32 @@ def _build_midi_file(
     mid.save(midi_path)
 
 
+ROLE_MIDI_PROFILES: Dict[str, Dict[str, int]] = {
+    "piano": {"pan": 58, "reverb": 60, "chorus": 0, "expr": 115},
+    "epiano_fm": {"pan": 68, "reverb": 55, "chorus": 45, "expr": 112},
+    "synth_piano": {"pan": 64, "reverb": 60, "chorus": 50, "expr": 112},
+    "bass_finger": {"pan": 64, "reverb": 15, "chorus": 0, "expr": 118},
+    "bass_slap": {"pan": 64, "reverb": 15, "chorus": 0, "expr": 118},
+    "acoustic_drums": {"pan": 64, "reverb": 35, "chorus": 0, "expr": 120},
+    "electronic_drums": {"pan": 64, "reverb": 30, "chorus": 0, "expr": 120},
+    "organ": {"pan": 64, "reverb": 65, "chorus": 45, "expr": 110},
+    "acoustic_guitar": {"pan": 42, "reverb": 52, "chorus": 0, "expr": 115},
+    "clean_guitar": {"pan": 84, "reverb": 55, "chorus": 35, "expr": 112},
+    "distorted_guitar": {"pan": 38, "reverb": 40, "chorus": 15, "expr": 116},
+    "bongos": {"pan": 45, "reverb": 40, "chorus": 0, "expr": 110},
+    "congas": {"pan": 80, "reverb": 40, "chorus": 0, "expr": 110},
+    "cajon": {"pan": 64, "reverb": 42, "chorus": 0, "expr": 115},
+    "maracas": {"pan": 75, "reverb": 35, "chorus": 0, "expr": 105},
+    "synth_bass": {"pan": 64, "reverb": 15, "chorus": 0, "expr": 118},
+    "synth_lead": {"pan": 60, "reverb": 55, "chorus": 30, "expr": 115},
+    "flutes": {"pan": 56, "reverb": 65, "chorus": 0, "expr": 112},
+    "campanas": {"pan": 72, "reverb": 70, "chorus": 20, "expr": 110},
+    "synth_pad": {"pan": 64, "reverb": 75, "chorus": 55, "expr": 108},
+    "strings": {"pan": 76, "reverb": 72, "chorus": 35, "expr": 114},
+    "bells": {"pan": 72, "reverb": 70, "chorus": 20, "expr": 110},
+}
+
+
 def compose_instrument_midi_track(
     role: str,
     midi_path: str,
@@ -1073,13 +1231,18 @@ def compose_instrument_midi_track(
     crash_toms: bool = True,
     bass_pickup: bool = True,
     tail_beats: float = 1.0,
+    custom_chords_timeline: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
     """
     Genera algorítmicamente una pista MIDI real para el instrumento indicado,
     sincronizada al BPM, tonalidad, progresión armónica, número de compases y articulaciones.
+    Si custom_chords_timeline está presente, sigue la progresión armónica exacta de la canción compás por compás.
     """
     bpm = max(40, min(220, int(bpm)))
-    bars = max(2, min(32, int(bars)))
+    if custom_chords_timeline:
+        bars = max(2, min(512, len(custom_chords_timeline)))
+    else:
+        bars = max(2, min(512, int(bars)))
     key_semi = KEY_SEMITONE_OFFSET.get(musical_key, 7)
     style_obj = PROGRESSION_STYLES.get(progression_style, PROGRESSION_STYLES["alabanza_juvenil"])
     chords = style_obj["chords"]
@@ -1088,6 +1251,16 @@ def compose_instrument_midi_track(
     evs: List[Tuple] = []
     setup: List[Tuple[int, Optional[int], Optional[int]]] = [(0, midi_bank, midi_program)]
 
+    # Inyección de Controladores de Espacio y Efectos FluidSynth (Pan, Expresión, Reverb y Chorus)
+    prof = ROLE_MIDI_PROFILES.get(role, {"pan": 64, "reverb": 50, "chorus": 0, "expr": 110})
+    ch_main = 9 if role in ("acoustic_drums", "electronic_drums") else 0
+    evs.append((0.0, "cc", ch_main, 0.0, 7, 100))          # CC 7: Volumen de canal
+    evs.append((0.0, "cc", ch_main, 0.0, 10, prof["pan"]))   # CC 10: Paneo estéreo espacial
+    evs.append((0.0, "cc", ch_main, 0.0, 11, prof["expr"]))  # CC 11: Expresión
+    evs.append((0.0, "cc", ch_main, 0.0, 91, prof["reverb"])) # CC 91: Envío de Reverb SoundFont
+    if prof.get("chorus", 0) > 0:
+        evs.append((0.0, "cc", ch_main, 0.0, 93, prof["chorus"])) # CC 93: Envío de Chorus SoundFont
+
     # Tónicas base por registro
     bass_tonic = 28 + ((key_semi - 4) % 12)  # Alrededor de E1..Eb2 (MIDI 28..39)
     mid_tonic = 48 + key_semi                # C3..B3 (MIDI 48..59)
@@ -1095,8 +1268,16 @@ def compose_instrument_midi_track(
 
     for b in range(bars):
         b0 = b * 4.0
-        c_root_off, c_intervals, c_mel = chords[b % len(chords)]
-        nxt_root_off, _, _ = chords[(b + 1) % len(chords)]
+        if custom_chords_timeline and b < len(custom_chords_timeline):
+            ch_item = custom_chords_timeline[b]
+            c_root_off = ch_item.get("root_offset", 0)
+            c_intervals = ch_item.get("intervals", [0, 4, 7])
+            c_mel = ch_item.get("mel", [0, 4, 7, 12])
+            nxt_item = custom_chords_timeline[(b + 1) % len(custom_chords_timeline)]
+            nxt_root_off = nxt_item.get("root_offset", c_root_off)
+        else:
+            c_root_off, c_intervals, c_mel = chords[b % len(chords)]
+            nxt_root_off, _, _ = chords[(b + 1) % len(chords)]
 
         bass_root = bass_tonic + c_root_off
         while bass_root > 43:
@@ -1110,16 +1291,22 @@ def compose_instrument_midi_track(
         is_last_bar = (b == bars - 1)
 
         if role in ("piano", "epiano_fm", "synth_piano"):
+            # Pedal de sustain limpio y natural por compás
             evs.append((b0, "cc", 0, b0 + 0.02, 64, 127))
-            evs.append((b0, "cc", 0, b0 + 3.88, 64, 0))
-            evs.append((b0, "note", 0, b0, 3.6, bass_root, 80))
-            evs.append((b0, "note", 0, b0 + 0.05, 3.5, bass_root + 12, 74))
+            evs.append((b0, "cc", 0, b0 + 3.86, 64, 0))
+            # Mano izquierda acústica: tónica y octava con peso
+            v_b1 = 84 + ((b * 3) % 7) - 3
+            evs.append((b0, "note", 0, b0, 3.6, bass_root, v_b1))
+            evs.append((b0, "note", 0, b0 + 0.04, 3.5, bass_root + 12, max(50, v_b1 - 8)))
+            # Mano derecha: arpegios dinámicos fluidos
             for i in range(7):
                 n_arp = chord_mid[i % len(chord_mid)]
-                evs.append((b0, "note", 0, b0 + 0.5 * (i + 1), 0.65, n_arp, 58 + (i % 3) * 5))
-            evs.append((b0, "note", 0, b0 + 0.0, 1.4, mel_notes[0], 92))
-            evs.append((b0, "note", 0, b0 + 1.5, 0.9, mel_notes[1], 85))
-            evs.append((b0, "note", 0, b0 + 2.5, 1.4, mel_notes[2], 88))
+                vel_arp = 60 + ((i * 4 + b * 2) % 16)
+                evs.append((b0, "note", 0, b0 + 0.5 * (i + 1), 0.75, n_arp, vel_arp))
+            # Melodía superior destacada
+            evs.append((b0, "note", 0, b0 + 0.0, 1.4, mel_notes[0], 93))
+            evs.append((b0, "note", 0, b0 + 1.5, 0.9, mel_notes[1], 87))
+            evs.append((b0, "note", 0, b0 + 2.5, 1.4, mel_notes[2], 90))
 
         elif role in ("bass_finger", "bass_slap"):
             use_slap = (role == "bass_slap")
@@ -1127,12 +1314,13 @@ def compose_instrument_midi_track(
                 setup = [(0, 0, 36), (1, 0, 37)]
             ch_main = 0
             ch_pop = 1 if use_slap else 0
-            evs.append((b0, "note", ch_main, b0 + 0.0, 0.42, bass_root, 112 if use_slap else 98))
-            evs.append((b0, "note", ch_main, b0 + 0.5, 0.22, bass_root, 80))
-            evs.append((b0, "note", ch_pop, b0 + 0.75, 0.22, bass_root + 12, 122 if use_slap else 94))
-            evs.append((b0, "note", ch_main, b0 + 1.5, 0.40, bass_root + 7, 96))
-            evs.append((b0, "note", ch_main, b0 + 2.0, 0.42, bass_root, 108 if use_slap else 96))
-            evs.append((b0, "note", ch_pop, b0 + 2.5, 0.25, bass_root + 12, 120 if use_slap else 92))
+            v_slap_boost = 14 if use_slap else 0
+            evs.append((b0, "note", ch_main, b0 + 0.0, 0.42, bass_root, 102 + v_slap_boost))
+            evs.append((b0, "note", ch_main, b0 + 0.5, 0.22, bass_root, 82))
+            evs.append((b0, "note", ch_pop, b0 + 0.75, 0.22, bass_root + 12, 98 + v_slap_boost))
+            evs.append((b0, "note", ch_main, b0 + 1.5, 0.40, bass_root + 7, 94))
+            evs.append((b0, "note", ch_main, b0 + 2.0, 0.42, bass_root, 100 + v_slap_boost))
+            evs.append((b0, "note", ch_pop, b0 + 2.5, 0.25, bass_root + 12, 96 + v_slap_boost))
             if bass_pickup and not is_last_bar:
                 evs.append((b0, "note", ch_main, b0 + 3.0, 0.42, nxt_bass_root - 2, 88))
                 evs.append((b0, "note", ch_main, b0 + 3.5, 0.22, nxt_bass_root - 1, 95))
@@ -1143,37 +1331,48 @@ def compose_instrument_midi_track(
         elif role == "acoustic_drums":
             setup = [(9, 128, 0)]
             ch = 9
-            if crash_toms and (b == 0 or b % 2 == 0 or is_last_bar):
-                evs.append((b0, "note", ch, b0, 0.5, 49 if b % 2 == 0 else 57, 114))
-            if tom_grooves and b % 4 == 2:
+            # Platillo crash en inicio, compases clave y final
+            if crash_toms and (b == 0 or b % 4 == 0 or is_last_bar):
+                evs.append((b0, "note", ch, b0, 0.6, 49 if b % 2 == 0 else 57, 114))
+
+            if tom_grooves and b % 4 == 3:
+                # Redoble dinámico de toms con crescendo expresivo
                 tom_seq = [
-                    (0.0, 41, 108), (0.5, 41, 86), (0.75, 43, 92),
-                    (1.0, 38, 114), (1.5, 41, 96), (2.0, 41, 106),
-                    (2.25, 45, 94), (2.5, 43, 100), (3.0, 38, 116),
-                    (3.5, 47, 98), (3.75, 45, 102),
+                    (0.0, 41, 106), (0.5, 41, 88), (0.75, 43, 94),
+                    (1.0, 38, 115), (1.5, 41, 98), (2.0, 41, 108),
+                    (2.25, 45, 96), (2.5, 43, 102), (3.0, 38, 118),
+                    (3.5, 47, 102), (3.75, 45, 108),
                 ]
                 for sb, tn, tv in tom_seq:
                     evs.append((b0, "note", ch, b0 + sb, 0.2, tn, tv))
             else:
+                # Hi-Hat dinámico alternado
                 if hihat_mode == "4th":
                     for i in range(4):
-                        evs.append((b0, "note", ch, b0 + i * 1.0, 0.25, 42, 98))
+                        evs.append((b0, "note", ch, b0 + i * 1.0, 0.25, 42, 98 if i % 2 == 0 else 82))
                 elif hihat_mode == "16th":
                     for i in range(16):
                         nh = 46 if i == 14 else 42
-                        evs.append((b0, "note", ch, b0 + i * 0.25, 0.12, nh, 98 if i % 4 == 0 else (82 if i % 2 == 0 else 68)))
+                        v_hh = 96 if i % 4 == 0 else (80 if i % 2 == 0 else 64)
+                        evs.append((b0, "note", ch, b0 + i * 0.25, 0.12, nh, v_hh))
                 else:
                     for i in range(8):
-                        evs.append((b0, "note", ch, b0 + i * 0.5, 0.2, 42, 96 if i % 2 == 0 else 76))
+                        v_hh = 94 if i % 2 == 0 else 72
+                        evs.append((b0, "note", ch, b0 + i * 0.5, 0.2, 42, v_hh))
 
-            for kb in (0.0, 1.75, 2.0, 2.5):
-                evs.append((b0, "note", ch, b0 + kb, 0.25, 36, 115))
+                # Ghost notes en caja para realismo orgánico
+                evs.append((b0, "note", ch, b0 + 0.85, 0.12, 38, 48))
+                evs.append((b0, "note", ch, b0 + 2.85, 0.12, 38, 52))
+
+            # Bombo con pegada física
+            for kb, kv in ((0.0, 116), (1.75, 98), (2.0, 110), (2.5, 104)):
+                evs.append((b0, "note", ch, b0 + kb, 0.25, 36, kv))
+            # Caja firme en 2 y 4 (tiempos 1.0 y 3.0)
             for sb in (1.0, 3.0):
                 evs.append((b0, "note", ch, b0 + sb, 0.25, 38, 118))
 
-            if crash_toms and (b % 4 == 3 or is_last_bar):
-                for idx, tn in enumerate([50, 48, 47, 45, 43, 41]):
-                    evs.append((b0, "note", ch, b0 + 2.5 + idx * 0.25, 0.2, tn, 100 + idx * 4))
+            if crash_toms and (b % 4 == 2 and not is_last_bar):
+                evs.append((b0, "note", ch, b0 + 3.5, 0.25, 57, 104))
 
         elif role == "electronic_drums":
             setup = [(9, 128, 25)]
@@ -1197,22 +1396,41 @@ def compose_instrument_midi_track(
             evs.append((b0, "note", 0, b0 + 3.0, 0.85, mel_notes[0], 94))
 
         elif role == "acoustic_guitar":
-            seq = [
-                (0.0, bass_root + 12, 92), (0.5, chord_mid[0], 76),
-                (1.0, chord_mid[1], 82), (1.5, chord_mid[2], 88),
-                (2.0, chord_mid[-1], 90), (2.5, chord_mid[1], 78),
-                (3.0, chord_mid[2], 86), (3.5, chord_mid[0], 76),
+            # Rasgueo orgánico real con downstrokes y upstrokes humanos
+            strum_notes = [bass_root + 12, bass_root + 19, chord_mid[0], chord_mid[1], chord_mid[2]]
+            strum_pattern = [
+                (0.0, "down", 0.70, 94),
+                (0.75, "up", 0.40, 72),
+                (1.5, "down", 0.45, 84),
+                (2.0, "down", 0.45, 92),
+                (2.5, "up", 0.40, 75),
+                (3.0, "down", 0.45, 88),
+                (3.5, "up", 0.40, 76),
             ]
-            for sb, n, v in seq:
-                evs.append((b0, "note", 0, b0 + sb, 0.85, n, v))
+            for sb, direction, dur, b_vel in strum_pattern:
+                jitter = ((b * 7 + int(sb * 4)) % 5) - 2
+                v = max(40, min(120, b_vel + jitter))
+                if direction == "down":
+                    for s_i, pitch in enumerate(strum_notes):
+                        evs.append((b0, "note", 0, b0 + sb + s_i * 0.016, dur, pitch, max(35, min(125, v - s_i * 2))))
+                else:
+                    for s_i, pitch in enumerate(reversed(strum_notes[-3:])):
+                        evs.append((b0, "note", 0, b0 + sb + s_i * 0.014, dur, pitch, max(35, min(125, v - s_i * 2))))
 
         elif role == "clean_guitar":
-            arp_seq = [
-                bass_root + 12, chord_mid[0], chord_mid[1], chord_mid[2],
-                chord_mid[-1], chord_mid[2], chord_mid[1], chord_mid[0],
+            arp_pattern = [
+                (0.0, bass_root + 12, 1.4, 90),
+                (0.5, chord_mid[0], 1.2, 78),
+                (1.0, chord_mid[1], 1.2, 84),
+                (1.5, chord_mid[2], 1.2, 88),
+                (2.0, high_tonic + c_root_off, 1.4, 92),
+                (2.5, chord_mid[1], 1.2, 80),
+                (3.0, chord_mid[2], 1.2, 86),
+                (3.5, chord_mid[0], 1.2, 78),
             ]
-            for i, n in enumerate(arp_seq):
-                evs.append((b0, "note", 0, b0 + i * 0.5, 1.25, n, 88 if i == 0 else (72 + (i % 2) * 8)))
+            for sb, pitch, dur, v in arp_pattern:
+                jitter = ((b * 5 + int(sb * 2)) % 5) - 2
+                evs.append((b0, "note", 0, b0 + sb, dur, pitch, max(40, min(120, v + jitter))))
 
         elif role == "distorted_guitar":
             setup = [(0, 0, 29), (1, 0, 30)]
@@ -1329,7 +1547,7 @@ def _render_single_sf2_layer(
     el 100% de la memoria al terminar. Devuelve (elapsed_ms, peak_ram_mb).
     """
     fs_bin = get_fluidsynth_binary()
-    cmd = [fs_bin, "-ni", "-g", str(gain), "-r", str(SAMPLE_RATE), "-F", out_wav, sf2_path, midi_path]
+    cmd = [fs_bin, "-ni", "-g", str(gain), "-r", str(SAMPLE_RATE), "-R", "1", "-C", "1", "-F", out_wav, sf2_path, midi_path]
 
     t0 = time.perf_counter()
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -1388,19 +1606,32 @@ def synthesize_multitrack_composition(
     output_flac_path: Optional[str] = None,
     cache_dir: Optional[str] = None,
     amp_configs: Optional[Dict[str, Any]] = None,
+    custom_chords_timeline: Optional[List[Dict[str, Any]]] = None,
+    target_duration_sec: Optional[float] = None,
+    prompt: Optional[str] = None,
+    lyrics: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Sintetiza una composición musical multipista combinando cualquier subconjunto
     de los 20 instrumentos gratuitos con volumen individual por pista.
+    Soporta duraciones completas de canción y progresiones armónicas compás por compás.
     """
     if not tracks_config:
         raise ValueError("Debe seleccionar al menos un instrumento gratuito para generar música.")
 
     bpm = max(40, min(220, int(bpm)))
-    bars = max(2, min(32, int(bars)))
-    expected_musical_sec = (bars * 4.0) * (60.0 / bpm)
+    if custom_chords_timeline:
+        bars = max(2, min(512, len(custom_chords_timeline)))
+    else:
+        bars = max(2, min(512, int(bars)))
+
     tail_beats = 1.0
-    target_total_sec = expected_musical_sec + (tail_beats * (60.0 / bpm))
+    if target_duration_sec is not None and target_duration_sec > 0:
+        target_total_sec = float(target_duration_sec)
+        expected_musical_sec = target_total_sec
+    else:
+        expected_musical_sec = (bars * 4.0) * (60.0 / bpm)
+        target_total_sec = expected_musical_sec + (tail_beats * (60.0 / bpm))
     target_frames = int(round(target_total_sec * SAMPLE_RATE))
 
     master_mix = np.zeros((target_frames, 2), dtype=np.float32)
@@ -1436,6 +1667,7 @@ def synthesize_multitrack_composition(
                 crash_toms=crash_toms,
                 bass_pickup=bass_pickup,
                 tail_beats=tail_beats,
+                custom_chords_timeline=custom_chords_timeline,
             )
 
             inst_buf = np.zeros((target_frames, 2), dtype=np.float32)
@@ -1478,19 +1710,19 @@ def synthesize_multitrack_composition(
             if not amp_cfg and amp_configs:
                 if inst_id in amp_configs:
                     amp_cfg = amp_configs[inst_id]
-                elif inst["family"] == "Guitarras" and "guitar" in amp_configs:
-                    amp_cfg = amp_configs["guitar"]
-                elif inst["family"] in ("Bajos", "Sintetizadores") and "bass" in amp_configs and "bajo" in inst_id:
-                    amp_cfg = amp_configs["bass"]
+                elif (inst["family"] == "Guitarras" or "guitarra" in inst_id) and ("guitar" in amp_configs or "guitarra" in amp_configs):
+                    amp_cfg = amp_configs.get("guitar") or amp_configs.get("guitarra")
+                elif (inst["family"] == "Bajos" or "bajo" in inst_id or "bass" in inst_id) and ("bass" in amp_configs or "bajo" in amp_configs):
+                    amp_cfg = amp_configs.get("bass") or amp_configs.get("bajo")
 
-            if amp_cfg and not amp_cfg.get("bypass", False):
+            if amp_cfg and not amp_cfg.get("bypass", False) and amp_cfg.get("enabled", True):
                 try:
                     import virtual_amp_engine
                     inst_buf = virtual_amp_engine.process_audio_through_amplifier(inst_buf, amp_cfg)
-                    amp_applied_id = amp_cfg.get("amp_id")
+                    amp_applied_id = amp_cfg.get("amp_id") or amp_cfg.get("id")
                     cab_applied_id = amp_cfg.get("cabinet_id")
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[AMP DSP ERROR] Fallo al procesar {inst_id} con amplificador: {e}")
 
             master_mix += inst_buf * vol
             total_synth_ms += inst_ms
@@ -1572,6 +1804,400 @@ def synthesize_multitrack_composition(
         "estimated_combined_ram_mb": round(process_rss_mb + max_child_ram_mb, 2),
         "render_512mb_safe": (process_rss_mb + max_child_ram_mb) < 420.0,
         "licenses_used": list(licenses_map.values()),
+        "amp_configs_applied": amp_configs,
+        "prompt": prompt,
+        "lyrics": lyrics,
+    }
+
+
+# ==============================================================================
+# ANÁLISIS MUSICAL AVANZADO DE CANCIONES (TIEMPO, TONALIDAD Y ARMONÍA REAL)
+# ==============================================================================
+
+PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+# Perfiles de Krumhansl-Schmuckler para detección de tonalidad
+KRUMHANSL_MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88], dtype=np.float32)
+KRUMHANSL_MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17], dtype=np.float32)
+
+CHORD_TEMPLATES_24: Dict[str, Tuple[int, List[int], List[int], np.ndarray]] = {}
+for root in range(12):
+    # Tríada Mayor
+    maj = np.zeros(12, dtype=np.float32)
+    maj[root] = 1.0; maj[(root + 4) % 12] = 0.8; maj[(root + 7) % 12] = 0.9
+    CHORD_TEMPLATES_24[PITCH_NAMES[root]] = (root, [0, 4, 7], [0, 4, 7, 12], maj / np.linalg.norm(maj))
+
+    # Tríada Menor
+    min_t = np.zeros(12, dtype=np.float32)
+    min_t[root] = 1.0; min_t[(root + 3) % 12] = 0.8; min_t[(root + 7) % 12] = 0.9
+    CHORD_TEMPLATES_24[f"{PITCH_NAMES[root]}m"] = (root, [0, 3, 7], [0, 3, 7, 12], min_t / np.linalg.norm(min_t))
+
+
+def analyze_audio_track(
+    audio_path: str,
+    hint_bpm: Optional[int] = None,
+    hint_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Analiza una pista de audio real extrayendo con precisión matemática:
+    - Duración exacta en segundos y número de muestras a 44.1 kHz.
+    - BPM detectado mediante análisis de energía espectral y autocorrelación.
+    - Métrica y cantidad exacta de compases (bars) necesarios para cubrir el 100% de la canción.
+    - Tonalidad global (perfil Krumhansl-Schmuckler sobre cromagrama de 12 notas).
+    - Línea de tiempo armónica compás por compás con nombres de acordes, fundamentales y confianza.
+    """
+    if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 100:
+        raise FileNotFoundError(f"Archivo de audio no encontrado: {audio_path}")
+
+    ff_bin = get_ffmpeg_binary()
+    sr_analysis = 22050
+
+    # 1. Decodificar audio mono a 22050 Hz en memoria vía FFmpeg
+    cmd_mono = [
+        ff_bin, "-y", "-i", audio_path,
+        "-f", "f32le", "-acodec", "pcm_f32le",
+        "-ac", "1", "-ar", str(sr_analysis), "-"
+    ]
+    proc = subprocess.Popen(cmd_mono, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    raw_mono, _ = proc.communicate()
+    if not raw_mono or len(raw_mono) < 1024:
+        raise ValueError("No se pudo decodificar la señal de audio para análisis.")
+
+    samples_mono = np.frombuffer(raw_mono, dtype=np.float32)
+    duration_sec = float(len(samples_mono)) / float(sr_analysis)
+
+    # 2. Análisis de tempo (BPM)
+    hop = 512
+    f_spec, t_spec, spec = scipy.signal.spectrogram(samples_mono, fs=sr_analysis, nperseg=1024, noverlap=512)
+    diff = np.diff(spec, axis=1)
+    pos_diff = np.maximum(0, diff)
+    onset_env = np.sum(pos_diff, axis=0)
+
+    # Autocorrelación sobre envolvente de transitorios
+    corr = np.correlate(onset_env, onset_env, mode='full')
+    corr = corr[len(corr) // 2:]
+
+    # Búsqueda en rango 50 a 195 BPM
+    min_lag = int((60.0 / 195.0) * (sr_analysis / hop))
+    max_lag = int((60.0 / 50.0) * (sr_analysis / hop))
+    min_lag = max(1, min_lag)
+    max_lag = min(len(corr) - 1, max_lag)
+
+    valid_corr = corr[min_lag:max_lag]
+    best_lag = min_lag + int(np.argmax(valid_corr))
+    detected_bpm = float((60.0 * sr_analysis) / (best_lag * hop))
+
+    final_bpm = int(round(detected_bpm))
+
+    # Si el usuario o Udio envió un hint_bpm, verificar si es armónico/cercano (ej. 76 vs 78 o doble tempo)
+    if hint_bpm and 40 <= hint_bpm <= 220:
+        ratio = detected_bpm / float(hint_bpm)
+        if 0.92 <= ratio <= 1.08:
+            final_bpm = hint_bpm
+        elif 1.85 <= ratio <= 2.15:
+            final_bpm = hint_bpm
+        elif 0.45 <= ratio <= 0.55:
+            final_bpm = hint_bpm
+
+    sec_per_beat = 60.0 / float(final_bpm)
+    sec_per_bar = sec_per_beat * 4.0
+    total_bars = int(math.ceil(duration_sec / sec_per_bar))
+
+    # 3. Cromagrama armónico global y tonalidad (Krumhansl-Schmuckler)
+    valid_freq_idx = np.where((f_spec >= 65.0) & (f_spec <= 1100.0))[0]
+    global_chroma = np.zeros(12, dtype=np.float32)
+    for vi in valid_freq_idx:
+        fr = f_spec[vi]
+        if fr <= 0:
+            continue
+        midi_n = int(round(12.0 * np.log2(fr / 440.0) + 69.0))
+        global_chroma[midi_n % 12] += np.sum(spec[vi, :])
+
+    norm_g = np.linalg.norm(global_chroma)
+    if norm_g > 1e-6:
+        global_chroma /= norm_g
+
+    best_key_score = -999.0
+    detected_key = "G"
+    detected_mode = "Major"
+    detected_root = "G"
+
+    for root in range(12):
+        rot_c = np.roll(global_chroma, -root)
+        score_maj = float(np.corrcoef(rot_c, KRUMHANSL_MAJOR)[0, 1])
+        if score_maj > best_key_score:
+            best_key_score = score_maj
+            detected_key = f"{PITCH_NAMES[root]}"
+            detected_mode = "Major"
+            detected_root = PITCH_NAMES[root]
+
+        score_min = float(np.corrcoef(rot_c, KRUMHANSL_MINOR)[0, 1])
+        if score_min > best_key_score:
+            best_key_score = score_min
+            detected_key = f"{PITCH_NAMES[root]}m"
+            detected_mode = "Minor"
+            detected_root = PITCH_NAMES[root]
+
+    # 4. Línea de tiempo armónica compás por compás
+    chords_timeline: List[Dict[str, Any]] = []
+    last_known_chord = detected_key if detected_key in CHORD_TEMPLATES_24 else "G"
+
+    for b in range(total_bars):
+        t0 = b * sec_per_bar
+        t1 = min(duration_sec, (b + 1) * sec_per_bar)
+        idx0 = int(t0 * sr_analysis)
+        idx1 = int(t1 * sr_analysis)
+        bar_s = samples_mono[idx0:idx1]
+
+        if len(bar_s) < 512:
+            tpl = CHORD_TEMPLATES_24.get(last_known_chord, CHORD_TEMPLATES_24["G"])
+            chords_timeline.append({
+                "bar": b + 1,
+                "start_sec": round(t0, 2),
+                "end_sec": round(t1, 2),
+                "chord": last_known_chord,
+                "root_offset": tpl[0],
+                "intervals": tpl[1],
+                "mel": tpl[2],
+                "confidence": 0.50,
+            })
+            continue
+
+        fb, tb, spec_b = scipy.signal.spectrogram(bar_s, fs=sr_analysis, nperseg=1024, noverlap=512)
+        v_idx = np.where((fb >= 65.0) & (fb <= 950.0))[0]
+        bar_c = np.zeros(12, dtype=np.float32)
+        for vi in v_idx:
+            fr = fb[vi]
+            if fr <= 0:
+                continue
+            midi_n = int(round(12.0 * np.log2(fr / 440.0) + 69.0))
+            bar_c[midi_n % 12] += np.sum(spec_b[vi, :])
+
+        norm_b = np.linalg.norm(bar_c)
+        if norm_b > 1e-6:
+            bar_c /= norm_b
+            best_cname = last_known_chord
+            best_sim = -1.0
+            best_tuple = CHORD_TEMPLATES_24.get(last_known_chord, CHORD_TEMPLATES_24["G"])
+            for cname, cinfo in CHORD_TEMPLATES_24.items():
+                sim = float(np.dot(bar_c, cinfo[3]))
+                if sim > best_sim:
+                    best_sim = sim
+                    best_cname = cname
+                    best_tuple = cinfo
+
+            last_known_chord = best_cname
+            chords_timeline.append({
+                "bar": b + 1,
+                "start_sec": round(t0, 2),
+                "end_sec": round(t1, 2),
+                "chord": best_cname,
+                "root_offset": best_tuple[0],
+                "intervals": best_tuple[1],
+                "mel": best_tuple[2],
+                "confidence": round(best_sim, 2),
+            })
+        else:
+            tpl = CHORD_TEMPLATES_24.get(last_known_chord, CHORD_TEMPLATES_24["G"])
+            chords_timeline.append({
+                "bar": b + 1,
+                "start_sec": round(t0, 2),
+                "end_sec": round(t1, 2),
+                "chord": last_known_chord,
+                "root_offset": tpl[0],
+                "intervals": tpl[1],
+                "mel": tpl[2],
+                "confidence": 0.50,
+            })
+
+    chord_sequence_summary = " - ".join(chords_timeline[i]["chord"] for i in range(min(16, len(chords_timeline))))
+    if len(chords_timeline) > 16:
+        chord_sequence_summary += " ..."
+
+    return {
+        "status": "ok",
+        "audio_path": audio_path,
+        "duration_sec": round(duration_sec, 2),
+        "bpm": final_bpm,
+        "meter": "4/4",
+        "total_bars": total_bars,
+        "key": {
+            "name": f"{detected_root} {detected_mode}",
+            "root": detected_root,
+            "mode": detected_mode,
+            "display": detected_key,
+            "confidence": round(best_key_score, 2),
+        },
+        "chord_summary": chord_sequence_summary,
+        "chords_timeline": chords_timeline,
+    }
+
+
+def enrich_song_with_sf2_overdub(
+    original_audio_path: str,
+    tracks_config: List[Dict[str, Any]],
+    output_mp3_path: str,
+    output_wav_path: Optional[str] = None,
+    output_flac_path: Optional[str] = None,
+    hint_bpm: Optional[int] = None,
+    hint_key: Optional[str] = None,
+    original_volume: float = 0.95,
+    accompaniment_volume: float = 0.75,
+    amp_configs: Optional[Dict[str, Any]] = None,
+    custom_chords: Optional[List[Dict[str, Any]]] = None,
+    hihat_mode: str = "8th",
+    tom_grooves: bool = True,
+    crash_toms: bool = True,
+    bass_pickup: bool = True,
+    preview_seconds: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Integra de forma no destructiva los 20 instrumentos gratuitos SoundFont2 sobre
+    una canción existente de Udio, conservando al 100% voz, melodía, duración exacta y estructura.
+    """
+    if not os.path.exists(original_audio_path):
+        raise FileNotFoundError(f"Canción original no encontrada: {original_audio_path}")
+
+    # 1. Análisis musical completo de la pista original
+    analysis = analyze_audio_track(original_audio_path, hint_bpm=hint_bpm, hint_key=hint_key)
+    exact_duration_sec = analysis["duration_sec"]
+    bpm = analysis["bpm"]
+    detected_key = analysis["key"]["root"]
+    chords_timeline = list(custom_chords) if custom_chords else list(analysis["chords_timeline"])
+
+    # Si se solicita modo preescucha rápida (ej: 25-30s), acotar duración y compases
+    is_preview = False
+    if preview_seconds and float(preview_seconds) > 0 and float(preview_seconds) < exact_duration_sec:
+        is_preview = True
+        exact_duration_sec = float(preview_seconds)
+        bar_dur = (60.0 / bpm) * 4.0
+        max_bars = max(2, int(math.ceil(exact_duration_sec / bar_dur)))
+        chords_timeline = chords_timeline[:max_bars]
+
+    ff_bin = get_ffmpeg_binary()
+
+    # 2. Cargar audio original en estéreo a 44100 Hz float32 (acotado si es preescucha)
+    cmd_orig_stereo = [
+        ff_bin, "-y"
+    ]
+    if is_preview:
+        cmd_orig_stereo.extend(["-t", str(exact_duration_sec)])
+    cmd_orig_stereo.extend([
+        "-i", original_audio_path,
+        "-f", "f32le", "-acodec", "pcm_f32le",
+        "-ac", "2", "-ar", "44100", "-"
+    ])
+    p_orig = subprocess.Popen(cmd_orig_stereo, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    raw_orig, _ = p_orig.communicate()
+    if not raw_orig or len(raw_orig) < 1024:
+        raise ValueError("Error al cargar la señal de audio original para sobregrabación.")
+
+    orig_samples = np.frombuffer(raw_orig, dtype=np.float32).reshape(-1, 2)
+    num_orig_frames = len(orig_samples)
+
+    # 3. Sintetizar las pistas de acompañamiento a longitud completa exacta
+    with tempfile.TemporaryDirectory(prefix="rodrix_enrich_") as tmp_enrich_dir:
+        synth_mp3_temp = os.path.join(tmp_enrich_dir, "accompaniment_temp.mp3")
+        synth_wav_temp = os.path.join(tmp_enrich_dir, "accompaniment_temp.wav")
+
+        synth_res = synthesize_multitrack_composition(
+            tracks_config=tracks_config,
+            output_mp3_path=synth_mp3_temp,
+            output_wav_path=synth_wav_temp,
+            bpm=bpm,
+            musical_key=detected_key,
+            progression_style="alabanza_juvenil",
+            bars=len(chords_timeline),
+            hihat_mode=hihat_mode,
+            tom_grooves=tom_grooves,
+            crash_toms=crash_toms,
+            bass_pickup=bass_pickup,
+            amp_configs=amp_configs,
+            custom_chords_timeline=chords_timeline,
+            target_duration_sec=exact_duration_sec,
+        )
+
+        # 4. Decodificar acompañamiento sintetizado estéreo a 44100 Hz
+        cmd_acc_stereo = [
+            ff_bin, "-y", "-i", synth_wav_temp,
+            "-f", "f32le", "-acodec", "pcm_f32le",
+            "-ac", "2", "-ar", "44100", "-"
+        ]
+        p_acc = subprocess.Popen(cmd_acc_stereo, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        raw_acc, _ = p_acc.communicate()
+        acc_samples = np.frombuffer(raw_acc, dtype=np.float32).reshape(-1, 2)
+
+        # 5. Alinear muestras exactamente con el audio original (recorte o pad)
+        acc_aligned = np.zeros_like(orig_samples)
+        copy_len = min(num_orig_frames, len(acc_samples))
+        acc_aligned[:copy_len] = acc_samples[:copy_len]
+
+        # 6. Mezcla estéreo digital: Original * orig_vol + Acompañamiento * acc_vol
+        orig_vol_clamped = max(0.1, min(1.5, float(original_volume)))
+        acc_vol_clamped = max(0.1, min(1.5, float(accompaniment_volume)))
+        final_mix = (orig_samples * orig_vol_clamped) + (acc_aligned * acc_vol_clamped)
+
+        # 7. Limitador transparente suave (-0.3 dBFS)
+        peak_amp = float(np.max(np.abs(final_mix)))
+        ceiling = 10.0 ** (-0.3 / 20.0)  # ~0.966
+        attenuation_factor = 1.0
+        if peak_amp > ceiling:
+            attenuation_factor = ceiling / peak_amp
+            final_mix = final_mix * attenuation_factor
+
+        # 8. Exportar a MP3 (320 kbps)
+        os.makedirs(os.path.dirname(os.path.abspath(output_mp3_path)), exist_ok=True)
+        cmd_out_mp3 = [
+            ff_bin, "-y",
+            "-f", "f32le", "-ar", "44100", "-ac", "2", "-i", "-",
+            "-b:a", "320k",
+            output_mp3_path
+        ]
+        p_out = subprocess.Popen(cmd_out_mp3, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        p_out.communicate(input=final_mix.tobytes())
+
+        # Opcional: WAV y FLAC
+        if output_wav_path:
+            os.makedirs(os.path.dirname(os.path.abspath(output_wav_path)), exist_ok=True)
+            cmd_out_wav = [
+                ff_bin, "-y",
+                "-f", "f32le", "-ar", "44100", "-ac", "2", "-i", "-",
+                output_wav_path
+            ]
+            p_wav = subprocess.Popen(cmd_out_wav, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            p_wav.communicate(input=final_mix.tobytes())
+
+        if output_flac_path:
+            os.makedirs(os.path.dirname(os.path.abspath(output_flac_path)), exist_ok=True)
+            cmd_out_flac = [
+                ff_bin, "-y",
+                "-f", "f32le", "-ar", "44100", "-ac", "2", "-i", "-",
+                output_flac_path
+            ]
+            p_flac = subprocess.Popen(cmd_out_flac, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            p_flac.communicate(input=final_mix.tobytes())
+
+    actual_duration = round(num_orig_frames / 44100.0, 2)
+    peak_db = round(20.0 * math.log10(max(1e-6, peak_amp * attenuation_factor)), 2)
+
+    return {
+        "status": "ok",
+        "zero_cost": True,
+        "original_audio_path": original_audio_path,
+        "output_mp3_path": output_mp3_path,
+        "duration_sec": actual_duration,
+        "original_duration_sec": exact_duration_sec,
+        "duration_diff_sec": round(abs(actual_duration - exact_duration_sec), 4),
+        "bpm": bpm,
+        "key": analysis["key"],
+        "chord_summary": analysis["chord_summary"],
+        "chords_timeline": analysis["chords_timeline"],
+        "total_bars": analysis["total_bars"],
+        "tracks_rendered": synth_res.get("tracks", []),
+        "peak_dbfs": peak_db,
+        "limiter_applied": peak_amp > ceiling,
+        "attenuation_factor": round(attenuation_factor, 3),
+        "licenses_used": synth_res.get("licenses_used", []),
         "amp_configs_applied": amp_configs,
     }
 

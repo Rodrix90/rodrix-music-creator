@@ -2230,6 +2230,8 @@ def resolve_effective_musical_config(
     is_solo_piano_prayer: bool = False,
     is_drum_solo: bool = False,
     is_vals_vienes: bool = False,
+    is_guitar_solo: bool = False,
+    is_bass_solo: bool = False,
 ) -> dict:
     """
     Única fuente de verdad (Single Source of Truth) para resolver la configuración
@@ -2299,12 +2301,22 @@ def resolve_effective_musical_config(
         effective_hihat = "8th"
 
     # 3. Resolver articulaciones de batería y bajo sin desactivar elecciones del usuario
-    if is_solo_piano_prayer:
+    if is_solo_piano_prayer or is_guitar_solo:
         eff_crash_toms = False
         eff_splash_ride = False
         eff_tom_grooves = False
         eff_bass_slap = False
         eff_bass_pickup = False
+    elif is_bass_solo:
+        eff_crash_toms = False
+        eff_splash_ride = False
+        eff_tom_grooves = False
+        eff_bass_slap = bool(art_bass_slap) if art_bass_slap is not None else any(
+            k in raw_lower for k in ("slap and pop", "slap & pop", "bajo slap", "slap bass", "slap y pop", "adorno slap")
+        )
+        eff_bass_pickup = bool(art_bass_pickup) if art_bass_pickup is not None else any(
+            k in raw_lower for k in ("pick-up", "pickup bass", "passing tones", "notas de paso")
+        )
     else:
         eff_crash_toms = bool(art_crash_toms) if art_crash_toms is not None else any(
             k in raw_lower for k in ("crash cymbals on transitions", "crashes y redobles", "crashes and fills", "tom rolls and drum fills")
@@ -2324,7 +2336,7 @@ def resolve_effective_musical_config(
 
     # 4. Construir cláusulas prioritarias sin contradicciones
     priority_clauses = []
-    if not is_solo_piano_prayer and not is_vals_vienes:
+    if not is_solo_piano_prayer and not is_vals_vienes and not is_guitar_solo and not is_bass_solo:
         if effective_hihat == "16th":
             hihat_clause = "fast driving 16th-note hi-hat subdivision pattern (four strokes per beat, rapid sixteenth-note hi-hats)"
         elif effective_hihat == "4th":
@@ -2335,7 +2347,7 @@ def resolve_effective_musical_config(
     else:
         hihat_clause = ""
 
-    if not is_solo_piano_prayer and not is_drum_solo:
+    if not is_solo_piano_prayer and not is_drum_solo and not is_guitar_solo:
         if eff_bass_slap and eff_bass_pickup:
             bass_clause = (
                 "prominent funky slap and pop electric bass (percussive thumb slaps on main beats and crisp octave pops on accents) "
@@ -2472,13 +2484,13 @@ def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
     return ", ".join(parts)
 
 
-def inject_arrangement_cues_into_lyrics(lyrics_str: str, cfg: dict, is_instrumental: bool = False, is_solo_piano_prayer: bool = False, is_drum_solo: bool = False) -> str:
+def inject_arrangement_cues_into_lyrics(lyrics_str: str, cfg: dict, is_instrumental: bool = False, is_solo_piano_prayer: bool = False, is_drum_solo: bool = False, is_guitar_solo: bool = False, is_bass_solo: bool = False) -> str:
     """
     Inyecta indicaciones estructurales en el prompt de letras/estructura para que Udio
     ejecute los Grooves en Toms, Crashes & Redobles en transiciones y la distribución
     musical de Bajo (Slap & Pop + Pick-up & Paso) en las secciones correspondientes.
     """
-    if is_solo_piano_prayer or is_drum_solo:
+    if is_solo_piano_prayer or is_drum_solo or is_guitar_solo or is_bass_solo:
         return lyrics_str
 
     base_lyrics = (lyrics_str or "").strip()
@@ -2914,12 +2926,32 @@ async def run_transform_task(
 
         # Presets especiales preexistentes (evaluados sobre el estilo original antes de expandir)
         raw_style_before_enrich = style
+        raw_excl_before = (exclude_styles or "").lower()
+
         is_drum_solo = any(w in raw_style_before_enrich.lower() for w in [
             "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
             "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
             "pure drums", "drum test", "drum sound test"
         ])
-        is_solo_piano_prayer = not is_drum_solo and (
+
+        is_guitar_solo = not is_drum_solo and (
+            active_preset == "guitar_solo"
+            or any(w in raw_style_before_enrich.lower() for w in [
+                "guitar solo", "solo guitar", "solo electric guitar", "solo de guitarra", "guitarra sola",
+                "isolated guitar", "pure guitar", "unaccompanied guitar", "solo acoustic guitar", "guitar showcase"
+            ])
+            or (("drum" in raw_excl_before or "bateria" in raw_excl_before) and ("bass" in raw_excl_before or "bajo" in raw_excl_before) and any(g in raw_style_before_enrich.lower() for g in ["guitar", "stratocaster", "les paul", "telecaster"]))
+        )
+
+        is_bass_solo = not is_drum_solo and not is_guitar_solo and (
+            active_preset == "bass_solo"
+            or any(w in raw_style_before_enrich.lower() for w in [
+                "bass solo", "solo bass", "solo electric bass", "solo de bajo", "bajo solo",
+                "isolated bass", "pure bass", "unaccompanied bass", "bass showcase"
+            ])
+        )
+
+        is_solo_piano_prayer = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
             active_preset == "piano_oracion"
             or any(w in raw_style_before_enrich.lower() for w in [
                 "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
@@ -2927,13 +2959,23 @@ async def run_transform_task(
                 "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
             ]) or (is_instrumental and "piano" in raw_style_before_enrich.lower() and any(w in raw_style_before_enrich.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
         )
-        if is_solo_piano_prayer:
+        if is_guitar_solo:
+            is_instrumental = True
+            wants_solo_vocal = False
+            wants_choir = False
+            final_lyrics = "[Instrumental - Solo Guitar]"
+        elif is_bass_solo:
+            is_instrumental = True
+            wants_solo_vocal = False
+            wants_choir = False
+            final_lyrics = "[Instrumental - Solo Bass]"
+        elif is_solo_piano_prayer:
             is_instrumental = True
             wants_solo_vocal = False
             wants_choir = False
             final_lyrics = "[Instrumental - Solo Piano]"
 
-        is_vals_vienes = not is_drum_solo and (active_preset == "vals_vienes" or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"]))
+        is_vals_vienes = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (active_preset == "vals_vienes" or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"]))
 
         # Resolver configuración efectiva del usuario con prioridad absoluta ANTES de expandir presets
         eff_cfg = resolve_effective_musical_config(
@@ -2951,6 +2993,8 @@ async def run_transform_task(
             is_solo_piano_prayer=is_solo_piano_prayer,
             is_drum_solo=is_drum_solo,
             is_vals_vienes=is_vals_vienes,
+            is_guitar_solo=is_guitar_solo,
+            is_bass_solo=is_bass_solo,
         )
         bpm_tag = eff_cfg["bpm_tag"]
         if eff_cfg["effective_bpm"]:
@@ -3008,6 +3052,20 @@ async def run_transform_task(
 
         if is_drum_solo:
             genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 BPM unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
+        elif is_guitar_solo:
+            g_model = "Fender Stratocaster electric guitar, clean chime, articulate string attack and warm singing sustain" if "stratocaster" in style.lower() else (
+                "Gibson Les Paul electric guitar, rich humbucker warmth and singing sustain" if "les paul" in style.lower() else
+                "Martin D-28 acoustic guitar, natural woody resonance and balanced fingerstyle" if "martin" in style.lower() or "acustica" in style.lower() else
+                "electric guitar, expressive tone, natural string dynamics and singing sustain"
+            )
+            genre_anchor = f"100% pure solo guitar, {g_model}, unaccompanied solo guitar performance, single isolated instrument, zero other instruments, no drums, no percussion, no bass, no piano, no keyboards, no synths, no strings, no choir, no vocals, no backing track"
+        elif is_bass_solo:
+            b_model = "Fender Jazz Bass, articulate midrange growl and roundwound string dynamics" if "jazz bass" in style.lower() else (
+                "Fender Precision Bass, thick vintage fundamental warmth" if "precision" in style.lower() else
+                "Music Man StingRay, punchy active preamp attack" if "stingray" in style.lower() else
+                "electric bass guitar, expressive melodic solo bass performance"
+            )
+            genre_anchor = f"100% pure solo electric bass, {b_model}, unaccompanied solo bass performance, single isolated instrument, zero other instruments, no drums, no percussion, no guitars, no piano, no keyboards, no synths, no strings, no choir, no vocals, no backing track"
         elif is_solo_piano_prayer:
             if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "e-piano 2"]):
                 genre_anchor = f"pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, {bpm_tag or '60 BPM'}, reverent devotional worship, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
@@ -3048,6 +3106,8 @@ async def run_transform_task(
             is_instrumental=is_instrumental,
             is_solo_piano_prayer=is_solo_piano_prayer,
             is_drum_solo=is_drum_solo,
+            is_guitar_solo=is_guitar_solo,
+            is_bass_solo=is_bass_solo,
         )
 
         # Vocal styling in style prompt (respetando estrictamente selecciones de voz solista vs coro):
@@ -3157,6 +3217,30 @@ async def run_transform_task(
                 ]:
                     neg_tags_list.append(solo_anti)
 
+            if is_guitar_solo:
+                for solo_anti in [
+                    "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms", "drum fills", "drum rolls",
+                    "bass", "bass guitar", "electric bass", "acoustic bass", "synth bass", "upright bass",
+                    "piano", "acoustic grand piano", "grand piano", "electric piano", "rhodes", "keyboard", "keyboards", "organ", "hammond",
+                    "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
+                    "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
+                    "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
+                    "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
+                ]:
+                    neg_tags_list.append(solo_anti)
+
+            if is_bass_solo:
+                for solo_anti in [
+                    "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms", "drum fills", "drum rolls",
+                    "guitar", "electric guitar", "acoustic guitar", "guitars", "electric guitars", "lead guitar",
+                    "piano", "acoustic grand piano", "grand piano", "electric piano", "rhodes", "keyboard", "keyboards", "organ", "hammond",
+                    "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
+                    "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
+                    "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
+                    "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
+                ]:
+                    neg_tags_list.append(solo_anti)
+
             if is_vals_vienes:
                 for vals_anti in ["cumbia", "ritmo cumbia", "4/4 beat", "4/4 rock drum beat", "straight rock drums", "modern drum kit", "trap", "808 bass", "electric guitar", "synths", "synthesizer", "autotune", "distortion", "reggaeton"]:
                     neg_tags_list.append(vals_anti)
@@ -3212,6 +3296,14 @@ async def run_transform_task(
                 for req_no in ["no guitars", "no bass", "no piano", "no synths", "no vocals", "no melody", "no chords"]:
                     if req_no not in active_critical:
                         active_critical.append(req_no)
+            if is_guitar_solo:
+                for req_no in ["solo guitar only", "isolated guitar", "no drums", "no percussion", "no bass", "no piano", "no keyboards", "no synths", "no strings", "no choir", "no vocals", "no backing track"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
+            if is_bass_solo:
+                for req_no in ["solo bass only", "isolated bass", "no drums", "no percussion", "no guitars", "no piano", "no keyboards", "no synths", "no strings", "no choir", "no vocals", "no backing track"]:
+                    if req_no not in active_critical:
+                        active_critical.append(req_no)
             if is_solo_piano_prayer:
                 for req_no in ["solo piano only", "no drums", "no percussion", "no bass", "no guitars", "no synths", "no strings", "no pads", "no choir", "no vocals"]:
                     if req_no not in active_critical:
@@ -3227,11 +3319,31 @@ async def run_transform_task(
             if active_critical:
                 key_bans_str = ", ".join(active_critical)
 
-            # For drum solos and solo prayer piano, DO NOT put other instruments in positive style
+            # For drum solos, guitar solos, bass solos, and solo prayer piano, DO NOT put other instruments in positive style
             if is_drum_solo:
                 clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', style, flags=re.IGNORECASE)
                 clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
                 style = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, zero melodic instruments, unaccompanied percussion"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            elif is_guitar_solo:
+                clean_style = re.sub(
+                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                    '',
+                    style,
+                    flags=re.IGNORECASE
+                )
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"{genre_anchor}, {clean_style}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument, zero other instruments"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            elif is_bass_solo:
+                clean_style = re.sub(
+                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                    '',
+                    style,
+                    flags=re.IGNORECASE
+                )
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"{genre_anchor}, {clean_style}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument, zero other instruments"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
             elif is_solo_piano_prayer:
                 clean_style = re.sub(
@@ -3262,6 +3374,26 @@ async def run_transform_task(
                 clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
                 style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            elif is_guitar_solo:
+                clean_style = re.sub(
+                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                    '',
+                    style,
+                    flags=re.IGNORECASE
+                )
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"{genre_anchor}, {clean_style}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument, zero other instruments"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+            elif is_bass_solo:
+                clean_style = re.sub(
+                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                    '',
+                    style,
+                    flags=re.IGNORECASE
+                )
+                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+                style = f"{genre_anchor}, {clean_style}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument, zero other instruments"
+                style = re.sub(r',\s*,+', ',', style).strip(' ,')
             elif not is_drum_solo:
                 priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
                 combined_parts = [p for p in [genre_anchor, priority_str, style] if p]
@@ -3269,7 +3401,7 @@ async def run_transform_task(
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
         # Deduplicar etiquetas separadas por coma preservando el orden de prioridad
-        if not is_solo_piano_prayer and not is_drum_solo:
+        if not is_solo_piano_prayer and not is_drum_solo and not is_guitar_solo and not is_bass_solo:
             seen_style_tags = set()
             dedup_style_tags = []
             for raw_tag in style.split(","):
@@ -3283,8 +3415,8 @@ async def run_transform_task(
             style = ", ".join(dedup_style_tags)
 
         # Compute weights cleanly clamped to documented ranges 0.00 - 1.00
-        actual_style_weight = 0.85 if is_drum_solo else max(0.0, min(1.0, round(float(style_influence) / 100.0, 2)))
-        actual_weirdness = 0.20 if is_drum_solo else max(0.0, min(1.0, round(float(weirdness) / 100.0, 2)))
+        actual_style_weight = 0.85 if (is_drum_solo or is_guitar_solo or is_bass_solo) else max(0.0, min(1.0, round(float(style_influence) / 100.0, 2)))
+        actual_weirdness = 0.15 if (is_drum_solo or is_guitar_solo or is_bass_solo) else (0.20 if is_drum_solo else max(0.0, min(1.0, round(float(weirdness) / 100.0, 2))))
         actual_audio_weight = max(0.0, min(1.0, round(float(audio_influence) / 100.0, 2)))
 
         if upload_url:
@@ -5675,17 +5807,33 @@ async def api_free_instruments_generate(request: Request):
         raise HTTPException(status_code=400, detail="Selecciona al menos un instrumento gratuito para generar la composición.")
 
     title = str(data.get("title") or "").strip() or "Composición Multipista (Instrumentos Gratuitos)"
-    bpm = max(40, min(220, int(data.get("bpm") or 125)))
-    musical_key = str(data.get("musical_key") or "G").strip()
-    progression_style = str(data.get("progression_style") or "alabanza_juvenil").strip()
-    bars = max(4, min(32, int(data.get("bars") or 8)))
+    raw_prompt = str(data.get("prompt") or data.get("style") or "").strip()
+    raw_lyrics = str(data.get("lyrics") or "").strip()
+    raw_key = str(data.get("musical_key") or "G").strip()
+    raw_bpm = max(40, min(220, int(data.get("bpm") or 125)))
+    raw_style = str(data.get("progression_style") or "alabanza_juvenil").strip()
+    raw_bars = max(4, min(32, int(data.get("bars") or 8)))
+
+    # Traducción e interpretación musical del prompt del usuario
+    parsed_prompt = free_instruments_engine.parse_musical_prompt(
+        prompt=raw_prompt,
+        title=title,
+        default_key=raw_key,
+        default_bpm=raw_bpm,
+        default_style=raw_style,
+        default_bars=raw_bars,
+    )
+    bpm = parsed_prompt["bpm"]
+    musical_key = parsed_prompt["key"]
+    progression_style = parsed_prompt["progression_style"]
+    bars = parsed_prompt["bars"]
+
     hihat_mode = str(data.get("hihat_mode") or "8th").strip()
     tom_grooves = bool(data.get("tom_grooves", True))
     crash_toms = bool(data.get("crash_toms", True))
     bass_pickup = bool(data.get("bass_pickup", True))
     amp_configs = data.get("amp_configs") or data.get("amp_config") or None
     save_to_library = bool(data.get("save_to_library", True))
-    amp_configs = data.get("amp_configs") or data.get("amp_config") or None
 
     normalized_tracks = []
     for item in raw_tracks:
@@ -5723,6 +5871,8 @@ async def api_free_instruments_generate(request: Request):
         crash_toms=crash_toms,
         bass_pickup=bass_pickup,
         amp_configs=amp_configs,
+        prompt=raw_prompt,
+        lyrics=raw_lyrics,
     )
 
     inst_names = [t["short_name"] + f" ({t['volume_pct']}%)" for t in synth_res["tracks"]]
@@ -5732,9 +5882,13 @@ async def api_free_instruments_generate(request: Request):
         f"Tonalidad: {musical_key} | {bpm} BPM | {bars} compases | "
         f"Pistas ({len(inst_names)}): {', '.join(inst_names)}"
     )
+    if raw_prompt:
+        style_desc = f"{raw_prompt} • {style_desc}"
     lyrics_notes = (
+        (f"Letra / Indicaciones:\n{raw_lyrics}\n\n" if raw_lyrics else "") +
         f"[Composición Instrumental Multipista — 0 Créditos]\n"
         f"Tempo: {bpm} BPM | Tonalidad: {musical_key} | Compases: {bars}\n"
+        f"{parsed_prompt['description']}\n"
         f"Instrumentos mezclados: {', '.join(inst_names)}\n"
         f"Licencias y Atribuciones SF2: {lic_summary}"
     )
@@ -5742,6 +5896,7 @@ async def api_free_instruments_generate(request: Request):
     track_record = {
         "id": track_id,
         "title": title,
+        "prompt": raw_prompt,
         "audio_url": f"/api/audio_file/{track_id}",
         "raw_audio_url": f"/api/audio_file/{track_id}",
         "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23059669'/%3E%3Cpath d='M20 44V20l26-6v24' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='44' r='6' fill='%23FBBF24'/%3E%3Ccircle cx='42' cy='38' r='6' fill='%23FBBF24'/%3E%3C/svg%3E",
@@ -5795,6 +5950,310 @@ async def api_free_instruments_generate(request: Request):
             "flac": f"/api/download/{track_id}/flac",
         },
         "synthesis_metrics": synth_res,
+    })
+
+
+# ==============================================================================
+# ENRIQUECIMIENTO NO DESTRUCTIVO DE CANCIONES UDIO CON 20 INSTRUMENTOS SF2
+# ==============================================================================
+def _find_track_by_id(track_id: str):
+    """Localiza una pista en la biblioteca, tareas activas o almacenamiento local."""
+    library = load_library()
+    track = next((t for t in library if str(t.get("id")) == str(track_id)), None)
+    if not track:
+        for task in TASKS.values():
+            for t in task.get("tracks", []):
+                if str(t.get("id")) == str(track_id):
+                    track = t
+                    break
+            if track:
+                break
+    if not track:
+        local_check = os.path.join(TRACKS_DIR, f"{track_id}.mp3")
+        if os.path.exists(local_check):
+            track = {"id": track_id, "title": "Pista", "audio_url": f"/api/audio_file/{track_id}"}
+    return track
+
+
+@app.post("/api/tracks/{track_id}/analyze")
+async def api_track_analyze_musical(track_id: str, request: Request = None):
+    """
+    Analiza una canción existente de la biblioteca para extraer su duración real,
+    BPM exacto, métrica, tonalidad estimada y progresión armónica compás por compás.
+    Cero créditos Udio/FAL.
+    """
+    track = _find_track_by_id(track_id)
+    if not track:
+        raise HTTPException(status_code=404, detail="Canción no encontrada en la biblioteca")
+
+    audio_path = await get_or_download_audio_file(track_id, track, "")
+    if not audio_path or not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Archivo de audio de la canción no disponible")
+
+    hint_bpm = track.get("bpm")
+    hint_key = track.get("musical_key") or track.get("key")
+
+    try:
+        data = await request.json() if request else {}
+    except Exception:
+        data = {}
+
+    if data.get("hint_bpm"):
+        try:
+            hint_bpm = int(data["hint_bpm"])
+        except Exception:
+            pass
+    if data.get("hint_key"):
+        hint_key = str(data["hint_key"])
+
+    analysis = await asyncio.to_thread(
+        free_instruments_engine.analyze_audio_track,
+        audio_path=audio_path,
+        hint_bpm=hint_bpm,
+        hint_key=hint_key
+    )
+
+    mins = int(analysis["duration_sec"] // 60)
+    secs = int(analysis["duration_sec"] % 60)
+    analysis["duration_formatted"] = f"{mins}:{secs:02d}"
+    analysis["track_id"] = track_id
+    analysis["track_title"] = track.get("title", "Canción")
+
+    return JSONResponse(content={
+        "status": "ok",
+        "analysis": analysis
+    })
+
+
+@app.post("/api/tracks/{track_id}/enrich-preview")
+async def api_track_enrich_preview(track_id: str, request: Request):
+    """
+    Genera una preescucha rápida (hasta 30 segundos) de la sobregrabación SF2
+    alineada con la canción original, para escuchar antes de procesar y guardar la mezcla completa.
+    0 créditos Udio/FAL.
+    """
+    track = _find_track_by_id(track_id)
+    if not track:
+        raise HTTPException(status_code=404, detail="Canción no encontrada en la biblioteca")
+
+    audio_path = await get_or_download_audio_file(track_id, track, "")
+    if not audio_path or not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Archivo de audio original no disponible")
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    raw_tracks = data.get("tracks") or []
+    if not raw_tracks:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un instrumento SF2 para la preescucha.")
+
+    normalized_tracks = []
+    for item in raw_tracks:
+        if isinstance(item, str):
+            inst_id = free_instruments_engine.normalize_instrument_id(item)
+            normalized_tracks.append({"id": inst_id, "volume": 1.0})
+        elif isinstance(item, dict):
+            raw_id = item.get("id") or item.get("instrument_id")
+            if not raw_id:
+                continue
+            inst_id = free_instruments_engine.normalize_instrument_id(raw_id)
+            vol = max(0.0, min(1.5, float(item.get("volume", 1.0))))
+            if vol > 0.001:
+                normalized_tracks.append({"id": inst_id, "volume": vol})
+
+    if not normalized_tracks:
+        raise HTTPException(status_code=400, detail="Todos los instrumentos seleccionados tienen volumen 0%.")
+
+    preview_id = f"prev_enrich_{uuid.uuid4().hex[:10]}"
+    os.makedirs(PREVIEWS_DIR, exist_ok=True)
+    out_mp3 = os.path.join(PREVIEWS_DIR, f"{preview_id}.mp3")
+
+    original_volume = float(data.get("original_volume", 0.95))
+    accompaniment_volume = float(data.get("accompaniment_volume", 0.75))
+    amp_configs = data.get("amp_configs")
+    custom_chords = data.get("custom_chords")
+    preview_seconds = float(data.get("preview_seconds", 30.0))
+
+    hint_bpm = data.get("bpm") or track.get("bpm")
+    hint_key = data.get("key") or track.get("musical_key")
+
+    enrich_res = await asyncio.to_thread(
+        free_instruments_engine.enrich_song_with_sf2_overdub,
+        original_audio_path=audio_path,
+        tracks_config=normalized_tracks,
+        output_mp3_path=out_mp3,
+        hint_bpm=int(hint_bpm) if hint_bpm else None,
+        hint_key=str(hint_key) if hint_key else None,
+        original_volume=original_volume,
+        accompaniment_volume=accompaniment_volume,
+        amp_configs=amp_configs,
+        custom_chords=custom_chords,
+        preview_seconds=preview_seconds,
+    )
+
+    return JSONResponse(content={
+        "status": "ok",
+        "zero_cost": True,
+        "preview_id": preview_id,
+        "audio_url": f"/api/free-instruments/preview-audio/{preview_id}.mp3?t={int(time.time()*1000)}",
+        "duration_sec": enrich_res["duration_sec"],
+        "metrics": enrich_res,
+    })
+
+
+@app.post("/api/tracks/{track_id}/enrich")
+async def api_track_enrich(track_id: str, request: Request):
+    """
+    Enriquece una canción existente de Udio sobregrabando de forma no destructiva
+    los 20 instrumentos gratuitos SoundFont2 con volumen independiente por pista,
+    respetando exactamente la duración original, afinación y armonía.
+    0 créditos Udio/FAL. Guarda el resultado como una nueva pista vinculada sin alterar la original.
+    """
+    track = _find_track_by_id(track_id)
+    if not track:
+        raise HTTPException(status_code=404, detail="Canción original no encontrada")
+
+    audio_path = await get_or_download_audio_file(track_id, track, "")
+    if not audio_path or not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Archivo de audio original no disponible")
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    raw_tracks = data.get("tracks") or []
+    if not raw_tracks:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un instrumento SF2 para sobregrabar.")
+
+    normalized_tracks = []
+    for item in raw_tracks:
+        if isinstance(item, str):
+            inst_id = free_instruments_engine.normalize_instrument_id(item)
+            normalized_tracks.append({"id": inst_id, "volume": 1.0})
+        elif isinstance(item, dict):
+            raw_id = item.get("id") or item.get("instrument_id")
+            if not raw_id:
+                continue
+            inst_id = free_instruments_engine.normalize_instrument_id(raw_id)
+            vol = max(0.0, min(1.5, float(item.get("volume", 1.0))))
+            if vol > 0.001:
+                normalized_tracks.append({"id": inst_id, "volume": vol})
+
+    if not normalized_tracks:
+        raise HTTPException(status_code=400, detail="Todos los instrumentos seleccionados tienen volumen 0%.")
+
+    orig_title = track.get("title") or "Canción"
+    suffix = data.get("title_suffix", " (Enriquecida con SF2)")
+    new_title = data.get("title") or f"{orig_title}{suffix}"
+
+    original_volume = float(data.get("original_volume", 0.95))
+    accompaniment_volume = float(data.get("accompaniment_volume", 0.75))
+    amp_configs = data.get("amp_configs")
+    custom_chords = data.get("custom_chords")
+    save_to_library = bool(data.get("save_to_library", True))
+
+    hint_bpm = data.get("bpm") or track.get("bpm")
+    hint_key = data.get("key") or track.get("musical_key")
+
+    new_track_id = f"enrich_{uuid.uuid4().hex[:12]}"
+    os.makedirs(TRACKS_DIR, exist_ok=True)
+    out_mp3 = os.path.join(TRACKS_DIR, f"{new_track_id}.mp3")
+    out_wav = os.path.join(TRACKS_DIR, f"{new_track_id}.wav")
+
+    enrich_res = await asyncio.to_thread(
+        free_instruments_engine.enrich_song_with_sf2_overdub,
+        original_audio_path=audio_path,
+        tracks_config=normalized_tracks,
+        output_mp3_path=out_mp3,
+        output_wav_path=out_wav,
+        hint_bpm=int(hint_bpm) if hint_bpm else None,
+        hint_key=str(hint_key) if hint_key else None,
+        original_volume=original_volume,
+        accompaniment_volume=accompaniment_volume,
+        amp_configs=amp_configs,
+        custom_chords=custom_chords,
+    )
+
+    inst_names = [t["short_name"] + f" ({t['volume_pct']}%)" for t in enrich_res["tracks_rendered"]]
+    lic_summary = "; ".join(f"{l['bank']} [{l['license']} - {l['attribution']}]" for l in enrich_res["licenses_used"])
+    
+    style_desc = (
+        f"Sobregrabación SF2 | {orig_title} | "
+        f"Tonalidad: {enrich_res['key']['name']} | "
+        f"{enrich_res['bpm']} BPM | {enrich_res['total_bars']} compases | "
+        f"Pistas añadidas: {', '.join(inst_names)}"
+    )
+    lyrics_notes = (
+        f"[Canción Original Preservada al 100%]\n"
+        f"Título Original: {orig_title} (ID: {track_id})\n"
+        f"Duración: {enrich_res['duration_sec']} s | Tempo: {enrich_res['bpm']} BPM | Tonalidad: {enrich_res['key']['name']}\n"
+        f"Instrumentos SF2 agregados: {', '.join(inst_names)}\n"
+        f"Balance de Mezcla: Original {int(original_volume*100)}% / Acompañamiento SF2 {int(accompaniment_volume*100)}%\n"
+        f"Licencias y Atribuciones SF2: {lic_summary}"
+    )
+
+    new_track_record = {
+        "id": new_track_id,
+        "title": new_title,
+        "parent_track_id": track_id,
+        "parent_track_title": orig_title,
+        "audio_url": f"/api/audio_file/{new_track_id}",
+        "raw_audio_url": f"/api/audio_file/{new_track_id}",
+        "image_url": track.get("image_url") or "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236366F1'/%3E%3Cpath d='M20 44V20l26-6v24' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='44' r='6' fill='%2310B981'/%3E%3Ccircle cx='42' cy='38' r='6' fill='%2310B981'/%3E%3C/svg%3E",
+        "duration": round(enrich_res["duration_sec"]),
+        "status": "SUCCESS",
+        "engine": "free_instruments_enrichment",
+        "zero_cost": True,
+        "bpm": enrich_res["bpm"],
+        "musical_key": enrich_res["key"]["root"],
+        "total_bars": enrich_res["total_bars"],
+        "chords_timeline": enrich_res["chords_timeline"],
+        "chord_summary": enrich_res["chord_summary"],
+        "style": style_desc,
+        "lyrics": lyrics_notes,
+        "free_tracks": enrich_res["tracks_rendered"],
+        "licenses_used": enrich_res["licenses_used"],
+        "amp_configs": enrich_res.get("amp_configs_applied") or amp_configs,
+        "original_volume": original_volume,
+        "accompaniment_volume": accompaniment_volume,
+        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": time.time(),
+    }
+
+    if save_to_library:
+        gdrive_res = await gdrive_upload_track_audio(new_track_id, out_mp3, new_title)
+        if gdrive_res and gdrive_res.get("file_id"):
+            new_track_record["gdrive_id"] = gdrive_res["file_id"]
+            new_track_record["gdrive_link"] = gdrive_res.get("link") or f"https://drive.google.com/file/d/{gdrive_res['file_id']}/view"
+
+        normalize_track_persistence_state(new_track_record)
+        save_library_atomic([new_track_record])
+        await gdrive_sync_library_to_cloud(load_library())
+
+    TASKS[new_track_id] = {
+        "id": new_track_id,
+        "status": "SUCCESS",
+        "title": new_title,
+        "logs": "Enriquecida localmente con SF2 sin alterar la pista original (0 créditos).",
+        "tracks": [new_track_record],
+        "detail": "Completado",
+    }
+
+    return JSONResponse(content={
+        "status": "ok",
+        "zero_cost": True,
+        "paid_api_calls": 0,
+        "track_id": new_track_id,
+        "track": new_track_record,
+        "download_urls": {
+            "mp3": f"/api/download/{new_track_id}/mp3",
+            "wav": f"/api/download/{new_track_id}/wav",
+            "flac": f"/api/download/{new_track_id}/flac",
+        },
+        "enrichment_metrics": enrich_res,
     })
 
 
