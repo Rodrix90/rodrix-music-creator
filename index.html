@@ -2937,10 +2937,7 @@ function getEffectiveUserMusicalConfig() {
     : 'Personalizado / Modo Libre';
 
   const rawStyle = $('styleInput') ? $('styleInput').value.trim() : '';
-  const isSoloPianoPrayerMode = (
-    activePreset === 'piano_oracion' ||
-    /piano\s+de\s+oraci[oó]n|solo\s+piano|prayer\s+piano|pure\s+piano|mks-?20|keyscape/i.test(rawStyle)
-  );
+  const isSoloPianoPrayerMode = (activePreset === "piano_oracion");
 
   // Resolver BPM prioritario del usuario
   const styleBpm = extractBpmFromStylePrompt(rawStyle);

@@ -36,7 +36,6 @@ class TestSoloInstrumentIsolation(unittest.TestCase):
             exclude_styles="drums, bass, other instruments",
             is_guitar_solo=True
         )
-        # En modo solo de guitarra, no debe haber clusulas de bombo, caja, hi-hat ni bajo
         self.assertEqual(cfg["effective_hihat"], "8th")
         self.assertFalse(cfg["crash_toms"])
         self.assertFalse(cfg["tom_grooves"])
@@ -71,7 +70,6 @@ class TestSoloInstrumentIsolation(unittest.TestCase):
         self.assertFalse(cfg["crash_toms"])
         self.assertFalse(cfg["tom_grooves"])
         self.assertTrue(cfg["bass_slap"])
-        # No debe haber cláusulas de hi-hat ni batería
         for clause in cfg.get("priority_clauses", []):
             self.assertNotIn("hi-hat", clause.lower())
             self.assertNotIn("snare", clause.lower())
@@ -103,10 +101,25 @@ class TestSoloInstrumentIsolation(unittest.TestCase):
         joined = " ".join(cfg.get("priority_clauses", [])).lower()
         self.assertTrue("hi-hat" in joined or "bass" in joined)
 
-    def test_6_free_instruments_single_guitar_with_amp(self):
-        """Test 6: Motor gratuito (FluidSynth) con solo guitarra y amplificador virtual."""
+    def test_6_piano_in_rack_does_not_force_solo_piano_prayer(self):
+        """Test 6: Si el usuario usa un piano del rack (mks-20, yamaha cfx, galaxy dx) SIN el preset piano_oracion, se integra a la banda."""
+        # Estilo con mks-20 y banda completa sin active_preset == "piano_oracion"
+        style_with_piano = "Christian Worship, Acoustic Pop, Male Tenor vocals, roland mks-20 e-piano 2, drums, electric bass"
+        cfg = resolve_effective_musical_config(
+            style=style_with_piano,
+            lyrics="[Verse]\nCanto al Señor",
+            art_crash_toms=True,
+            art_bass_slap=False,
+            active_preset="",  # Modo libre o preset de banda
+            is_solo_piano_prayer=False
+        )
+        # Debe preservar batería y ritmo, no forzar modo solo piano
+        self.assertTrue(cfg["crash_toms"])
+        self.assertFalse(cfg.get("is_solo_piano_prayer", False))
+
+    def test_7_free_instruments_single_guitar_with_amp(self):
+        """Test 7: Motor gratuito (FluidSynth) con solo guitarra y amplificador virtual."""
         out_mp3 = os.path.join(self.tmp_dir, "solo_strat.mp3")
-        # Generar solo guitarra limpia (guitarra_limpia) con amplificador Fender Twin Reverb
         tracks = [{"id": "guitarra_limpia", "volume": 1.0}]
         amps = {
             "guitar": {
@@ -132,7 +145,6 @@ class TestSoloInstrumentIsolation(unittest.TestCase):
         self.assertGreater(os.path.getsize(out_mp3), 1000)
         self.assertEqual(len(res["tracks"]), 1)
         self.assertEqual(res["tracks"][0]["id"], "guitarra_limpia")
-        # Verificar que se aplicó el amplificador Fender Twin Reverb
         self.assertEqual(res["tracks"][0].get("amp_applied"), "fender_twin_reverb")
         self.assertEqual(res["tracks"][0].get("cabinet_applied"), "cab_fender_twin_2x12")
 

@@ -2953,11 +2953,6 @@ async def run_transform_task(
 
         is_solo_piano_prayer = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
             active_preset == "piano_oracion"
-            or any(w in raw_style_before_enrich.lower() for w in [
-                "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
-                "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
-                "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
-            ]) or (is_instrumental and "piano" in raw_style_before_enrich.lower() and any(w in raw_style_before_enrich.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
         )
         if is_guitar_solo:
             is_instrumental = True
