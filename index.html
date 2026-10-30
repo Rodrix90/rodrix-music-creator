@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -169,13 +169,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   bottom:0;
   left:0;
   right:0;
-  height:60px;
+  height:calc(60px + env(safe-area-inset-bottom, 0px));
   background:#181824;
   border-top:1px solid var(--border);
   z-index:9999;
   justify-content:space-around;
-  align-items:center;
-  padding:0 4px;
+  align-items:flex-start;
+  padding:6px 4px env(safe-area-inset-bottom, 0px);
   box-shadow:0 -4px 20px rgba(0,0,0,.6);
 }
 .bnav-item{
@@ -292,6 +292,653 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 .badge-admin{background:rgba(234,179,8,.15);color:#EAB308;border:1px solid rgba(234,179,8,.35);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
 .badge-active{background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.35);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
 .badge-blocked{background:rgba(239,68,68,.15);color:#EF4444;border:1px solid rgba(239,68,68,.35);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
+
+/* ==========================================================================
+   RODRIX MUSIC CREATOR 4.0 — REPRODUCTOR GLOBAL PERSISTENTE (WEB + ANDROID)
+   ========================================================================== */
+.global-mini-player {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 68px;
+  background: linear-gradient(180deg, rgba(20, 20, 32, 0.97), rgba(12, 12, 20, 0.99));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(99, 102, 241, 0.28);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  z-index: 9500;
+  display: none;
+  align-items: center;
+  padding: 0 18px;
+  gap: 16px;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  user-select: none;
+}
+
+.global-mini-player.active {
+  display: flex !important;
+  animation: gplayerSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes gplayerSlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Scrubber superior fino interactivo */
+.gplayer-top-progress {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  z-index: 10;
+  transition: height 0.15s ease;
+}
+.gplayer-top-progress:hover {
+  height: 8px;
+  top: -5px;
+}
+.gplayer-top-buffered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+.gplayer-top-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6366F1, #818CF8, #38BDF8);
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+}
+.gplayer-top-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.9);
+  left: 0%;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.gplayer-top-progress:hover .gplayer-top-thumb {
+  opacity: 1;
+}
+
+/* Sección Info */
+.gplayer-info-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: 260px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.gplayer-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3730A3, #6D28D9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+.gplayer-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gplayer-thumb i.ph-disc {
+  font-size: 24px;
+  color: #DDD6FE;
+  position: relative;
+  z-index: 1;
+}
+.gplayer-equalizer-bars {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2;
+}
+.global-mini-player.playing .gplayer-equalizer-bars {
+  display: flex;
+}
+.gplayer-equalizer-bars span {
+  width: 3px;
+  height: 40%;
+  background: linear-gradient(180deg, #A5B4FC, #fff);
+  border-radius: 2px;
+  animation: gplayerWave 0.9s ease-in-out infinite;
+}
+.gplayer-equalizer-bars span:nth-child(2) { animation-delay: 0.15s; height: 70%; }
+.gplayer-equalizer-bars span:nth-child(3) { animation-delay: 0.3s; height: 90%; }
+.gplayer-equalizer-bars span:nth-child(4) { animation-delay: 0.45s; height: 50%; }
+
+@keyframes gplayerWave {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.gplayer-text-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.gplayer-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.gplayer-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+.gplayer-badge-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.gplayer-subtext {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sección Controles */
+.gplayer-controls-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gplayer-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.gplayer-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.06);
+}
+.gplayer-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.gplayer-btn-play {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #6366F1, #4F46E5);
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
+  font-size: 20px;
+}
+.gplayer-btn-play:hover {
+  filter: brightness(1.15);
+  transform: scale(1.08) !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+}
+.gplayer-repeat-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #6366F1;
+  background: #fff;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+}
+.gplayer-btn.active-mode {
+  color: #818CF8;
+}
+
+/* Sección Timeline (Desktop) */
+.gplayer-timeline-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.gplayer-time-cur, .gplayer-time-dur {
+  font-size: 11.5px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--muted);
+  width: 42px;
+  flex-shrink: 0;
+}
+.gplayer-time-cur { text-align: right; }
+.gplayer-time-dur { text-align: left; }
+.gplayer-timeline-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  cursor: pointer;
+  overflow: visible;
+  transition: height 0.15s ease;
+}
+.gplayer-timeline-bar:hover {
+  height: 8px;
+}
+.gplayer-timeline-buffered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 99px;
+  pointer-events: none;
+}
+.gplayer-timeline-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6366F1, #818CF8);
+  border-radius: 99px;
+  pointer-events: none;
+}
+.gplayer-timeline-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+  left: 0%;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.gplayer-timeline-bar:hover .gplayer-timeline-handle {
+  opacity: 1;
+}
+
+/* Sección Acciones & Volumen */
+.gplayer-actions-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.gplayer-volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gplayer-volume-slider-bar {
+  width: 80px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.15);
+  position: relative;
+  cursor: pointer;
+}
+.gplayer-volume-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #A5B4FC;
+  pointer-events: none;
+}
+.gplayer-btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gplayer-btn-icon:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.gplayer-btn-close:hover {
+  color: #F87171 !important;
+  background: rgba(248, 113, 113, 0.12) !important;
+}
+
+/* Vista expandida (Full Screen / Bottom Sheet Modal) */
+.global-player-expanded-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: gplayerFadeIn 0.25s ease forwards;
+}
+@keyframes gplayerFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.global-player-expanded-card {
+  background: linear-gradient(180deg, #181828, #0E0E18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 20px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+  animation: gplayerExpScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes gplayerExpScale {
+  from { transform: scale(0.94) translateY(15px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.gplayer-exp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.gplayer-exp-btn-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gplayer-exp-btn-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+.gplayer-exp-header-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.gplayer-exp-header-sub {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #818CF8;
+}
+.gplayer-exp-header-app {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.gplayer-exp-art-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+.gplayer-exp-artwork {
+  width: 200px;
+  height: 200px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #3730A3, #6D28D9);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+.gplayer-exp-artwork img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gplayer-exp-artwork i {
+  font-size: 64px;
+  color: #C7D2FE;
+}
+
+.gplayer-exp-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+.gplayer-exp-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+}
+.gplayer-exp-details {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.gplayer-exp-tags {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.gplayer-exp-waveform-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.gplayer-exp-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-family: 'Consolas', monospace;
+  color: var(--muted);
+}
+
+.gplayer-exp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 6px 0;
+}
+.gplayer-exp-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gplayer-exp-ctrl-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.gplayer-exp-ctrl-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.gplayer-exp-ctrl-play {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366F1, #4F46E5);
+  border: none;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+  transition: all 0.18s;
+}
+.gplayer-exp-ctrl-play:hover {
+  filter: brightness(1.15);
+  transform: scale(1.06);
+}
+.gplayer-exp-volume-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (DESKTOP / TABLET / ANDROID APK / MOBILE WEB)
+   ========================================================================== */
+@media (min-width: 1101px) {
+  .global-mini-player {
+    left: 260px;
+    padding: 0 24px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .global-mini-player {
+    left: 72px;
+    padding: 0 18px;
+  }
+}
+@media (max-width: 760px) {
+  .global-mini-player {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+    height: 64px;
+    padding: 0 10px;
+    gap: 8px;
+    border-top: 1px solid rgba(99, 102, 241, 0.35);
+    z-index: 9998;
+  }
+  .gplayer-timeline-section {
+    display: none !important;
+  }
+  .gplayer-volume-wrap {
+    display: none !important;
+  }
+  .gplayer-info-section {
+    width: auto;
+    flex: 1;
+  }
+  .gplayer-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+  .gplayer-btn-play {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+  .gplayer-btn-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+  body.has-gplayer {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  body.has-gplayer .center {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+@media (max-height: 480px) {
+  .global-mini-player {
+    height: 50px !important;
+  }
+  .global-mini-player .gplayer-thumb {
+    width: 34px !important;
+    height: 34px !important;
+  }
+  .gplayer-btn {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 16px !important;
+  }
+  .gplayer-btn-play {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 18px !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -2210,6 +2857,157 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   </div>
 </div>
 
+<!-- REPRODUCTOR GLOBAL PERSISTENTE (WEB + ANDROID) -->
+<div class="global-mini-player" id="globalMiniPlayer" role="region" aria-label="Reproductor global de audio">
+  <!-- Barra de progreso superior interactiva (Scrubber móvil/táctil y desktop) -->
+  <div class="gplayer-top-progress" id="gplayerTopProgress" title="Clic o arrastre para avanzar/retroceder">
+    <div class="gplayer-top-buffered" id="gplayerTopBuffered"></div>
+    <div class="gplayer-top-fill" id="gplayerTopFill"></div>
+    <div class="gplayer-top-thumb" id="gplayerTopThumb"></div>
+  </div>
+
+  <!-- SECCIÓN 1: Info de la pista (Portada + Título + Metadatos) -->
+  <div class="gplayer-info-section" id="gplayerInfoSection" title="Toca para expandir el reproductor completo">
+    <div class="gplayer-thumb" id="gplayerThumb">
+      <i class="ph ph-disc" id="gplayerDefaultThumbIcon"></i>
+      <img id="gplayerThumbImg" src="" alt="" style="display:none" loading="lazy">
+      <div class="gplayer-equalizer-bars" id="gplayerEqBars">
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="gplayer-text-wrap">
+      <div class="gplayer-title-row">
+        <span class="gplayer-title" id="gplayerTitle">Selecciona una pista</span>
+        <span class="gplayer-badge-tag" id="gplayerBadgeTag">Master Pro</span>
+      </div>
+      <div class="gplayer-subtext" id="gplayerSubtext">Rodrix Music Creator</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 2: Controles de reproducción centrales -->
+  <div class="gplayer-controls-section">
+    <button type="button" class="gplayer-btn" id="gplayerRepeatBtn" title="Modo de repetición (Desactivado / Todo / Pista única)">
+      <i class="ph ph-repeat" id="gplayerRepeatIcon"></i>
+      <span class="gplayer-repeat-badge" id="gplayerRepeatBadge" style="display:none">1</span>
+    </button>
+    <button type="button" class="gplayer-btn" id="gplayerPrevBtn" title="Pista anterior" disabled>
+      <i class="ph ph-skip-back"></i>
+    </button>
+    <button type="button" class="gplayer-btn gplayer-btn-play" id="gplayerPlayBtn" title="Reproducir / Pausar">
+      <i class="ph ph-play" id="gplayerPlayIcon"></i>
+    </button>
+    <button type="button" class="gplayer-btn" id="gplayerNextBtn" title="Siguiente pista" disabled>
+      <i class="ph ph-skip-forward"></i>
+    </button>
+  </div>
+
+  <!-- SECCIÓN 3: Línea de tiempo y progreso horizontal (Desktop) -->
+  <div class="gplayer-timeline-section">
+    <span class="gplayer-time-cur" id="gplayerTimeCur">0:00</span>
+    <div class="gplayer-timeline-bar" id="gplayerTimelineBar" role="slider" aria-label="Progreso" tabindex="0">
+      <div class="gplayer-timeline-buffered" id="gplayerTimelineBuffered"></div>
+      <div class="gplayer-timeline-fill" id="gplayerTimelineFill"></div>
+      <div class="gplayer-timeline-handle" id="gplayerTimelineHandle"></div>
+    </div>
+    <span class="gplayer-time-dur" id="gplayerTimeDur">0:00</span>
+  </div>
+
+  <!-- SECCIÓN 4: Acciones, Volumen y Cierre -->
+  <div class="gplayer-actions-section">
+    <div class="gplayer-volume-wrap" id="gplayerVolumeWrap">
+      <button type="button" class="gplayer-btn-icon" id="gplayerMuteBtn" title="Silenciar / Activar sonido">
+        <i class="ph ph-speaker-high" id="gplayerVolumeIcon"></i>
+      </button>
+      <div class="gplayer-volume-slider-bar" id="gplayerVolumeSliderBar" role="slider" aria-label="Volumen" tabindex="0">
+        <div class="gplayer-volume-fill" id="gplayerVolumeFill" style="width: 90%;"></div>
+      </div>
+    </div>
+
+    <!-- Botón Expandir a Vista Estudio Completa -->
+    <button type="button" class="gplayer-btn-icon" id="gplayerExpandBtn" title="Expandir vista completa de audio">
+      <i class="ph ph-arrows-out-simple"></i>
+    </button>
+
+    <!-- Botón Cerrar y Detener Reproducción -->
+    <button type="button" class="gplayer-btn-icon gplayer-btn-close" id="gplayerCloseBtn" title="Cerrar reproductor">
+      <i class="ph ph-x"></i>
+    </button>
+  </div>
+</div>
+
+<!-- VISTA EXPANDIDA DEL REPRODUCTOR (HOJA INFERIOR / MODAL ESTUDIO) -->
+<div class="global-player-expanded-backdrop" id="globalPlayerExpanded" style="display:none">
+  <div class="global-player-expanded-card">
+    <div class="gplayer-exp-header">
+      <button type="button" class="gplayer-exp-btn-close" id="gplayerExpCollapseBtn" title="Minimizar">
+        <i class="ph ph-caret-down"></i>
+      </button>
+      <div class="gplayer-exp-header-title">
+        <span class="gplayer-exp-header-sub">REPRODUCIENDO AHORA</span>
+        <span class="gplayer-exp-header-app">Rodrix Master Pro</span>
+      </div>
+      <button type="button" class="gplayer-exp-btn-close" id="gplayerExpCloseBtn" title="Cerrar reproducción">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+
+    <!-- Portada de alta definición -->
+    <div class="gplayer-exp-art-wrap">
+      <div class="gplayer-exp-artwork" id="gplayerExpArtwork">
+        <i class="ph ph-music-notes" id="gplayerExpDefaultArt"></i>
+        <img id="gplayerExpArtImg" src="" alt="" style="display:none">
+      </div>
+    </div>
+
+    <!-- Información detallada de la pista -->
+    <div class="gplayer-exp-meta">
+      <h2 class="gplayer-exp-title" id="gplayerExpTitle">Selecciona una pista</h2>
+      <div class="gplayer-exp-details" id="gplayerExpDetails">Rodrix Music Creator</div>
+      <div class="gplayer-exp-tags" id="gplayerExpTags">
+        <span class="badge" style="background:rgba(99,102,241,0.2);color:#C7D2FE">Master Studio Pro</span>
+      </div>
+    </div>
+
+    <!-- Línea de tiempo de la vista expandida -->
+    <div class="gplayer-exp-waveform-wrap">
+      <div id="gplayerExpWaveform" style="width:100%;height:46px;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;cursor:pointer"></div>
+      <div class="gplayer-exp-times">
+        <span id="gplayerExpTimeCur">0:00</span>
+        <span id="gplayerExpTimeDur">0:00</span>
+      </div>
+    </div>
+
+    <!-- Controles táctiles expandidos (grandes botones 48dp+) -->
+    <div class="gplayer-exp-controls">
+      <button type="button" class="gplayer-exp-ctrl-btn" id="gplayerExpRepeatBtn" title="Repetir">
+        <i class="ph ph-repeat" id="gplayerExpRepeatIcon"></i>
+      </button>
+      <button type="button" class="gplayer-exp-ctrl-btn" id="gplayerExpPrevBtn" title="Pista anterior" disabled>
+        <i class="ph ph-skip-back"></i>
+      </button>
+      <button type="button" class="gplayer-exp-ctrl-play" id="gplayerExpPlayBtn" title="Reproducir / Pausar">
+        <i class="ph ph-play" id="gplayerExpPlayIcon"></i>
+      </button>
+      <button type="button" class="gplayer-exp-ctrl-btn" id="gplayerExpNextBtn" title="Siguiente pista" disabled>
+        <i class="ph ph-skip-forward"></i>
+      </button>
+      <button type="button" class="gplayer-exp-ctrl-btn" id="gplayerExpShareBtn" title="Compartir MP3">
+        <i class="ph ph-whatsapp-logo" style="color:#25D366"></i>
+      </button>
+    </div>
+
+    <!-- Barra de volumen expandida -->
+    <div class="gplayer-exp-volume-section">
+      <i class="ph ph-speaker-low" style="color:var(--muted)"></i>
+      <input type="range" id="gplayerExpVolume" min="0" max="1" step="0.05" value="0.9" style="flex:1">
+      <i class="ph ph-speaker-high" style="color:var(--muted)"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Elemento de audio nativo único del reproductor global -->
+<audio id="globalAudioElement" preload="auto" style="display:none"></audio>
+
 <!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVIL (Y APK) -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav">
   <a href="#" class="bnav-item active" id="bnav-crear" onclick="showView('crear');return false;">
@@ -3697,6 +4495,10 @@ function handleWaveSeek(currentTime) {
 // Iniciar o Reanudar / Pisar Grabación
 async function startLiveRecording() {
   try {
+    if (window.GlobalAudioController && window.GlobalAudioController.isPlaying()) {
+      window.GlobalAudioController.pause();
+      logLine('[AUDIO] Reproductor global pausado automáticamente para inicio de grabación.');
+    }
     if (!recAudioCtx) {
       recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
       recSampleRate = recAudioCtx.sampleRate;
@@ -5263,6 +6065,10 @@ function setServer(ok){
 }
 function renderLibrary(tracks){
   if (typeof closeAllMasterMenus === 'function') closeAllMasterMenus();
+  if (window.GlobalAudioController) {
+    window.GlobalAudioController.setQueue(tracks);
+  }
+  const isPlayingNow = window.GlobalAudioController && window.GlobalAudioController.isPlaying();
   const l = $('libList');
   if (!tracks.length) {
     l.innerHTML = '<div class="empty">Aún no hay pistas. ¡Crea tu primera canción o graba tu primera locución!</div>';
@@ -5271,8 +6077,10 @@ function renderLibrary(tracks){
     return;
   }
   if ($('libBulkBar')) $('libBulkBar').style.display = 'flex';
-  l.innerHTML = tracks.map(t => `
-    <div class="track ${t.id === currentTrackId ? 'playing' : ''}" data-id="${esc(t.id)}">
+  l.innerHTML = tracks.map(t => {
+    const isThisPlaying = (t.id === currentTrackId && isPlayingNow);
+    return `
+    <div class="track ${isThisPlaying ? 'playing' : ''}" data-id="${esc(t.id)}">
       <div style="display:flex;align-items:center;">
         <input type="checkbox" class="track-select-chk studio-chk" data-id="${esc(t.id)}" title="Seleccionar pista">
       </div>
@@ -5289,7 +6097,7 @@ function renderLibrary(tracks){
           ${/instrumental/i.test(t.title) ? '<span class="tag" style="background:rgba(16,185,129,0.18);color:#6EE7B7;border-color:rgba(16,185,129,0.3);">Instrumental</span>' : ''}
         </div>
         <div class="t-actions">
-          <button class="btn-play-sm" data-act="play"><i class="ph ph-play"></i> Escuchar</button>
+          <button class="btn-play-sm" data-act="play" style="${isThisPlaying ? 'background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;' : ''}"><i class="ph ${isThisPlaying ? 'ph-pause' : 'ph-play'}"></i> ${isThisPlaying ? 'Pausar' : 'Escuchar'}</button>
           <button class="icon-circle-btn share-wa" data-act="share" title="Enviar MP3 a WhatsApp / Telegram"><i class="ph ph-whatsapp-logo"></i></button>
           <button class="icon-circle-btn" data-act="enrich-sf2" title="🎹 Enriquecer con Instrumentos SF2 (0 Créditos)" style="color:#10B981"><i class="ph ph-piano-keys"></i></button>
           <button class="icon-circle-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
@@ -5313,7 +6121,8 @@ function renderLibrary(tracks){
           </div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   l._tracks = tracks;
   updateSelectedTracksState();
 }
@@ -5618,6 +6427,800 @@ function showToast(msg, type = 'info') {
   }, 3500);
 }
 
+
+/* ==========================================================================
+   RODRIX MUSIC CREATOR 4.0 — CONTROLADOR CENTRALIZADO DE REPRODUCCIÓN (SINGLE SOURCE OF TRUTH)
+   ========================================================================== */
+window.GlobalAudioController = (function() {
+  const state = {
+    track: null,
+    status: 'idle', // 'idle' | 'loading' | 'playing' | 'paused' | 'error'
+    currentTime: 0,
+    duration: 0,
+    volume: 0.9,
+    muted: false,
+    repeatMode: 'none', // 'none' | 'all' | 'one'
+    queue: [],
+    queueIndex: -1,
+    error: null,
+    isSeeking: false,
+    isExpanded: false
+  };
+
+  let audioEl = null;
+  let isProgressDragging = false;
+
+  function init() {
+    audioEl = document.getElementById('globalAudioElement');
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = 'globalAudioElement';
+      audioEl.preload = 'auto';
+      audioEl.style.display = 'none';
+      document.body.appendChild(audioEl);
+    }
+
+    try {
+      const savedVol = localStorage.getItem('rodrixGPlayerVolume');
+      if (savedVol !== null) {
+        state.volume = Math.max(0, Math.min(1, parseFloat(savedVol)));
+      }
+    } catch(e) {}
+    audioEl.volume = state.volume;
+
+    audioEl.addEventListener('loadstart', () => {
+      state.status = 'loading';
+      renderUI();
+    });
+
+    audioEl.addEventListener('loadedmetadata', () => {
+      state.duration = audioEl.duration || (state.track?.duration ? parseFloat(state.track.duration) : 0);
+      renderUI();
+      updateMediaSessionPosition();
+    });
+
+    audioEl.addEventListener('canplay', () => {
+      if (state.status === 'loading') {
+        // Listo para reproducir
+      }
+    });
+
+    audioEl.addEventListener('play', () => {
+      state.status = 'playing';
+      pauseExternalPreviews();
+      renderUI();
+    });
+
+    audioEl.addEventListener('pause', () => {
+      if (state.status !== 'loading' && state.status !== 'error') {
+        state.status = 'paused';
+      }
+      renderUI();
+    });
+
+    audioEl.addEventListener('timeupdate', () => {
+      if (!isProgressDragging) {
+        state.currentTime = audioEl.currentTime || 0;
+        if (!state.duration || state.duration === 0 || isNaN(state.duration)) {
+          state.duration = audioEl.duration || (state.track?.duration ? parseFloat(state.track.duration) : 0);
+        }
+        updateTimelineUI();
+        updateMediaSessionPosition();
+      }
+    });
+
+    audioEl.addEventListener('progress', () => {
+      updateBufferedUI();
+    });
+
+    audioEl.addEventListener('ended', () => {
+      onTrackEnded();
+    });
+
+    audioEl.addEventListener('error', (e) => {
+      const err = audioEl.error;
+      console.warn('[GlobalPlayer] Error en elemento audio:', err);
+      state.status = 'error';
+      state.error = err ? (err.message || `Código ${err.code}`) : 'Error de reproducción';
+      showToast('No se pudo reproducir el archivo de audio.', 'err');
+      renderUI();
+    });
+
+    bindUIEvents();
+    setupMediaSession();
+  }
+
+  function pauseExternalPreviews() {
+    const playersToPause = ['ampAudioPlayer', 'voAudioPlayer', 'sf2EnrichAudioPlayer', 'unifiedAudioPlayer'];
+    playersToPause.forEach(id => {
+      const p = document.getElementById(id);
+      if (p && !p.paused) {
+        try { p.pause(); } catch(e){}
+      }
+    });
+  }
+
+  function setupMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.setActionHandler('play', () => play());
+      navigator.mediaSession.setActionHandler('pause', () => pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const offset = details.seekOffset || 10;
+        seekTo(Math.max(0, state.currentTime - offset));
+      });
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const offset = details.seekOffset || 10;
+        seekTo(Math.min(state.duration || 0, state.currentTime + offset));
+      });
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) seekTo(details.seekTime);
+      });
+      navigator.mediaSession.setActionHandler('stop', () => stop());
+    } catch(e) {
+      console.warn('[GlobalPlayer] MediaSession action handler registration:', e);
+    }
+  }
+
+  function updateMediaSessionMetadata() {
+    if (!('mediaSession' in navigator) || !state.track) return;
+    try {
+      const artwork = [];
+      if (state.track.image_url) {
+        artwork.push({ src: state.track.image_url, sizes: '512x512', type: 'image/jpeg' });
+      }
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: state.track.title || 'Rodrix Track',
+        artist: 'Rodrix Music Creator',
+        album: 'Rodrix Master Pro',
+        artwork: artwork
+      });
+    } catch(e) {}
+  }
+
+  function updateMediaSessionPosition() {
+    if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+    try {
+      if (state.duration > 0 && !isNaN(state.duration) && isFinite(state.duration)) {
+        navigator.mediaSession.setPositionState({
+          duration: Math.max(0, state.duration),
+          playbackRate: 1.0,
+          position: Math.min(state.duration, Math.max(0, state.currentTime))
+        });
+      }
+    } catch(e) {}
+  }
+
+  function playTrack(t, newQueue = null) {
+    if (!t) return;
+    if (newQueue && Array.isArray(newQueue)) {
+      state.queue = newQueue;
+    } else if (state.queue.length === 0) {
+      const libTracks = window.$ ? (window.$('libList')?._tracks || []) : [];
+      if (libTracks.length > 0) state.queue = libTracks;
+      else state.queue = [t];
+    }
+
+    state.track = t;
+    window.currentTrackId = t.id;
+    state.queueIndex = state.queue.findIndex(x => x.id === t.id);
+    state.status = 'loading';
+    state.currentTime = 0;
+    state.duration = t.duration ? parseFloat(t.duration) : 0;
+    state.error = null;
+
+    const miniEl = document.getElementById('globalMiniPlayer');
+    if (miniEl) miniEl.classList.add('active');
+    document.body.classList.add('has-gplayer');
+
+    // Sincronización con reproductor legacy #player
+    const legacyPlayer = document.getElementById('player');
+    if (legacyPlayer) legacyPlayer.classList.add('show');
+    const legacyTitle = document.getElementById('playerTitle');
+    if (legacyTitle) legacyTitle.textContent = t.title || 'Pista';
+
+    const url = (typeof previewUrl === 'function') ? previewUrl(t) : (t.audio_url || `/api/audio_file/${t.id}`);
+    if (!url) {
+      state.status = 'error';
+      showToast('No se encontró URL de audio para esta pista.', 'err');
+      renderUI();
+      return;
+    }
+
+    pauseExternalPreviews();
+    audioEl.src = url;
+    audioEl.load();
+
+    const playPromise = audioEl.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        state.status = 'playing';
+        renderUI();
+      }).catch(err => {
+        if (err.name === 'AbortError') return;
+        console.warn('[GlobalPlayer] Autoplay bloqueado o aviso:', err);
+        state.status = 'paused';
+        renderUI();
+      });
+    }
+
+    // Sincronizar WaveSurfer legacy si existe
+    if (typeof initWaveSurfer === 'function') {
+      try {
+        if (!window.wavesurfer && typeof WaveSurfer !== 'undefined') {
+          initWaveSurfer();
+        }
+        if (window.wavesurfer) {
+          window.wavesurfer._currentUrl = url;
+          window.wavesurfer.load(url);
+        }
+      } catch(e) {}
+    }
+
+    updateMediaSessionMetadata();
+    renderUI();
+  }
+
+  function togglePlay() {
+    if (!state.track) {
+      const libTracks = window.$ ? (window.$('libList')?._tracks || []) : [];
+      if (libTracks.length > 0) {
+        playTrack(libTracks[0], libTracks);
+      }
+      return;
+    }
+
+    if (state.status === 'playing') {
+      pause();
+    } else {
+      play();
+    }
+  }
+
+  function play() {
+    if (!audioEl || !state.track) return;
+    pauseExternalPreviews();
+    audioEl.play().then(() => {
+      state.status = 'playing';
+      renderUI();
+    }).catch(err => {
+      console.warn('[GlobalPlayer] Play error:', err);
+      state.status = 'paused';
+      renderUI();
+    });
+  }
+
+  function pause() {
+    if (!audioEl) return;
+    audioEl.pause();
+    state.status = 'paused';
+    renderUI();
+  }
+
+  function stop() {
+    if (!audioEl) return;
+    audioEl.pause();
+    audioEl.currentTime = 0;
+    state.currentTime = 0;
+    state.status = 'paused';
+    renderUI();
+  }
+
+  function close() {
+    stop();
+    if (audioEl) audioEl.src = '';
+    state.track = null;
+    state.status = 'idle';
+    state.currentTime = 0;
+    state.duration = 0;
+    state.queueIndex = -1;
+    window.currentTrackId = null;
+
+    const miniEl = document.getElementById('globalMiniPlayer');
+    if (miniEl) miniEl.classList.remove('active');
+    document.body.classList.remove('has-gplayer');
+
+    const expEl = document.getElementById('globalPlayerExpanded');
+    if (expEl) expEl.style.display = 'none';
+    state.isExpanded = false;
+
+    const legacyPlayer = document.getElementById('player');
+    if (legacyPlayer) legacyPlayer.classList.remove('show');
+
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = 'none'; } catch(e){}
+    }
+
+    renderUI();
+  }
+
+  function nextTrack() {
+    if (state.queue.length === 0) return;
+    let nextIdx = state.queueIndex + 1;
+    if (nextIdx >= state.queue.length) {
+      if (state.repeatMode === 'all') {
+        nextIdx = 0;
+      } else {
+        return;
+      }
+    }
+    const nextT = state.queue[nextIdx];
+    if (nextT) playTrack(nextT);
+  }
+
+  function prevTrack() {
+    if (state.queue.length === 0) return;
+    if (state.currentTime > 3) {
+      seekTo(0);
+      return;
+    }
+    let prevIdx = state.queueIndex - 1;
+    if (prevIdx < 0) {
+      if (state.repeatMode === 'all') {
+        prevIdx = state.queue.length - 1;
+      } else {
+        seekTo(0);
+        return;
+      }
+    }
+    const prevT = state.queue[prevIdx];
+    if (prevT) playTrack(prevT);
+  }
+
+  function onTrackEnded() {
+    if (state.repeatMode === 'one') {
+      seekTo(0);
+      play();
+    } else {
+      let nextIdx = state.queueIndex + 1;
+      if (nextIdx < state.queue.length) {
+        playTrack(state.queue[nextIdx]);
+      } else if (state.repeatMode === 'all') {
+        playTrack(state.queue[0]);
+      } else {
+        state.status = 'paused';
+        state.currentTime = state.duration;
+        renderUI();
+      }
+    }
+  }
+
+  function seekTo(seconds) {
+    if (!audioEl || !state.track) return;
+    const target = Math.max(0, Math.min(state.duration || 99999, seconds));
+    audioEl.currentTime = target;
+    state.currentTime = target;
+    updateTimelineUI();
+    updateMediaSessionPosition();
+  }
+
+  function seekRatio(ratio) {
+    if (!state.duration || state.duration <= 0) return;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    seekTo(clamped * state.duration);
+  }
+
+  function setVolume(val) {
+    state.volume = Math.max(0, Math.min(1, val));
+    if (audioEl) audioEl.volume = state.volume;
+    state.muted = (state.volume === 0);
+    try { localStorage.setItem('rodrixGPlayerVolume', state.volume.toString()); } catch(e){}
+    updateVolumeUI();
+  }
+
+  function toggleMute() {
+    if (state.muted || state.volume === 0) {
+      state.muted = false;
+      const restoreVol = state.previousVolume || 0.9;
+      setVolume(restoreVol);
+    } else {
+      state.previousVolume = state.volume;
+      state.muted = true;
+      setVolume(0);
+    }
+  }
+
+  function toggleRepeat() {
+    if (state.repeatMode === 'none') {
+      state.repeatMode = 'all';
+    } else if (state.repeatMode === 'all') {
+      state.repeatMode = 'one';
+    } else {
+      state.repeatMode = 'none';
+    }
+    renderRepeatUI();
+  }
+
+  function toggleExpanded(forceState = null) {
+    state.isExpanded = (forceState !== null) ? forceState : !state.isExpanded;
+    const expEl = document.getElementById('globalPlayerExpanded');
+    if (expEl) {
+      expEl.style.display = state.isExpanded ? 'flex' : 'none';
+    }
+  }
+
+  function setQueue(tracks) {
+    if (Array.isArray(tracks)) {
+      state.queue = tracks;
+      if (state.track) {
+        state.queueIndex = state.queue.findIndex(x => x.id === state.track.id);
+      }
+      updateNavButtonsState();
+    }
+  }
+
+  function updateNavButtonsState() {
+    const hasQueue = state.queue.length > 0;
+    const hasNext = hasQueue && (state.queueIndex < state.queue.length - 1 || state.repeatMode === 'all');
+    const hasPrev = hasQueue && (state.queueIndex > 0 || state.repeatMode === 'all' || state.currentTime > 3);
+
+    const prevBtn = document.getElementById('gplayerPrevBtn');
+    const nextBtn = document.getElementById('gplayerNextBtn');
+    const expPrevBtn = document.getElementById('gplayerExpPrevBtn');
+    const expNextBtn = document.getElementById('gplayerExpNextBtn');
+
+    if (prevBtn) prevBtn.disabled = !hasPrev;
+    if (nextBtn) nextBtn.disabled = !hasNext;
+    if (expPrevBtn) expPrevBtn.disabled = !hasPrev;
+    if (expNextBtn) expNextBtn.disabled = !hasNext;
+  }
+
+  function updateTimelineUI() {
+    const cur = state.currentTime || 0;
+    const dur = state.duration || 0;
+    const pct = dur > 0 ? Math.min(100, Math.max(0, (cur / dur) * 100)) : 0;
+
+    const topFill = document.getElementById('gplayerTopFill');
+    const topThumb = document.getElementById('gplayerTopThumb');
+    if (topFill) topFill.style.width = `${pct}%`;
+    if (topThumb) topThumb.style.left = `${pct}%`;
+
+    const curEl = document.getElementById('gplayerTimeCur');
+    const durEl = document.getElementById('gplayerTimeDur');
+    const barFill = document.getElementById('gplayerTimelineFill');
+    const barHandle = document.getElementById('gplayerTimelineHandle');
+
+    if (curEl) curEl.textContent = formatTime(cur);
+    if (durEl) durEl.textContent = formatTime(dur);
+    if (barFill) barFill.style.width = `${pct}%`;
+    if (barHandle) barHandle.style.left = `${pct}%`;
+
+    const expCur = document.getElementById('gplayerExpTimeCur');
+    const expDur = document.getElementById('gplayerExpTimeDur');
+    if (expCur) expCur.textContent = formatTime(cur);
+    if (expDur) expDur.textContent = formatTime(dur);
+
+    const legacyTimer = document.getElementById('playerTimer');
+    if (legacyTimer) legacyTimer.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+  }
+
+  function updateBufferedUI() {
+    if (!audioEl || !state.duration || state.duration <= 0) return;
+    try {
+      const b = audioEl.buffered;
+      if (b && b.length > 0) {
+        const end = b.end(b.length - 1);
+        const bufPct = Math.min(100, Math.max(0, (end / state.duration) * 100));
+        const topBuf = document.getElementById('gplayerTopBuffered');
+        const barBuf = document.getElementById('gplayerTimelineBuffered');
+        if (topBuf) topBuf.style.width = `${bufPct}%`;
+        if (barBuf) barBuf.style.width = `${bufPct}%`;
+      }
+    } catch(e) {}
+  }
+
+  function updateVolumeUI() {
+    const vol = state.volume;
+    const volPct = Math.round(vol * 100);
+    const volFill = document.getElementById('gplayerVolumeFill');
+    if (volFill) volFill.style.width = `${volPct}%`;
+
+    const icon = document.getElementById('gplayerVolumeIcon');
+    if (icon) {
+      if (vol === 0 || state.muted) icon.className = 'ph ph-speaker-slash';
+      else if (vol < 0.4) icon.className = 'ph ph-speaker-low';
+      else icon.className = 'ph ph-speaker-high';
+    }
+
+    const expVol = document.getElementById('gplayerExpVolume');
+    if (expVol) expVol.value = vol;
+
+    const legacyVol = document.getElementById('wsVolume');
+    if (legacyVol) legacyVol.value = vol;
+  }
+
+  function renderRepeatUI() {
+    const repBtn = document.getElementById('gplayerRepeatBtn');
+    const repBadge = document.getElementById('gplayerRepeatBadge');
+    const expRepIcon = document.getElementById('gplayerExpRepeatIcon');
+
+    if (repBtn) {
+      if (state.repeatMode === 'none') {
+        repBtn.classList.remove('active-mode');
+        if (repBadge) repBadge.style.display = 'none';
+        repBtn.title = 'Repetición: Desactivada';
+      } else if (state.repeatMode === 'all') {
+        repBtn.classList.add('active-mode');
+        if (repBadge) repBadge.style.display = 'none';
+        repBtn.title = 'Repetición: Repetir toda la lista';
+      } else if (state.repeatMode === 'one') {
+        repBtn.classList.add('active-mode');
+        if (repBadge) repBadge.style.display = 'grid';
+        repBtn.title = 'Repetición: Repetir pista actual';
+      }
+    }
+    if (expRepIcon) {
+      expRepIcon.style.color = (state.repeatMode !== 'none') ? '#818CF8' : 'var(--muted)';
+    }
+  }
+
+  function renderUI() {
+    const isPlay = (state.status === 'playing');
+    const isLoad = (state.status === 'loading');
+    const t = state.track;
+
+    const miniEl = document.getElementById('globalMiniPlayer');
+    if (miniEl) {
+      miniEl.classList.toggle('playing', isPlay);
+    }
+
+    const playIcon = document.getElementById('gplayerPlayIcon');
+    if (playIcon) {
+      if (isLoad) playIcon.className = 'ph ph-spinner ph-spin';
+      else if (isPlay) playIcon.className = 'ph ph-pause';
+      else playIcon.className = 'ph ph-play';
+    }
+
+    const expPlayIcon = document.getElementById('gplayerExpPlayIcon');
+    if (expPlayIcon) {
+      if (isLoad) expPlayIcon.className = 'ph ph-spinner ph-spin';
+      else if (isPlay) expPlayIcon.className = 'ph ph-pause';
+      else expPlayIcon.className = 'ph ph-play';
+    }
+
+    const wsIcon = document.getElementById('wsPlayIcon');
+    const wsText = document.getElementById('wsPlayText');
+    if (wsIcon) wsIcon.className = isPlay ? 'ph ph-pause' : 'ph ph-play';
+    if (wsText) wsText.textContent = isPlay ? 'Pausa' : 'Play';
+
+    if (t) {
+      const title = t.title || 'Pista de audio';
+      const sub = t.style || (t.duration ? `Duración: ${formatTime(t.duration)}` : 'Rodrix Master Pro');
+
+      const titleEl = document.getElementById('gplayerTitle');
+      const subEl = document.getElementById('gplayerSubtext');
+      if (titleEl) { titleEl.textContent = title; titleEl.title = title; }
+      if (subEl) subEl.textContent = sub;
+
+      const expTitle = document.getElementById('gplayerExpTitle');
+      const expDet = document.getElementById('gplayerExpDetails');
+      if (expTitle) expTitle.textContent = title;
+      if (expDet) expDet.textContent = sub;
+
+      const thumbImg = document.getElementById('gplayerThumbImg');
+      const defIcon = document.getElementById('gplayerDefaultThumbIcon');
+      const expImg = document.getElementById('gplayerExpArtImg');
+      const expDef = document.getElementById('gplayerExpDefaultArt');
+
+      if (t.image_url) {
+        if (thumbImg) { thumbImg.src = t.image_url; thumbImg.style.display = 'block'; }
+        if (defIcon) defIcon.style.display = 'none';
+        if (expImg) { expImg.src = t.image_url; expImg.style.display = 'block'; }
+        if (expDef) expDef.style.display = 'none';
+      } else {
+        if (thumbImg) thumbImg.style.display = 'none';
+        if (defIcon) defIcon.style.display = 'block';
+        if (expImg) expImg.style.display = 'none';
+        if (expDef) expDef.style.display = 'block';
+      }
+    }
+
+    document.querySelectorAll('.track').forEach(card => {
+      const cardId = card.dataset.id;
+      const isThisTrack = (t && cardId === t.id);
+      card.classList.toggle('playing', isThisTrack && isPlay);
+
+      const btnPlaySm = card.querySelector('.btn-play-sm');
+      if (btnPlaySm) {
+        if (isThisTrack && isPlay) {
+          btnPlaySm.innerHTML = '<i class="ph ph-pause"></i> Pausar';
+          btnPlaySm.style.background = 'linear-gradient(135deg, #4F46E5, #6366F1)';
+          btnPlaySm.style.color = '#fff';
+        } else {
+          btnPlaySm.innerHTML = '<i class="ph ph-play"></i> Escuchar';
+          btnPlaySm.style.background = '';
+          btnPlaySm.style.color = '';
+        }
+      }
+    });
+
+    updateNavButtonsState();
+    renderRepeatUI();
+    updateVolumeUI();
+    updateTimelineUI();
+  }
+
+  function bindUIEvents() {
+    const playBtn = document.getElementById('gplayerPlayBtn');
+    if (playBtn) playBtn.onclick = () => togglePlay();
+
+    const expPlayBtn = document.getElementById('gplayerExpPlayBtn');
+    if (expPlayBtn) expPlayBtn.onclick = () => togglePlay();
+
+    const prevBtn = document.getElementById('gplayerPrevBtn');
+    if (prevBtn) prevBtn.onclick = () => prevTrack();
+
+    const nextBtn = document.getElementById('gplayerNextBtn');
+    if (nextBtn) nextBtn.onclick = () => nextTrack();
+
+    const expPrevBtn = document.getElementById('gplayerExpPrevBtn');
+    if (expPrevBtn) expPrevBtn.onclick = () => prevTrack();
+
+    const expNextBtn = document.getElementById('gplayerExpNextBtn');
+    if (expNextBtn) expNextBtn.onclick = () => nextTrack();
+
+    const repBtn = document.getElementById('gplayerRepeatBtn');
+    if (repBtn) repBtn.onclick = () => toggleRepeat();
+
+    const expRepBtn = document.getElementById('gplayerExpRepeatBtn');
+    if (expRepBtn) expRepBtn.onclick = () => toggleRepeat();
+
+    const muteBtn = document.getElementById('gplayerMuteBtn');
+    if (muteBtn) muteBtn.onclick = () => toggleMute();
+
+    const expBtn = document.getElementById('gplayerExpandBtn');
+    if (expBtn) expBtn.onclick = () => toggleExpanded(true);
+
+    const infoSection = document.getElementById('gplayerInfoSection');
+    if (infoSection) infoSection.onclick = () => toggleExpanded(true);
+
+    const collapseBtn = document.getElementById('gplayerExpCollapseBtn');
+    if (collapseBtn) collapseBtn.onclick = () => toggleExpanded(false);
+
+    const expCloseBtn = document.getElementById('gplayerExpCloseBtn');
+    if (expCloseBtn) expCloseBtn.onclick = () => close();
+
+    const closeBtn = document.getElementById('gplayerCloseBtn');
+    if (closeBtn) closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      close();
+    };
+
+    const expShareBtn = document.getElementById('gplayerExpShareBtn');
+    if (expShareBtn) {
+      expShareBtn.onclick = () => {
+        if (state.track && typeof shareSelectedTracks === 'function') {
+          shareSelectedTracks([state.track.id]);
+        }
+      };
+    }
+
+    const volBar = document.getElementById('gplayerVolumeSliderBar');
+    if (volBar) {
+      volBar.addEventListener('click', (e) => {
+        const rect = volBar.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        setVolume(ratio);
+      });
+    }
+
+    const expVol = document.getElementById('gplayerExpVolume');
+    if (expVol) {
+      expVol.addEventListener('input', (e) => {
+        setVolume(parseFloat(e.target.value));
+      });
+    }
+
+    setupScrubber(document.getElementById('gplayerTopProgress'));
+    setupScrubber(document.getElementById('gplayerTimelineBar'));
+    setupScrubber(document.getElementById('gplayerExpWaveform'));
+
+    // Convivencia de audio: Si otros reproductores inician, pausar el reproductor global
+    ['voAudioPlayer', 'unifiedAudioPlayer', 'ampAudioPlayer', 'sf2EnrichAudioPlayer'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('play', () => {
+          if (state.status === 'playing') pause();
+        });
+      }
+    });
+
+    // Detener reproducción al hacer clic en enlaces de cierre de sesión
+    document.querySelectorAll('a[href="/api/logout"]').forEach(a => {
+      a.addEventListener('click', () => {
+        close();
+      });
+    });
+  }
+
+  function setupScrubber(container) {
+    if (!container) return;
+
+    function handleSeekEvent(e) {
+      const rect = container.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const ratio = (clientX - rect.left) / rect.width;
+      seekRatio(ratio);
+    }
+
+    container.addEventListener('click', (e) => {
+      handleSeekEvent(e);
+    });
+
+    container.addEventListener('mousedown', (e) => {
+      isProgressDragging = true;
+      handleSeekEvent(e);
+      const onMove = (ev) => {
+        if (isProgressDragging) handleSeekEvent(ev);
+      };
+      const onUp = () => {
+        isProgressDragging = false;
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    container.addEventListener('touchstart', (e) => {
+      isProgressDragging = true;
+      handleSeekEvent(e);
+      const onTouchMove = (ev) => {
+        if (isProgressDragging) handleSeekEvent(ev);
+      };
+      const onTouchEnd = () => {
+        isProgressDragging = false;
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('touchend', onTouchEnd);
+      };
+      window.addEventListener('touchmove', onTouchMove);
+      window.addEventListener('touchend', onTouchEnd);
+    }, { passive: true });
+  }
+
+  function formatTime(sec) {
+    if (isNaN(sec) || sec === null || sec < 0) return '0:00';
+    const s = Math.floor(sec);
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return `${m}:${rem < 10 ? '0' : ''}${rem}`;
+  }
+
+  return {
+    init,
+    playTrack,
+    togglePlay,
+    play,
+    pause,
+    stop,
+    close,
+    nextTrack,
+    prevTrack,
+    seekTo,
+    seekRatio,
+    setVolume,
+    toggleMute,
+    toggleRepeat,
+    toggleExpanded,
+    setQueue,
+    getCurrentTime: () => state.currentTime,
+    getDuration: () => state.duration,
+    isPlaying: () => (state.status === 'playing'),
+    getTrackId: () => (state.track ? state.track.id : null),
+    getState: () => ({ ...state })
+  };
+})();
+
+// Inicialización automática al cargar DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => window.GlobalAudioController.init());
+} else {
+  window.GlobalAudioController.init();
+}
+
+
 let wavesurfer = null;
 
 function initWaveSurfer() {
@@ -5678,28 +7281,11 @@ function initWaveSurfer() {
 }
 
 function playTrack(t) {
-  currentTrackId = t.id;
-  $('playerTitle').textContent = t.title;
-  $('player').classList.add('show');
-  const url = previewUrl(t);
-  
-  if (!wavesurfer && typeof WaveSurfer !== 'undefined') {
-    initWaveSurfer();
-  }
-  
-  if (wavesurfer) {
-    wavesurfer._currentUrl = url;
-    $('audio').style.display = 'none';
-    wavesurfer.load(url);
-    wavesurfer.once('ready', () => {
-      wavesurfer.play().catch(()=>{});
-    });
+  if (window.GlobalAudioController) {
+    window.GlobalAudioController.playTrack(t);
   } else {
-    $('audio').style.display = 'block';
-    $('audio').src = url;
-    $('audio').play().catch(()=>{});
+    currentTrackId = t.id;
   }
-  document.querySelectorAll('.track').forEach(c => c.classList.toggle('playing', c.dataset.id === t.id));
 }
 
 function triggerAudioDownload(url, defaultFilename) {
@@ -5892,7 +7478,11 @@ $('libList').addEventListener('click', async e => {
 
   if (act === 'play') {
     const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
-    playTrack(t);
+    if (window.GlobalAudioController && window.GlobalAudioController.getTrackId() === t.id) {
+      window.GlobalAudioController.togglePlay();
+    } else {
+      playTrack(t);
+    }
   } else if (act === 'reuse') {
     const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
     if (t.title) $('titleInput').value = t.title;
@@ -5987,10 +7577,14 @@ $('libList').addEventListener('click', async e => {
     const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });
     if (r.ok) {
       if (id === currentTrackId) {
-        if (wavesurfer) wavesurfer.stop();
-        $('audio').pause();
-        $('player').classList.remove('show');
-        currentTrackId = null;
+        if (window.GlobalAudioController) {
+          window.GlobalAudioController.close();
+        } else {
+          if (wavesurfer) wavesurfer.stop();
+          $('audio').pause();
+          $('player').classList.remove('show');
+          currentTrackId = null;
+        }
       }
       loadLibrary();
     }
@@ -7034,6 +8628,9 @@ async function executeSf2EnrichPreview() {
     const j = await res.json();
     if (!res.ok) throw new Error(j.detail || 'Error al generar la preescucha');
 
+    if (window.GlobalAudioController && window.GlobalAudioController.isPlaying()) {
+      window.GlobalAudioController.pause();
+    }
     const player = $('sf2EnrichAudioPlayer');
     if (player) {
       player.style.display = 'block';
@@ -7407,6 +9004,9 @@ function updateAmpBadge() {
 }
 
 async function toggleAmpPreviewPlay(btnEl) {
+  if (window.GlobalAudioController && window.GlobalAudioController.isPlaying()) {
+    window.GlobalAudioController.pause();
+  }
   const player = $('ampAudioPlayer');
   if (!player) return;
 
