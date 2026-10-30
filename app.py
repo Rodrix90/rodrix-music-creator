@@ -2286,19 +2286,40 @@ def resolve_effective_musical_config(
             effective_meter = "3/4"
 
     meter_clause = ""
-    # Detectar si el usuario especificó una subdivisión/agrupación métrica interna para 7/4 (ej. 4+3 o 3+4)
-    meter_subdivision = ""
-    if effective_meter == "7/4":
-        if any(g in raw_lower for g in ("4+3", "4 + 3", "4-3")):
-            meter_subdivision = " (4+3 rhythm pulse)"
-        elif any(g in raw_lower for g in ("3+4", "3 + 4", "3-4")):
-            meter_subdivision = " (3+4 rhythm pulse)"
-        else:
-            meter_subdivision = " (4+3 rhythm pulse)"
-
     if effective_meter:
-        if effective_meter == "7/4":
-            meter_clause = f"strictly in 7/4 time signature (7 beats per measure){meter_subdivision}, natural rhythmic flow"
+        if effective_meter == "7/8":
+            # Manejo riguroso de compás 7/8 respetando agrupaciones explícitas de corcheas
+            if any(g in raw_lower for g in ("3+2+2", "3 + 2 + 2", "3-2-2")):
+                meter_clause = "strictly in 7/8 time signature (seven eighth-note subdivisions per measure, grouped 3+2+2, recurring accents on subdivisions 1, 4 and 6), natural rhythmic pulse"
+            elif any(g in raw_lower for g in ("2+3+2", "2 + 3 + 2", "2-3-2")):
+                meter_clause = "strictly in 7/8 time signature (seven eighth-note subdivisions per measure, grouped 2+3+2, recurring accents on subdivisions 1, 3 and 6), natural rhythmic pulse"
+            elif any(g in raw_lower for g in ("2+2+3", "2 + 2 + 3", "2-2-3")):
+                meter_clause = "strictly in 7/8 time signature (seven eighth-note subdivisions per measure, grouped 2+2+3, recurring accents on subdivisions 1, 3 and 5), natural rhythmic pulse"
+            else:
+                meter_clause = "strictly in 7/8 time signature (seven eighth-note subdivisions per measure, grouped 2+2+3, recurring accents on subdivisions 1, 3 and 5), natural rhythmic pulse"
+        elif effective_meter == "9/8":
+            # Manejo de compás 9/8 (compuesto regular 3+3+3 o asimétrico según solicite el usuario)
+            if any(g in raw_lower for g in ("2+2+2+3", "2 + 2 + 2 + 3", "2-2-2-3")):
+                meter_clause = "strictly in 9/8 asymmetrical time signature (nine eighth-note subdivisions per measure, grouped 2+2+2+3, Balkan rhythm), natural rhythmic pulse"
+            elif any(g in raw_lower for g in ("3+2+2+2", "3 + 2 + 2 + 2", "3-2-2-2")):
+                meter_clause = "strictly in 9/8 asymmetrical time signature (nine eighth-note subdivisions per measure, grouped 3+2+2+2), natural rhythmic pulse"
+            elif any(g in raw_lower for g in ("2+3+2+2", "2 + 3 + 2 + 2")):
+                meter_clause = "strictly in 9/8 asymmetrical time signature (nine eighth-note subdivisions per measure, grouped 2+3+2+2), natural rhythmic pulse"
+            else:
+                meter_clause = "strictly in 9/8 compound triple meter (nine eighth-note subdivisions per measure, flowing three-beat triplet pulse), natural rhythmic pulse"
+        elif effective_meter == "11/8":
+            # Manejo de compás 11/8 respetando agrupaciones asimétricas de corcheas
+            if any(g in raw_lower for g in ("3+3+3+2", "3 + 3 + 3 + 2")):
+                meter_clause = "strictly in 11/8 complex time signature (eleven eighth-note subdivisions per measure, grouped 3+3+3+2), natural rhythmic pulse"
+            elif any(g in raw_lower for g in ("2+2+3+2+2", "2 + 2 + 3 + 2 + 2")):
+                meter_clause = "strictly in 11/8 complex time signature (eleven eighth-note subdivisions per measure, grouped 2+2+3+2+2), natural rhythmic pulse"
+            elif any(g in raw_lower for g in ("2+2+2+2+3", "2 + 2 + 2 + 2 + 3")):
+                meter_clause = "strictly in 11/8 complex time signature (eleven eighth-note subdivisions per measure, grouped 2+2+2+2+3), natural rhythmic pulse"
+            else:
+                meter_clause = "strictly in 11/8 complex asymmetrical time signature (eleven eighth-note subdivisions per measure, grouped 2+2+3+2+2), natural rhythmic pulse"
+        elif effective_meter == "7/4":
+            sub_74 = " (3+4 rhythm pulse)" if any(g in raw_lower for g in ("3+4", "3 + 4", "3-4")) else " (4+3 rhythm pulse)"
+            meter_clause = f"strictly in 7/4 time signature (7 beats per measure){sub_74}, natural rhythmic flow"
         elif effective_meter == "5/4":
             sub_54 = " (3+2 pulse)" if any(g in raw_lower for g in ("3+2", "3 + 2")) else (" (2+3 pulse)" if any(g in raw_lower for g in ("2+3", "2 + 3")) else "")
             meter_clause = f"strictly in 5/4 time signature (5 beats per measure){sub_54}, natural rhythmic pulse"
@@ -2475,6 +2496,8 @@ def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
     )
     cleaned = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', cleaned, flags=re.IGNORECASE)
+    # Limpiar etiquetas huérfanas de Tempo o BPM que quedaron vacías (ej: "Tempo: .")
+    cleaned = re.sub(r'\b(?:tempo|bpm)\s*[:=]?\s*(?=[.,;]|\s+|$)', '', cleaned, flags=re.IGNORECASE)
 
     # 1b. Si se especificó una métrica distinta de 4/4 (ej. 7/4, 5/4, 6/8, 12/8, 3/4), purgar 4/4 contradictorio
     eff_meter = cfg.get("effective_meter")

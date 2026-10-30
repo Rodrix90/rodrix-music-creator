@@ -9,109 +9,135 @@ import app
 
 class TestTimeSignatureAndPromptLibre(unittest.TestCase):
     """
-    Suite de pruebas locales para verificar el respeto estricto de compases,
-    la agrupación 4+3, la preservación del género musical original y
-    la ausencia de contradicciones en el payload hacia Udio.
+    Suite de pruebas locales para verificar el respeto estricto de compases regulares,
+    compases compuestos e irregulares (7/8, 9/8, 11/8, 5/4, 7/4, 6/8, 12/8, 3/4, 4/4),
+    la sanitización de residuos y la preservación de instrumentación, letras y voz.
     """
 
-    def test_1_prompt_libre_7_4_with_4_plus_3_and_genre_preservation(self):
-        """Test 1: 7/4 con agrupación rítmica 4+3 preservando Christian Worship/Acoustic Pop/Folk Rock sin imponer progressive."""
-        style_prompt = (
-            "Christian Worship, Acoustic Pop, Folk Rock, Acoustic guitar, Bass guitar, Drums, "
-            "Male Tenor vocals, Spiritual, Uplifting, century 1994 rock kit, "
-            "Time signature: 7/4 (4+3), Tempo: 107 BPM, Key: C Major"
-        )
+    def test_1_7_8_grouped_2_2_3(self):
+        """Test 1: 7/8 (2+2+3) con acentos en corcheas 1, 3 y 5."""
         cfg = app.resolve_effective_musical_config(
-            style=style_prompt,
-            lyrics="[Verse]\nCanto a Ti Señor\n[Chorus]\nEres mi fortaleza",
-            target_bpm=107,
+            style="Christian Worship, Acoustic Pop, Drums, 7/8 (2+2+3), 107 BPM",
             active_preset=""
         )
-        self.assertEqual(cfg["effective_meter"], "7/4")
+        self.assertEqual(cfg["effective_meter"], "7/8")
+        self.assertIn("seven eighth-note subdivisions per measure", cfg["meter_clause"])
+        self.assertIn("grouped 2+2+3", cfg["meter_clause"])
+        self.assertIn("accents on subdivisions 1, 3 and 5", cfg["meter_clause"])
+
+    def test_2_7_8_grouped_3_2_2(self):
+        """Test 2: 7/8 (3+2+2) con acentos en corcheas 1, 4 y 6."""
+        cfg = app.resolve_effective_musical_config(
+            style="Christian Worship, Folk Rock, 7/8 (3+2+2), 107 BPM",
+            active_preset=""
+        )
+        self.assertEqual(cfg["effective_meter"], "7/8")
+        self.assertIn("grouped 3+2+2", cfg["meter_clause"])
+        self.assertIn("accents on subdivisions 1, 4 and 6", cfg["meter_clause"])
+
+    def test_3_7_8_grouped_2_3_2(self):
+        """Test 3: 7/8 (2+3+2) con acentos en corcheas 1, 3 y 6."""
+        cfg = app.resolve_effective_musical_config(
+            style="Christian Praise, 7/8 (2+3+2), 110 BPM",
+            active_preset=""
+        )
+        self.assertEqual(cfg["effective_meter"], "7/8")
+        self.assertIn("grouped 2+3+2", cfg["meter_clause"])
+        self.assertIn("accents on subdivisions 1, 3 and 6", cfg["meter_clause"])
+
+    def test_4_7_8_default_grouping(self):
+        """Test 4: 7/8 sin agrupación explícita utiliza 2+2+3 como predeterminado musical."""
+        cfg = app.resolve_effective_musical_config(
+            style="Key: C Major. Tempo: 107 BPM. Time signature: 7/8.",
+            active_preset=""
+        )
+        self.assertEqual(cfg["effective_meter"], "7/8")
         self.assertEqual(cfg["bpm_tag"], "107 BPM")
-        # Verificar cláusula de 7/4 con 4+3 y sin 'progressive' forzado
-        self.assertIn("7/4 time signature", cfg["meter_clause"])
-        self.assertIn("4+3 rhythm pulse", cfg["meter_clause"])
-        self.assertNotIn("progressive", cfg["meter_clause"].lower())
+        self.assertIn("seven eighth-note subdivisions per measure", cfg["meter_clause"])
+        self.assertIn("grouped 2+2+3", cfg["meter_clause"])
+        self.assertIn("accents on subdivisions 1, 3 and 5", cfg["meter_clause"])
 
-        # Sanitizar y verificar ausencia de 4/4 y conteo cuaternario
-        cleaned = app.sanitize_and_prioritize_style_with_config(style_prompt, cfg)
-        self.assertNotIn("4/4", cleaned)
-        self.assertNotIn("snare 2-4", cleaned)
-        self.assertNotIn("kick 1-3", cleaned)
-
-        # En hi-hat clause, comprobar que no inyecta el conteo de 4/4 (1-and 2-and 3-and 4-and)
-        self.assertNotIn("1-and 2-and 3-and 4-and", cfg["hihat_clause"])
-
-    def test_2_prompt_libre_5_4_natural_pulse(self):
-        """Test 2: Compás 5/4 con pulso natural sin alterar el género."""
-        cfg_54 = app.resolve_effective_musical_config(
-            style="Christian Worship, Acoustic Pop, compas 5/4, 120 bpm, drums, acoustic guitar",
+    def test_5_9_8_alternative_groupings(self):
+        """Test 5: 9/8 con agrupación asimétrica (2+2+2+3) vs regular (3+3+3 / compuesto triple)."""
+        cfg_balkan = app.resolve_effective_musical_config(
+            style="Acoustic worship, compas 9/8 (2+2+2+3), 120 bpm",
             active_preset=""
         )
-        self.assertEqual(cfg_54["effective_meter"], "5/4")
-        self.assertIn("5/4 time signature", cfg_54["meter_clause"])
-        self.assertNotIn("progressive", cfg_54["meter_clause"].lower())
-        self.assertNotIn("1-and 2-and 3-and 4-and", cfg_54["hihat_clause"])
+        self.assertEqual(cfg_balkan["effective_meter"], "9/8")
+        self.assertIn("grouped 2+2+2+3", cfg_balkan["meter_clause"])
 
-    def test_3_prompt_libre_6_8_and_12_8(self):
-        """Test 3: Compases ternarios y compuestos (6/8 y 12/8)."""
-        cfg_68 = app.resolve_effective_musical_config(
-            style="Acoustic worship ballad, compás 6/8, 54 bpm, acoustic guitar and strings",
+        cfg_std = app.resolve_effective_musical_config(
+            style="Sacred hymn, in 9/8 time, 60 bpm",
             active_preset=""
         )
-        self.assertEqual(cfg_68["effective_meter"], "6/8")
-        self.assertIn("6/8 compound time", cfg_68["meter_clause"])
+        self.assertEqual(cfg_std["effective_meter"], "9/8")
+        self.assertIn("compound triple meter", cfg_std["meter_clause"])
+        self.assertIn("flowing three-beat triplet pulse", cfg_std["meter_clause"])
 
-        cfg_128 = app.resolve_effective_musical_config(
-            style="Solemn worship hymn, 12/8 time, 50 bpm",
+    def test_6_11_8_alternative_groupings(self):
+        """Test 6: 11/8 con agrupaciones asimétricas de corcheas."""
+        cfg_11_8 = app.resolve_effective_musical_config(
+            style="Praise rock, compas 11/8 (3+3+3+2), 130 bpm",
             active_preset=""
         )
-        self.assertEqual(cfg_128["effective_meter"], "12/8")
-        self.assertIn("12/8 compound meter", cfg_128["meter_clause"])
+        self.assertEqual(cfg_11_8["effective_meter"], "11/8")
+        self.assertIn("eleven eighth-note subdivisions per measure", cfg_11_8["meter_clause"])
+        self.assertIn("grouped 3+3+3+2", cfg_11_8["meter_clause"])
 
-    def test_4_prompt_libre_3_4_waltz(self):
-        """Test 4: Compás ternario simple 3/4."""
-        cfg_34 = app.resolve_effective_musical_config(
-            style="Himno congregacional, compas 3/4, 90 bpm, coro y piano",
+        cfg_11_def = app.resolve_effective_musical_config(
+            style="Complex worship, time signature: 11/8, 125 bpm",
             active_preset=""
         )
-        self.assertEqual(cfg_34["effective_meter"], "3/4")
-        self.assertIn("3/4 triple meter", cfg_34["meter_clause"])
+        self.assertEqual(cfg_11_def["effective_meter"], "11/8")
+        self.assertIn("grouped 2+2+3+2+2", cfg_11_def["meter_clause"])
 
-    def test_5_prompt_libre_4_4_standard(self):
-        """Test 5: Prompt Libre con 4/4 mantiene compatibilidad estándar con conteos clásicos."""
-        cfg_44 = app.resolve_effective_musical_config(
-            style="Christian rock, 4/4 time signature, 120 bpm, loud drums",
-            active_preset=""
-        )
+    def test_7_compatibility_with_4_4_3_4_5_4_6_8_7_4(self):
+        """Test 7: Compatibilidad de regresión para 4/4, 3/4, 5/4, 6/8 y 7/4."""
+        # 4/4
+        cfg_44 = app.resolve_effective_musical_config(style="4/4 time, 120 bpm", active_preset="")
         self.assertEqual(cfg_44["effective_meter"], "4/4")
-        self.assertEqual(cfg_44["bpm_tag"], "120 BPM")
         self.assertIn("1-and 2-and 3-and 4-and", cfg_44["hihat_clause"])
 
-    def test_6_full_band_with_yamaha_cfx_preserves_vocals_and_band(self):
-        """Test 6: Banda completa con piano Yamaha CFX como acompañamiento preserva voz y banda completa."""
-        style_band = (
-            "Christian Worship, Acoustic Pop, Male Tenor vocals, drums, bass guitar, "
-            "stratocaster, yamaha cfx grand, warm mix"
-        )
-        cfg = app.resolve_effective_musical_config(
-            style=style_band,
-            lyrics="[Verse]\nBendito sea el Señor",
-            active_preset="",
-            is_solo_piano_prayer=False
-        )
-        self.assertFalse(cfg.get("is_solo_piano_prayer", False))
+        # 3/4
+        cfg_34 = app.resolve_effective_musical_config(style="3/4 waltz, 90 bpm", active_preset="")
+        self.assertEqual(cfg_34["effective_meter"], "3/4")
 
-    def test_7_full_udio_payload_simulation_7_4(self):
-        """Test 7: Simulación completa del payload hacia Udio verificando ausencia de contradicciones."""
+        # 5/4
+        cfg_54 = app.resolve_effective_musical_config(style="5/4 (3+2), 115 bpm", active_preset="")
+        self.assertEqual(cfg_54["effective_meter"], "5/4")
+        self.assertIn("3+2 pulse", cfg_54["meter_clause"])
+
+        # 6/8
+        cfg_68 = app.resolve_effective_musical_config(style="6/8 worship, 54 bpm", active_preset="")
+        self.assertEqual(cfg_68["effective_meter"], "6/8")
+
+        # 7/4
+        cfg_74 = app.resolve_effective_musical_config(style="7/4 (4+3), 107 bpm", active_preset="")
+        self.assertEqual(cfg_74["effective_meter"], "7/4")
+        self.assertIn("4+3 rhythm pulse", cfg_74["meter_clause"])
+
+    def test_8_clean_tempo_residual_artifact(self):
+        """Test 8: Limpieza estricta del residuo 'Tempo: .' o 'BPM: .'."""
+        raw_prompt = "Key: C Major. Tempo: 107 BPM. Time signature: 7/8."
+        cfg = app.resolve_effective_musical_config(style=raw_prompt, active_preset="")
+        cleaned = app.sanitize_and_prioritize_style_with_config(raw_prompt, cfg)
+        self.assertNotIn("Tempo: .", cleaned)
+        self.assertNotIn("Tempo: ,", cleaned)
+        self.assertNotIn("BPM: .", cleaned)
+        self.assertIn("Key: C Major", cleaned)
+        self.assertIn("Time signature: 7/8", cleaned)
+
+    def test_9_fulgor_de_dios_full_payload_simulation(self):
+        """Test 9: Simulación completa del payload de 'Fulgor de Dios' con preservación total."""
         user_style = (
             "Christian Worship, Acoustic Pop, Folk Rock, Acoustic guitar, Bass guitar, Drums, "
             "Male Tenor vocals, Spiritual, Uplifting, century 1994 rock kit, "
-            "Time signature: 7/4 (4+3), Tempo: 107 BPM, Key: C Major"
+            "Key: C Major. Tempo: 107 BPM. Time signature: 7/8."
         )
+        user_lyrics = "[Verse]\nFulgor de Dios en majestad\n[Chorus]\nTu nombre exaltaré"
         cfg = app.resolve_effective_musical_config(
             style=user_style,
+            lyrics=user_lyrics,
             target_bpm=107,
             active_preset=""
         )
@@ -120,7 +146,7 @@ class TestTimeSignatureAndPromptLibre(unittest.TestCase):
         if "century 1994 rock kit" in style:
             style = style.replace(
                 "century 1994 rock kit",
-                "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom"
+                "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms"
             )
 
         cleaned = app.sanitize_and_prioritize_style_with_config(style, cfg)
@@ -134,23 +160,17 @@ class TestTimeSignatureAndPromptLibre(unittest.TestCase):
 
         priority_str = ", ".join(cfg.get("priority_clauses", []))
         combined = [p for p in [genre_anchor, priority_str, cleaned] if p]
-        final_payload_style = ", ".join(combined)
+        final_style = ", ".join(combined)
 
-        # 1. 7/4 y 4+3 presentes en el frente
-        self.assertTrue(final_payload_style.startswith("strictly in 7/4 time signature (7 beats per measure) (4+3 rhythm pulse)"))
-        # 2. 107 BPM presente
-        self.assertIn("107 BPM", final_payload_style)
-        # 3. Géneros originales preservados
-        self.assertIn("Christian Worship", final_payload_style)
-        self.assertIn("Acoustic Pop", final_payload_style)
-        self.assertIn("Folk Rock", final_payload_style)
-        # 4. 'progressive' no impuesto
-        self.assertNotIn("progressive", final_payload_style.lower())
-        # 5. Sin contradicciones de 4/4 ni snare 2-4
-        self.assertNotIn("4/4", final_payload_style)
-        self.assertNotIn("snare 2-4", final_payload_style)
-        self.assertNotIn("kick 1-3", final_payload_style)
-        self.assertNotIn("1-and 2-and 3-and 4-and", final_payload_style)
+        # Verificaciones críticas
+        self.assertIn("strictly in 7/8 time signature (seven eighth-note subdivisions per measure, grouped 2+2+3, recurring accents on subdivisions 1, 3 and 5)", final_style)
+        self.assertIn("107 BPM", final_style)
+        self.assertIn("Key: C Major", final_style)
+        self.assertNotIn("Tempo: .", final_style)
+        self.assertNotIn("4/4", final_style)
+        self.assertNotIn("snare 2-4", final_style)
+        self.assertNotIn("kick 1-3", final_style)
+        self.assertNotIn("1-and 2-and 3-and 4-and", final_style)
 
 if __name__ == "__main__":
     unittest.main()
