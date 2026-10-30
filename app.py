@@ -2264,6 +2264,55 @@ def resolve_effective_musical_config(
     }
     default_bpm = preset_default_bpms.get(preset_key)
 
+    # 0. Resolver Métrica / Compás autoritativo del usuario
+    meter_match = re.search(
+        r'\b(?:time\s+signature\s*[:=]?\s*|comp[aá]s\s*[:=]?\s*|m[eé]trica\s*[:=]?\s*|meter\s*[:=]?\s*|in\s+)?(\d{1,2}\s*/\s*\d{1,2})(?:\s+time|\s+meter|\s+comp[aá]s)?\b',
+        raw_style,
+        re.IGNORECASE
+    )
+    effective_meter = meter_match.group(1).replace(' ', '') if meter_match else None
+    if not effective_meter:
+        if is_vals_vienes:
+            effective_meter = "3/4"
+        elif any(k in raw_lower for k in ("6/8", "compound duple", "compas 6/8", "compás 6/8")):
+            effective_meter = "6/8"
+        elif any(k in raw_lower for k in ("12/8", "compound quadruple", "compas 12/8", "compás 12/8")):
+            effective_meter = "12/8"
+        elif any(k in raw_lower for k in ("5/4", "compas 5/4", "compás 5/4")):
+            effective_meter = "5/4"
+        elif any(k in raw_lower for k in ("7/4", "compas 7/4", "compás 7/4")):
+            effective_meter = "7/4"
+        elif any(k in raw_lower for k in ("3/4", "waltz", "vals", "compas 3/4", "compás 3/4")):
+            effective_meter = "3/4"
+
+    meter_clause = ""
+    # Detectar si el usuario especificó una subdivisión/agrupación métrica interna para 7/4 (ej. 4+3 o 3+4)
+    meter_subdivision = ""
+    if effective_meter == "7/4":
+        if any(g in raw_lower for g in ("4+3", "4 + 3", "4-3")):
+            meter_subdivision = " (4+3 rhythm pulse)"
+        elif any(g in raw_lower for g in ("3+4", "3 + 4", "3-4")):
+            meter_subdivision = " (3+4 rhythm pulse)"
+        else:
+            meter_subdivision = " (4+3 rhythm pulse)"
+
+    if effective_meter:
+        if effective_meter == "7/4":
+            meter_clause = f"strictly in 7/4 time signature (7 beats per measure){meter_subdivision}, natural rhythmic flow"
+        elif effective_meter == "5/4":
+            sub_54 = " (3+2 pulse)" if any(g in raw_lower for g in ("3+2", "3 + 2")) else (" (2+3 pulse)" if any(g in raw_lower for g in ("2+3", "2 + 3")) else "")
+            meter_clause = f"strictly in 5/4 time signature (5 beats per measure){sub_54}, natural rhythmic pulse"
+        elif effective_meter == "6/8":
+            meter_clause = "strictly in 6/8 compound time, flowing swaying two-beat triplet pulse"
+        elif effective_meter == "12/8":
+            meter_clause = "strictly in 12/8 compound meter, slow blues-gospel triplet pulse"
+        elif effective_meter == "3/4":
+            meter_clause = "strictly in 3/4 triple meter, melodic waltz pulse, no 4/4 rhythm"
+        elif effective_meter == "4/4":
+            meter_clause = "steady straight 4/4 time signature"
+        else:
+            meter_clause = f"strictly in {effective_meter} time signature"
+
     # 1. Resolver BPM autoritativo del usuario ANTES de expandir presets
     raw_bpm_matches = [float(x) for x in re.findall(r'\b(\d+(?:\.\d+)?)\s*bpm\b', raw_style, flags=re.IGNORECASE)]
     effective_bpm: Optional[float] = None
@@ -2340,9 +2389,15 @@ def resolve_effective_musical_config(
         if effective_hihat == "16th":
             hihat_clause = "fast driving 16th-note hi-hat subdivision pattern (four strokes per beat, rapid sixteenth-note hi-hats)"
         elif effective_hihat == "4th":
-            hihat_clause = "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)"
+            if effective_meter and effective_meter != "4/4":
+                hihat_clause = "heavy steady quarter-note hi-hat pulse on every beat"
+            else:
+                hihat_clause = "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)"
         else:
-            hihat_clause = "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
+            if effective_meter and effective_meter != "4/4":
+                hihat_clause = "steady closed eighth-note hi-hat pattern with natural subdivision"
+            else:
+                hihat_clause = "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
         priority_clauses.append(hihat_clause)
     else:
         hihat_clause = ""
@@ -2388,6 +2443,8 @@ def resolve_effective_musical_config(
         "default_bpm": default_bpm,
         "effective_bpm": effective_bpm,
         "bpm_tag": bpm_tag,
+        "effective_meter": effective_meter,
+        "meter_clause": meter_clause,
         "effective_hihat": effective_hihat,
         "hihat_clause": hihat_clause,
         "crash_toms": eff_crash_toms,
@@ -2418,6 +2475,13 @@ def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
     )
     cleaned = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', cleaned, flags=re.IGNORECASE)
+
+    # 1b. Si se especificó una métrica distinta de 4/4 (ej. 7/4, 5/4, 6/8, 12/8, 3/4), purgar 4/4 contradictorio
+    eff_meter = cfg.get("effective_meter")
+    if eff_meter and eff_meter != "4/4":
+        cleaned = re.sub(r'\b(?:tempo\s+4/4|straight\s+4/4|meter\s+4/4|comp[aá]s\s+4/4|time\s+4/4|4/4\s+time|4/4\s+meter|4/4\s+rhythm|4/4\s+beat|4/4)\b', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\bsnare\s+2-4\b', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\bkick\s+1-3\b', '', cleaned, flags=re.IGNORECASE)
 
     # 2. Purgar frases previas de subdivisión de hi-hat y evitar términos contradictorios
     cleaned = re.sub(r'\bhit-hat\b', 'hi-hat', cleaned, flags=re.IGNORECASE)
@@ -2758,13 +2822,13 @@ async def run_transform_task(
                 "api 1608": "API 1608 console, discrete op-amp 312 punchy midrange, aggressive transient punch, American rock studio sound",
                 "abbey road tg12345": "Abbey Road TG12345 console, vintage EMI tape saturation, warm tube harmonic distortion",
                 # Baterías Pro
-                "dw collector's": "DW Collector's Series maple drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, punchy kick drum, resonant snare with crack, warm balanced toms",
-                "dw collector's maple": "DW Collector's Series maple drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, punchy kick drum, resonant snare with crack, warm balanced toms",
-                "ludwig classic 70s": "vintage 1970s Ludwig Classic drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, deep warm wooden tone, fat vintage snare with ring",
-                "yamaha recording custom": "Yamaha Recording Custom birch drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, clean punchy attack, perfectly controlled studio drum resonance",
-                "century 1994": "1994 Century acoustic wood shell drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
-                "century 1994 rock kit": "1994 Century acoustic wood shell drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
-                "century wood shell": "1994 Century acoustic wood shell drum kit, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+                "dw collector's": "DW Collector's Series maple drum kit, dynamic acoustic drum performance, punchy kick drum, resonant snare with crack, articulate hi-hat and warm balanced toms",
+                "dw collector's maple": "DW Collector's Series maple drum kit, dynamic acoustic drum performance, punchy kick drum, resonant snare with crack, articulate hi-hat and warm balanced toms",
+                "ludwig classic 70s": "vintage 1970s Ludwig Classic drum kit, deep warm wooden tone, dynamic acoustic rock performance, articulate hi-hat, fat vintage snare with ring",
+                "yamaha recording custom": "Yamaha Recording Custom birch drum kit, clean punchy attack, dynamic studio drum performance, articulate hi-hat, perfectly controlled resonance",
+                "century 1994": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+                "century 1994 rock kit": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+                "century wood shell": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
                 # Bajos
                 "fender jazz bass deluxe": "Fender American Deluxe Jazz Bass, active 18V preamp with 3-band EQ, dual 4th generation Noiseless single-coil pickups, modern Hi-Fi electric bass tone, bright punchy slap attack, growling articulate low-mids, deep tight low end, real roundwound nickel strings on rosewood fretboard, played fingerstyle with organic string dynamics and natural fret buzz, plugged into classic Ampeg SVT tube amplifier and 8x10 speaker cabinet, warm analog direct-box bass tone, authentic physical wooden electric bass guitar, zero synth bass",
                 "fender jazz bass 1975": "vintage 1975 Fender Jazz Bass with ash body and maple fingerboard with black block inlays, bridge pickup single-coil growl, bright biting treble, scooped mid punch, Jaco Pastorius style lyrical fingerstyle tone, real roundwound nickel strings, mic'd vintage Ampeg SVT tube amplifier and 8x10 cabinet, authentic physical wooden electric bass guitar, zero synth bass",
@@ -3088,11 +3152,15 @@ async def run_transform_task(
             genre_anchor = f"congregational Christian praise{tempo_str}, dynamic and uplifting atmosphere, church acoustic resonance, passionate communal delivery"
         elif is_modern_composition:
             tempo_str = f", {bpm_tag}" if bpm_tag else ""
-            genre_anchor = f"contemporary studio production{tempo_str}, modern live room acoustics, clear studio definition, expressive natural delivery"
-        elif bpm_tag:
-            genre_anchor = bpm_tag
+            meter_str = f", {eff_cfg['meter_clause']}" if eff_cfg.get("meter_clause") else ""
+            genre_anchor = f"contemporary studio production{meter_str}{tempo_str}, modern live room acoustics, clear studio definition, expressive natural delivery"
         else:
-            genre_anchor = ""
+            anchors = []
+            if eff_cfg.get("meter_clause"):
+                anchors.append(eff_cfg["meter_clause"])
+            if bpm_tag:
+                anchors.append(bpm_tag)
+            genre_anchor = ", ".join(anchors)
 
         # Inyectar indicaciones estructurales de arreglo y transiciones en final_lyrics
         final_lyrics = inject_arrangement_cues_into_lyrics(
