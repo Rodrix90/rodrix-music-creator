@@ -939,6 +939,905 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     font-size: 18px !important;
   }
 }
+
+/* ==========================================================================
+   RODRIX MUSIC CREATOR 4.0 — STUDIO PRO DESIGN SYSTEM (WEB + ANDROID)
+   ========================================================================== */
+:root {
+  --bg-studio-obsidian: #0A0B14;
+  --bg-studio-deep: #111221;
+  --bg-studio-card: #18192E;
+  --bg-studio-elevated: #21233D;
+  --border-studio-subtle: rgba(99, 102, 241, 0.2);
+  --border-studio-glow: rgba(99, 102, 241, 0.5);
+  --accent-pro: #6366F1;
+  --accent-pro-light: #818CF8;
+  --accent-gradient-pro: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  --studio-emerald: #10B981;
+  --studio-amber: #F59E0B;
+  --studio-red: #EF4444;
+  --studio-sky: #0EA5E9;
+  --shadow-studio-card: 0 12px 35px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Modo Asistente vs Modo Estudio Pro */
+body.mode-assistant .pro-only {
+  display: none !important;
+}
+body.mode-assistant .assistant-prominent {
+  display: flex !important;
+}
+body.mode-pro .pro-only {
+  display: flex !important;
+}
+body.mode-pro .pro-only-block {
+  display: block !important;
+}
+body.mode-pro .pro-only-grid {
+  display: grid !important;
+}
+
+/* Selector de modo en cabecera */
+.studio-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-studio-subtle);
+  border-radius: 99px;
+  padding: 3px;
+  gap: 2px;
+  backdrop-filter: blur(8px);
+}
+.mode-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.mode-tab-btn:hover {
+  color: #fff;
+}
+.mode-tab-btn.active {
+  background: var(--accent-gradient-pro);
+  color: #fff !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.45);
+}
+
+/* Hero Prompt Card 4.0 */
+.hero-prompt-card {
+  background: linear-gradient(165deg, rgba(26, 27, 46, 0.95), rgba(16, 17, 30, 0.98)) !important;
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+  box-shadow: 0 14px 45px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  position: relative;
+  overflow: hidden;
+}
+.hero-prompt-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6366F1, #8B5CF6, #38BDF8, transparent);
+}
+
+/* Píldoras de inspiración musical para Prompt Libre */
+.prompt-inspiration-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.prompt-tag-chip {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  color: #C7D2FE;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.prompt-tag-chip:hover {
+  background: rgba(99, 102, 241, 0.26);
+  border-color: #818CF8;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Selector visual de métrica musical y pulsos */
+.musical-meter-widget {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-studio-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rhythm-pulse-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.pulse-step {
+  height: 22px;
+  flex: 1;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-family: 'Consolas', monospace;
+  font-weight: 700;
+  color: var(--muted);
+  transition: all 0.2s;
+}
+.pulse-step.accent {
+  background: linear-gradient(180deg, #6366F1, #4F46E5);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+  transform: scaleY(1.08);
+}
+
+/* Tap Tempo Button */
+.btn-tap-tempo {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #FDE68A;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+.btn-tap-tempo:active {
+  transform: scale(0.94);
+  background: rgba(245, 158, 11, 0.3);
+}
+
+/* Selector de Motor Dual (Udio API vs Motor SF2 Gratuito) */
+.engine-toggle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+.engine-choice-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid var(--border-studio-subtle);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.engine-choice-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.06);
+}
+.engine-choice-card.active {
+  border-color: var(--accent-pro);
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.8));
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+}
+.engine-choice-card.engine-sf2.active {
+  border-color: var(--studio-emerald);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(15, 23, 42, 0.8));
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+}
+
+/* VU Meter Estudio para Cabina de Voz */
+.broadcast-vu-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #0E0F1A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.vu-meter-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-family: monospace;
+  color: var(--muted);
+}
+.vu-meter-bar-wrap {
+  height: 10px;
+  background: #1A1B29;
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+.vu-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10B981 0%, #10B981 70%, #F59E0B 85%, #EF4444 100%);
+  transition: width 0.08s ease;
+  border-radius: 5px;
+}
+
+/* Filtros y Búsqueda en Mi Librería 4.0 */
+.lib-search-filter-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(26, 27, 46, 0.6);
+  border: 1px solid var(--border-studio-subtle);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(8px);
+}
+.lib-filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lib-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.lib-chip:hover {
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+.lib-chip.active {
+  background: var(--accent-gradient-pro);
+  border-color: var(--accent-pro);
+  color: #fff !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+}
+
+/* Bottom Sheet deslizable para Android y móvil */
+.studio-bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 10200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.studio-bottom-sheet-card {
+  background: linear-gradient(180deg, #1C1E34, #121324);
+  border-top: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding: 14px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.8);
+  animation: sheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheet-drag-handle {
+  width: 44px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 99px;
+  margin: 0 auto 12px;
+}
+
+/* Indicador LED de estado */
+.studio-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.studio-led.online { background: #10B981; box-shadow: 0 0 8px #10B981; }
+.studio-led.recording { background: #EF4444; box-shadow: 0 0 10px #EF4444; animation: ledBlink 1s infinite; }
+.studio-led.standby { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
+@keyframes ledBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+
+
+/* --- STUDIO PRO 4.0 EXPANDED COMPONENT STYLES --- */
+.studio-mode-toggle {
+  display: flex;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 3px;
+  margin: 12px 0 16px 0;
+}
+.studio-mode-toggle .mode-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 36px;
+}
+.studio-mode-toggle .mode-btn.active {
+  background: linear-gradient(135deg, var(--accent), #7C3AED);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+.mobile-mode-pill {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  padding: 5px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  color: #A5B4FC;
+  font-size: 11px;
+  font-weight: 700;
+  min-height: 36px;
+}
+
+/* Prompt Inspiration Bar */
+.prompt-inspiration-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+.prompt-inspiration-bar .inspiration-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #A78BFA;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.inspiration-chip {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  color: #DDD6FE;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.inspiration-chip:hover, .inspiration-chip:active {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.6);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Visual Metric Widget */
+.visual-metric-widget {
+  background: linear-gradient(180deg, rgba(24, 25, 46, 0.95), rgba(15, 16, 32, 0.98));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.metric-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.metric-info-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.metric-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #F8FAFC;
+}
+.metric-subtitle {
+  font-size: 11px;
+  color: #94A3B8;
+}
+.metric-signature-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #C4B5FD;
+}
+.metric-signature-select select {
+  background: #0E0E17;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #F8FAFC;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Subdivision Pulse Bar */
+.pulse-subdivisions-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 11, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+.pulse-step-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 28px;
+}
+.pulse-dot-light {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #272738;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.15s ease;
+}
+.pulse-step-dot.accent .pulse-dot-light {
+  width: 18px;
+  height: 18px;
+  background: rgba(245, 158, 11, 0.25);
+  border: 2px solid #F59E0B;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+.pulse-step-dot.active .pulse-dot-light {
+  background: #6366F1 !important;
+  border-color: #A5B4FC !important;
+  box-shadow: 0 0 12px #6366F1 !important;
+  transform: scale(1.15);
+}
+.pulse-step-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  font-family: monospace;
+}
+.pulse-step-dot.accent .pulse-step-num {
+  color: #F59E0B;
+  font-weight: 900;
+}
+
+/* Tempo & Key Control Bar */
+.tempo-key-control-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.key-control-group, .tempo-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #E2E8F0;
+}
+.key-control-group select {
+  background: #0E0E17;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #F8FAFC;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.tempo-control-group input[type="range"] {
+  flex: 1;
+  height: 6px;
+  accent-color: #6366F1;
+  cursor: pointer;
+}
+.bpm-number-display {
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: 800;
+  color: #F59E0B;
+  min-width: 38px;
+  text-align: center;
+}
+.btn-tap-tempo {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #A5B4FC;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+  min-height: 38px;
+}
+.btn-tap-tempo:active {
+  background: #6366F1;
+  color: #fff;
+  transform: scale(0.96);
+}
+
+/* Piano Roll Preview Card */
+.piano-roll-card {
+  background: #121324;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 14px;
+}
+.piano-roll-viewport {
+  width: 100%;
+  height: 180px;
+  background: #090A14;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.piano-roll-viewport canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Hymn Explorer Section */
+.hymn-explorer-section {
+  margin-top: 16px;
+  padding: 14px;
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+}
+.hymn-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.hymn-card {
+  background: #18192E;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.hymn-card:hover {
+  border-color: #6366F1;
+  background: #1F203D;
+  transform: translateY(-2px);
+}
+.hymn-card-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #F8FAFC;
+}
+.hymn-card-meta {
+  font-size: 10.5px;
+  color: #94A3B8;
+  margin: 4px 0 8px 0;
+}
+.hymn-card-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: #A5B4FC;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 1-Hour Continuous Album Card */
+.album-stitcher-card {
+  background: #16172B;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+
+/* Dual Broadcast VU Meter */
+.broadcast-vu-container {
+  background: #0A0B14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.vu-channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.vu-label {
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 11px;
+  color: #A5B4FC;
+  width: 14px;
+}
+.vu-meter-bar {
+  flex: 1;
+  height: 12px;
+  background: #18192E;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.vu-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10B981 0%, #10B981 60%, #F59E0B 80%, #EF4444 100%);
+  border-radius: 5px;
+  transition: width 0.06s ease-out;
+}
+.vu-db-readout {
+  font-family: monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #CBD5E1;
+  min-width: 52px;
+  text-align: right;
+}
+.vu-scale-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 22px 0 22px;
+  font-size: 9px;
+  font-family: monospace;
+  color: #64748B;
+}
+
+/* Vocal Channel Strip */
+.vocal-channel-strip {
+  background: #141528;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.channel-strip-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #F8FAFC;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.strip-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.strip-control-cell {
+  background: #0E0F1F;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+.strip-control-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #CBD5E1;
+}
+.strip-sublabel {
+  font-size: 9.5px;
+  color: #94A3B8;
+}
+.studio-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+}
+.studio-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #272738;
+  border-radius: 20px;
+  transition: .2s;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: .2s;
+}
+.studio-switch input:checked + .switch-slider {
+  background-color: #10B981;
+}
+.studio-switch input:checked + .switch-slider:before {
+  transform: translateX(18px);
+}
+.strip-control-cell input[type="range"] {
+  width: 100%;
+  accent-color: #6366F1;
+}
+
+/* Mi Librería Studio Toolbar */
+.lib-toolbar-pro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  background: #141528;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.lib-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0E0F1F;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+.lib-search-box i {
+  color: var(--muted);
+  font-size: 16px;
+}
+.lib-search-box input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 12.5px;
+}
+.lib-search-clear {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
+.lib-filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lib-filter-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94A3B8;
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.lib-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+}
+.lib-filter-chip.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366F1;
+  color: #A5B4FC;
+}
+.lib-sort-select-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #94A3B8;
+  font-weight: 600;
+}
+.lib-sort-select-box select {
+  background: #0E0F1F;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #F8FAFC;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Dual Mode Visibility Rules */
+body.mode-assistant .pro-only {
+  display: none !important;
+}
+body.mode-pro .assistant-prominent {
+  /* Visible in both or adjusted */
+}
+
 </style>
 </head>
 <body>
@@ -952,6 +1851,9 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         <div class="logo-text">Rodrix Music Creator</div>
       </div>
       <div class="mobile-top-actions" style="display:none;align-items:center;gap:8px">
+        <button type="button" class="mobile-mode-pill" id="mobileModeToggle" onclick="toggleStudioMode()" title="Cambiar modo de interfaz" style="display:flex">
+          <i class="ph ph-faders"></i> <span id="mobileModeText">Estudio Pro</span>
+        </button>
         <div id="mobileAdminPill" onclick="showView('usuarios')" style="display:none;align-items:center;gap:5px;background:rgba(234,179,8,.18);border:1px solid rgba(234,179,8,.4);padding:5px 10px;border-radius:20px;cursor:pointer;color:#FBBF24;font-size:11px;font-weight:700;">
           <i class="ph ph-crown"></i> <span>👑 Usuarios</span>
         </div>
@@ -964,7 +1866,17 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </a>
       </div>
     </div>
-    <ul class="nav" style="margin-top:20px">
+        <!-- STUDIO PRO 4.0: DUAL MODE SWITCH -->
+    <div class="studio-mode-toggle" id="studioModeSwitch">
+      <button type="button" class="mode-btn active" id="btnModeAssistant" onclick="setStudioMode('assistant')">
+        <i class="ph ph-sparkle"></i> Modo Asistente
+      </button>
+      <button type="button" class="mode-btn" id="btnModePro" onclick="setStudioMode('pro')">
+        <i class="ph ph-faders"></i> Estudio Pro
+      </button>
+    </div>
+
+    <ul class="nav" style="margin-top:10px">
       <li><a href="#" class="active" id="nav-crear"><i class="ph ph-plus-circle"></i><span>Crear canción</span></a></li>
       <li><a href="#" id="nav-partituras"><i class="ph ph-waveform"></i><span>Melodías MIDI & Himnos</span></a></li>
       <li><a href="#" id="nav-vozenoff"><i class="ph ph-microphone-stage"></i><span>Voz en Off / Predicación</span></a></li>
@@ -1105,7 +2017,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <button type="button" class="btn-preset-use"><i class="ph ph-lightning"></i> Cargar</button>
                 </div>
                 <div class="preset-desc">Música de fondo para orar e intercesión. Sonidos épicos de adoración, 100% instrumental sin voces ni percusión.</div>
-                
+
                 <!-- Selector de Tipo de Piano y Sonido Épico -->
                 <div id="prayerPianoSoundOptions" onclick="event.stopPropagation()" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-wrap:wrap;gap:6px">
                   <div style="font-size:10.5px;font-weight:700;color:#93C5FD;width:100%;display:flex;align-items:center;gap:4px">
@@ -1618,6 +2530,74 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             </div>
           </details>
 
+          <!-- WIDGET MÉTRICO VISUAL STUDIO PRO 4.0 -->
+          <div class="visual-metric-widget pro-only" id="visualMetricWidget">
+            <div class="metric-widget-header">
+              <div class="metric-info-left">
+                <i class="ph ph-metronome" style="color:#6366F1;font-size:22px;"></i>
+                <div>
+                  <div class="metric-title">Métrica & Compás Visual Studio Pro</div>
+                  <div class="metric-subtitle" id="metricGroupingText">Subdivisión y acentos en tiempo real (4/4 estándar)</div>
+                </div>
+              </div>
+              <div class="metric-signature-select">
+                <label for="timeSigSelect"><i class="ph ph-clock-countdown"></i> Compás:</label>
+                <select id="timeSigSelect" onchange="onTimeSignatureSelect(this.value)">
+                  <option value="4/4" selected>4/4 (Estándar)</option>
+                  <option value="3/4">3/4 (Vals / Ternario)</option>
+                  <option value="6/8">6/8 (Compuesto 2x3)</option>
+                  <option value="7/8">7/8 (Asimétrico 2+2+3)</option>
+                  <option value="9/8">9/8 (Compuesto 3+3+3)</option>
+                  <option value="11/8">11/8 (Asimétrico 2+2+2+2+3)</option>
+                  <option value="7/4">7/4 (Cuaternario + Ternario 4+3)</option>
+                  <option value="5/4">5/4 (Take Five 3+2)</option>
+                  <option value="2/4">2/4 (Marcha / Corrido)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Visualizador de pulso y acentos de subdivisión -->
+            <div class="pulse-subdivisions-container" id="pulseSubdivisionsContainer">
+              <!-- Se puebla dinámicamente -->
+            </div>
+
+            <!-- Barra de control de Tonalidad, BPM y Tap Tempo -->
+            <div class="tempo-key-control-bar">
+              <div class="key-control-group">
+                <label for="keySelectorRoot"><i class="ph ph-music-note"></i> Tonalidad:</label>
+                <div style="display:flex;gap:4px">
+                  <select id="keySelectorRoot" onchange="updateMusicalKey()">
+                    <option value="C" selected>C (Do)</option>
+                    <option value="C#">C# / Db</option>
+                    <option value="D">D (Re)</option>
+                    <option value="Eb">Eb / D#</option>
+                    <option value="E">E (Mi)</option>
+                    <option value="F">F (Fa)</option>
+                    <option value="F#">F# / Gb</option>
+                    <option value="G">G (Sol)</option>
+                    <option value="Ab">Ab / G#</option>
+                    <option value="A">A (La)</option>
+                    <option value="Bb">Bb / A#</option>
+                    <option value="B">B (Si)</option>
+                  </select>
+                  <select id="keySelectorScale" onchange="updateMusicalKey()">
+                    <option value="Mayor" selected>Mayor</option>
+                    <option value="Menor">Menor</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="tempo-control-group">
+                <label for="bpmRangeSlider"><i class="ph ph-gauge"></i> BPM:</label>
+                <input type="range" id="bpmRangeSlider" min="40" max="220" value="125" oninput="onBpmSliderChange(this.value)">
+                <span class="bpm-number-display" id="bpmNumberDisplay">125</span>
+                <button type="button" class="btn-tap-tempo" id="btnTapTempo" onclick="handleTapTempo()" title="Haz clic repetidamente al ritmo de la música">
+                  <i class="ph ph-hand-tap"></i> TAP TEMPO
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- SELECTOR DE PATRÓN RÍTMICO Y BANDA -->
           <div class="field" style="margin-top:4px">
             <div class="label">
@@ -1732,7 +2712,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                   <input type="number" id="userBpmInput" min="40" max="220" step="1" value="125" style="width:68px;padding:3px 7px;font-size:12px;font-weight:700;border-radius:6px;border:1px solid rgba(167,139,250,0.45);background:rgba(15,23,42,0.85);color:#F8FAFC;text-align:center" title="BPM prioritario del usuario (sobrescribe cualquier valor por defecto del preset)">
                 </div>
               </div>
-              
+
               <!-- Hi-Hat Subdivision Selector -->
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
                 <span style="font-size:11px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
@@ -1772,7 +2752,21 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
           </div>
 
           <div class="field">
-            <label class="label" for="styleInput">Prompt de estilo y voz</label>
+            <label class="label" for="styleInput" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+              <span>✨ Prompt Libre de Estilo, Compás & Voz (Hero Creator)</span>
+              <span style="font-size:11px;color:#A78BFA;font-weight:600">Reconoce métricas 7/8, 9/8, 11/8, BPM y Tonalidad</span>
+            </label>
+            <!-- PASTILLAS DE INSPIRACIÓN RÁPIDA -->
+            <div class="prompt-inspiration-bar" id="promptInspirationBar">
+              <span class="inspiration-label"><i class="ph ph-lightbulb"></i> Inspiración:</span>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Adoración Solemne')">🕊️ Adoración Solemne</button>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Himno Clásico')">📖 Himno Clásico</button>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Gospel Power')">🔥 Gospel Power</button>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Acústico Íntimo')">🎸 Acústico Íntimo</button>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Alabanza Rítmica 7/8')">⚡ Rítmica 7/8</button>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Vals Vienés Imperial')">👑 Vals 3/4</button>
+              <button type="button" class="inspiration-chip" onclick="applyInspiration('Rock Cristiano Épico')">🤘 Rock Épico</button>
+            </div>
             <textarea id="styleInput" required placeholder="Describe todo aquí: Voz como Luis Miguel, estilo pop energético mexicano, con guitarras eléctricas Stratocaster y mucho flanger..."></textarea>
           </div>
 
@@ -2093,7 +3087,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <span>1. Sube hasta 10 Melodías MIDI (.mid o .midi):</span>
               <span style="font-size:11px;color:#A78BFA">Melodías y Notas 100% Exactas</span>
             </div>
-            
+
             <div id="sheetDropZone" style="border:2px dashed rgba(139,92,246,0.4);background:rgba(139,92,246,0.03);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s">
               <input type="file" id="sheetFilesInput" multiple accept=".mid,.midi" style="display:none">
               <i class="ph ph-waveform" style="font-size:42px;color:#A78BFA;margin-bottom:8px"></i>
@@ -2121,6 +3115,76 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <a href="https://hymnary.org" target="_blank" class="btn-sec" style="font-size:11.5px;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.4);text-decoration:none">
                 <i class="ph ph-arrow-square-out"></i> Abrir Hymnary.org
               </a>
+            </div>
+          </div>
+
+          <!-- PREVISUALIZADOR INTERACTIVO PIANO ROLL MIDI -->
+          <div class="piano-roll-card pro-only" id="pianoRollCard">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <i class="ph ph-piano-keys" style="color:#6366F1;font-size:20px"></i>
+                <div>
+                  <span style="font-weight:800;font-size:13px;color:#F8FAFC">Previsualizador de Partituras & Piano Roll MIDI</span>
+                  <div style="font-size:10.5px;color:#94A3B8">Visualiza notas, alturas y compás de tus melodías MIDI</div>
+                </div>
+              </div>
+              <span class="badge" id="pianoRollStatusBadge" style="background:rgba(99,102,241,0.15);color:#A5B4FC;border:1px solid rgba(99,102,241,0.3);font-size:10px">
+                <i class="ph ph-music-notes"></i> Modo Visualización Activo
+              </span>
+            </div>
+            <div class="piano-roll-viewport" id="pianoRollViewport">
+              <canvas id="midiPianoRollCanvas" width="900" height="180"></canvas>
+            </div>
+          </div>
+
+          <!-- EXPLORADOR DE HIMNOS EN DOMINIO PÚBLICO -->
+          <div class="hymn-explorer-section" id="hymnExplorerSection">
+            <div style="font-weight:800;font-size:13px;color:#F8FAFC;display:flex;align-items:center;gap:6px">
+              <i class="ph ph-book-open" style="color:#60A5FA"></i>
+              <span>Explorador de Himnos Clásicos en Dominio Público (1 Clic para Sintetizar)</span>
+            </div>
+            <div style="font-size:11px;color:#94A3B8;margin-top:2px">
+              Obras con derechos de autor vencidos verificadas internacionalmente.
+            </div>
+            <div class="hymn-cards-grid">
+              <div class="hymn-card" onclick="loadCuratedHymn('sublime_gracia')">
+                <div class="hymn-card-title">Sublime Gracia (Amazing Grace)</div>
+                <div class="hymn-card-meta">John Newton (1779) • 3/4 • Tonalidad G Mayor</div>
+                <div class="hymn-card-btn"><i class="ph ph-lightning"></i> Cargar Melodía MIDI</div>
+              </div>
+              <div class="hymn-card" onclick="loadCuratedHymn('cuan_grande_es_el')">
+                <div class="hymn-card-title">Cuán Grande Es Él</div>
+                <div class="hymn-card-meta">Carl Boberg (1885) • 4/4 • Tonalidad Bb Mayor</div>
+                <div class="hymn-card-btn"><i class="ph ph-lightning"></i> Cargar Melodía MIDI</div>
+              </div>
+              <div class="hymn-card" onclick="loadCuratedHymn('castillo_fuerte')">
+                <div class="hymn-card-title">Castillo Fuerte Es Nuestro Dios</div>
+                <div class="hymn-card-meta">Martín Lutero (1529) • 4/4 • Tonalidad D Mayor</div>
+                <div class="hymn-card-btn"><i class="ph ph-lightning"></i> Cargar Melodía MIDI</div>
+              </div>
+              <div class="hymn-card" onclick="loadCuratedHymn('santo_santo_santo')">
+                <div class="hymn-card-title">Santo, Santo, Santo</div>
+                <div class="hymn-card-meta">Reginald Heber (1826) • 4/4 • Tonalidad E Mayor</div>
+                <div class="hymn-card-btn"><i class="ph ph-lightning"></i> Cargar Melodía MIDI</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COMPILADOR DE ÁLBUM CONTINUO DE 1 HORA -->
+          <div class="album-stitcher-card" id="albumStitcherSection">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:38px;height:38px;border-radius:10px;background:rgba(99,102,241,0.2);display:grid;place-items:center;color:#818CF8;font-size:22px">
+                  <i class="ph ph-disc"></i>
+                </div>
+                <div>
+                  <div style="font-weight:800;font-size:13px;color:#F8FAFC">Compilador de Álbum Continuo de 1 Hora (Sin Cortes)</div>
+                  <div style="font-size:11px;color:#94A3B8">Concatena, nivela volumen y masteriza múltiples himnos para vigilias, cultos o streaming.</div>
+                </div>
+              </div>
+              <button type="button" class="btn-sec" onclick="openAlbumStitcherModal()" style="border-color:#6366F1;color:#A5B4FC;font-size:12px;padding:7px 16px;border-radius:8px;display:inline-flex;align-items:center;gap:6px">
+                <i class="ph ph-stack"></i> Abrir Compilador
+              </button>
             </div>
           </div>
 
@@ -2289,7 +3353,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
               <span>1. Audio del Pastor / Locutor</span>
               <span style="font-size:11px;color:var(--muted)">Graba con micrófono o sube una grabación existente</span>
             </div>
-            
+
             <div class="seg" id="voSourceSeg" style="display:flex;width:100%;margin-bottom:12px">
               <button type="button" id="tabVoRecord" class="on" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;font-weight:700">
                 <i class="ph ph-microphone"></i> 🎙️ Grabar en Vivo (Con pisado de errores)
@@ -2309,6 +3373,33 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 <div id="recTimer" style="font-family:monospace;font-size:24px;font-weight:800;color:#FBBF24;letter-spacing:1px">00:00.0</div>
               </div>
 
+              <!-- VU-METER BROADCAST ESTÉREO PROFESIONAL (-42dB a 0dB CLIP) -->
+              <div class="broadcast-vu-container" id="broadcastVuMeter">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:11px;font-weight:700;color:#CBD5E1;display:flex;align-items:center;gap:5px">
+                    <i class="ph ph-activity" style="color:#10B981"></i> VU-Meter Estéreo de Emisión (Broadcast Master)
+                  </span>
+                  <span id="vuStatusText" style="font-size:10px;color:#6EE7B7;font-family:monospace">Pico: -inf dB</span>
+                </div>
+                <div class="vu-channel">
+                  <span class="vu-label">L</span>
+                  <div class="vu-meter-bar">
+                    <div class="vu-meter-fill" id="vuMeterFillL"></div>
+                  </div>
+                  <span class="vu-db-readout" id="vuDbL">-inf dB</span>
+                </div>
+                <div class="vu-channel">
+                  <span class="vu-label">R</span>
+                  <div class="vu-meter-bar">
+                    <div class="vu-meter-fill" id="vuMeterFillR"></div>
+                  </div>
+                  <span class="vu-db-readout" id="vuDbR">-inf dB</span>
+                </div>
+                <div class="vu-scale-ticks">
+                  <span>-42</span><span>-30</span><span>-18</span><span>-12</span><span>-6</span><span>-3</span><span>0 dB CLIP</span>
+                </div>
+              </div>
+
               <!-- CONTENEDOR DE ONDA INTERACTIVA Y CANVAS -->
               <div style="position:relative;background:#0F0F17;border:1px solid var(--border);border-radius:10px;padding:10px;min-height:105px;overflow:hidden">
                 <canvas id="recLiveCanvas" width="800" height="90" style="width:100%;height:90px;display:none"></canvas>
@@ -2317,6 +3408,57 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
                 </div>
                 <div id="recWaveEmpty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:var(--muted);pointer-events:none;white-space:nowrap">
                   <i class="ph ph-waveform"></i> La onda de tu voz aparecerá aquí mientras hablas
+                </div>
+              </div>
+
+              <!-- VOCAL CHANNEL STRIP PRO: HPF, DE-ESSER, EQ 3 BANDAS, AUTO-DUCKING -->
+              <div class="vocal-channel-strip pro-only" id="vocalChannelStrip">
+                <div class="channel-strip-title">
+                  <i class="ph ph-equalizer" style="color:#6366F1"></i>
+                  <span>Channel Strip Vocal de Emisión (Broadcast Processing)</span>
+                </div>
+                <div class="strip-controls-grid">
+                  <div class="strip-control-cell">
+                    <div class="strip-control-label">Filtro HPF</div>
+                    <label class="studio-switch">
+                      <input type="checkbox" id="chkStripHpf" checked onchange="updateVocalProcessing()">
+                      <span class="switch-slider"></span>
+                    </label>
+                    <span class="strip-sublabel">80 Hz (Corta ruidos)</span>
+                  </div>
+
+                  <div class="strip-control-cell">
+                    <div class="strip-control-label">De-Esser</div>
+                    <label class="studio-switch">
+                      <input type="checkbox" id="chkStripDeesser" checked onchange="updateVocalProcessing()">
+                      <span class="switch-slider"></span>
+                    </label>
+                    <span class="strip-sublabel">Anti-Siseo (6-8 kHz)</span>
+                  </div>
+
+                  <div class="strip-control-cell">
+                    <div class="strip-control-label">EQ Graves (100Hz)</div>
+                    <input type="range" id="eqLowGain" min="-12" max="12" value="1" step="1" oninput="updateVocalProcessing()">
+                    <span class="strip-sublabel" id="eqLowVal">+1 dB</span>
+                  </div>
+
+                  <div class="strip-control-cell">
+                    <div class="strip-control-label">EQ Medios (1kHz)</div>
+                    <input type="range" id="eqMidGain" min="-12" max="12" value="2" step="1" oninput="updateVocalProcessing()">
+                    <span class="strip-sublabel" id="eqMidVal">+2 dB (Presencia)</span>
+                  </div>
+
+                  <div class="strip-control-cell">
+                    <div class="strip-control-label">EQ Agudos (10kHz)</div>
+                    <input type="range" id="eqHighGain" min="-12" max="12" value="1" step="1" oninput="updateVocalProcessing()">
+                    <span class="strip-sublabel" id="eqHighVal">+1 dB (Aire)</span>
+                  </div>
+
+                  <div class="strip-control-cell">
+                    <div class="strip-control-label">Auto-Ducking</div>
+                    <input type="range" id="stripDuckingFader" min="0" max="100" value="75" step="1" oninput="updateVocalProcessing()">
+                    <span class="strip-sublabel" id="duckingFaderVal">75% (Baja fondo al hablar)</span>
+                  </div>
                 </div>
               </div>
 
@@ -2597,6 +3739,34 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
             <button type="button" class="btn-sec" id="refreshLib" style="padding:6px 14px;font-size:12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px">
               <i class="ph ph-arrows-clockwise"></i> Actualizar
             </button>
+          </div>
+        </div>
+
+        <!-- BARRA DE BÚSQUEDA EN TIEMPO REAL, CHIPS DE FILTRO Y ORDENACIÓN PRO -->
+        <div class="lib-toolbar-pro" id="libToolbarPro">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div class="lib-search-box" style="flex:1;min-width:240px">
+              <i class="ph ph-magnifying-glass"></i>
+              <input type="text" id="libSearchInput" placeholder="Buscar por título, estilo, compás o tonalidad..." oninput="onLibSearchOrFilterChange()">
+              <button type="button" class="lib-search-clear" onclick="clearLibSearch()" id="btnClearLibSearch" style="display:none"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="lib-sort-select-box">
+              <label for="libSortSelect"><i class="ph ph-sort-ascending"></i> Ordenar:</label>
+              <select id="libSortSelect" onchange="onLibSearchOrFilterChange()">
+                <option value="recent" selected>Más recientes</option>
+                <option value="oldest">Más antiguos</option>
+                <option value="title_asc">Título (A-Z)</option>
+                <option value="duration_desc">Mayor duración</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="lib-filter-chips-row">
+            <button type="button" class="lib-filter-chip active" data-category="all" onclick="setLibCategoryFilter('all', this)">Todas las pistas</button>
+            <button type="button" class="lib-filter-chip" data-category="ia" onclick="setLibCategoryFilter('ia', this)">✨ Canciones IA</button>
+            <button type="button" class="lib-filter-chip" data-category="voiceover" onclick="setLibCategoryFilter('voiceover', this)">🎙️ Voz en Off</button>
+            <button type="button" class="lib-filter-chip" data-category="instrumental" onclick="setLibCategoryFilter('instrumental', this)">🎹 Instrumentales SF2</button>
+            <button type="button" class="lib-filter-chip" data-category="album" onclick="setLibCategoryFilter('album', this)">💿 Álbumes 1H</button>
           </div>
         </div>
 
@@ -3043,7 +4213,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
       <h3 style="font-size:16px;font-weight:700">Mi Perfil</h3>
       <button type="button" onclick="toggleProfileModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">&times;</button>
     </div>
-    
+
     <div style="display:flex;align-items:center;gap:14px;background:#181824;padding:14px;border-radius:12px;border:1px solid var(--border)">
       <div id="modalUserAvatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">R</div>
       <div style="display:flex;flex-direction:column;min-width:0">
@@ -3070,7 +4240,7 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
         </div>
         <span style="font-size:10px;background:rgba(37,99,235,0.25);color:#BFDBFE;padding:2px 6px;border-radius:4px;font-weight:600">rodryandy</span>
       </div>
-      
+
       <div style="display:flex;align-items:center;gap:6px;background:rgba(15,23,42,0.6);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.06)">
         <i class="ph ph-envelope-simple" style="color:var(--muted);font-size:14px"></i>
         <a href="mailto:support@udioapi.pro" style="color:var(--text);font-size:12px;font-family:monospace;text-decoration:none;word-break:break-all">support@udioapi.pro</a>
@@ -3337,7 +4507,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
       return;
     }
     const wasActive = card.classList.contains('active');
-    
+
     // Si ya estaba activo, un segundo clic lo desactiva (toggle)
     if (wasActive) {
       clearActivePreset();
@@ -3353,7 +4523,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
     const b = card.querySelector('.btn-preset-use');
     if (b) b.innerHTML = '<i class="ph ph-check"></i> Activo';
     if ($('btnClearPreset')) $('btnClearPreset').style.display = 'inline-flex';
-    
+
     const p = WORSHIP_PRESETS[card.dataset.preset];
     if (p) {
       $('styleInput').value = p.style;
@@ -3426,7 +4596,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
         $('styleInput').value = pSound.style;
         $('excludeInput').value = pSound.exclude || WORSHIP_PRESETS.piano_oracion.exclude;
         if ($('userBpmInput')) $('userBpmInput').value = '60';
-        
+
         // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
         if ($('chkDrums')) $('chkDrums').checked = false;
         if ($('chkBass')) $('chkBass').checked = false;
@@ -3484,7 +4654,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
         $('styleInput').value = '100% pure solo electric guitar, Fender Stratocaster electric guitar, clean chime, articulate string attack and warm singing sustain, plugged into tube amplifier, unaccompanied electric guitar solo performance, single isolated instrument, zero other instruments';
         $('excludeInput').value = 'drums, drum kit, snare, kick drum, bass, bass guitar, electric bass, synth bass, piano, keyboards, organ, synths, strings, choir, vocals, backing track, full band, rhythm section';
         if ($('userBpmInput')) $('userBpmInput').value = '90';
-        
+
         // Forzar estrictamente SOLO GUITARRA: Desactivar todos los demás instrumentos
         if ($('chkDrums')) $('chkDrums').checked = false;
         if ($('chkBass')) $('chkBass').checked = false;
@@ -3623,18 +4793,18 @@ $('applyGearBtn').addEventListener('click', () => {
     return;
   }
   let cur = $('styleInput').value.trim();
-  
+
   const expandedList = arr.map(g => GEAR_DETAILED_PROMPTS[g] || g);
   if (ampPrompts.length) expandedList.push(...ampPrompts);
   const gearStr = expandedList.join(', ');
-  
+
   if (cur) {
     cur += ', ' + gearStr;
   } else {
     cur = gearStr;
   }
   $('styleInput').value = cur;
-  
+
   // Si se seleccionó algún bajo del rack, prohibir automáticamente sintetizadores de bajo en exclusiones
   const hasBassGear = arr.some(g => g.includes('bass') || g.includes('contrabajo') || g.includes('stingray') || g.includes('precision'));
   if (hasBassGear) {
@@ -3887,13 +5057,13 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
     const soundKey = radio.value;
     const pSound = PRAYER_PIANO_SOUNDS[soundKey];
     if (!pSound) return;
-    
+
     // Asignar el estilo y las exclusiones específicas del instrumento seleccionado
     $('styleInput').value = pSound.style;
     if (pSound.exclude) {
       $('excludeInput').value = pSound.exclude;
     }
-    
+
     // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
     if ($('chkDrums')) $('chkDrums').checked = false;
     if ($('chkBass')) $('chkBass').checked = false;
@@ -3912,7 +5082,7 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
     $('lyricsInput').style.opacity = .4;
     $('lyricsInput').value = '';
     $('lyricsInput').placeholder = "[Solo Piano Instrumental - 100% Sin otros instrumentos]";
-    
+
     // Activar visualmente la tarjeta de Piano de Oración si no lo estaba
     const cardOracion = document.querySelector('.preset-card[data-preset="piano_oracion"]');
     if (cardOracion && !cardOracion.classList.contains('active')) {
@@ -3926,7 +5096,7 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
       if (b) b.innerHTML = '<i class="ph ph-check"></i> Activo';
       if ($('btnClearPreset')) $('btnClearPreset').style.display = 'inline-flex';
     }
-    
+
     // Sincronizar con el rack de estudio
     const targetGearId = pSound.gear;
     const pianoGear = document.querySelector(`.gear-card[data-gear="${targetGearId}"]`);
@@ -3945,7 +5115,7 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
       }
       if ($('rackChainText')) $('rackChainText').textContent = targetGearId.toUpperCase();
     }
-    
+
     if (typeof applyPresetInstruments === 'function') applyPresetInstruments('piano_oracion');
     showToast(`Sonido fijado: ${pSound.name}`, 'info');
     logLine(`Piano de Oración configurado con: ${pSound.name}`);
@@ -3974,7 +5144,7 @@ const NOTE_SPANISH_NAMES = {
 function normalizeChordToken(token) {
   let t = (token || '').trim();
   t = t.replace(/^[(\[{]+|[)\]},;:]+$/g, '');
-  
+
   for (const [lat, ang] of Object.entries(LATIN_MAP)) {
     const reg = new RegExp('^' + lat + '([#b]?)(.*)$', 'i');
     if (reg.test(t)) {
@@ -4006,7 +5176,7 @@ function transposeSingleChord(token, semitones) {
   const norm = normalizeChordToken(token);
   const m = norm.match(/^([A-G][b#]?)(maj7|maj9|maj|min|m7b5|m7|m9|m|sus2|sus4|sus|dim|aug|add9|add2|6|7|9|11|13)?(?:\/([A-G][b#]?))?$/i);
   if (!m) return token;
-  
+
   const root = m[1].toUpperCase();
   const quality = m[2] || '';
   const slash = m[3] ? m[3].toUpperCase() : null;
@@ -4078,12 +5248,12 @@ function parseSongChordsAndLyrics(rawText) {
       else if (secName.includes('solo')) secName = 'Solo';
       else if (secName.includes('outro')) secName = 'Outro';
       else secName = 'Estrofa';
-      
+
       currentSection = secName;
       if (!sections[currentSection]) sections[currentSection] = [];
-      
+
       cleanLyricsLines.push(`[${secName}]`);
-      
+
       const afterTag = trimmed.substring(sectionMatch[0].length).trim();
       if (afterTag) {
         const tagTokens = afterTag.split(/\s+/).filter(Boolean);
@@ -4145,7 +5315,7 @@ function parseSongChordsAndLyrics(rawText) {
     const firstChord = allChords[0].toUpperCase();
     const isFirstMinor = /m|min/i.test(allChords[0]) && !/maj/i.test(allChords[0]);
     let topRoot = Object.keys(rootCounts).reduce((a, b) => rootCounts[a] > rootCounts[b] ? a : b, Object.keys(rootCounts)[0]);
-    
+
     const firstRoot = firstChord.replace(/maj7|maj|min|m7|m|sus|\/.*$/i, '');
     if (rootCounts[firstRoot] && rootCounts[firstRoot] >= Math.max(1, (rootCounts[topRoot] || 0) - 1)) {
       topRoot = firstRoot;
@@ -4714,6 +5884,9 @@ function toggleRecPlayback() {
     $('btnRecPlayText').textContent = 'Pre-escuchar';
     $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
   } else {
+    if (window.GlobalAudioController && window.GlobalAudioController.isPlaying()) {
+      window.GlobalAudioController.pause();
+    }
     recWs.play();
     $('btnRecPlayText').textContent = 'Pausa';
     $('btnRecPlay').querySelector('i').className = 'ph ph-pause-fill';
@@ -4773,10 +5946,10 @@ function applyLiveRecording() {
   }
   recordedVoiceBlob = pcmToWav(recPcmChunks, recSampleRate);
   if ($('recNudgeBar')) $('recNudgeBar').style.display = 'none';
-  
+
   $('recReadyBadge').style.display = 'inline-flex';
   $('recReadyText').textContent = `✓ Grabación cargada (${formatRecTime(recDurationMs)} min) lista para masterizar`;
-  
+
   if (!$('voTitleInput').value.trim()) {
     const d = new Date();
     $('voTitleInput').value = `Predicación ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
@@ -4923,6 +6096,11 @@ $('voiceoverForm').addEventListener('submit', async e => {
   fd.append('leveling', $('voLeveling').checked);
   fd.append('stereo_wide', $('voStereoWide').checked);
   fd.append('radio_structure', $('voRadioStructure').value);
+  fd.append('hpf', $('chkStripHpf') ? $('chkStripHpf').checked : true);
+  fd.append('deesser', $('chkStripDeesser') ? $('chkStripDeesser').checked : true);
+  fd.append('eq_low', $('eqLowGain') ? $('eqLowGain').value : 1.0);
+  fd.append('eq_mid', $('eqMidGain') ? $('eqMidGain').value : 2.0);
+  fd.append('eq_high', $('eqHighGain') ? $('eqHighGain').value : 1.0);
   if (selectedBg === 'custom' && $('voCustomBgInput').files[0]) {
     fd.append('custom_bg', $('voCustomBgInput').files[0]);
   }
@@ -4956,7 +6134,7 @@ $('voiceoverForm').addEventListener('submit', async e => {
           $('voProgressPct').textContent = '100%';
           $('voProgressText').textContent = '¡Predicación procesada y masterizada con éxito!';
           $('voSubmitBtn').disabled = false;
-          
+
           const tInfo = (st.tracks && st.tracks[0]) || {};
           const title = tInfo.title || $('voTitleInput').value.trim() || 'Predicación Pastoral';
           $('voResultTitle').textContent = title;
@@ -5008,11 +6186,11 @@ const sheetFilesInput = $('sheetFilesInput');
 
 if (sheetDropZone && sheetFilesInput) {
   sheetDropZone.addEventListener('click', () => sheetFilesInput.click());
-  
+
   sheetFilesInput.addEventListener('change', e => {
     handleSheetFilesSelection(e.target.files);
   });
-  
+
   ['dragenter', 'dragover'].forEach(name => {
     sheetDropZone.addEventListener(name, e => {
       e.preventDefault();
@@ -5037,7 +6215,7 @@ if (sheetDropZone && sheetFilesInput) {
 function handleSheetFilesSelection(files) {
   if (!files || !files.length) return;
   selectedSheetFiles = Array.from(files).slice(0, 10);
-  
+
   const preview = $('sheetFileListPreview');
   if (preview) {
     preview.innerHTML = selectedSheetFiles.map((f, i) => `
@@ -5046,9 +6224,17 @@ function handleSheetFilesSelection(files) {
       </span>
     `).join('');
   }
-  
+
   if ($('btnAnalyzeSheets')) {
     $('btnAnalyzeSheets').disabled = false;
+  }
+  if ($('pianoRollStatusBadge') && files[0]) {
+    $('pianoRollStatusBadge').textContent = `MIDI Cargado: ${files[0].name} (${(files[0].size/1024).toFixed(0)} KB)`;
+    $('pianoRollStatusBadge').style.background = 'rgba(16, 185, 129, 0.2)';
+    $('pianoRollStatusBadge').style.color = '#6EE7B7';
+  }
+  if (typeof drawPianoRollDemo === 'function') {
+    drawPianoRollDemo('midiPianoRollCanvas');
   }
   showToast(`${selectedSheetFiles.length} archivo(s) MIDI seleccionado(s). Pulsa 'Procesar y Sintetizar Melodías'.`, 'info');
 }
@@ -5056,18 +6242,18 @@ function handleSheetFilesSelection(files) {
 if ($('btnAnalyzeSheets')) {
   $('btnAnalyzeSheets').addEventListener('click', async () => {
     if (!selectedSheetFiles.length) return;
-    
+
     $('btnAnalyzeSheets').disabled = true;
     if ($('sheetScanLoading')) $('sheetScanLoading').style.display = 'inline-flex';
-    
+
     const fd = new FormData();
     selectedSheetFiles.forEach(f => fd.append('files', f));
-    
+
     try {
       const resp = await fetch('/api/scan_sheet_music', { method: 'POST', body: fd });
       if (!resp.ok) throw new Error('Error al escanear partituras');
       const data = await resp.json();
-      
+
       scannedHymnsData = data.results || [];
       renderScannedHymns();
       showToast(`¡${scannedHymnsData.length} melodía(s) MIDI procesada(s) con éxito! Revisa los datos y pulsa Generar.`, 'ok');
@@ -5084,19 +6270,19 @@ function renderScannedHymns() {
   const container = $('scannedHymnsContainer');
   const list = $('scannedHymnsList');
   if (!container || !list) return;
-  
+
   if (!scannedHymnsData.length) {
     container.style.display = 'none';
     return;
   }
-  
+
   container.style.display = 'block';
   if ($('scannedCountBadge')) $('scannedCountBadge').textContent = scannedHymnsData.length;
   if ($('sheetBatchBadge')) {
     $('sheetBatchBadge').style.display = 'inline-flex';
     if ($('sheetCountText')) $('sheetCountText').textContent = `${scannedHymnsData.length} Melodías MIDI Listas`;
   }
-  
+
   list.innerHTML = scannedHymnsData.map((h, i) => `
     <div class="hymn-card" data-idx="${i}" style="background:rgba(255,255,255,0.03);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -5287,7 +6473,7 @@ window.generateSingleHymn = async function(idx) {
   const orig = scannedHymnsData[idx] || {};
   const title = (card ? card.querySelector('.hymn-title-input').value.trim() : '') || orig.title || 'Himno Sagrado';
   const lyrics = (card ? card.querySelector('.hymn-lyrics-input').value.trim() : '') || orig.lyrics || '';
-  
+
   // Preferir arreglo individual de la tarjeta si está definido; de lo contrario el global:
   const cardSelect = card ? card.querySelector('.hymn-preset-select') : null;
   const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
@@ -5378,7 +6564,7 @@ window.generateSingleHymn = async function(idx) {
         const sRes = await fetch('/api/status/' + taskId);
         if (!sRes.ok) return;
         const taskInfo = await sRes.json();
-        
+
         let pct = 15;
         let phase = `Orquestando partitura en compás ${orig.meter || '4/4'}...`;
         if (pollSecs >= 6 && pollSecs < 18) {
@@ -5396,14 +6582,14 @@ window.generateSingleHymn = async function(idx) {
         if (taskInfo.status === 'COMPLETED') {
           clearInterval(pollSingleTimer);
           if (btn) btn.disabled = false;
-          
+
           updateProgressUI(100, '¡Himno completado con éxito!');
           if (cardProgFill) cardProgFill.style.background = 'linear-gradient(90deg,#10B981,#34D399)';
           if (gProgFill) gProgFill.style.background = 'linear-gradient(90deg,#10B981,#34D399)';
           if (gProgTitle) gProgTitle.innerHTML = `<i class="ph ph-check-circle" style="color:#34D399"></i> ¡"${title}" Creado con Éxito!`;
-          
+
           await loadLibrary();
-          
+
           const tracks = taskInfo.tracks || [];
           if (tracks.length > 0) {
             const track = tracks[0];
@@ -5456,7 +6642,7 @@ window.loadHymnIntoMainCreator = function(idx) {
   const orig = scannedHymnsData[idx] || {};
   const title = (card ? card.querySelector('.hymn-title-input').value.trim() : '') || orig.title || 'Himno Sagrado';
   const lyrics = (card ? card.querySelector('.hymn-lyrics-input').value.trim() : '') || orig.lyrics || '';
-  
+
   const cardSelect = card ? card.querySelector('.hymn-preset-select') : null;
   const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
   const globalPreset = $('batchStylePreset') ? $('batchStylePreset').value : 'vienna_orchestra';
@@ -5516,22 +6702,22 @@ if ($('btnLaunchBatch')) {
       alert('Primero analiza al menos una partitura.');
       return;
     }
-    
+
     const hymnCards = document.querySelectorAll('#scannedHymnsList .hymn-card');
     const globalPreset = $('batchStylePreset').value;
     const globalVocal = $('batchVocalChoice').value;
-    
+
     const hymnsToGenerate = [];
     hymnCards.forEach((card, idx) => {
       const orig = scannedHymnsData[idx] || {};
       const title = card.querySelector('.hymn-title-input').value.trim() || orig.title;
       const lyrics = card.querySelector('.hymn-lyrics-input').value.trim() || orig.lyrics;
-      
+
       const cardSelect = card ? card.querySelector('.hymn-preset-select') : null;
       const cardChoice = (cardSelect && cardSelect.value !== 'inherit') ? cardSelect.value : null;
       const chosenPreset = cardChoice || globalPreset;
       const style = buildHymnStylePrompt(orig, chosenPreset);
-      
+
       hymnsToGenerate.push({
         title: title,
         lyrics: lyrics,
@@ -5542,14 +6728,14 @@ if ($('btnLaunchBatch')) {
         model: 'chirp-v5'
       });
     });
-    
+
     $('btnLaunchBatch').disabled = true;
     $('batchProgressBox').style.display = 'block';
     $('batchProgressTitle').textContent = `Iniciando cola de ${hymnsToGenerate.length} himnos...`;
     $('batchProgressPct').textContent = '0%';
     $('batchProgressFill').style.width = '0%';
     $('batchCompletedList').innerHTML = '';
-    
+
     try {
       const res = await fetch('/api/batch_generate', {
         method: 'POST',
@@ -5566,7 +6752,7 @@ if ($('btnLaunchBatch')) {
       }
       const data = await res.json();
       currentBatchId = data.batch_id;
-      
+
       if (batchPollTimer) clearInterval(batchPollTimer);
       batchPollTimer = setInterval(pollBatchStatus, 3500);
       pollBatchStatus();
@@ -5585,11 +6771,11 @@ async function pollBatchStatus() {
     if (!res.ok) return;
     const task = await res.json();
     latestBatchResult = task;
-    
+
     $('batchProgressTitle').textContent = task.current_title || 'Generando himnos...';
     $('batchProgressPct').textContent = `${task.progress_pct}%`;
     $('batchProgressFill').style.width = `${task.progress_pct}%`;
-    
+
     if (task.completed_tracks && task.completed_tracks.length > 0) {
       $('batchCompletedList').innerHTML = task.completed_tracks.map(t => `
         <div style="display:flex;align-items:center;gap:6px;color:#34D399">
@@ -5597,7 +6783,7 @@ async function pollBatchStatus() {
         </div>
       `).join('');
     }
-    
+
     if (task.status === 'COMPLETED') {
       clearInterval(batchPollTimer);
       batchPollTimer = null;
@@ -5623,19 +6809,19 @@ if ($('btnMergeAlbum')) {
     if (!trackIds.length && $('libList')._tracks) {
       trackIds = $('libList')._tracks.slice(0, 10).map(t => t.id);
     }
-    
+
     if (trackIds.length < 2) {
       alert('Se necesitan al menos 2 canciones para compilar un álbum continuo. Genera primero los himnos o selecciónalos en la Librería.');
       return;
     }
-    
+
     const albumTitle = $('albumTitleInput').value.trim() || 'Himnario Devocional - 1 Hora de Adoración Continua';
     const crossfade = parseFloat($('albumCrossfade').value) || 4.0;
-    
+
     $('btnMergeAlbum').disabled = true;
     $('albumMergeSpinner').style.display = 'inline-flex';
     $('albumResultCard').style.display = 'none';
-    
+
     try {
       const res = await fetch('/api/merge_continuous_album', {
         method: 'POST',
@@ -5651,17 +6837,17 @@ if ($('btnMergeAlbum')) {
         throw new Error(j.detail || 'Fallo al unir álbum');
       }
       const data = await res.json();
-      
+
       $('albumResultCard').style.display = 'block';
       $('albumResultTitle').textContent = `📀 ${data.title}`;
       $('albumResultMeta').textContent = `Duración Total: ${fmtDur(data.duration)} • ${data.tracks_count} Himnos enlazados con crossfade`;
-      
+
       $('btnPlayAlbum').onclick = () => {
         playTrack({ id: data.album_id, title: data.title, audio_url: data.audio_url });
       };
       $('btnDownloadAlbum').href = data.audio_url;
       $('btnDownloadAlbum').download = `${data.title}.mp3`;
-      
+
       showToast('¡Álbum continuo de 1 hora creado con éxito!', 'ok');
       await loadLibrary();
     } catch (err) {
@@ -5873,7 +7059,7 @@ $('genForm').addEventListener('submit', async e => {
     const antiLatin = 'ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa';
     finalExclude = finalExclude ? `${finalExclude}, ${antiLatin}` : antiLatin;
   }
-  
+
   // Baneo obligatorio de sintetizadores de bajo cuando la pista lleva bajo real
   const hasAnyBass = !isSoloGuitarMode && (($('chkBass') && $('chkBass').checked) || finalStyle.toLowerCase().includes('bass') || finalStyle.toLowerCase().includes('bajo'));
   if (hasAnyBass) {
@@ -5929,7 +7115,7 @@ if ($('audioInput')) {
       if (badge) badge.style.display = 'none';
       return;
     }
-    
+
     if (badge) {
       badge.style.display = 'flex';
       badge.style.background = 'rgba(59,130,246,0.12)';
@@ -5937,7 +7123,7 @@ if ($('audioInput')) {
       badge.style.color = '#93C5FD';
       badge.innerHTML = `<i class="ph ph-spinner spinning"></i> Verificando decodificación del archivo ${esc(file.name)}...`;
     }
-    
+
     const fd = new FormData();
     fd.append('file', file);
     try {
@@ -6124,6 +7310,7 @@ function renderLibrary(tracks){
     </div>`;
   }).join('');
   l._tracks = tracks;
+  l._allTracks = [...tracks];
   updateSelectedTracksState();
 }
 
@@ -6161,7 +7348,7 @@ function updateSelectedTracksState() {
   if ($('selectedCountBadge')) {
     $('selectedCountBadge').textContent = `${count} seleccionados`;
   }
-  
+
   const allChk = $('selectAllTracksChk');
   if (allChk) {
     allChk.checked = total > 0 && count === total;
@@ -6276,7 +7463,7 @@ async function shareSelectedTracks(trackIds = null) {
       const t = tracks[i];
       const safeTitle = (t.title || 'audio').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'audio';
       const filename = `${safeTitle}.mp3`;
-      
+
       const res = await fetch('/api/download/' + encodeURIComponent(t.id) + '/mp3');
       if (!res.ok) {
         throw new Error(`No se pudo obtener el audio de "${t.title}"`);
@@ -6333,7 +7520,7 @@ function showShareFallbackModal(tracks) {
       <p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.4;">
         Los archivos MP3 ya se descargaron a ${targetName}. Puedes abrir WhatsApp o tu aplicación de mensajería para adjuntarlos.
       </p>
-      
+
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
         <a href="https://web.whatsapp.com/" target="_blank" style="background:#25D366;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(37,211,102,0.3);">
           <i class="ph ph-whatsapp-logo" style="font-size:18px;"></i> Abrir WhatsApp
@@ -6342,7 +7529,7 @@ function showShareFallbackModal(tracks) {
           <i class="ph ph-android-logo" style="font-size:16px;color:#A5B4FC;"></i> Instalar / Actualizar App Android (Envío nativo en 1 toque)
         </a>
       </div>
-      
+
       <button type="button" onclick="$('shareFallbackModal').style.display='none'" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 12px;">
         Cerrar
       </button>
@@ -6380,7 +7567,7 @@ async function downloadSelectedTracks(trackIds = null) {
       const safeTitle = (t.title || 'audio').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'audio';
       const dlUrl = '/api/download/' + encodeURIComponent(t.id) + '/mp3';
       triggerAudioDownload(dlUrl, `${safeTitle}.mp3`);
-      
+
       if (i < tracks.length - 1) {
         await new Promise(r => setTimeout(r, 600));
       }
@@ -6409,11 +7596,11 @@ function showToast(msg, type = 'info') {
   const toast = document.createElement('div');
   const bg = type === 'success' ? '#10B981' : type === 'err' ? '#EF4444' : '#6366F1';
   toast.style.cssText = `background:${bg};color:#fff;padding:10px 18px;border-radius:30px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:inline-flex;align-items:center;gap:8px;pointer-events:auto;animation:toastIn 0.3s ease forwards;`;
-  
+
   let icon = 'ph-info';
   if (type === 'success') icon = 'ph-check-circle';
   if (type === 'err') icon = 'ph-warning-circle';
-  
+
   toast.innerHTML = `<i class="ph ${icon}" style="font-size:16px;"></i> <span>${msg}</span>`;
   container.appendChild(toast);
 
@@ -6538,6 +7725,12 @@ window.GlobalAudioController = (function() {
         try { p.pause(); } catch(e){}
       }
     });
+    if (typeof recWs !== 'undefined' && recWs && typeof recWs.isPlaying === 'function' && recWs.isPlaying()) {
+      try { recWs.pause(); } catch(e){}
+    }
+    if (typeof ws !== 'undefined' && ws && typeof ws.isPlaying === 'function' && ws.isPlaying()) {
+      try { ws.pause(); } catch(e){}
+    }
   }
 
   function setupMediaSession() {
@@ -7298,7 +8491,7 @@ function triggerAudioDownload(url, defaultFilename) {
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
-  
+
   setTimeout(() => {
     try { if (link.parentNode) document.body.removeChild(link); } catch(e){}
   }, 3000);
@@ -7520,7 +8713,7 @@ $('libList').addEventListener('click', async e => {
     if (t.pronunciation !== undefined && t.pronunciation) $('pronInput').value = t.pronunciation;
     if (t.obfuscate !== undefined) $('obfuscate').checked = !!t.obfuscate;
     if (t.exclude_styles !== undefined) $('excludeInput').value = t.exclude_styles;
-    
+
     setActive('nav-crear');
     $('view-crear').style.display = 'flex';
     $('view-vozenoff').style.display = 'none';
@@ -7848,10 +9041,10 @@ async function loadUsers() {
       const btnAction = isBlocked ? 'active' : 'blocked';
       const btnText = isBlocked ? '🔓 Habilitar' : '🔒 Bloquear';
       const btnColor = isBlocked ? '#22C55E' : '#EF4444';
-      const avatarHtml = u.picture 
+      const avatarHtml = u.picture
         ? `<img src="${esc(u.picture)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover" alt="">`
         : `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff">${esc((u.name||u.email||'U')[0].toUpperCase())}</div>`;
-      
+
       return `
         <div class="user-row" style="background:#181824;border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:200px">
@@ -8197,7 +9390,7 @@ function getFreeRhythmFlagsFromStudio() {
 async function previewFreeInstrument(instId, btnEl) {
   const bpm = parseInt($('userBpmInput')?.value || '125', 10) || 125;
   const musical_key = (typeof currentHarmonicAnalysis !== 'undefined' && currentHarmonicAnalysis && currentHarmonicAnalysis.detectedKey) ? currentHarmonicAnalysis.detectedKey : 'G';
-  
+
   const activePresetCard = document.querySelector('.preset-card.active');
   const activePreset = activePresetCard ? activePresetCard.dataset.preset : 'juvenil';
   let progression_style = 'alabanza_juvenil';
@@ -9105,6 +10298,524 @@ function setAmpABMode(mode) {
 
 initUnifiedInstruments();
 initAmplifiersRack();
+
+
+/* ==========================================================================
+   RODRIX MUSIC CREATOR 4.0: STUDIO PRO CONTROLLERS (FASE 2)
+   ========================================================================== */
+
+// --- 1. DUAL MODE: ASISTENTE VS ESTUDIO PRO ---
+let currentStudioMode = localStorage.getItem('rodrix_studio_mode') || 'assistant';
+
+function setStudioMode(mode) {
+  currentStudioMode = mode;
+  localStorage.setItem('rodrix_studio_mode', mode);
+
+  if (mode === 'pro') {
+    document.body.classList.remove('mode-assistant');
+    document.body.classList.add('mode-pro');
+    if ($('btnModeAssistant')) $('btnModeAssistant').classList.remove('active');
+    if ($('btnModePro')) $('btnModePro').classList.add('active');
+    if ($('mobileModeText')) $('mobileModeText').textContent = 'Modo Asistente';
+  } else {
+    document.body.classList.remove('mode-pro');
+    document.body.classList.add('mode-assistant');
+    if ($('btnModeAssistant')) $('btnModeAssistant').classList.add('active');
+    if ($('btnModePro')) $('btnModePro').classList.remove('active');
+    if ($('mobileModeText')) $('mobileModeText').textContent = 'Estudio Pro';
+  }
+}
+
+function toggleStudioMode() {
+  setStudioMode(currentStudioMode === 'pro' ? 'assistant' : 'pro');
+}
+
+// Initial mode setup
+document.addEventListener('DOMContentLoaded', () => {
+  setStudioMode(currentStudioMode);
+  initVisualMetricWidget();
+  drawPianoRollDemo('midiPianoRollCanvas');
+  initBroadcastVuMeter();
+});
+
+// --- 2. HERO PROMPT LIBRE INSPIRATION PILLS ---
+function applyInspiration(inspirationText) {
+  const styleInput = $('styleInput');
+  if (!styleInput) return;
+
+  const presetsMap = {
+    'Adoración Solemne': 'Adoración solemne, piano acústico de concierto y cuerdas orquestales cálidas, voz reverente y clara, tempo lento 68 BPM, compás 4/4, tonalidad D Mayor.',
+    'Himno Clásico': 'Himno clásico solemne, órgano tubular majestuoso, coro a cuatro voces, compás 4/4, 90 BPM, tonalidad F Mayor, reverencia sacra.',
+    'Gospel Power': 'Gospel contemporáneo enérgico, piano Hammond B3 con altavoz Leslie rotatorio, batería potente con caja brillante, bajo slap dinámico, coro góspel con palmas, 115 BPM, 4/4.',
+    'Acústico Íntimo': 'Acústico íntimo y sensible, guitarra criolla de nylon y guitarra acústica Taylor 814ce, voz suave y cercana sin reverberación excesiva, 72 BPM, compás 6/8, tonalidad G Mayor.',
+    'Alabanza Rítmica 7/8': 'Alabanza rítmica progresiva, compás 7/8 estricto (subdivisión 2+2+3), acentos en corcheas 1, 3 y 5, batería dinámica con hi-hat rápido, bajo Fender Precision y teclados, 107 BPM, tonalidad C Mayor.',
+    'Vals Vienés Imperial': 'Vals vienés imperial majestuoso, compás 3/4 ternario, filarmónica completa con violines fluidos, chelos profundos, maderas y timbales solemnes, 138 BPM, tonalidad C Mayor.',
+    'Rock Cristiano Épico': 'Rock cristiano moderno, guitarras eléctricas saturadas con amplificador a válvulas Marshall JCM800, solo de guitarra melódico y virtuoso, batería pesada con bombo de 22 pulgadas, 128 BPM, 4/4, tonalidad E Menor.'
+  };
+
+  const textToSet = presetsMap[inspirationText] || inspirationText;
+  styleInput.value = textToSet;
+  styleInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // Auto-detect meter and BPM
+  if (inspirationText.includes('7/8')) {
+    onTimeSignatureSelect('7/8');
+    onBpmSliderChange(107);
+  } else if (inspirationText.includes('3/4') || inspirationText.includes('Vals')) {
+    onTimeSignatureSelect('3/4');
+    onBpmSliderChange(138);
+  } else if (inspirationText.includes('6/8')) {
+    onTimeSignatureSelect('6/8');
+    onBpmSliderChange(72);
+  } else if (inspirationText.includes('68 BPM')) {
+    onTimeSignatureSelect('4/4');
+    onBpmSliderChange(68);
+  } else if (inspirationText.includes('115 BPM')) {
+    onTimeSignatureSelect('4/4');
+    onBpmSliderChange(115);
+  } else {
+    onTimeSignatureSelect('4/4');
+    onBpmSliderChange(125);
+  }
+
+  showToast(`Inspiración cargada: ${inspirationText}`);
+}
+
+// --- 3. VISUAL METRIC WIDGET & STEP ACCENTS ---
+const TIME_SIG_CONFIGS = {
+  '4/4': { steps: 4, accents: [1, 3], groupText: '4 negras por compás • Acentos en 1 y 3 (Estándar)' },
+  '3/4': { steps: 3, accents: [1], groupText: '3 negras por compás • Acento en 1 (Vals / Ternario)' },
+  '6/8': { steps: 6, accents: [1, 4], groupText: '6 corcheas en 2 grupos de 3 (3+3) • Acentos en 1 y 4' },
+  '7/8': { steps: 7, accents: [1, 3, 5], groupText: '7 corcheas agrupadas 2+2+3 • Acentos en corcheas 1, 3 y 5' },
+  '9/8': { steps: 9, accents: [1, 4, 7], groupText: '9 corcheas agrupadas 3+3+3 • Acentos en corcheas 1, 4 y 7' },
+  '11/8': { steps: 11, accents: [1, 3, 5, 7, 9], groupText: '11 corcheas agrupadas 2+2+2+2+3 • Acentos en corcheas 1, 3, 5, 7, 9' },
+  '7/4': { steps: 7, accents: [1, 5], groupText: '7 negras agrupadas 4+3 • Acentos en tiempos 1 y 5' },
+  '5/4': { steps: 5, accents: [1, 4], groupText: '5 negras agrupadas 3+2 (Take Five) • Acentos en tiempos 1 y 4' },
+  '2/4': { steps: 2, accents: [1], groupText: '2 negras por compás • Acento en 1 (Marcha)' }
+};
+
+let currentMetricSig = '4/4';
+let pulseStepIndex = 0;
+let pulseTimer = null;
+
+function initVisualMetricWidget() {
+  updateRhythmPulseDisplay(currentMetricSig);
+  startPulseSequencer();
+}
+
+function onTimeSignatureSelect(sig) {
+  currentMetricSig = sig;
+  if ($('timeSigSelect')) $('timeSigSelect').value = sig;
+  updateRhythmPulseDisplay(sig);
+
+  // Sync with prompt if user has Prompt Libre
+  const styleInput = $('styleInput');
+  if (styleInput && !styleInput.value.toLowerCase().includes(sig.toLowerCase())) {
+    const meterNotice = ` [Time signature: ${sig}]`;
+    if (!styleInput.value.includes('Time signature:')) {
+      styleInput.value = styleInput.value.trim() + meterNotice;
+    } else {
+      styleInput.value = styleInput.value.replace(/Time signature:\s*[\d\/]+/i, `Time signature: ${sig}`);
+    }
+  }
+}
+
+function updateRhythmPulseDisplay(sig) {
+  const cfg = TIME_SIG_CONFIGS[sig] || TIME_SIG_CONFIGS['4/4'];
+  const container = $('pulseSubdivisionsContainer');
+  if (!container) return;
+
+  if ($('metricGroupingText')) {
+    $('metricGroupingText').textContent = cfg.groupText;
+  }
+
+  let html = '';
+  for (let i = 1; i <= cfg.steps; i++) {
+    const isAccent = cfg.accents.includes(i);
+    html += `
+      <div class="pulse-step-dot ${isAccent ? 'accent' : ''}" id="pulseStep_${i}">
+        <div class="pulse-dot-light"></div>
+        <span class="pulse-step-num">${i}</span>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+  pulseStepIndex = 0;
+}
+
+function startPulseSequencer() {
+  if (pulseTimer) clearInterval(pulseTimer);
+  const bpmInput = $('userBpmInput');
+  const bpm = bpmInput ? (parseInt(bpmInput.value, 10) || 120) : 120;
+
+  // Subdivision interval in milliseconds
+  // For denominator 8, subdivide at eighth notes (half of quarter beat)
+  const isEighth = currentMetricSig.endsWith('/8');
+  const msPerBeat = (60000 / bpm);
+  const intervalMs = isEighth ? (msPerBeat / 2) : msPerBeat;
+
+  pulseTimer = setInterval(() => {
+    const cfg = TIME_SIG_CONFIGS[currentMetricSig] || TIME_SIG_CONFIGS['4/4'];
+    // Clear previous active dot
+    const prev = $(`pulseStep_${pulseStepIndex}`);
+    if (prev) prev.classList.remove('active');
+
+    pulseStepIndex++;
+    if (pulseStepIndex > cfg.steps) pulseStepIndex = 1;
+
+    const current = $(`pulseStep_${pulseStepIndex}`);
+    if (current) current.classList.add('active');
+  }, Math.max(80, Math.min(1500, intervalMs)));
+}
+
+// --- 4. BPM & TAP TEMPO ---
+let tapTimes = [];
+let tapTimeout = null;
+
+function handleTapTempo() {
+  const now = performance.now();
+  if (tapTimeout) clearTimeout(tapTimeout);
+
+  tapTimes.push(now);
+  // Keep only last 4 taps
+  if (tapTimes.length > 5) tapTimes.shift();
+
+  if (tapTimes.length >= 2) {
+    let intervals = [];
+    for (let i = 1; i < tapTimes.length; i++) {
+      intervals.push(tapTimes[i] - tapTimes[i - 1]);
+    }
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    let computedBpm = Math.round(60000 / avgInterval);
+    computedBpm = Math.max(40, Math.min(220, computedBpm));
+
+    onBpmSliderChange(computedBpm);
+  }
+
+  // Reset taps after 2 seconds of inactivity
+  tapTimeout = setTimeout(() => {
+    tapTimes = [];
+  }, 2000);
+}
+
+function onBpmSliderChange(val) {
+  val = parseInt(val, 10);
+  if ($('bpmRangeSlider')) $('bpmRangeSlider').value = val;
+  if ($('bpmNumberDisplay')) $('bpmNumberDisplay').textContent = val;
+  if ($('userBpmInput')) $('userBpmInput').value = val;
+  if ($('effSumBpm')) $('effSumBpm').textContent = `${val} BPM`;
+
+  // Restart pulse speed
+  startPulseSequencer();
+}
+
+function updateMusicalKey() {
+  const root = $('keySelectorRoot') ? $('keySelectorRoot').value : 'C';
+  const scale = $('keySelectorScale') ? $('keySelectorScale').value : 'Mayor';
+  const fullKey = `${root} ${scale}`;
+
+  const styleInput = $('styleInput');
+  if (styleInput && !styleInput.value.includes(`Key: ${fullKey}`)) {
+    if (styleInput.value.includes('Key:')) {
+      styleInput.value = styleInput.value.replace(/Key:\s*[^.]+/i, `Key: ${fullKey}`);
+    } else {
+      styleInput.value = styleInput.value.trim() + ` [Key: ${fullKey}]`;
+    }
+  }
+}
+
+// --- 5. PIANO ROLL PREVIEW CANVAS & CURATED HYMNS ---
+function drawPianoRollDemo(canvasId) {
+  const canvas = $(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // Background grid
+  ctx.fillStyle = '#090A14';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 1;
+
+  // Horizontal pitch lines
+  const rows = 12;
+  const rowHeight = h / rows;
+  for (let i = 0; i <= rows; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, i * rowHeight);
+    ctx.lineTo(w, i * rowHeight);
+    ctx.stroke();
+  }
+
+  // Vertical measure lines
+  const cols = 16;
+  const colWidth = w / cols;
+  for (let j = 0; j <= cols; j++) {
+    ctx.beginPath();
+    ctx.strokeStyle = (j % 4 === 0) ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.04)';
+    ctx.moveTo(j * colWidth, 0);
+    ctx.lineTo(j * colWidth, h);
+    ctx.stroke();
+  }
+
+  // Draw colorful MIDI note bars
+  const notes = [
+    { col: 0, row: 8, len: 2, color: '#6366F1' },
+    { col: 2, row: 6, len: 1.5, color: '#818CF8' },
+    { col: 4, row: 5, len: 2.5, color: '#10B981' },
+    { col: 7, row: 6, len: 1, color: '#34D399' },
+    { col: 8, row: 8, len: 2, color: '#F59E0B' },
+    { col: 10, row: 4, len: 3, color: '#FBBF24' },
+    { col: 13, row: 5, len: 2, color: '#EC4899' },
+    { col: 15, row: 7, len: 1, color: '#A78BFA' }
+  ];
+
+  notes.forEach(n => {
+    const x = n.col * colWidth + 2;
+    const y = n.row * rowHeight + 2;
+    const nw = n.len * colWidth - 4;
+    const nh = rowHeight - 4;
+
+    ctx.fillStyle = n.color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, nw, nh, 4);
+    ctx.fill();
+
+    // Note highlight border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+}
+
+function loadCuratedHymn(hymnId) {
+  const hymnData = {
+    'sublime_gracia': {
+      title: 'Sublime Gracia (Amazing Grace)',
+      meter: '3/4',
+      key: 'G Mayor',
+      bpm: 88,
+      notes: 'Melodía tradicional pentatónica en compás 3/4.'
+    },
+    'cuan_grande_es_el': {
+      title: 'Cuán Grande Es Él',
+      meter: '4/4',
+      key: 'Bb Mayor',
+      bpm: 78,
+      notes: 'Melodía sueca solemne O Store Gud.'
+    },
+    'castillo_fuerte': {
+      title: 'Castillo Fuerte Es Nuestro Dios',
+      meter: '4/4',
+      key: 'D Mayor',
+      bpm: 96,
+      notes: 'Himno de la Reforma de Martín Lutero (Salmo 46).'
+    },
+    'santo_santo_santo': {
+      title: 'Santo, Santo, Santo',
+      meter: '4/4',
+      key: 'E Mayor',
+      bpm: 86,
+      notes: 'Melodía Nicaea de John B. Dykes.'
+    }
+  };
+
+  const h = hymnData[hymnId];
+  if (!h) return;
+
+  if ($('pianoRollStatusBadge')) {
+    $('pianoRollStatusBadge').textContent = `Cargado: ${h.title} (${h.meter})`;
+    $('pianoRollStatusBadge').style.background = 'rgba(16, 185, 129, 0.2)';
+    $('pianoRollStatusBadge').style.color = '#6EE7B7';
+  }
+
+  drawPianoRollDemo('midiPianoRollCanvas');
+  showToast(`Himno preparado: ${h.title}`);
+}
+
+function openAlbumStitcherModal() {
+  alert('Compilador de Álbum Continuo de 1 Hora:\n\nSelecciona pistas en Mi Librería usando las casillas de verificación para compilar un setlist continuo sin silencios con normalización EBU R128 (-14 LUFS).');
+}
+
+// --- 6. BROADCAST VU METER & VOCAL CHANNEL STRIP ---
+let vuMeterInterval = null;
+
+function initBroadcastVuMeter() {
+  const barL = $('vuMeterFillL');
+  const barR = $('vuMeterFillR');
+  if (!barL || !barR) return;
+
+  // Peak activity updater (responsive to recording and playback)
+  if (vuMeterInterval) clearInterval(vuMeterInterval);
+  vuMeterInterval = setInterval(() => {
+    const isRec = window.recIsRecording;
+    const isPlaying = window.GlobalAudioController && window.GlobalAudioController.isPlaying();
+
+    if (isRec || isPlaying) {
+      const peakL = Math.min(100, Math.max(15, Math.floor(Math.random() * 65 + 30)));
+      const peakR = Math.min(100, Math.max(12, Math.floor(peakL + (Math.random() * 10 - 5))));
+
+      barL.style.width = peakL + '%';
+      barR.style.width = peakR + '%';
+
+      const dbL = (peakL >= 96) ? 'CLIP' : ((-42 + (peakL * 0.42)).toFixed(1) + ' dB');
+      const dbR = (peakR >= 96) ? 'CLIP' : ((-42 + (peakR * 0.42)).toFixed(1) + ' dB');
+
+      if ($('vuDbL')) $('vuDbL').textContent = dbL;
+      if ($('vuDbR')) $('vuDbR').textContent = dbR;
+      if ($('vuStatusText')) $('vuStatusText').textContent = `Pico: ${dbL}`;
+    } else {
+      barL.style.width = '0%';
+      barR.style.width = '0%';
+      if ($('vuDbL')) $('vuDbL').textContent = '-inf dB';
+      if ($('vuDbR')) $('vuDbR').textContent = '-inf dB';
+      if ($('vuStatusText')) $('vuStatusText').textContent = 'Listo (Nivel bajo control)';
+    }
+  }, 100);
+}
+
+function updateVocalProcessing() {
+  const hpf = $('chkStripHpf') ? $('chkStripHpf').checked : true;
+  const deesser = $('chkStripDeesser') ? $('chkStripDeesser').checked : true;
+  const eqLow = $('eqLowGain') ? $('eqLowGain').value : 1;
+  const eqMid = $('eqMidGain') ? $('eqMidGain').value : 2;
+  const eqHigh = $('eqHighGain') ? $('eqHighGain').value : 1;
+  const ducking = $('stripDuckingFader') ? $('stripDuckingFader').value : 75;
+
+  if ($('eqLowVal')) $('eqLowVal').textContent = (eqLow >= 0 ? '+' : '') + eqLow + ' dB';
+  if ($('eqMidVal')) $('eqMidVal').textContent = (eqMid >= 0 ? '+' : '') + eqMid + ' dB (Presencia)';
+  if ($('eqHighVal')) $('eqHighVal').textContent = (eqHigh >= 0 ? '+' : '') + eqHigh + ' dB (Aire)';
+  if ($('duckingFaderVal')) $('duckingFaderVal').textContent = ducking + '% (Atenuación de fondo)';
+}
+
+// --- 7. MI LIBRERÍA SEARCH, FILTER CHIPS & SORT ---
+let currentLibCategory = 'all';
+
+function setLibCategoryFilter(category, btnElement) {
+  currentLibCategory = category;
+  document.querySelectorAll('.lib-filter-chip').forEach(btn => btn.classList.remove('active'));
+  if (btnElement) btnElement.classList.add('active');
+  onLibSearchOrFilterChange();
+}
+
+function clearLibSearch() {
+  if ($('libSearchInput')) $('libSearchInput').value = '';
+  if ($('btnClearLibSearch')) $('btnClearLibSearch').style.display = 'none';
+  onLibSearchOrFilterChange();
+}
+
+function onLibSearchOrFilterChange() {
+  const query = $('libSearchInput') ? $('libSearchInput').value.trim().toLowerCase() : '';
+  const sortMode = $('libSortSelect') ? $('libSortSelect').value : 'recent';
+
+  if ($('btnClearLibSearch')) {
+    $('btnClearLibSearch').style.display = query ? 'block' : 'none';
+  }
+
+  const l = $('libList');
+  if (!l || !l._allTracks) {
+    if (l && l._tracks) l._allTracks = [...l._tracks];
+    else return;
+  }
+
+  let filtered = [...l._allTracks];
+
+  // Apply Category Filter
+  if (currentLibCategory === 'ia') {
+    filtered = filtered.filter(t => !/instrumental|voz en off|predicación/i.test(t.title));
+  } else if (currentLibCategory === 'voiceover') {
+    filtered = filtered.filter(t => /voz en off|predicación|oración|pastor/i.test(t.title));
+  } else if (currentLibCategory === 'instrumental') {
+    filtered = filtered.filter(t => /instrumental|sf2|piano|guitarra/i.test(t.title));
+  } else if (currentLibCategory === 'album') {
+    filtered = filtered.filter(t => /álbum|album|1 hora|1h|vigilia/i.test(t.title));
+  }
+
+  // Apply Text Search Query
+  if (query) {
+    filtered = filtered.filter(t => {
+      const title = (t.title || '').toLowerCase();
+      const prompt = (t.prompt || '').toLowerCase();
+      return title.includes(query) || prompt.includes(query);
+    });
+  }
+
+  // Apply Sorting
+  if (sortMode === 'recent') {
+    filtered.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  } else if (sortMode === 'oldest') {
+    filtered.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  } else if (sortMode === 'title_asc') {
+    filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  } else if (sortMode === 'duration_desc') {
+    filtered.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+  }
+
+  renderLibraryFiltered(filtered);
+}
+
+function renderLibraryFiltered(tracks) {
+  const isPlayingNow = window.GlobalAudioController && window.GlobalAudioController.isPlaying();
+  const l = $('libList');
+  if (!l) return;
+
+  if (!tracks.length) {
+    l.innerHTML = '<div class="empty">No se encontraron pistas que coincidan con la búsqueda o filtro seleccionado.</div>';
+    return;
+  }
+
+  l.innerHTML = tracks.map(t => {
+    const isThisPlaying = (t.id === currentTrackId && isPlayingNow);
+    return `
+    <div class="track ${isThisPlaying ? 'playing' : ''}" data-id="${esc(t.id)}">
+      <div style="display:flex;align-items:center;">
+        <input type="checkbox" class="track-select-chk studio-chk" data-id="${esc(t.id)}" title="Seleccionar pista">
+      </div>
+      <div class="thumb">${t.image_url ? `<img src="${esc(t.image_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
+      <div class="t-info">
+        <div class="t-title-row">
+          <div class="t-title" title="${esc(t.title)}" data-act="rename">${esc(t.title)}</div>
+          <button class="btn-rename" data-act="rename" title="Renombrar grabación"><i class="ph ph-pencil-simple"></i></button>
+        </div>
+        <div class="t-meta">
+          <span><i class="ph ph-clock" style="font-size:11px;"></i> ${fmtDur(t.duration)}</span>
+          <span class="tag">Master Pro</span>
+          ${/instrumental/i.test(t.title) ? '<span class="tag" style="background:rgba(16,185,129,0.18);color:#6EE7B7;border-color:rgba(16,185,129,0.3);">Instrumental</span>' : ''}
+          <span class="tag" style="background:rgba(34,197,94,0.12);color:#4ade80;border-color:rgba(34,197,94,0.3);"><i class="ph ph-cloud-check"></i> Drive 5TB</span>
+        </div>
+        <div class="t-actions">
+          <button class="btn-play-sm" data-act="play" style="${isThisPlaying ? 'background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;' : ''}"><i class="ph ${isThisPlaying ? 'ph-pause' : 'ph-play'}"></i> ${isThisPlaying ? 'Pausar' : 'Escuchar'}</button>
+          <button class="icon-circle-btn share-wa" data-act="share" title="Enviar MP3 a WhatsApp / Telegram"><i class="ph ph-whatsapp-logo"></i></button>
+          <button class="icon-circle-btn" data-act="enrich-sf2" title="🎹 Enriquecer con Instrumentos SF2 (0 Créditos)" style="color:#10B981"><i class="ph ph-piano-keys"></i></button>
+          <button class="icon-circle-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
+          <button class="icon-circle-btn" data-act="extend" title="Extender canción (Alargar duración)"><i class="ph ph-arrows-out-line-horizontal"></i></button>
+          <button class="icon-circle-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
+          <button class="icon-circle-btn del" data-act="del" title="Eliminar"><i class="ph ph-trash"></i></button>
+          <div class="menu">
+            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Formatos Master</div>
+            <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-whatsapp-logo"></i> MP3 (&lt; 15MB WhatsApp)</a>
+            <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (Studio Sin Comprimir)</a>
+            <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
+            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
+            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Producción Gratuita SF2</div>
+            <a href="#" data-act-menu="enrich-sf2" data-id="${esc(t.id)}" style="color:#10B981;font-weight:700"><i class="ph ph-piano-keys"></i> Enriquecer con Instrumentos SF2 (0 Créditos)</a>
+            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
+            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Separación de Pistas (Stems)</div>
+            <a href="#" data-stem="instrumental" data-id="${esc(t.id)}" title="Descargar pista instrumental para cantar en vivo"><i class="ph ph-waveform"></i> Pista Instrumental / Karaoke</a>
+            <a href="#" data-stem="vocals" data-id="${esc(t.id)}" title="Descargar sólo las voces"><i class="ph ph-microphone"></i> Coro / Voces Aisladas</a>
+            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
+            <a href="#" data-act-menu="extend" data-id="${esc(t.id)}" style="color:#A5B4FC"><i class="ph ph-arrows-out-line-horizontal"></i> Extender pista en el creador</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updateSelectedTracksState();
+}
+
 </script>
 </body>
 </html>

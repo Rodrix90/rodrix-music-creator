@@ -77,7 +77,7 @@ SECRET_KEY = _raw_secret.encode('utf-8')
 
 # Middleware de sesión con seguridad HTTPS en producción
 app.add_middleware(
-    SessionMiddleware, 
+    SessionMiddleware,
     secret_key=SECRET_KEY.decode('utf-8'),
     https_only=bool(os.environ.get("RENDER")),
     same_site="lax"
@@ -347,12 +347,12 @@ async def gdrive_get_access_token():
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
         return None
-    
+
     access_token = tokens.get("access_token")
     expires_at = tokens.get("expires_at", 0)
     if access_token and time.time() < (expires_at - 60):
         return access_token
-        
+
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
     if not client_secret:
         print("[GDRIVE] Error: 'GOOGLE_CLIENT_SECRET' no está configurada en las variables de entorno.")
@@ -541,7 +541,7 @@ async def _do_upload_or_update(filename, content_bytes, mime_type="application/o
     if not token:
         print(f"[GDRIVE] Subida abortada para {filename}: no hay token de acceso.")
         return None
-    
+
     headers = {"Authorization": f"Bearer {token}"}
     max_retries = 3
     for attempt in range(max_retries):
@@ -574,7 +574,7 @@ async def _do_upload_or_update(filename, content_bytes, mime_type="application/o
                     # Para archivos grandes (> 5MB), usar sesión resumible con reanudación real
                     if len(content_bytes) > 5 * 1024 * 1024:
                         return await _perform_resumable_upload(client, filename, content_bytes, mime_type, folder_id, headers, max_retries=max_retries)
-                    
+
                     # Subida estándar multipart
                     boundary = "-------RodrixBoundary" + uuid.uuid4().hex
                     metadata = json.dumps({"name": filename, "parents": [folder_id]})
@@ -585,7 +585,7 @@ async def _do_upload_or_update(filename, content_bytes, mime_type="application/o
                         f"--{boundary}\r\n"
                         f"Content-Type: {mime_type}\r\n\r\n"
                     ).encode("utf-8") + content_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
-                    
+
                     post_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink"
                     resp = await client.post(
                         post_url,
@@ -618,10 +618,10 @@ async def _do_upload_or_update(filename, content_bytes, mime_type="application/o
         except Exception as e:
             print(f"[GDRIVE ERROR INESPERADO] {e}")
             return None
-            
+
         if attempt < max_retries - 1:
             await asyncio.sleep(2 ** attempt)
-            
+
     print(f"[GDRIVE FALLO] Se agotaron los {max_retries} reintentos para {filename}.")
     return None
 
@@ -662,7 +662,7 @@ async def gdrive_download_file_bytes(file_id, token=None):
         token = await gdrive_get_access_token()
     if not token:
         return None
-        
+
     headers = {"Authorization": f"Bearer {token}"}
     max_retries = 3
     for attempt in range(max_retries):
@@ -682,10 +682,10 @@ async def gdrive_download_file_bytes(file_id, token=None):
         except Exception as e:
             print(f"[GDRIVE ERROR INESPERADO] Descarga de {file_id}: {e}")
             return None
-            
+
         if attempt < max_retries - 1:
             await asyncio.sleep(2 ** attempt)
-            
+
     return None
 
 def _load_library_unlocked() -> list:
@@ -894,7 +894,7 @@ async def gdrive_sync_library_from_cloud():
             cloud_lib = json.loads(data_bytes.decode("utf-8"))
             if not isinstance(cloud_lib, list) or not cloud_lib:
                 return
-                
+
             local_lib = load_library()
             merged_map = {}
             for source_list in (cloud_lib, local_lib):
@@ -908,7 +908,7 @@ async def gdrive_sync_library_from_cloud():
                         merged_map[tid] = _merge_two_tracks(merged_map[tid], item)
                     else:
                         merged_map[tid] = normalize_track_persistence_state(dict(item))
-                    
+
             final_lib = [t for tid, t in merged_map.items() if tid not in deleted]
             save_library_atomic(final_lib)
             print(f"[GDRIVE CONFIRMADO] ¡Librería restaurada exitosamente desde Google Drive! ({len(final_lib)} pistas sincronizadas).")
@@ -1306,10 +1306,10 @@ async def gdrive_sync_users_from_cloud():
             cloud_users = json.loads(data_bytes.decode("utf-8"))
             if not isinstance(cloud_users, dict) or not cloud_users:
                 return
-            
+
             local_users = load_users()
             merged_users = dict(cloud_users)
-            
+
             for email, l_user in local_users.items():
                 if not isinstance(l_user, dict):
                     continue
@@ -1317,7 +1317,7 @@ async def gdrive_sync_users_from_cloud():
                     merged_users[email] = _merge_two_users(merged_users[email], l_user)
                 else:
                     merged_users[email] = dict(l_user)
-                    
+
             save_users_atomic(merged_users)
             print(f"[GDRIVE] Usuarios restaurados desde Google Drive ({len(merged_users)} usuarios sincronizados).")
         except Exception as e:
@@ -1340,13 +1340,13 @@ async def startup_event():
         await gdrive_sync_deleted_tracks_from_cloud()
     except Exception as e:
         print(f"[GDRIVE] Aviso en inicio al leer lápidas de pistas eliminadas: {e}")
-        
+
     # 2. Restaurar usuarios persistentes desde Google Drive (5 TB)
     try:
         await gdrive_sync_users_from_cloud()
     except Exception as e:
         print(f"[GDRIVE] Aviso en inicio al leer usuarios desde Google Drive: {e}")
-        
+
     # 3. Restaurar librería persistente desde Google Drive (5 TB)
     try:
         await gdrive_sync_library_from_cloud()
@@ -1363,19 +1363,19 @@ def get_current_user(request: Request):
     user = request.session.get('user')
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
-    
+
     email = user.get('email', '').strip().lower()
     if not email:
         raise HTTPException(status_code=401, detail="Usuario inválido")
-    
+
     if email == ADMIN_EMAIL:
         return email
-        
+
     users = load_users()
     user_record = users.get(email)
     if not user_record or user_record.get("status") == "blocked":
         raise HTTPException(status_code=403, detail="Tu usuario ha sido bloqueado por el administrador.")
-    
+
     return email
 
 def clean_lyrics_text(text: str) -> str:
@@ -1473,18 +1473,18 @@ def log_conversion(payload, response_status, error_msg=None, tracks=None):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     log_id = str(uuid.uuid4())[:8]
     log_filename = f"logs/conversion_{timestamp}_{log_id}.txt"
-    
+
     with open(log_filename, "w", encoding="utf-8") as f:
         f.write(f"--- LOG DE CONVERSIÓN ---\n")
         f.write(f"Fecha/Hora: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Status: {response_status}\n\n")
         f.write("--- PAYLOAD ENVIADO ---\n")
         f.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n\n")
-        
+
         if error_msg:
             f.write("--- ERROR ---\n")
             f.write(str(error_msg) + "\n\n")
-            
+
         if tracks:
             f.write("--- TRACKS RECIBIDOS ---\n")
             f.write(json.dumps(tracks, indent=2, ensure_ascii=False) + "\n")
@@ -1567,7 +1567,7 @@ async def transform_audio(
                     with tempfile.NamedTemporaryFile(prefix="rodrix_val_", suffix=ext, delete=False) as tf:
                         tf.write(audio_content)
                         temp_validate_path = tf.name
-                    
+
                     probe_cmd = [
                         "ffprobe", "-v", "error",
                         "-select_streams", "a:0",
@@ -1589,7 +1589,7 @@ async def transform_audio(
                             status_code=400,
                             detail=f"El archivo '{audio_filename}' no contiene una pista de audio decodificable."
                         )
-                    
+
                     # Comprobar límite documentado del proveedor: 8 minutos (480 segundos)
                     fmt = probe_data.get("format", {})
                     dur_str = fmt.get("duration") or streams[0].get("duration")
@@ -1691,7 +1691,7 @@ async def transform_audio(
             target_bpm, hihat_mode, art_crash_toms, art_splash_ride, art_tom_grooves,
             art_bass_slap, art_bass_pickup, active_preset
         )
-        
+
         return {"status": "started", "task_id": task_id}
     except HTTPException:
         raise
@@ -1735,19 +1735,24 @@ async def process_voiceover(
     leveling: bool = Form(True),
     stereo_wide: bool = Form(False),
     radio_structure: str = Form("radio_show"),
+    eq_low: Optional[float] = Form(1.0),
+    eq_mid: Optional[float] = Form(2.0),
+    eq_high: Optional[float] = Form(1.0),
+    hpf: Optional[bool] = Form(True),
+    deesser: Optional[bool] = Form(True),
     current_user: str = Depends(get_current_user)
 ):
     prune_tasks()
-    
+
     voice_bytes = await voice_audio.read()
     voice_filename = voice_audio.filename or "pastor_audio.mp3"
-    
+
     custom_bg_bytes = None
     custom_bg_filename = None
     if custom_bg and bg_choice == "custom":
         custom_bg_bytes = await custom_bg.read()
         custom_bg_filename = custom_bg.filename
-        
+
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {
         "id": task_id,
@@ -1759,7 +1764,7 @@ async def process_voiceover(
         "is_public_domain": False,
         "audio_filename": voice_filename or "N/A"
     }
-    
+
     background_tasks.add_task(
         run_voiceover_task,
         task_id, voice_bytes, voice_filename, title, bg_choice,
@@ -1767,9 +1772,10 @@ async def process_voiceover(
         eq_profile, noise_reduction, leveling,
         vocal_reverb, compression,
         mic_profile, interface_profile, plugin_profile,
-        stereo_wide, radio_structure
+        stereo_wide, radio_structure,
+        eq_low, eq_mid, eq_high, hpf, deesser
     )
-    
+
     return {"status": "started", "task_id": task_id}
 
 # =====================================================================
@@ -1802,10 +1808,10 @@ def calculate_safe_mp3_bitrate(duration_sec: float, target_bytes: int = TARGET_S
     """
     if duration_sec <= 0:
         return "192k"
-    
+
     # Capacidad en kbps: (bytes * 8) / (segundos * 1000)
     max_kbps = int((target_bytes * 8) / (duration_sec * 1000))
-    
+
     if max_kbps >= 256:
         return "256k"
     elif max_kbps >= 192:
@@ -1829,9 +1835,9 @@ def get_safe_wav_ffmpeg_args(duration_sec: float, target_bytes: int = TARGET_SAF
     """
     if duration_sec <= 0:
         return ["-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2"]
-    
+
     max_bytes_per_sec = target_bytes / duration_sec
-    
+
     if max_bytes_per_sec >= 176400:  # <= ~82 segundos: Calidad CD estéreo completa
         return ["-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2"]
     elif max_bytes_per_sec >= 88200:  # <= ~165 segundos: Calidad CD mono
@@ -1852,21 +1858,21 @@ async def enforce_max_file_size_mp3(file_path: str, max_bytes: int = MAX_WHATSAP
     """
     if not file_path or not os.path.exists(file_path):
         return file_path
-    
+
     try:
         actual_size = os.path.getsize(file_path)
         if actual_size <= max_bytes:
             return file_path
-            
+
         dur = get_audio_duration_seconds(file_path)
         safe_kbps = calculate_safe_mp3_bitrate(dur, target_bytes=int(13.8 * 1024 * 1024))
         temp_recomp = f"temp_recomp_{uuid.uuid4().hex}.mp3"
-        
+
         recomp_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", file_path]
         if dur > 600:
             recomp_cmd.extend(["-ac", "1"])  # Mono para alocuciones de más de 10 min
         recomp_cmd.extend(["-c:a", "libmp3lame", "-b:a", safe_kbps, temp_recomp])
-        
+
         await asyncio.to_thread(subprocess.run, recomp_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if os.path.exists(temp_recomp) and os.path.getsize(temp_recomp) > 1000:
             import shutil
@@ -1876,7 +1882,7 @@ async def enforce_max_file_size_mp3(file_path: str, max_bytes: int = MAX_WHATSAP
         if 'temp_recomp' in locals() and os.path.exists(temp_recomp):
             try: os.remove(temp_recomp)
             except: pass
-            
+
     return file_path
 
 async def run_voiceover_task(
@@ -1885,7 +1891,8 @@ async def run_voiceover_task(
     eq_profile, noise_reduction, leveling,
     vocal_reverb="none", compression=True,
     mic_profile="behringer_tm1", interface_profile="umc404hd", plugin_profile="izotope_vea",
-    stereo_wide=False, radio_structure="radio_show"
+    stereo_wide=False, radio_structure="radio_show",
+    eq_low=1.0, eq_mid=2.0, eq_high=1.0, hpf=True, deesser=True
 ):
     def log_msg(msg):
         import datetime
@@ -1903,7 +1910,7 @@ async def run_voiceover_task(
         temp_files.append(temp_voice)
         with open(temp_voice, "wb") as f:
             f.write(voice_bytes)
-            
+
         # Get voice duration via ffprobe
         probe_cmd = [
             "ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -1925,7 +1932,7 @@ async def run_voiceover_task(
         # Optimizada para Auriculares, Parlantes de Celular y Equipos de Sonido/Auto
         # =====================================================================
         v_filters = []
-        
+
         # 0. ALINEACIÓN DE FASE Y PURIFICACIÓN MONO INICIAL
         # Fuerza que la señal entre limpia en mono. Si es un micrófono de celular estéreo
         # con desfase acústico entre los 2 micrófonos (arriba y abajo), esto elimina
@@ -1934,11 +1941,23 @@ async def run_voiceover_task(
 
         # 1. INTERFAZ & PREAMPS (Corte subsónico quirúrgico de 2 polos a 85 Hz)
         # Remueve ruidos mecánicos de mesa, viento y retumbos que saturan parlantes de móvil
-        if interface_profile == "umc404hd":
-            log_msg("Emulando Behringer UMC404HD: Preamps MIDAS (corte 85Hz Butterworth + headroom broadcast)...")
-            v_filters.append("highpass=f=85:width_type=q:w=0.707,highpass=f=85:width_type=q:w=0.707")
-        else:
-            v_filters.append("highpass=f=80:width_type=q:w=0.707,highpass=f=80:width_type=q:w=0.707")
+        if hpf:
+            if interface_profile == "umc404hd":
+                log_msg("Emulando Behringer UMC404HD: Preamps MIDAS (corte 85Hz Butterworth + headroom broadcast)...")
+                v_filters.append("highpass=f=85:width_type=q:w=0.707,highpass=f=85:width_type=q:w=0.707")
+            else:
+                v_filters.append("highpass=f=80:width_type=q:w=0.707,highpass=f=80:width_type=q:w=0.707")
+
+        # Channel Strip EQ personalizado (Graves 100Hz, Medios 1kHz, Agudos 10kHz)
+        if eq_low != 0.0 or eq_mid != 0.0 or eq_high != 0.0:
+            log_msg(f"Aplicando Channel Strip EQ: Graves={eq_low:+.1f}dB, Medios={eq_mid:+.1f}dB, Agudos={eq_high:+.1f}dB...")
+            v_filters.append(f"equalizer=f=100:width_type=q:w=1.0:g={eq_low:.1f}")
+            v_filters.append(f"equalizer=f=1000:width_type=q:w=1.0:g={eq_mid:.1f}")
+            v_filters.append(f"equalizer=f=10000:width_type=q:w=1.0:g={eq_high:.1f}")
+
+        # De-Esser Studio Pro adicional
+        if deesser:
+            v_filters.append("equalizer=f=6800:width_type=o:width=1.3:g=-3.5")
 
         # 2. REDUCCIÓN TRANSPARENTE DE RUIDO & EXPANSOR ACÚSTICO
         # Expansor suave: limpia el ruido de fondo en silencios sin cortar respiraciones ni finales de frases
@@ -2040,9 +2059,9 @@ async def run_voiceover_task(
                 intro_vol = 0.28
                 speech_end = intro_sec + voice_dur
                 fade_out_start = total_dur - 2.5
-                
+
                 log_msg(f"Estructura Predicación de Radio: Intro musical {intro_sec}s (28% volumen) ➔ Baja justo al empezar la voz al colchón suave ({int(bed_vol*100)}%) ➔ Cierre triunfal {outro_sec}s...")
-                
+
                 vol_expr = (
                     f"if(lt(t,4.2),{intro_vol:.2f},"
                     f"if(lt(t,{intro_sec:.2f}),{intro_vol:.2f}-({intro_vol:.2f}-{bed_vol:.2f})*(t-4.2)/0.8,"
@@ -2050,7 +2069,7 @@ async def run_voiceover_task(
                     f"if(lt(t,{speech_end + 1.0:.2f}),{bed_vol:.2f}+({intro_vol:.2f}-{bed_vol:.2f})*(t-{speech_end:.2f})/1.0,"
                     f"{intro_vol:.2f}))))"
                 )
-                
+
                 # En la música de fondo: se atenúan suavemente las frecuencias 3.2kHz para dejar libre el espacio a la voz
                 filter_complex = (
                     f"[0:a]{voice_filter_str},adelay=5000|5000,apad=pad_dur={outro_sec + 1.0:.1f}[v_ready];"
@@ -2113,7 +2132,7 @@ async def run_voiceover_task(
         await enforce_max_file_size_mp3(out_path)
         final_size_mb = os.path.getsize(out_path) / (1024 * 1024)
         log_msg(f"¡Predicación procesada y masterizada con éxito! Tamaño final: {final_size_mb:.2f} MB (Apto para WhatsApp)")
-        
+
         # Subir copia de respaldo a la nube
         cloud_backup = None
         try:
@@ -2169,7 +2188,7 @@ async def cache_track_audio(task_id: str, remote_url: str) -> str:
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return f"/api/audio_file/{task_id}"
-    
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "*/*"
@@ -2653,7 +2672,7 @@ async def run_transform_task(
         print(line, flush=True)
         if task_id in TASKS:
             TASKS[task_id]["logs"] = TASKS[task_id].get("logs", "") + line + "\n"
-        
+
     def save_local_log():
         import datetime
         os.makedirs("logs", exist_ok=True)
@@ -2670,7 +2689,7 @@ async def run_transform_task(
     is_instrumental = not include_lyrics or (lyrics.strip().lower() == "[instrumental]")
     if is_instrumental and "(instrumental)" not in title.lower():
         title = f"{title} (Instrumental)"
-    
+
     # Preservar estructura de compases y secciones en temas instrumentales para duraciones largas
     if is_instrumental:
         cleaned_lyrics = lyrics.strip() if lyrics else ""
@@ -2734,11 +2753,11 @@ async def run_transform_task(
             if obfuscate:
                 log_msg("Normalizando espaciado y formato de la letra...")
             final_lyrics = clean_lyrics_text(final_lyrics)
-        
+
     upload_url = None
     backup_upload_url = None
     created_temp_files = []
-    
+
     try:
         if audio_content and not ignore_audio:
             ext = ".mp3"
@@ -2748,10 +2767,10 @@ async def run_transform_task(
                     ext = fext.lower()
             temp_file_path = f"temp_upload_{uuid.uuid4().hex}{ext}"
             created_temp_files.append(temp_file_path)
-            
+
             with open(temp_file_path, "wb") as f:
                 f.write(audio_content)
-                
+
             if bypass_copyright:
                 bypassed_file_path = f"bypassed_{uuid.uuid4().hex}.mp3"
                 created_temp_files.append(bypassed_file_path)
@@ -2778,7 +2797,7 @@ async def run_transform_task(
                 else:
                     target_upload_file = temp_file_path
                     log_msg("Utilizando archivo de audio original.")
-                
+
             log_msg("Subiendo audio de referencia a servidor temporal de alta velocidad...")
             upload_url = await upload_to_catbox_async(target_upload_file)
             if not upload_url:
@@ -2795,7 +2814,7 @@ async def run_transform_task(
             if not upload_url and backup_upload_url:
                 upload_url = backup_upload_url
             log_msg(f"Audio de referencia vinculado exitosamente: {upload_url}")
-                    
+
         # ----------
         # Helper: expand known instrument/effect keywords into richer descriptions
         # ----------
@@ -3224,7 +3243,7 @@ async def run_transform_task(
                     vocal_tag = f"natural {gender_kw}Mexican Spanish vocals, no autotune"
                 else:
                     vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
-            
+
             if wants_solo_vocal:
                 if "spanish vocals" not in style.lower() and "solo vocals" not in style.lower():
                     style = f"{style}, {vocal_tag}"
@@ -3242,7 +3261,7 @@ async def run_transform_task(
         key_bans_str = ""
         if exclude_styles and exclude_styles.strip():
             raw_excl = [x.strip() for x in re.split(r'[,;\n]+', exclude_styles) if x.strip()]
-            
+
             synonym_map = {
                 "cumbia": ["cumbia", "ritmo cumbia", "grupero", "norteño", "accordion", "guiro", "cumbia sonidera"],
                 "norteño": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
@@ -3265,7 +3284,7 @@ async def run_transform_task(
                 "reggaeton": ["reggaeton", "dembow beat", "urban latin"],
                 "trap": ["trap beat", "808 sub bass trap", "hi-hat rolls trap"],
             }
-            
+
             neg_tags_list = []
             for item in raw_excl:
                 neg_tags_list.append(item)
@@ -3534,7 +3553,7 @@ async def run_transform_task(
             log_msg("Usando endpoint V2 Generate")
             url_generate = "https://udioapi.pro/api/v2/generate"
             url_status = "https://udioapi.pro/api/v2/feed"
-            
+
             payload = {
                 "custom_mode": True,
                 "prompt": final_lyrics,
@@ -3569,39 +3588,39 @@ async def run_transform_task(
                 log_msg(f"Submitting request to {url_generate} (Attempt {attempt+1}/{max_retries})...")
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     r = await client.post(url_generate, json=payload, headers=headers)
-                    
+
                     if r.status_code == 402:
                         raise Exception("No hay créditos suficientes en la API de Udio (Status 402).")
                     elif r.status_code != 200:
                         raise Exception(f"Error de API HTTP {r.status_code}: {r.text}")
-        
+
                     resp_json = r.json()
                     work_id = resp_json.get("workId") or resp_json.get("id")
-                    
+
                     if not work_id:
                         data_block = resp_json.get("data", {})
                         if isinstance(data_block, dict):
                             work_id = data_block.get("task_id")
                         if not work_id:
                             raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
-        
+
                     log_msg(f"Task successfully queued. ID: {work_id}")
-                    
+
                     tracks = []
                     for i in range(120):
                         if TASKS.get(task_id, {}).get("status") == "CANCELLED":
                             log_msg("Generación abortada por el usuario.")
                             break
-                            
+
                         if upload_url:
                             r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                         else:
                             r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
-                            
+
                         if r_status.status_code == 200:
                             status_json = r_status.json()
                             error_msg = "La generación falló internamente."
-                            
+
                             if upload_url:
                                 raw_data = status_json.get("data", {})
                                 status = raw_data.get("type", "") or raw_data.get("status", "")
@@ -3621,7 +3640,7 @@ async def run_transform_task(
                                 else:
                                     status = status_json.get("status", "")
                                     raw_data = status_json.get("data", {})
-                                    
+
                                     if isinstance(raw_data, dict):
                                         if not status:
                                             status = raw_data.get("type", "") or raw_data.get("status", "")
@@ -3634,7 +3653,7 @@ async def run_transform_task(
                                             data = [raw_data]
                                     else:
                                         data = raw_data if isinstance(raw_data, list) else []
-        
+
                                 if status.upper() in ["SUCCESS", "COMPLETED"]:
                                     tracks = data
                                     log_msg("Generación completada exitosamente.")
@@ -3645,13 +3664,13 @@ async def run_transform_task(
                                     break
                                 elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
                                     raise Exception(f"API Error: {error_msg}")
-        
+
                         log_msg(f"Polling (Attempt {i+1}): Status Code={r_status.status_code} | JSON={str(r_status.text)[:250]}")
                         await asyncio.sleep(5)
-        
+
                     if not tracks:
                         raise Exception("Tiempo de espera agotado. La tarea no finalizó a tiempo.")
-        
+
                     final_tracks = []
                     for t in tracks:
                         if isinstance(t, dict):
@@ -3661,11 +3680,11 @@ async def run_transform_task(
                             timage = t.get("image_url") or t.get("image_path")
                             tduration = t.get("duration", 0)
                             tstatus = t.get("status", "SUCCESS")
-                            
+
                             if taudio:
                                 log_msg(f"Guardando copia permanente para {ttitle}...")
                                 taudio_cached = await cache_track_audio(tid, taudio)
-                                
+
                                 # Subir respaldo a la nube Catbox para persistencia garantizada
                                 local_track_file = os.path.join(TRACKS_DIR, f"{tid}.mp3")
                                 cloud_backup = None
@@ -3674,7 +3693,7 @@ async def run_transform_task(
                                         cloud_backup = await upload_to_catbox_async(local_track_file)
                                     except Exception:
                                         pass
-                                
+
                                 track_info = {
                                     "id": tid,
                                     "title": ttitle,
@@ -3714,19 +3733,19 @@ async def run_transform_task(
                                 final_tracks.append(track_info)
                                 add_track_to_library(track_info)
                                 log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid} | Persistencia: {track_info.get('persistence_status')})")
-        
+
                     save_local_log()
                     TASKS[task_id]["tracks"] = final_tracks
                     all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
                     TASKS[task_id]["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
                     TASKS[task_id]["is_permanently_saved"] = all_persisted
                     TASKS[task_id]["status"] = "COMPLETED"
-        
+
                 break
             except Exception as e:
                 err_str = str(e)
                 err_lower = err_str.lower()
-                
+
                 # 1. Distinguir categorías específicas de error del proveedor
                 is_catalog_match = any(
                     k in err_lower for k in [
@@ -3840,11 +3859,11 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
         content = await file.read()
         if not content:
             return JSONResponse(status_code=400, content={"compatible": False, "error": "El archivo está vacío."})
-            
+
         filename = file.filename or "audio"
         ext = os.path.splitext(filename)[1].lower() or ".tmp"
         size_mb = round(len(content) / (1024 * 1024), 2)
-        
+
         # Guardar en archivo temporal para que ffprobe y ffmpeg puedan examinar los frames reales
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tf:
             tf.write(content)
@@ -3860,7 +3879,7 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
             temp_path
         ]
         proc = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
-        
+
         if proc.returncode != 0:
             err_msg = proc.stderr.strip() or "No se pudo leer el flujo de datos del archivo."
             return {
@@ -3869,7 +3888,7 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
                 "error": err_msg,
                 "message": f"FFprobe no pudo reconocer un formato multimedia válido en '{filename}': {err_msg}"
             }
-            
+
         probe_data = json.loads(proc.stdout) if proc.stdout else {}
         streams = probe_data.get("streams", [])
         if not streams:
@@ -3883,7 +3902,7 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
         audio_stream = streams[0]
         fmt_data = probe_data.get("format", {})
         codec_name = audio_stream.get("codec_name", "audio").upper()
-        
+
         # 2. Prueba de decodificación completa de audio con FFmpeg
         decode_cmd = [
             "ffmpeg", "-v", "error",
@@ -3892,7 +3911,7 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
             "-"
         ]
         decode_proc = subprocess.run(decode_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=20)
-        
+
         if decode_proc.returncode != 0:
             err_detail = decode_proc.stderr.strip() or "Error durante la decodificación de tramas de audio."
             return {
@@ -3907,7 +3926,7 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
         channels = audio_stream.get("channels", 2)
         channels_str = "Estéreo" if channels >= 2 else "Mono"
         sample_rate = audio_stream.get("sample_rate", "44100")
-        
+
         dur_val = audio_stream.get("duration") or fmt_data.get("duration")
         try:
             length_sec = round(float(dur_val), 2) if dur_val else 0.0
@@ -4011,7 +4030,7 @@ Este informe no contiene claves privadas ni datos sensibles.
     has_audio = diag.get("has_audio_reference", bool(task.get("audio_filename") and task.get("audio_filename") != "N/A"))
     audio_file = diag.get("audio_filename") or task.get("audio_filename", "N/A")
     raw_logs = task.get("logs", "No hay registros disponibles para esta tarea.")
-    
+
     # Sanitizar logs para garantizar 100% que ninguna clave o token pueda figurar
     sanitized_logs = sanitize_logs_text(raw_logs)
 
@@ -4107,12 +4126,12 @@ async def get_latest_logs():
         return PlainTextResponse("No hay tareas registradas desde el último reinicio.")
     latest_task_id = list(TASKS.keys())[-1]
     task = TASKS[latest_task_id]
-    
+
     output = f"--- LOGS DE LA TAREA {latest_task_id} ---\n"
     output += f"Estado actual: {task.get('status')}\n"
     output += f"Error/Detalle: {sanitize_logs_text(task.get('detail', ''))}\n\n"
     output += sanitize_logs_text(task.get("logs", "No hay logs aún."))
-    
+
     return PlainTextResponse(output)
 
 @app.get("/api/library")
@@ -4236,11 +4255,11 @@ async def api_admin_gdrive_diagnostic(current_user: str = Depends(get_current_us
     """Diagnóstico técnico para el administrador: indica estado de configuración y autenticación SIN revelar secretos ni tokens."""
     if current_user != ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="Acceso denegado: solo el administrador puede acceder a esta información.")
-    
+
     tokens = load_gdrive_tokens()
     has_refresh = bool(tokens.get("refresh_token"))
     is_env_configured = bool(os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip())
-    
+
     auth_ok = False
     auth_message = "Sin verificar"
     try:
@@ -4352,7 +4371,7 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return local_path
-        
+
     # 1. Recuperar directamente desde Google Drive (5 TB)
     if track and track.get("gdrive_id"):
         try:
@@ -4372,12 +4391,12 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
         urls_to_try.append(track["raw_audio_url"])
     if track.get("audio_url") and str(track["audio_url"]).startswith("http") and track["audio_url"] not in urls_to_try:
         urls_to_try.append(track["audio_url"])
-            
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "*/*"
     }
-    
+
     last_err = None
     for url in urls_to_try:
         try:
@@ -4407,7 +4426,7 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
                     return local_path
             except Exception as e2:
                 last_err = e2
-                
+
     raise HTTPException(status_code=500, detail=f"No se pudo descargar el audio original: {last_err or 'enlace no disponible'}")
 
 @app.get("/api/stems/{task_id}/{stem_type}")
@@ -4435,9 +4454,9 @@ async def get_stem_audio(task_id: str, stem_type: str):
     import unicodedata
     clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
     safe_title = "".join([c for c in clean_ascii if c.isalnum() or c in ' -_']).strip() or "track"
-    
+
     temp_stem_out = f"temp_stem_out_{uuid.uuid4().hex}.mp3"
-    
+
     def cleanup_files(files):
         for f in files:
             if f and os.path.exists(f) and not f.startswith(TRACKS_DIR):
@@ -4448,19 +4467,19 @@ async def get_stem_audio(task_id: str, stem_type: str):
 
     try:
         source_audio_file = await get_or_download_audio_file(task_id, track, "")
-        
+
         # Separación de stems con técnicas avanzadas de M/S y EQ
         if stem_type == "vocals":
             stem_filter = "stereotools=mlev=1.6:slev=0.015625,equalizer=f=2500:t=q:w=1:g=3,highpass=f=180,lowpass=f=7500"
         else:
             stem_filter = "stereotools=mlev=0.015625:slev=1.5"
-            
+
         stem_dur = get_audio_duration_seconds(source_audio_file)
         safe_bitrate = calculate_safe_mp3_bitrate(stem_dur)
         ffmpeg_cmd = ["ffmpeg", "-threads", "0", "-y", "-i", source_audio_file, "-af", stem_filter, "-c:a", "libmp3lame", "-b:a", safe_bitrate, "-ar", "44100", temp_stem_out]
         await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         await enforce_max_file_size_mp3(temp_stem_out)
-        
+
         from starlette.background import BackgroundTask
         return FileResponse(
             path=temp_stem_out,
@@ -4526,7 +4545,7 @@ def build_master_filter(width: float, eq: str, loud: str) -> str:
 async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none"):
     if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
-        
+
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
     if not track:
@@ -4595,7 +4614,7 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
     # 6. SOLO SI SE SOLICITARON FILTROS DE MASTERIZACIÓN EXPLÍCITOS
     master_filter = build_master_filter(width, eq, loud)
     temp_out = f"temp_dl_out_{uuid.uuid4().hex}.{audio_format}"
-    
+
     def cleanup_files(files):
         for f in files:
             if f and os.path.exists(f) and not f.startswith(TRACKS_DIR):
@@ -4617,17 +4636,17 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
             dur = get_audio_duration_seconds(source_audio_file)
             safe_bitrate = calculate_safe_mp3_bitrate(dur)
             ffmpeg_cmd.extend(["-c:a", "libmp3lame", "-b:a", safe_bitrate, "-ar", "44100"])
-            
+
         ffmpeg_cmd.append(temp_out)
         await asyncio.to_thread(subprocess.run, ffmpeg_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if audio_format == "mp3":
             await enforce_max_file_size_mp3(temp_out)
-            
+
         from starlette.background import BackgroundTask
         suffix = "_master" if master_filter else ""
         return FileResponse(
-            path=temp_out, 
-            filename=f"{safe_title}{suffix}.{audio_format}", 
+            path=temp_out,
+            filename=f"{safe_title}{suffix}.{audio_format}",
             media_type=f"audio/{audio_format}",
             background=BackgroundTask(cleanup_files, [temp_out])
         )
@@ -4643,11 +4662,11 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
 async def download_voiceover_direct(task_id: str, audio_format: str):
     if audio_format not in ["mp3", "wav"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
-    
+
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     library = load_library()
     track = next((t for t in library if t.get("id") == task_id), None)
-    
+
     # Si no está en disco local, intentar descargarlo del backup de nube
     if not os.path.exists(local_path) or os.path.getsize(local_path) < 1000:
         if track:
@@ -4658,7 +4677,7 @@ async def download_voiceover_direct(task_id: str, audio_format: str):
 
     if not os.path.exists(local_path) or os.path.getsize(local_path) < 1000:
         raise HTTPException(status_code=404, detail="El audio de la predicación no se encuentra en el servidor.")
-    
+
     title = track.get("title", "Predicacion_Pastoral") if track else "Predicacion_Pastoral"
     import unicodedata
     clean_ascii = unicodedata.normalize('NFKD', str(title)).encode('ascii', 'ignore').decode('ascii')
@@ -4743,14 +4762,14 @@ async def admin_toggle_user(request: Request, current_user: str = Depends(get_cu
     data = await request.json()
     target_email = data.get("email", "").strip().lower()
     new_status = data.get("status", "active")
-    
+
     if target_email == ADMIN_EMAIL:
         raise HTTPException(status_code=400, detail="No puedes bloquear tu propia cuenta de administrador.")
-        
+
     users = load_users()
     if target_email not in users:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-        
+
     users[target_email]["status"] = "blocked" if new_status == "blocked" else "active"
     save_users(users)
     return {"status": "success", "user": users[target_email]}
@@ -4773,14 +4792,14 @@ async def serve_spa(request: Request):
     user = request.session.get('user')
     if not user:
         return RedirectResponse(url="/login")
-        
+
     email = user.get('email', '').strip().lower()
     users = load_users()
     user_record = users.get(email)
-    
+
     if email != ADMIN_EMAIL and (not user_record or user_record.get("status") == "blocked"):
         return RedirectResponse(url="/login?error=Acceso%20Bloqueado:%20Comunícate%20con%20el%20administrador.")
-        
+
     real_name = user.get('name') or user.get('given_name')
     if not real_name and email:
         real_name = email.split('@')[0].capitalize()
@@ -4812,7 +4831,7 @@ async def serve_login(request: Request):
         user_record = users.get(email)
         if email == ADMIN_EMAIL or (user_record and user_record.get("status") != "blocked"):
             return RedirectResponse(url="/")
-        
+
     login_path = os.path.join(os.getcwd(), "login.html")
     if os.path.exists(login_path):
         with open(login_path, "r", encoding="utf-8") as f:
@@ -4834,9 +4853,9 @@ async def login_via_google(request: Request):
         redirect_uri = redirect_uri.replace("http://", "https://")
     # Solicitar acceso offline y consentimiento para obtener refresh_token permanente hacia Google Drive 5TB
     return await oauth.google.authorize_redirect(
-        request, 
-        redirect_uri, 
-        access_type="offline", 
+        request,
+        redirect_uri,
+        access_type="offline",
         prompt="consent"
     )
 
@@ -4850,7 +4869,7 @@ async def auth_callback(request: Request):
             name = user.get('name') or email.split('@')[0].capitalize()
             picture = user.get('picture', '')
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
+
             users = load_users()
             if email == ADMIN_EMAIL:
                 users[email] = {
@@ -4863,7 +4882,7 @@ async def auth_callback(request: Request):
                     "created_at": users.get(email, {}).get("created_at", now_str)
                 }
                 save_users(users)
-                
+
                 # Guardar tokens de Google Drive 5TB de Rodrigo para respaldo eterno
                 gdrive_tokens = {}
                 if token.get('refresh_token'):
@@ -4879,10 +4898,10 @@ async def auth_callback(request: Request):
                         asyncio.create_task(gdrive_sync_library_from_cloud())
                     except Exception as e:
                         print(f"[GDRIVE] Error disparando sincronización tras login: {e}")
-                
+
                 request.session['user'] = user
                 return RedirectResponse(url="/")
-            
+
             if email in users:
                 user_record = users[email]
                 if user_record.get("status") == "blocked":
@@ -4907,7 +4926,7 @@ async def auth_callback(request: Request):
     except Exception as e:
         print("Error en OAuth callback:", str(e))
         return RedirectResponse(url="/login?error=Error%20al%20conectar%20con%20Google")
-    
+
     return RedirectResponse(url="/login?error=No%20se%20pudo%20obtener%20el%20usuario")
 
 @app.get("/api/logout")
@@ -5243,11 +5262,11 @@ def midi_to_audio_wave(mid_bytes: bytes, sample_rate: int = 44100) -> bytes:
     import mido
 
     mid = mido.MidiFile(file=io.BytesIO(mid_bytes))
-    
+
     current_time = 0.0
     active_notes = {}  # (note, channel) -> (start_time, velocity)
     note_events = []   # (note, start_time, duration, velocity)
-    
+
     for msg in mid:
         current_time += msg.time
         if msg.type == 'note_on' and msg.velocity > 0:
@@ -5258,15 +5277,15 @@ def midi_to_audio_wave(mid_bytes: bytes, sample_rate: int = 44100) -> bytes:
                 start_t, vel = active_notes.pop(key)
                 dur = max(0.08, current_time - start_t)
                 note_events.append((msg.note, start_t, dur, vel))
-                
+
     for (note, ch), (start_t, vel) in active_notes.items():
         dur = max(0.08, current_time - start_t)
         note_events.append((note, start_t, dur, vel))
-        
+
     total_duration = max(current_time + 1.2, 2.0)
     total_samples = int(total_duration * sample_rate)
     audio = np.zeros(total_samples, dtype=np.float32)
-    
+
     for note, start_t, dur, vel in note_events:
         freq = 440.0 * (2.0 ** ((note - 69) / 12.0))
         start_sample = int(start_t * sample_rate)
@@ -5277,7 +5296,7 @@ def midi_to_audio_wave(mid_bytes: bytes, sample_rate: int = 44100) -> bytes:
         actual_samples = min(note_samples, total_samples - start_sample)
         if actual_samples <= 0:
             continue
-            
+
         t = np.linspace(0, sounding_dur, note_samples)[:actual_samples]
         amp = (vel / 127.0) * 0.35
         envelope = np.exp(-t * 2.2)
@@ -5287,13 +5306,13 @@ def midi_to_audio_wave(mid_bytes: bytes, sample_rate: int = 44100) -> bytes:
             np.sin(2 * np.pi * freq * 3 * t) * 0.12 +
             np.sin(2 * np.pi * freq * 4 * t) * 0.08
         ) * envelope * amp
-        
+
         audio[start_sample:start_sample + actual_samples] += wave_arr
-        
+
     max_val = np.max(np.abs(audio))
     if max_val > 0.01:
         audio = (audio / max_val) * 0.92
-        
+
     audio_int16 = (audio * 32767).astype(np.int16)
     out_buf = io.BytesIO()
     with wave.open(out_buf, 'wb') as wf:
@@ -5312,12 +5331,12 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
             import io
             import mido
             mid = mido.MidiFile(file=io.BytesIO(content))
-            
+
             bpm = 100
             meter = "4/4"
             key = "Do Mayor (C Major)"
             midi_lyrics_list = []
-            
+
             for track in mid.tracks:
                 for msg in track:
                     if msg.type == 'set_tempo':
@@ -5330,7 +5349,7 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
                         txt = str(msg.text).strip()
                         if txt and not txt.startswith('@') and len(txt) < 100:
                             midi_lyrics_list.append(txt)
-                            
+
             wav_bytes = midi_to_audio_wave(content)
             sk_id = str(uuid.uuid4())[:8]
             os.makedirs("assets/skeletons", exist_ok=True)
@@ -5338,10 +5357,10 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
             sk_path = os.path.join("assets", "skeletons", sk_filename)
             with open(sk_path, "wb") as f_sk:
                 f_sk.write(wav_bytes)
-                
+
             sk_url = f"/assets/skeletons/{sk_filename}"
             clean_name = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").title()
-            
+
             # Comprobar si coincide con himno de nuestra base de conocimiento
             matched_kb = None
             for hid, hdata in HYMNAL_KNOWLEDGE_BASE.items():
@@ -5349,7 +5368,7 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
                 if hid in fname_lower or any(w in fname_lower for w in title_words):
                     matched_kb = hdata
                     break
-                    
+
             if matched_kb:
                 final_title = matched_kb["title"]
                 final_lyrics = matched_kb["lyrics"]
@@ -5364,7 +5383,7 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
                     final_lyrics = f"[Verse 1]\nEscribe o pega aquí la letra para: {clean_name}..."
                 final_key = key
                 final_style = f"sacred traditional Christian worship hymn, strictly following melodic guide in {meter} time, tempo {bpm} BPM, key of {final_key}, grand symphonic orchestra strings, pipe organ and worship choir in unison"
-                
+
             return {
                 "id": sk_id,
                 "filename": filename,
@@ -5382,13 +5401,13 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
             print(f"[MIDI Parser Error] {filename}: {midi_err}")
 
 
-    
+
     # 1. Comprobar si coincide con himnos conocidos del himnario por nombre de archivo
     for hid, hdata in HYMNAL_KNOWLEDGE_BASE.items():
         title_words = hdata["title"].lower().split()
         eng_words = hdata.get("english_title", "").lower().split()
-        if (hid in fname_lower or 
-            any(w in fname_lower for w in title_words if len(w) > 4) or 
+        if (hid in fname_lower or
+            any(w in fname_lower for w in title_words if len(w) > 4) or
             any(w in fname_lower for w in eng_words if len(w) > 4)):
             return {
                 "id": str(uuid.uuid4())[:8],
@@ -5403,7 +5422,7 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
                 "audio_skeleton": hdata.get("audio_skeleton", ""),
                 "skeleton_file": hdata.get("skeleton_file", "")
             }
-            
+
     # 2. Si es MusicXML / XML:
     if fname_lower.endswith((".xml", ".musicxml")):
         try:
@@ -5441,7 +5460,7 @@ async def extract_score_metadata(filename: str, content: bytes) -> dict:
         try:
             mime = "image/png" if content.startswith(b'\x89PNG') else "image/jpeg"
             img_url = await asyncio.to_thread(fal_client.upload, content, mime)
-            
+
             ocr_prompt = """Eres un musicólogo experto e hiper-preciso en himnología cristiana y OCR de partituras e himnarios.
 Examina con suma atención la imagen de la partitura. IMPORTANTE: La foto puede provenir de un teléfono móvil y estar rotada de costado, apaisada o vertical. Oriéntala mentalmente para leer la partitura y la letra en la orientación correcta.
 
@@ -5480,13 +5499,13 @@ No incluyas texto explicativo antes ni después del bloque JSON."""
                 det_meter = str(parsed.get("meter", "4/4")).strip()
                 det_key = str(parsed.get("key", "Sol Mayor (G Major)")).strip()
                 det_tempo = str(parsed.get("tempo", "Andante (80 BPM)")).strip()
-                
+
                 raw_chords = parsed.get("chords", "G - C - D - G")
                 if isinstance(raw_chords, list):
                     det_chords = " - ".join(str(c).strip() for c in raw_chords)
                 else:
                     det_chords = str(raw_chords).strip()
-                
+
                 clean_lyrics = parse_ocr_lyrics(parsed.get("lyrics", ""))
 
                 # Comprobar si el himno detectado coincide con nuestra base de conocimiento (ej: 15, 297)
@@ -5540,7 +5559,7 @@ No incluyas texto explicativo antes ni después del bloque JSON."""
             print(f"[Vision OCR] Error analizando {filename} con Fal: {ocr_err}")
 
     # 4. Fallback inteligente si no hay conexión o no se detectó por visión:
-    if ("15" in clean_name or "15" in fname_lower or 
+    if ("15" in clean_name or "15" in fname_lower or
         "firmes" in fname_lower or "adelante" in fname_lower or
         "a57d25f8" in fname_lower or "6390bb3b" in fname_lower):
         h = HYMNAL_KNOWLEDGE_BASE["15"]
@@ -5558,8 +5577,8 @@ No incluyas texto explicativo antes ni después del bloque JSON."""
             "skeleton_file": h.get("skeleton_file", "")
         }
 
-    if ("297" in clean_name or "297" in fname_lower or 
-        "c7db9a4c" in fname_lower or "170530fc" in fname_lower or 
+    if ("297" in clean_name or "297" in fname_lower or
+        "c7db9a4c" in fname_lower or "170530fc" in fname_lower or
         "quiero verle" in fname_lower or "want to see him" in fname_lower):
         h = HYMNAL_KNOWLEDGE_BASE["297"]
         return {
@@ -5615,12 +5634,12 @@ async def api_scan_sheet_music(files: list[UploadFile] = File(...)):
 async def run_batch_worker(batch_id: str, hymns: list[dict]):
     BATCH_TASKS[batch_id]["status"] = "PROCESSING"
     total = len(hymns)
-    
+
     for idx, h in enumerate(hymns):
         BATCH_TASKS[batch_id]["current_index"] = idx + 1
         BATCH_TASKS[batch_id]["current_title"] = h.get("title", f"Himno #{idx+1}")
         BATCH_TASKS[batch_id]["progress_pct"] = round((idx / total) * 100)
-        
+
         task_id = str(uuid.uuid4())[:12]
         TASKS[task_id] = {
             "id": task_id,
@@ -5628,14 +5647,14 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
             "logs": f"Iniciando generación de lote para: {h.get('title')}\n",
             "tracks": []
         }
-        
+
         style = h.get("style", "sacred Christian hymn, church choir, classical strings")
         lyrics = h.get("lyrics", "[Verse 1]\nGloria a Dios en las alturas")
         title = h.get("title", f"Himno {idx+1}")
         model = h.get("model", "chirp-v5")
         vocal_gender = h.get("vocal_gender", "male")
         exclude_styles = h.get("exclude_styles", "cumbia, trap, electronic, metal, distortion")
-        
+
         audio_content = None
         audio_filename = None
         ignore_audio = True
@@ -5678,7 +5697,7 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
                 pronunciation="",
                 obfuscate=False
             )
-            
+
             t_obj = TASKS.get(task_id, {})
             tracks = t_obj.get("tracks", [])
             if tracks:
@@ -5691,9 +5710,9 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
                 })
         except Exception as e:
             BATCH_TASKS[batch_id]["errors"].append({"hymn": title, "error": str(e)})
-            
+
         await asyncio.sleep(2)
-        
+
     BATCH_TASKS[batch_id]["status"] = "COMPLETED"
     BATCH_TASKS[batch_id]["progress_pct"] = 100
     BATCH_TASKS[batch_id]["current_title"] = "¡Himnario completado con éxito!"
@@ -5703,7 +5722,7 @@ async def api_batch_generate(payload: dict, background_tasks: BackgroundTasks):
     hymns = payload.get("hymns", [])
     if not hymns:
         raise HTTPException(status_code=400, detail="No se enviaron himnos para procesar.")
-    
+
     batch_id = f"batch_{uuid.uuid4().hex[:10]}"
     BATCH_TASKS[batch_id] = {
         "id": batch_id,
@@ -5715,7 +5734,7 @@ async def api_batch_generate(payload: dict, background_tasks: BackgroundTasks):
         "errors": [],
         "progress_pct": 0
     }
-    
+
     background_tasks.add_task(run_batch_worker, batch_id, hymns)
     return {"batch_id": batch_id, "status": "QUEUED", "total": len(hymns)}
 
@@ -5732,22 +5751,22 @@ async def api_merge_continuous_album(payload: dict):
     album_title = payload.get("album_title", "Himnario Devocional - 1 Hora de Adoración").strip()
     crossfade_sec = float(payload.get("crossfade_sec", 4.0))
     crossfade_ms = int(crossfade_sec * 1000)
-    
+
     if not track_ids or len(track_ids) < 1:
         raise HTTPException(status_code=400, detail="Selecciona al menos 2 pistas para unir en álbum continuo.")
-        
+
     valid_files = []
     for tid in track_ids:
         p = os.path.join(TRACKS_DIR, f"{tid}.mp3")
         if os.path.exists(p) and os.path.getsize(p) > 1000:
             valid_files.append(p)
-            
+
     if len(valid_files) < 1:
         raise HTTPException(status_code=404, detail="No se encontraron los archivos de audio en el servidor.")
-        
+
     album_id = f"album_{uuid.uuid4().hex[:10]}"
     out_file = os.path.join(TRACKS_DIR, f"{album_id}.mp3")
-    
+
     try:
         combined = AudioSegment.from_file(valid_files[0])
         for next_file in valid_files[1:]:
@@ -5757,10 +5776,10 @@ async def api_merge_continuous_album(payload: dict):
                 combined = combined.append(seg, crossfade=cf)
             else:
                 combined = combined + seg
-            
+
         combined.export(out_file, format="mp3", bitrate="192k")
         total_duration = round(len(combined) / 1000)
-        
+
         album_track_info = {
             "id": album_id,
             "title": f"📀 {album_title}",
@@ -6265,7 +6284,7 @@ async def api_track_enrich(track_id: str, request: Request):
 
     inst_names = [t["short_name"] + f" ({t['volume_pct']}%)" for t in enrich_res["tracks_rendered"]]
     lic_summary = "; ".join(f"{l['bank']} [{l['license']} - {l['attribution']}]" for l in enrich_res["licenses_used"])
-    
+
     style_desc = (
         f"Sobregrabación SF2 | {orig_title} | "
         f"Tonalidad: {enrich_res['key']['name']} | "
