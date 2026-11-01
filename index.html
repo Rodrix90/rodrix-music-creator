@@ -4291,6 +4291,14 @@ $('instrumental').addEventListener('change', e => {
     $('lyricsInput').placeholder = "[Verse]\nEscribe aquí tu letra...";
   }
 });
+$('lyricsInput').addEventListener('input', () => {
+  const val = $('lyricsInput').value.trim();
+  if (val && !val.toLowerCase().startsWith('[instrumental]') && $('instrumental').checked) {
+    $('instrumental').checked = false;
+    $('lyricsInput').style.opacity = 1;
+    $('lyricsInput').disabled = false;
+  }
+});
 $('clearAudio').addEventListener('click', () => {
   $('audioInput').value = '';
   if (window.clearLoadedSkeleton) window.clearLoadedSkeleton();
@@ -6922,28 +6930,27 @@ $('genForm').addEventListener('submit', async e => {
   const activePreset = effCfg.activePreset;
   const isSoloPianoPrayerMode = effCfg.isSoloPianoPrayerMode;
 
-  const rawExclInput = ($('excludeInput')?.value || '').toLowerCase();
-  const isSoloGuitarMode = (
+  const isSoloGuitarMode = instr && (
     activePreset === 'guitar_solo' ||
     finalStyle.toLowerCase().includes('solo de guitarra') ||
     finalStyle.toLowerCase().includes('guitar solo') ||
     finalStyle.toLowerCase().includes('solo guitar') ||
-    finalStyle.toLowerCase().includes('guitarra sola') ||
-    ((rawExclInput.includes('drum') || rawExclInput.includes('bateria')) && (rawExclInput.includes('bass') || rawExclInput.includes('bajo')))
+    finalStyle.toLowerCase().includes('guitarra sola')
   );
-  const isSoloBassMode = (
+  const isSoloBassMode = instr && (
     activePreset === 'bass_solo' ||
     finalStyle.toLowerCase().includes('solo de bajo') ||
     finalStyle.toLowerCase().includes('bass solo') ||
     finalStyle.toLowerCase().includes('solo bass') ||
     finalStyle.toLowerCase().includes('bajo solo')
   );
-  const isSoloDrumMode = (
+  const isSoloDrumMode = instr && (
     finalStyle.toLowerCase().includes('solo de bateria') ||
     finalStyle.toLowerCase().includes('drum solo') ||
     finalStyle.toLowerCase().includes('bateria sola')
   );
-  const isAnySoloInstrumentMode = isSoloGuitarMode || isSoloBassMode || isSoloDrumMode || isSoloPianoPrayerMode;
+  const isSoloPianoPrayerMode = instr && effCfg.isSoloPianoPrayerMode;
+  const isAnySoloInstrumentMode = instr && (isSoloGuitarMode || isSoloBassMode || isSoloDrumMode || isSoloPianoPrayerMode);
 
   if (!isAnySoloInstrumentMode) {
     if ((rhythmType === 'dos_pasos' || rhythmType === 'gospel_2step') && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('dos pasos') && !finalStyle.toLowerCase().includes('two-step')) {
@@ -7030,7 +7037,7 @@ $('genForm').addEventListener('submit', async e => {
   }
 
   let lyricsToSend = '';
-  if (instr || isAnySoloInstrumentMode) {
+  if (instr) {
     if (isSoloPianoPrayerMode) lyricsToSend = '[Instrumental - Solo Piano]';
     else if (isSoloGuitarMode) lyricsToSend = '[Instrumental - Solo Guitar]';
     else if (isSoloBassMode) lyricsToSend = '[Instrumental - Solo Bass]';
@@ -7041,7 +7048,7 @@ $('genForm').addEventListener('submit', async e => {
   }
   fd.append('lyrics', lyricsToSend);
   fd.append('title', $('titleInput').value.trim());
-  fd.append('include_lyrics', (instr || isAnySoloInstrumentMode) ? 'false' : 'true');
+  fd.append('include_lyrics', instr ? 'false' : 'true');
   fd.append('bypass_copyright', $('bypass').checked);
   fd.append('is_public_domain', ($('chkPublicDomain') && $('chkPublicDomain').checked) ? 'true' : 'false');
 

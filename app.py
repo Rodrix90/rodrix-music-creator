@@ -3034,47 +3034,63 @@ async def run_transform_task(
         raw_style_before_enrich = style
         raw_excl_before = (exclude_styles or "").lower()
 
-        is_drum_solo = any(w in raw_style_before_enrich.lower() for w in [
-            "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
-            "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
-            "pure drums", "drum test", "drum sound test"
-        ])
-
-        is_guitar_solo = not is_drum_solo and (
-            active_preset == "guitar_solo"
-            or any(w in raw_style_before_enrich.lower() for w in [
-                "guitar solo", "solo guitar", "solo electric guitar", "solo de guitarra", "guitarra sola",
-                "isolated guitar", "pure guitar", "unaccompanied guitar", "solo acoustic guitar", "guitar showcase"
+        # REGLA DE ORO: Solo es instrumental SI Y SOLO SI el usuario activo la casilla instrumental
+        # (include_lyrics=False o lyrics == '[instrumental]'). Si include_lyrics es True y hay letra,
+        # NUNCA se fuerza is_instrumental = True, NUNCA se borra la letra del usuario,
+        # y los modos solistas aislados se desactivan para preservar la banda completa y las voces/coros.
+        if is_instrumental:
+            is_drum_solo = any(w in raw_style_before_enrich.lower() for w in [
+                "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
+                "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
+                "pure drums", "drum test", "drum sound test"
             ])
-            or (("drum" in raw_excl_before or "bateria" in raw_excl_before) and ("bass" in raw_excl_before or "bajo" in raw_excl_before) and any(g in raw_style_before_enrich.lower() for g in ["guitar", "stratocaster", "les paul", "telecaster"]))
-        )
 
-        is_bass_solo = not is_drum_solo and not is_guitar_solo and (
-            active_preset == "bass_solo"
-            or any(w in raw_style_before_enrich.lower() for w in [
-                "bass solo", "solo bass", "solo electric bass", "solo de bajo", "bajo solo",
-                "isolated bass", "pure bass", "unaccompanied bass", "bass showcase"
-            ])
-        )
+            is_guitar_solo = not is_drum_solo and (
+                active_preset == "guitar_solo"
+                or any(w in raw_style_before_enrich.lower() for w in [
+                    "guitar solo", "solo guitar", "solo electric guitar", "solo de guitarra", "guitarra sola",
+                    "isolated guitar", "pure guitar", "unaccompanied guitar", "solo acoustic guitar", "guitar showcase"
+                ])
+            )
 
-        is_solo_piano_prayer = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
-            active_preset == "piano_oracion"
-        )
-        if is_guitar_solo:
-            is_instrumental = True
-            wants_solo_vocal = False
-            wants_choir = False
-            final_lyrics = "[Instrumental - Solo Guitar]"
-        elif is_bass_solo:
-            is_instrumental = True
-            wants_solo_vocal = False
-            wants_choir = False
-            final_lyrics = "[Instrumental - Solo Bass]"
-        elif is_solo_piano_prayer:
-            is_instrumental = True
-            wants_solo_vocal = False
-            wants_choir = False
-            final_lyrics = "[Instrumental - Solo Piano]"
+            is_bass_solo = not is_drum_solo and not is_guitar_solo and (
+                active_preset == "bass_solo"
+                or any(w in raw_style_before_enrich.lower() for w in [
+                    "bass solo", "solo bass", "solo electric bass", "solo de bajo", "bajo solo",
+                    "isolated bass", "pure bass", "unaccompanied bass", "bass showcase"
+                ])
+            )
+
+            is_solo_piano_prayer = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
+                active_preset == "piano_oracion"
+                or any(w in raw_style_before_enrich.lower() for w in [
+                    "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
+                    "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
+                    "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
+                ]) or ("piano" in raw_style_before_enrich.lower() and any(w in raw_style_before_enrich.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
+            )
+
+            if is_guitar_solo:
+                wants_solo_vocal = False
+                wants_choir = False
+                final_lyrics = "[Instrumental - Solo Guitar]"
+            elif is_bass_solo:
+                wants_solo_vocal = False
+                wants_choir = False
+                final_lyrics = "[Instrumental - Solo Bass]"
+            elif is_solo_piano_prayer:
+                wants_solo_vocal = False
+                wants_choir = False
+                final_lyrics = "[Instrumental - Solo Piano]"
+            elif is_drum_solo:
+                wants_solo_vocal = False
+                wants_choir = False
+                final_lyrics = "[Instrumental - Solo Drums]"
+        else:
+            is_drum_solo = False
+            is_guitar_solo = False
+            is_bass_solo = False
+            is_solo_piano_prayer = False
 
         is_vals_vienes = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (active_preset == "vals_vienes" or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"]))
 
