@@ -2340,6 +2340,15 @@ async def serve_cached_audio(task_id: str, current_user: str = Depends(get_curre
             detail="Acceso denegado: este audio fue generado por otro usuario."
         )
 
+    # 3. Si no esta en la biblioteca central y tampoco es una tarea propia del usuario:
+    # Bloquear acceso a archivos en disco sin propietario o persistidos tras reinicios
+    is_admin = (current_user.strip().lower() == ADMIN_EMAIL.strip().lower())
+    if not track_in_library and not is_own_task and not is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: la pista solicitada no pertenece a tu sesión ni estás autorizado para acceder a este recurso."
+        )
+
     # Servir audio local si existe
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
@@ -4634,6 +4643,14 @@ async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depen
             detail="Acceso denegado: no puedes acceder a los stems generados por otro usuario."
         )
 
+    # Impedir acceso a stems sin propietario o sobrevivientes a reinicios fuera de la biblioteca
+    is_admin = (current_user.strip().lower() == ADMIN_EMAIL.strip().lower())
+    if not is_central_library_track and not is_own_task and not is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: estos stems no pertenecen a tu sesión ni tienes autorización para acceder a ellos."
+        )
+
     if stem_type not in ["vocals", "instrumental"]:
         raise HTTPException(status_code=400, detail="Tipo de stem no válido")
     library = load_library()
@@ -4762,6 +4779,14 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         raise HTTPException(
             status_code=403,
             detail="Acceso denegado: no puedes descargar archivos generados por otro usuario."
+        )
+
+    # 3. Impedir acceso a tareas/archivos sin propietario o sobrevivientes a reinicios fuera de la biblioteca
+    is_admin = (current_user.strip().lower() == ADMIN_EMAIL.strip().lower())
+    if not is_central_library_track and not is_own_task and not is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: este archivo no pertenece a tu sesión ni tienes autorización para descargarlo."
         )
 
     if audio_format not in ["wav", "flac", "mp3"]:
@@ -4895,6 +4920,14 @@ async def download_voiceover_direct(task_id: str, audio_format: str, current_use
         raise HTTPException(
             status_code=403,
             detail="Acceso denegado: no puedes descargar la locucion generada por otro usuario."
+        )
+
+    # Impedir acceso a locuciones sin propietario o sobrevivientes a reinicios fuera de la biblioteca
+    is_admin = (current_user.strip().lower() == ADMIN_EMAIL.strip().lower())
+    if not is_central_library_track and not is_own_task and not is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: esta locución no pertenece a tu sesión ni tienes autorización para descargarla."
         )
 
     if audio_format not in ["mp3", "wav"]:
@@ -5999,7 +6032,7 @@ async def api_scan_sheet_music(files: list[UploadFile] = File(...)):
     return {"results": list(results), "count": len(results)}
 
 
-async def run_batch_worker(batch_id: str, hymns: list[dict]):
+async def run_batch_worker(batch_id: str, hymns: list[dict], owner_email: str = ""):
     BATCH_TASKS[batch_id]["status"] = "PROCESSING"
     total = len(hymns)
 
@@ -6011,6 +6044,7 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
         task_id = str(uuid.uuid4())[:12]
         TASKS[task_id] = {
             "id": task_id,
+            "owner_email": owner_email,
             "status": "PROCESSING",
             "logs": f"Iniciando generación de lote para: {h.get('title')}\n",
             "tracks": []
@@ -6086,7 +6120,7 @@ async def run_batch_worker(batch_id: str, hymns: list[dict]):
     BATCH_TASKS[batch_id]["current_title"] = "¡Himnario completado con éxito!"
 
 @app.post("/api/batch_generate")
-async def api_batch_generate(payload: dict, background_tasks: BackgroundTasks):
+async def api_batch_generate(payload: dict, background_tasks: BackgroundTasks, current_user: str = Depends(get_current_user)):
     hymns = payload.get("hymns", [])
     if not hymns:
         raise HTTPException(status_code=400, detail="No se enviaron himnos para procesar.")
@@ -6094,6 +6128,7 @@ async def api_batch_generate(payload: dict, background_tasks: BackgroundTasks):
     batch_id = f"batch_{uuid.uuid4().hex[:10]}"
     BATCH_TASKS[batch_id] = {
         "id": batch_id,
+        "owner_email": current_user.strip().lower(),
         "total": len(hymns),
         "current_index": 0,
         "current_title": "Iniciando cola de himnos...",
@@ -6103,14 +6138,18 @@ async def api_batch_generate(payload: dict, background_tasks: BackgroundTasks):
         "progress_pct": 0
     }
 
-    background_tasks.add_task(run_batch_worker, batch_id, hymns)
+    background_tasks.add_task(run_batch_worker, batch_id, hymns, current_user.strip().lower())
     return {"batch_id": batch_id, "status": "QUEUED", "total": len(hymns)}
 
 @app.get("/api/batch_status/{batch_id}")
-async def api_batch_status(batch_id: str):
+async def api_batch_status(batch_id: str, current_user: str = Depends(get_current_user)):
     task = BATCH_TASKS.get(batch_id)
     if not task:
         raise HTTPException(status_code=404, detail="Tarea de lote no encontrada.")
+    owner = (task.get("owner_email") or "").strip().lower()
+    norm_user = current_user.strip().lower()
+    if norm_user != ADMIN_EMAIL.strip().lower() and (not owner or owner != norm_user):
+        raise HTTPException(status_code=403, detail="Acceso denegado: esta tarea de lote pertenece a otro usuario.")
     return task
 
 @app.post("/api/merge_continuous_album")
