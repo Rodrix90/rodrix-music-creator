@@ -1888,13 +1888,13 @@ body.mode-pro .assistant-prominent {
     </ul>
     <div class="side-foot">
       <div style="display:flex;align-items:center;gap:9px;min-width:0;cursor:pointer" onclick="toggleProfileModal()">
-        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden" id="userAvatar">R</div>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden" id="userAvatar">U</div>
         <div style="display:flex;flex-direction:column;min-width:0;line-height:1.2">
           <div style="display:flex;align-items:center;gap:5px">
-            <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rodrigo</span>
+            <span class="user-mail" id="userNameDisplay" style="font-weight:700;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Usuario</span>
             <span id="adminBadgeDesktop" class="badge-admin" style="display:none;font-size:9px;padding:1px 5px">ADMIN</span>
           </div>
-          <span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userEmailDisplay">rodryandy@gmail.com</span>
+          <span style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userEmailDisplay"></span>
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
@@ -4215,13 +4215,14 @@ body.mode-pro .assistant-prominent {
     </div>
 
     <div style="display:flex;align-items:center;gap:14px;background:#181824;padding:14px;border-radius:12px;border:1px solid var(--border)">
-      <div id="modalUserAvatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">R</div>
+      <div id="modalUserAvatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">U</div>
       <div style="display:flex;flex-direction:column;min-width:0">
         <div style="display:flex;align-items:center;gap:6px">
-          <span id="modalUserName" style="font-weight:700;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Rodrigo</span>
+          <span id="modalUserName" style="font-weight:700;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Mi Perfil</span>
           <span id="modalAdminBadge" class="badge-admin" style="display:none;font-size:10px">👑 ADMIN</span>
         </div>
-        <span id="modalUserEmail" style="font-size:12px;color:var(--muted);word-break:break-all">rodryandy@gmail.com</span>
+        <span id="modalUserEmail" style="font-size:12px;color:var(--muted);word-break:break-all"></span>
+        <div id="modalUserDriveStatus" style="margin-top:4px"></div>
       </div>
     </div>
 
@@ -6928,7 +6929,7 @@ $('genForm').addEventListener('submit', async e => {
   const activeRhythmPill = document.querySelector('.rhythm-pill.active');
   const rhythmType = activeRhythmPill ? activeRhythmPill.dataset.rhythm : 'libre';
   const activePreset = effCfg.activePreset;
-  const isSoloPianoPrayerMode = effCfg.isSoloPianoPrayerMode;
+  const isSoloPianoPrayerMode = instr && Boolean(effCfg.isSoloPianoPrayerMode);
 
   const isSoloGuitarMode = instr && (
     activePreset === 'guitar_solo' ||
@@ -6949,7 +6950,6 @@ $('genForm').addEventListener('submit', async e => {
     finalStyle.toLowerCase().includes('drum solo') ||
     finalStyle.toLowerCase().includes('bateria sola')
   );
-  const isSoloPianoPrayerMode = instr && effCfg.isSoloPianoPrayerMode;
   const isAnySoloInstrumentMode = instr && (isSoloGuitarMode || isSoloBassMode || isSoloDrumMode || isSoloPianoPrayerMode);
 
   if (!isAnySoloInstrumentMode) {
@@ -8842,6 +8842,13 @@ async function checkGDriveStatus() {
     const badge = $('gdriveStatusBadge');
     const text = $('gdriveStatusText');
     if (!badge || !text) return;
+    if (res.status === 403) {
+      badge.style.background = 'rgba(100,116,139,0.12)';
+      badge.style.borderColor = 'rgba(100,116,139,0.3)';
+      badge.style.color = '#94a3b8';
+      text.innerText = 'Drive Central: Restringido (Administrado)';
+      return;
+    }
     if (data.status === 'connected') {
       badge.style.background = 'rgba(34,197,94,0.12)';
       badge.style.borderColor = 'rgba(34,197,94,0.3)';
@@ -9003,11 +9010,11 @@ async function loadUserInfo() {
     const res = await fetch('/api/me?t=' + Date.now());
     if (res.ok) {
       const data = await res.json();
-      const name = data.name || 'Rodrigo';
-      const email = data.email || 'rodryandy@gmail.com';
-      const initial = (name ? name[0] : (email ? email[0] : 'R')).toUpperCase();
+      const email = (data.email || '').trim();
+      const name = data.name || (email ? email.split('@')[0] : 'Usuario');
+      const initial = (name ? name[0] : (email ? email[0] : 'U')).toUpperCase();
 
-      // Nombres y correos en interfaz
+      // Nombres y correos en interfaz exclusivamente de /api/me
       if ($('userNameDisplay')) $('userNameDisplay').textContent = name;
       if ($('userEmailDisplay')) $('userEmailDisplay').textContent = email;
       if ($('modalUserName')) $('modalUserName').textContent = name;
@@ -9026,7 +9033,18 @@ async function loadUserInfo() {
         }
       });
 
-      // Si es el Administrador (rodryandy@gmail.com)
+      // Indicador de almacenamiento Google Drive en modal
+      if ($('modalUserDriveStatus')) {
+        if (data.is_admin) {
+          $('modalUserDriveStatus').innerHTML = '<span style="color:#FBBF24;font-size:11.5px;font-weight:600">👑 Almacenamiento Central Google Drive 5TB (Total)</span>';
+        } else if (data.drive_access) {
+          $('modalUserDriveStatus').innerHTML = '<span style="color:#4ade80;font-size:11.5px;font-weight:600">☁ Google Drive: Autorizado</span>';
+        } else {
+          $('modalUserDriveStatus').innerHTML = '<span style="color:#94a3b8;font-size:11px;font-weight:500">🔒 Almacenamiento de sesión (Drive central restringido)</span>';
+        }
+      }
+
+      // Si es el Administrador
       if (data.is_admin) {
         if ($('nav-users-li')) $('nav-users-li').style.display = 'block';
         if ($('bnav-usuarios')) $('bnav-usuarios').style.display = 'flex';
@@ -9036,6 +9054,15 @@ async function loadUserInfo() {
         if ($('modalAdminBadge')) $('modalAdminBadge').style.display = 'inline-block';
         if ($('modalAdminAction')) $('modalAdminAction').style.display = 'flex';
         if ($('modalAdminSupportSection')) $('modalAdminSupportSection').style.display = 'flex';
+      } else {
+        if ($('nav-users-li')) $('nav-users-li').style.display = 'none';
+        if ($('bnav-usuarios')) $('bnav-usuarios').style.display = 'none';
+        if ($('mobileAdminPill')) $('mobileAdminPill').style.display = 'none';
+        if ($('adminSettingsCard')) $('adminSettingsCard').style.display = 'none';
+        if ($('adminBadgeDesktop')) $('adminBadgeDesktop').style.display = 'none';
+        if ($('modalAdminBadge')) $('modalAdminBadge').style.display = 'none';
+        if ($('modalAdminAction')) $('modalAdminAction').style.display = 'none';
+        if ($('modalAdminSupportSection')) $('modalAdminSupportSection').style.display = 'none';
       }
     }
   } catch(e){
@@ -10386,6 +10413,7 @@ function toggleStudioMode() {
 
 // Initial mode setup
 document.addEventListener('DOMContentLoaded', () => {
+  loadUserInfo();
   setStudioMode(currentStudioMode);
   initVisualMetricWidget();
   drawPianoRollDemo('midiPianoRollCanvas');

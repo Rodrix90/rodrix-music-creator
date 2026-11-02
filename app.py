@@ -4990,7 +4990,7 @@ async def get_me(request: Request):
     if not name and email:
         name = email.split('@')[0].capitalize()
     if not name:
-        name = "Rodrigo"
+        name = "Usuario"
     picture = user.get('picture', '')
     is_admin = (email == ADMIN_EMAIL.strip().lower())
     users = load_users()
