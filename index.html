@@ -4665,6 +4665,7 @@ window.AppDialog = (function() {
   let activeResolve = null;
   let currentDialogType = null;
   let previousActiveElement = null;
+  let closeTimer = null;
 
   function getElements() {
     return {
@@ -4689,11 +4690,19 @@ window.AppDialog = (function() {
     if (!el.overlay) return;
 
     el.overlay.classList.remove('active');
-    setTimeout(() => {
+    document.body.style.overflow = '';
+
+    if (closeTimer) {
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+
+    closeTimer = setTimeout(() => {
       el.overlay.style.display = 'none';
       if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
         try { previousActiveElement.focus(); } catch(e){}
       }
+      closeTimer = null;
     }, 220);
 
     const res = activeResolve;
@@ -4704,8 +4713,17 @@ window.AppDialog = (function() {
 
   function show(options) {
     return new Promise((resolve) => {
+      // Si habia un dialogo previo abierto, resolverlo con cancelacion respetando SU propio tipo
       if (activeResolve) {
-        activeResolve(options.dialogMode === 'prompt' ? null : false);
+        const prevResolve = activeResolve;
+        activeResolve = null;
+        prevResolve(currentDialogType === 'prompt' ? null : false);
+      }
+
+      // Cancelar cualquier temporizador de cierre pendiente de un modal anterior
+      if (closeTimer) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
       }
 
       activeResolve = resolve;
@@ -4719,6 +4737,7 @@ window.AppDialog = (function() {
         return;
       }
 
+      // Reiniciar estado y clases
       el.confirmBtn.disabled = false;
       el.cancelBtn.disabled = false;
       el.confirmBtn.className = 'app-dialog-btn app-dialog-btn-confirm';
@@ -4780,6 +4799,9 @@ window.AppDialog = (function() {
         el.inputContainer.style.display = 'none';
       }
 
+      // Bloquear scroll de fondo para estabilidad en móviles y WebView
+      document.body.style.overflow = 'hidden';
+
       el.overlay.style.display = 'flex';
       void el.overlay.offsetWidth;
       el.overlay.classList.add('active');
@@ -4830,6 +4852,33 @@ window.AppDialog = (function() {
         el.cancelBtn.click();
       }
     };
+
+    // Atrapamiento de foco accesible (Focus Trap)
+    el.card.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const focusables = [
+        el.closeBtn,
+        el.inputContainer.style.display !== 'none' ? el.input : null,
+        el.cancelBtn.style.display !== 'none' ? el.cancelBtn : null,
+        el.confirmBtn.style.display !== 'none' ? el.confirmBtn : null
+      ].filter(Boolean);
+
+      if (!focusables.length) return;
+      const firstEl = focusables[0];
+      const lastEl = focusables[focusables.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl.focus();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl.focus();
+        }
+      }
+    });
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && el.overlay && el.overlay.classList.contains('active')) {
