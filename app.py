@@ -2268,16 +2268,22 @@ async def cache_track_audio(task_id: str, remote_url: str) -> str:
 
 @app.get("/api/audio_file/{task_id}")
 async def serve_cached_audio(task_id: str, current_user: str = Depends(get_current_user)):
-    if not user_has_drive_permission(current_user, "read"):
-        raise HTTPException(
-            status_code=403,
-            detail="Acceso denegado al archivo de audio de Google Drive: se requiere autorizacion del administrador."
-        )
+    library = load_library()
+    track_in_library = next((t for t in library if t.get("id") == task_id), None)
+    is_session_task = (task_id in TASKS)
+
+    # Si es una pista de la biblioteca central protegida, exigir permisos de lectura en Drive
+    if track_in_library and not user_has_drive_permission(current_user, "read"):
+        if not is_session_task:
+            raise HTTPException(
+                status_code=403,
+                detail="Acceso denegado al archivo de audio de Google Drive: se requiere autorizacion del administrador."
+            )
+
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return FileResponse(path=local_path, media_type="audio/mpeg")
-    library = load_library()
-    track = next((t for t in library if t.get("id") == task_id), None)
+    track = track_in_library
     if track:
         # 1. Recuperar desde Google Drive 5TB si el servidor se reinició
         gdrive_id = track.get("gdrive_id")
@@ -4653,11 +4659,17 @@ def build_master_filter(width: float, eq: str, loud: str) -> str:
 
 @app.get("/api/download/{task_id}/{audio_format}")
 async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none", current_user: str = Depends(get_current_user)):
-    if not user_has_drive_permission(current_user, "download"):
-        raise HTTPException(
-            status_code=403,
-            detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
-        )
+    library = load_library()
+    is_central_library_track = any(t.get("id") == task_id for t in library)
+    is_session_task = (task_id in TASKS)
+
+    # Proteger pistas de la biblioteca central de Google Drive
+    if is_central_library_track and not user_has_drive_permission(current_user, "download"):
+        if not is_session_task:
+            raise HTTPException(
+                status_code=403,
+                detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+            )
     if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
 
