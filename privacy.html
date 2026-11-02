@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad — Rodrix Music Creator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0b0b0f;
+            color: #e5e7eb;
+            line-height: 1.7;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 840px;
+            margin: 0 auto;
+            background: rgba(24, 24, 34, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 48px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .logo-icon {
+            font-size: 42px;
+            background: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+        h1 {
+            font-size: 30px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #9ca3af;
+        }
+        .badge-update {
+            display: inline-block;
+            background: rgba(0, 122, 204, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(0, 122, 204, 0.3);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #f3f4f6;
+            margin-top: 36px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 3px solid #9d4edd;
+            padding-left: 12px;
+        }
+        p {
+            font-size: 15px;
+            color: #d1d5db;
+            margin-bottom: 16px;
+        }
+        ul {
+            margin: 12px 0 20px 24px;
+            font-size: 15px;
+            color: #d1d5db;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .callout {
+            background: rgba(157, 78, 221, 0.1);
+            border: 1px solid rgba(157, 78, 221, 0.25);
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .callout-title {
+            font-weight: 600;
+            color: #c084fc;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .callout-info {
+            background: rgba(14, 165, 233, 0.08);
+            border: 1px solid rgba(14, 165, 233, 0.25);
+            color: #e0f2fe;
+        }
+        .callout-info .callout-title {
+            color: #38bdf8;
+        }
+        .contact-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        .nav-links {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .btn-link {
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s ease;
+        }
+        .btn-link:hover {
+            color: #38bdf8;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(157, 78, 221, 0.4);
+        }
+        @media (max-width: 640px) {
+            body { padding: 16px 12px; }
+            .container { padding: 24px 20px; border-radius: 16px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="header">
+            <i class="fa-solid fa-compact-disc logo-icon"></i>
+            <h1>Política de Privacidad</h1>
+            <p class="subtitle">Rodrix Music Creator — Versión 4.0</p>
+            <span class="badge-update">Última actualización: Noviembre de 2026</span>
+        </header>
+
+        <section>
+            <p>
+                En <strong>Rodrix Music Creator</strong> («la aplicación», «el servicio» o «la plataforma»), nos tomamos con la máxima seriedad la protección y confidencialidad de tus datos personales. La presente Política de Privacidad describe de manera transparente qué información recopilamos, cómo se utiliza, cómo se resguarda y qué derechos asisten a los usuarios al utilizar nuestra aplicación web y móvil (Android).
+            </p>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-user-shield"></i> 1. Responsable del Tratamiento</h2>
+            <p>
+                El responsable del tratamiento de los datos recabados a través de Rodrix Music Creator es <strong>Rodrigo González</strong> (desarrollador y titular de la plataforma).
+            </p>
+            <div class="contact-box">
+                <p style="margin-bottom:6px"><strong>Canal oficial de contacto para privacidad:</strong></p>
+                <p style="margin-bottom:0"><i class="fa-solid fa-envelope" style="color:#38bdf8;margin-right:8px"></i> Correo electrónico: <a href="mailto:rodryandy@gmail.com" style="color:#38bdf8;text-decoration:none">rodryandy@gmail.com</a></p>
+            </div>
+            <p style="font-size:13px;color:#9ca3af;margin-top:10px">
+                <em>* Nota legal: Los datos identificatorios complementarios o fiscales del titular requeridos por normativas locales están disponibles a solicitud a través del canal oficial de contacto.</em>
+            </p>
+        </section>
+
+        <section>
+            <h2><i class="fa-brands fa-google"></i> 2. Autenticación Mediante Google OAuth</h2>
+            <p>
+                Rodrix Music Creator utiliza exclusivamente el protocolo seguro <strong>Google OAuth 2.0</strong> para la autenticación de usuarios. Esto significa que nuestra plataforma <strong>nunca recopila, almacena ni solicita contraseñas personales</strong> de tu cuenta de Google.
+            </p>
+            <p>
+                Nuestra integración con la API de Google solicita únicamente los siguientes permisos estándar y <strong>no sensibles</strong> de identidad:
+            </p>
+            <ul>
+                <li><strong><code>openid</code>:</strong> Utilizado para verificar de manera criptográfica la validez de la sesión del usuario.</li>
+                <li><strong><code>https://www.googleapis.com/auth/userinfo.email</code>:</strong> Permite obtener la dirección de correo electrónico asociada para crear y gestionar tu cuenta de usuario.</li>
+                <li><strong><code>https://www.googleapis.com/auth/userinfo.profile</code>:</strong> Permite obtener tu nombre público y tu imagen de perfil (avatar) para personalizar tu interfaz de trabajo.</li>
+            </ul>
+
+            <div class="callout callout-info">
+                <div class="callout-title"><i class="fa-solid fa-shield-halved"></i> Compromiso de Alcance Mínimo</div>
+                Rodrix Music Creator <strong>NO</strong> solicita acceso ni permisos sobre tus archivos personales en Google Drive, tus correos de Gmail, tus contactos ni ningún otro servicio privado de tu cuenta de Google.
+            </div>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-database"></i> 3. Datos Personales Tratados y Finalidades</h2>
+            <p>Los datos que recopilamos se limitan estrictamente a lo necesario para la prestación del servicio:</p>
+            <ul>
+                <li><strong>Correo electrónico:</strong> Identificador único del usuario para mantener sus sesiones y gestionar roles de acceso.</li>
+                <li><strong>Nombre público:</strong> Mostrar tu saludo y créditos de usuario en la cabecera de la aplicación.</li>
+                <li><strong>Foto de perfil (avatar):</strong> Representación visual de tu usuario en la interfaz activa.</li>
+                <li><strong>Identificador de tareas y canciones:</strong> Registro de las composiciones, audios y procesos iniciados en tu sesión, con estricto aislamiento entre usuarios para garantizar que nadie más tenga acceso a tus archivos generados.</li>
+            </ul>
+            <p>
+                <strong>Finalidad exclusiva:</strong> La información se utiliza exclusivamente para autenticarte en la plataforma, validar autorizaciones del sistema, aislar tu contenido generado de otros usuarios y permitir la reproducción y descarga de tus propias pistas. <strong>No vendemos, no transferimos ni utilizamos tus datos personales para publicidad o comercialización a terceros.</strong>
+            </p>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-cloud"></i> 4. Almacenamiento Central en Google Drive</h2>
+            <p>
+                Rodrix Music Creator cuenta con un repositorio central de almacenamiento en Google Drive gestionado directamente por la administración del sistema para el resguardo de la biblioteca permanente de audio.
+            </p>
+            <div class="callout">
+                <div class="callout-title"><i class="fa-solid fa-lock"></i> Política de Acceso Administrado</div>
+                El inicio de sesión mediante Google OAuth <strong>NO otorga automáticamente acceso al almacenamiento central de Google Drive</strong>. El acceso a dicha biblioteca es restringido y administrado individualmente por el propietario del servicio. Los usuarios que no cuenten con dicho permiso pueden componer, sintetizar y descargar sus propias canciones generadas durante su sesión, manteniéndose protegidos los archivos centrales de la plataforma.
+            </div>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-server"></i> 5. Seguridad y Conservación de la Información</h2>
+            <ul>
+                <li><strong>Cifrado en tránsito:</strong> Todas las comunicaciones entre tu navegador/aplicación y los servidores de Rodrix Music Creator se realizan obligatoriamente mediante HTTPS con cifrado TLS/SSL.</li>
+                <li><strong>Sesiones Criptográficas:</strong> Las sesiones activas se gestionan mediante cookies firmadas criptográficamente con directivas de seguridad <code>SameSite=Lax</code> y <code>HttpOnly</code>.</li>
+                <li><strong>Aislamiento Multi-inquilino (Task Ownership):</strong> El backend valida en cada petición que las tareas de audio en memoria pertenezcan al correo de la sesión autenticada, impidiendo vulnerabilidades de acceso cruzado (IDOR).</li>
+                <li><strong>Retención:</strong> El registro básico de usuarios activos se mantiene en el servidor para conservar tus permisos de uso. Si solicitas la eliminación de tu cuenta, tu registro será removido permanentemente de nuestros sistemas.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-scale-balanced"></i> 6. Derechos del Usuario y Revocación</h2>
+            <p>Tienes derecho a acceder, rectificar o solicitar la eliminación de tus datos personales registrados en la plataforma en cualquier momento.</p>
+            <p>
+                Asimismo, puedes revocar el acceso de Rodrix Music Creator a tu cuenta de Google de forma inmediata directamente desde la configuración de seguridad de Google:
+            </p>
+            <p>
+                <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-weight:600;text-decoration:none">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Administrar aplicaciones con acceso a tu cuenta de Google
+                </a>
+            </p>
+            <p>
+                Para solicitar la supresión de tu registro en nuestro servidor, envía un correo electrónico a <a href="mailto:rodryandy@gmail.com" style="color:#38bdf8;text-decoration:none">rodryandy@gmail.com</a> con el asunto «Solicitud de Eliminación de Cuenta».
+            </p>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-pen-to-square"></i> 7. Cambios a esta Política</h2>
+            <p>
+                Nos reservamos el derecho de actualizar la presente Política de Privacidad para reflejar modificaciones legales, técnicas o funcionales de la plataforma. Cualquier actualización sustancial será reflejada en esta página con la fecha de revisión correspondiente.
+            </p>
+        </section>
+
+        <footer class="nav-links">
+            <a href="/login" class="btn-link"><i class="fa-solid fa-arrow-left"></i> Volver al Login</a>
+            <div style="display:flex;gap:12px;align-items:center">
+                <a href="/terms" class="btn-link"><i class="fa-solid fa-file-contract"></i> Condiciones del Servicio</a>
+                <a href="/login" class="btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión</a>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>

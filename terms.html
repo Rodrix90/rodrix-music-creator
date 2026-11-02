@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Condiciones del Servicio — Rodrix Music Creator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0b0b0f;
+            color: #e5e7eb;
+            line-height: 1.7;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 840px;
+            margin: 0 auto;
+            background: rgba(24, 24, 34, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 48px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .logo-icon {
+            font-size: 42px;
+            background: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+        h1 {
+            font-size: 30px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #9ca3af;
+        }
+        .badge-update {
+            display: inline-block;
+            background: rgba(157, 78, 221, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(157, 78, 221, 0.3);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #f3f4f6;
+            margin-top: 36px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 3px solid #007acc;
+            padding-left: 12px;
+        }
+        p {
+            font-size: 15px;
+            color: #d1d5db;
+            margin-bottom: 16px;
+        }
+        ul {
+            margin: 12px 0 20px 24px;
+            font-size: 15px;
+            color: #d1d5db;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .callout {
+            background: rgba(157, 78, 221, 0.1);
+            border: 1px solid rgba(157, 78, 221, 0.25);
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .callout-title {
+            font-weight: 600;
+            color: #c084fc;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .callout-warning {
+            background: rgba(234, 179, 8, 0.08);
+            border: 1px solid rgba(234, 179, 8, 0.25);
+            color: #fef08a;
+        }
+        .callout-warning .callout-title {
+            color: #facc15;
+        }
+        .nav-links {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .btn-link {
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s ease;
+        }
+        .btn-link:hover {
+            color: #38bdf8;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007acc 0%, #9d4edd 100%);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 122, 204, 0.4);
+        }
+        @media (max-width: 640px) {
+            body { padding: 16px 12px; }
+            .container { padding: 24px 20px; border-radius: 16px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="header">
+            <i class="fa-solid fa-compact-disc logo-icon"></i>
+            <h1>Condiciones del Servicio</h1>
+            <p class="subtitle">Rodrix Music Creator — Versión 4.0</p>
+            <span class="badge-update">Vigente a partir de: Noviembre de 2026</span>
+        </header>
+
+        <section>
+            <p>
+                Te damos la bienvenida a <strong>Rodrix Music Creator</strong>. Estas Condiciones del Servicio («Condiciones») regulan el acceso y uso de la plataforma web y de la aplicación móvil para Android. Al iniciar sesión mediante Google o utilizar nuestras herramientas, aceptas cumplir plenamente estas disposiciones.
+            </p>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-music"></i> 1. Descripción de la Plataforma</h2>
+            <p>
+                Rodrix Music Creator es una estación de trabajo de producción musical digital que integra:
+            </p>
+            <ul>
+                <li><strong>Motor de Síntesis Local (FluidSynth & SF2):</strong> Generación y preescucha de 20 instrumentos acústicos y virtuales sin consumo de créditos de inteligencia artificial.</li>
+                <li><strong>Generación Asistida por IA:</strong> Integración con modelos de composición y transformación sonora (UdioAPI / Udio v2).</li>
+                <li><strong>Procesamiento y Masterización:</strong> Suite de amplificadores virtuales, efectos de estudio, ecualización, limitadores de pico y separación de pistas (stems).</li>
+                <li><strong>Estudio de Locución:</strong> Procesamiento y ecualización de voz y predicación pastoral sobre fondos musicales.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-user-check"></i> 2. Cuenta de Usuario y Autenticación</h2>
+            <p>
+                El acceso a la aplicación se efectúa mediante una cuenta de Google a través de Google OAuth 2.0. Al autenticarte:
+            </p>
+            <ul>
+                <li>Eres responsable de la veracidad y custodia de tu cuenta de Google.</li>
+                <li>La aplicación asigna automáticamente el rol estándar de usuario activo.</li>
+                <li>El administrador se reserva el derecho de suspender o bloquear cuentas que vulneren estas condiciones o realicen un uso abusivo de los recursos de la plataforma.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-hard-drive"></i> 3. Política de Almacenamiento Central en Google Drive</h2>
+            <div class="callout callout-warning">
+                <div class="callout-title"><i class="fa-solid fa-triangle-exclamation"></i> Acceso Central Restringido y Administrado</div>
+                El inicio de sesión exitoso mediante Google OAuth <strong>NO otorga acceso a la biblioteca central de 5 TB alojada en Google Drive</strong>.
+            </div>
+            <p>
+                La biblioteca central de pistas, himnos y colecciones maestras es un recurso administrado. El acceso a dicho repositorio está sujeto a la autorización individual del administrador de Rodrix Music Creator.
+            </p>
+            <ul>
+                <li><strong>Usuarios sin acceso a Drive:</strong> Pueden generar composiciones originales, sintetizar instrumentos gratuitos, procesar audio, escuchar y descargar libremente sus propias creaciones generadas durante su sesión activa.</li>
+                <li><strong>Usuarios con autorización de Drive:</strong> Pueden consultar y descargar el catálogo maestro de referencia. Dicha autorización <strong>no incluye permisos de eliminación, edición ni renombramiento</strong> de archivos de la biblioteca central, facultades reservadas exclusivamente al administrador.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-copyright"></i> 4. Propiedad Intelectual y Contenido de los Usuarios</h2>
+            <ul>
+                <li><strong>Contenido ingresado:</strong> El usuario declara ser el autor o poseer los derechos suficientes sobre las letras, poemas, textos y pistas de referencia que introduce en la plataforma.</li>
+                <li><strong>Obras generadas:</strong> Las composiciones generadas por el usuario a partir de sus entradas le pertenecen a dicho usuario conforme a las licencias de las tecnologías empleadas. Rodrix Music Creator no reclama derechos de propiedad sobre las canciones creadas por sus usuarios.</li>
+                <li><strong>Aislamiento de contenido:</strong> El sistema garantiza que las canciones y tareas generadas en tu sesión sean privadas y no accesibles para otros usuarios.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-ban"></i> 5. Reglas de Uso Aceptable y Prohibiciones</h2>
+            <p>Queda terminantemente prohibido:</p>
+            <ul>
+                <li>Utilizar la plataforma para generar o difundir contenido que infrinja derechos de autor de terceros o incite al odio, violencia, discriminación o ilegalidad.</li>
+                <li>Intentar vulnerar los mecanismos de seguridad, eludir restricciones de permisos (IDOR) o acceder a tareas, archivos o credenciales de otros usuarios o del administrador.</li>
+                <li>Realizar ingeniería inversa, ataques de denegación de servicio (DoS) o sobrecargar los endpoints de síntesis y generación mediante scripts automatizados no autorizados.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-triangle-exclamation"></i> 6. Limitación de Responsabilidad y Disponibilidad</h2>
+            <p>
+                Rodrix Music Creator se proporciona «tal cual» (*as is*) y «según disponibilidad».
+            </p>
+            <ul>
+                <li>La disponibilidad de la generación mediante modelos en la nube depende de las cuotas y estabilidad de los proveedores de IA externos (UdioAPI/Udio).</li>
+                <li>El desarrollador no se responsabiliza por fallos de conectividad, interrupciones no programadas de servidores de alojamiento (Render, Google Cloud) o pérdidas de datos no consolidados en sesiones temporales.</li>
+                <li>El servicio no garantiza que los resultados musicales satisfagan expectativas artísticas específicas ni se hace responsable por reclamos de terceros derivados de letras o materiales provistos por el usuario.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fa-solid fa-gavel"></i> 7. Modificaciones, Contacto y Jurisdicción</h2>
+            <p>
+                Nos reservamos el derecho de modificar o actualizar estas Condiciones en cualquier momento. Las modificaciones entrarán en vigencia desde su publicación en esta dirección.
+            </p>
+            <p>
+                Para cualquier consulta referente a estas Condiciones del Servicio, puedes contactar al responsable a través de:
+            </p>
+            <p>
+                <i class="fa-solid fa-envelope" style="color:#38bdf8;margin-right:8px"></i> Correo electrónico: <a href="mailto:rodryandy@gmail.com" style="color:#38bdf8;text-decoration:none">rodryandy@gmail.com</a>
+            </p>
+        </section>
+
+        <footer class="nav-links">
+            <a href="/login" class="btn-link"><i class="fa-solid fa-arrow-left"></i> Volver al Login</a>
+            <div style="display:flex;gap:12px;align-items:center">
+                <a href="/privacy" class="btn-link"><i class="fa-solid fa-user-shield"></i> Política de Privacidad</a>
+                <a href="/login" class="btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión</a>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>

@@ -5185,6 +5185,36 @@ async def serve_login(request: Request):
             )
     return "<h3>login.html not found.</h3>"
 
+@app.get("/privacy", response_class=HTMLResponse)
+async def serve_privacy():
+    privacy_path = os.path.join(os.getcwd(), "privacy.html")
+    if os.path.exists(privacy_path):
+        with open(privacy_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(
+                content=f.read(),
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
+    return "<h3>privacy.html not found.</h3>"
+
+@app.get("/terms", response_class=HTMLResponse)
+async def serve_terms():
+    terms_path = os.path.join(os.getcwd(), "terms.html")
+    if os.path.exists(terms_path):
+        with open(terms_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(
+                content=f.read(),
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
+    return "<h3>terms.html not found.</h3>"
+
 @app.get("/api/login/google")
 async def login_via_google(request: Request):
     # Forzar dinámicamente HTTPS en producción (Render) para evitar el desajuste de protocolo http/https
