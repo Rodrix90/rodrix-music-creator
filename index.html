@@ -2144,6 +2144,487 @@ body.mode-pro .assistant-prominent {
   to { opacity: 0; transform: translateY(12px) scale(0.96); }
 }
 
+
+/* ==========================================================================
+   NAVEGACIÓN RESPONSIVE APK ANDROID / MÓVIL: HAMBURGUESA & BARRA INFERIOR FIJA
+   ========================================================================== */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Botón Hamburguesa ☰ (Oculto en escritorio, visible en móvil) */
+.mobile-hamburger-btn {
+  display: none;
+  background: #1F1F2E;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-hamburger-btn:hover, .mobile-hamburger-btn:active {
+  background: #28283C;
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.mobile-hamburger-btn .hamburger-bar {
+  display: block;
+  width: 20px;
+  height: 2.2px;
+  background-color: #F1F5F9;
+  border-radius: 2px;
+  transition: transform 0.24s ease, opacity 0.24s ease;
+}
+
+/* Animación de 3 barras a X cuando el menú está abierto */
+.mobile-hamburger-btn.active .hamburger-bar:nth-child(1) {
+  transform: translateY(7.2px) rotate(45deg);
+}
+.mobile-hamburger-btn.active .hamburger-bar:nth-child(2) {
+  opacity: 0;
+}
+.mobile-hamburger-btn.active .hamburger-bar:nth-child(3) {
+  transform: translateY(-7.2px) rotate(-45deg);
+}
+
+/* Overlay Difuminado del Menú Hamburguesa */
+.mobile-drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 15, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99990;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease;
+}
+
+.mobile-drawer-overlay.active {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Panel Vertical Desplegable (Drawer) */
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 86vw;
+  background: #161722;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -8px 0 36px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 99991;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.mobile-drawer-overlay.active .mobile-drawer {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #1A1B28;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.drawer-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+}
+
+.drawer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #7C3AED);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.drawer-user-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.drawer-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-email {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-close-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 26px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.drawer-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.drawer-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.drawer-menu-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.drawer-item:hover, .drawer-item:active {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.drawer-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.drawer-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.drawer-item-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #F1F5F9;
+  line-height: 1.25;
+}
+
+.drawer-item-sub {
+  font-size: 11px;
+  color: #94A3B8;
+  margin-top: 1px;
+  line-height: 1.2;
+}
+
+.drawer-item-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.22);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  align-self: flex-start;
+  margin-top: 3px;
+}
+
+.drawer-footer {
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #141520;
+}
+
+.drawer-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #F87171;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.16s ease;
+  box-sizing: border-box;
+}
+
+.drawer-logout-btn:hover, .drawer-logout-btn:active {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+/* Reglas Responsive Refinadas para Móviles y WebView */
+@media (max-width: 760px) {
+  body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    position: relative;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    background: #181824;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .logo {
+    margin: 0;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .logo-text {
+    font-size: 15px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block !important;
+  }
+
+  .sidebar .nav {
+    display: none !important;
+  }
+
+  .side-foot {
+    display: none !important;
+  }
+
+  .studio-mode-toggle {
+    display: none !important;
+  }
+
+  .mobile-top-actions {
+    display: none !important;
+  }
+
+  .mobile-hamburger-btn {
+    display: flex !important;
+  }
+
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    background: rgba(20, 21, 32, 0.96) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    z-index: 9999 !important;
+    justify-content: space-around !important;
+    align-items: stretch !important;
+    padding: 4px 2px env(safe-area-inset-bottom, 0px) !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .bnav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 2px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    transition: all .15s ease;
+    user-select: none;
+    white-space: nowrap;
+    box-sizing: border-box;
+  }
+
+  .bnav-item i {
+    font-size: 19px;
+    flex-shrink: 0;
+  }
+
+  .bnav-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    line-height: 1.15;
+  }
+
+  .bnav-item:hover, .bnav-item:active {
+    color: var(--text);
+  }
+
+  .bnav-item.active {
+    color: #fff;
+    background: rgba(99, 102, 241, 0.22);
+  }
+
+  .bnav-item.admin-bnav {
+    color: #FBBF24;
+  }
+
+  .bnav-item.admin-bnav.active {
+    color: #FDE047;
+    background: rgba(234, 179, 8, 0.22);
+  }
+
+  .center {
+    padding: 14px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box;
+  }
+
+  .center-inner {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .view-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .form-card, .card, .track, .lib-bulk-bar, .user-row {
+    max-width: 100% !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  body.has-gplayer {
+    padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.has-gplayer .center {
+    padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Pantallas extra compactas (320px - 360px como iPhone SE / Android pequeño) */
+@media (max-width: 360px) {
+  .logo-text {
+    font-size: 13.5px !important;
+  }
+  .bnav-item {
+    padding: 3px 1px !important;
+    font-size: 9px !important;
+  }
+  .bnav-item i {
+    font-size: 17px !important;
+  }
+  .center {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2151,26 +2632,17 @@ body.mode-pro .assistant-prominent {
 
   <!-- SIDEBAR & MOBILE HEADER -->
   <aside class="sidebar">
-    <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:10px">
       <div class="logo" style="margin-bottom:0">
         <div class="logo-icon"><i class="ph ph-music-notes"></i></div>
         <div class="logo-text">Rodrix Music Creator</div>
       </div>
-      <div class="mobile-top-actions" style="display:none;align-items:center;gap:8px">
-        <button type="button" class="mobile-mode-pill" id="mobileModeToggle" onclick="toggleStudioMode()" title="Cambiar modo de interfaz" style="display:flex">
-          <i class="ph ph-faders"></i> <span id="mobileModeText">Estudio Pro</span>
-        </button>
-        <div id="mobileAdminPill" onclick="showView('usuarios')" style="display:none;align-items:center;gap:5px;background:rgba(234,179,8,.18);border:1px solid rgba(234,179,8,.4);padding:5px 10px;border-radius:20px;cursor:pointer;color:#FBBF24;font-size:11px;font-weight:700;">
-          <i class="ph ph-crown"></i> <span>👑 Usuarios</span>
-        </div>
-        <button type="button" onclick="forceAppRefresh()" id="mobileRefreshBtn" title="Actualizar App" style="background:#1F1F2E;border:1px solid var(--border);color:var(--ok);border-radius:8px;padding:6px 9px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
-          <i class="ph ph-arrows-clockwise"></i>
-        </button>
-        <div id="mobileUserAvatar" onclick="toggleProfileModal()" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;overflow:hidden">R</div>
-        <a href="/api/logout" title="Cerrar sesión" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);color:#F87171;padding:6px 9px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px">
-          <i class="ph ph-sign-out"></i>
-        </a>
-      </div>
+      <!-- BOTÓN HAMBURGUESA MÓVIL (☰) -->
+      <button type="button" class="mobile-hamburger-btn" id="mobileHamburgerBtn" aria-label="Abrir menú" aria-expanded="false" onclick="toggleMobileMenu()">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
     </div>
         <!-- STUDIO PRO 4.0: DUAL MODE SWITCH -->
     <div class="studio-mode-toggle" id="studioModeSwitch">
@@ -4576,6 +5048,91 @@ body.mode-pro .assistant-prominent {
 
 
 <!-- SISTEMA CENTRALIZADO DE DIÁLOGOS Y MODALES (APP DIALOG) -->
+
+<!-- MENÚ DESPLEGABLE VERTICAL MÓVIL (HAMBURGUESA) -->
+<div id="mobileDrawerOverlay" class="mobile-drawer-overlay" onclick="closeMobileMenu(event)" role="dialog" aria-modal="true" aria-label="Menú de opciones">
+  <div class="mobile-drawer" id="mobileDrawer" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <div class="drawer-user-info" onclick="closeMobileMenu();toggleProfileModal()" title="Ver perfil y almacenamiento">
+        <div class="drawer-avatar" id="drawerUserAvatar">U</div>
+        <div class="drawer-user-details">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="drawer-name" id="drawerUserName">Usuario</span>
+            <span id="drawerAdminBadge" class="badge-admin" style="display:none;font-size:9px;padding:1px 5px">ADMIN</span>
+          </div>
+          <span class="drawer-email" id="drawerUserEmail"></span>
+        </div>
+      </div>
+      <button type="button" class="drawer-close-btn" onclick="closeMobileMenu()" aria-label="Cerrar menú">&times;</button>
+    </div>
+
+    <div class="drawer-divider"></div>
+
+    <div class="drawer-menu-list">
+      <!-- Modo Asistente / Estudio Pro -->
+      <button type="button" class="drawer-item" id="drawerModeToggle" onclick="toggleStudioMode()">
+        <i class="ph ph-faders drawer-icon" style="color:#818CF8"></i>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Modo de interfaz</span>
+          <span class="drawer-item-badge" id="drawerModeBadge">Estudio Pro</span>
+        </div>
+      </button>
+
+      <!-- Panel Admin (Solo rodryandy) -->
+      <button type="button" class="drawer-item" id="drawerAdminOption" style="display:none" onclick="closeMobileMenu();showView('usuarios')">
+        <i class="ph ph-crown drawer-icon" style="color:#FBBF24"></i>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title" style="color:#FBBF24">👑 Control de Usuarios</span>
+          <span class="drawer-item-sub">Administración y permisos</span>
+        </div>
+      </button>
+
+      <!-- Mi Perfil y Google Drive -->
+      <button type="button" class="drawer-item" onclick="closeMobileMenu();toggleProfileModal()">
+        <i class="ph ph-user-circle drawer-icon" style="color:#60A5FA"></i>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Mi Perfil y Almacenamiento</span>
+          <span class="drawer-item-sub" id="drawerDriveSummary">Google Drive</span>
+        </div>
+      </button>
+
+      <!-- Actualizar App / Limpiar Caché -->
+      <button type="button" class="drawer-item" id="mobileRefreshBtn" onclick="closeMobileMenu();forceAppRefresh()">
+        <i class="ph ph-arrows-clockwise drawer-icon" style="color:#34D399"></i>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Actualizar App</span>
+          <span class="drawer-item-sub">Limpiar caché de la versión</span>
+        </div>
+      </button>
+
+      <!-- Descargar APK -->
+      <a href="/download-app" class="drawer-item" target="_blank" onclick="closeMobileMenu()">
+        <i class="ph ph-android-logo drawer-icon" style="color:#A7F3D0"></i>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Descargar APK Android</span>
+          <span class="drawer-item-sub">Instalador nativo con audio</span>
+        </div>
+      </a>
+
+      <!-- Guía / Cómo usar -->
+      <button type="button" class="drawer-item" onclick="closeMobileMenu();$('nav-ayuda').click()">
+        <i class="ph ph-question drawer-icon" style="color:#C084FC"></i>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Cómo usar / Ayuda</span>
+          <span class="drawer-item-sub">Guía de las funciones principales</span>
+        </div>
+      </button>
+    </div>
+
+    <div class="drawer-footer">
+      <a href="/api/logout" class="drawer-logout-btn">
+        <i class="ph ph-sign-out"></i>
+        <span>Cerrar sesión</span>
+      </a>
+    </div>
+  </div>
+</div>
+
 <div id="appDialogOverlay" class="app-dialog-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
   <div class="app-dialog-card" id="appDialogCard">
     <div class="app-dialog-header">
@@ -4951,6 +5508,63 @@ window.prompt = function(msg, def) {
 
 let currentTask = null, pollTimer = null, progressTimer = null, progress = 0;
 let currentTrackId = null;
+
+
+/* ---------- Control del Menú Hamburguesa Móvil (☰) ---------- */
+function toggleMobileMenu() {
+  const overlay = $('mobileDrawerOverlay');
+  if (!overlay) return;
+  const isOpen = overlay.classList.contains('active');
+  if (isOpen) {
+    closeMobileMenu();
+  } else {
+    openMobileMenu();
+  }
+}
+
+function openMobileMenu() {
+  const overlay = $('mobileDrawerOverlay');
+  const btn = $('mobileHamburgerBtn');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  void overlay.offsetWidth;
+  overlay.classList.add('active');
+  if (btn) {
+    btn.classList.add('active');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobileMenu(e) {
+  if (e && e.target && e.target !== $('mobileDrawerOverlay') && !e.target.closest('.drawer-close-btn') && !e.target.closest('.drawer-item') && !e.target.closest('.drawer-logout-btn') && !e.target.closest('.drawer-user-info')) {
+    return;
+  }
+  const overlay = $('mobileDrawerOverlay');
+  const btn = $('mobileHamburgerBtn');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  if (btn) {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  document.body.style.overflow = '';
+  setTimeout(() => {
+    if (!overlay.classList.contains('active')) {
+      overlay.style.display = 'none';
+    }
+  }, 280);
+}
+
+// Cerrar drawer móvil con Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const overlay = $('mobileDrawerOverlay');
+    if (overlay && overlay.classList.contains('active')) {
+      closeMobileMenu();
+    }
+  }
+});
 
 /* ---------- UI helpers ---------- */
 function bindRange(id, outId){ $(id).addEventListener('input', e => $(outId).textContent = e.target.value + '%'); }
@@ -9728,11 +10342,20 @@ async function loadUserInfo() {
       if ($('userEmailDisplay')) $('userEmailDisplay').textContent = email;
       if ($('modalUserName')) $('modalUserName').textContent = name;
       if ($('modalUserEmail')) $('modalUserEmail').textContent = email;
+      if ($('drawerUserName')) $('drawerUserName').textContent = name;
+      if ($('drawerUserEmail')) $('drawerUserEmail').textContent = email;
+      if ($('drawerAdminBadge')) $('drawerAdminBadge').style.display = data.is_admin ? 'inline-block' : 'none';
+      if ($('drawerAdminOption')) $('drawerAdminOption').style.display = data.is_admin ? 'flex' : 'none';
+      if ($('drawerDriveSummary')) {
+        if (data.is_admin) $('drawerDriveSummary').textContent = 'Drive Central 5TB (Total)';
+        else if (data.drive_access) $('drawerDriveSummary').textContent = 'Google Drive: Autorizado';
+        else $('drawerDriveSummary').textContent = 'Drive Central: Restringido';
+      }
       if ($('settingsUserName')) $('settingsUserName').textContent = name;
       if ($('settingsUserEmail')) $('settingsUserEmail').textContent = email;
 
       // Actualizar avatares (escritorio, barra móvil, modal y ajustes)
-      const avatarElements = [$('userAvatar'), $('mobileUserAvatar'), $('modalUserAvatar'), $('settingsUserAvatar')];
+      const avatarElements = [$('userAvatar'), $('drawerUserAvatar'), $('modalUserAvatar'), $('settingsUserAvatar')];
       avatarElements.forEach(av => {
         if (!av) return;
         if (data.picture) {
@@ -11128,12 +11751,14 @@ function setStudioMode(mode) {
     if ($('btnModeAssistant')) $('btnModeAssistant').classList.remove('active');
     if ($('btnModePro')) $('btnModePro').classList.add('active');
     if ($('mobileModeText')) $('mobileModeText').textContent = 'Modo Asistente';
+    if ($('drawerModeBadge')) $('drawerModeBadge').textContent = 'Modo Asistente';
   } else {
     document.body.classList.remove('mode-pro');
     document.body.classList.add('mode-assistant');
     if ($('btnModeAssistant')) $('btnModeAssistant').classList.add('active');
     if ($('btnModePro')) $('btnModePro').classList.remove('active');
     if ($('mobileModeText')) $('mobileModeText').textContent = 'Estudio Pro';
+    if ($('drawerModeBadge')) $('drawerModeBadge').textContent = 'Estudio Pro';
   }
 }
 
