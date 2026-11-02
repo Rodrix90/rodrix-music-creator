@@ -1359,6 +1359,41 @@ async def startup_event():
     except Exception as e:
         print(f"[GDRIVE] Aviso en inicio al lanzar recuperador de subidas pendientes: {e}")
 
+def user_has_drive_permission(email: str, permission: str = "read") -> bool:
+    """
+    Verifica si un usuario tiene autorizacion para acceder al almacenamiento central de Google Drive.
+    - El administrador principal (ADMIN_EMAIL) siempre tiene autorizacion total.
+    - Los usuarios comunes deben estar activos Y tener drive_access habilitado por el administrador.
+    - Los usuarios bloqueados o nuevos sin autorizar siempre reciben False.
+    """
+    if not email:
+        return False
+    norm_email = email.strip().lower()
+    if norm_email == ADMIN_EMAIL.strip().lower():
+        return True
+
+    users = load_users()
+    user_rec = users.get(norm_email)
+    if not user_rec or user_rec.get("status") == "blocked":
+        return False
+
+    # El usuario debe tener explicitamente autorizada la bandera drive_access
+    drive_access = bool(user_rec.get("drive_access", False))
+    if not drive_access:
+        return False
+
+    # Si tiene desglose granular de permisos
+    perms = user_rec.get("permissions")
+    if isinstance(perms, dict):
+        perm_key = f"drive_{permission}"
+        if perm_key in perms:
+            return bool(perms[perm_key])
+
+    # Si drive_access es True pero no hay desglose, por defecto se autoriza lectura y descarga
+    if permission in ("read", "download"):
+        return True
+    return False
+
 def get_current_user(request: Request):
     user = request.session.get('user')
     if not user:
@@ -1377,12 +1412,20 @@ def get_current_user(request: Request):
         # Auto-registro tolerante a reinicios y sincronización en segundo plano
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         name = user.get('name') or user.get('given_name') or (email.split('@')[0].capitalize() if email else "Usuario")
+        is_admin_user = (email == ADMIN_EMAIL)
         user_record = {
             "email": email,
             "name": name,
             "picture": user.get('picture', ''),
             "status": "active",
-            "role": "user",
+            "role": "admin" if is_admin_user else "user",
+            "drive_access": is_admin_user,
+            "permissions": {
+                "drive_read": is_admin_user,
+                "drive_download": is_admin_user,
+                "drive_write": is_admin_user,
+                "drive_delete": is_admin_user
+            },
             "created_at": now_str,
             "last_login": now_str
         }
@@ -2224,7 +2267,12 @@ async def cache_track_audio(task_id: str, remote_url: str) -> str:
     return remote_url
 
 @app.get("/api/audio_file/{task_id}")
-async def serve_cached_audio(task_id: str):
+async def serve_cached_audio(task_id: str, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado al archivo de audio de Google Drive: se requiere autorizacion del administrador."
+        )
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return FileResponse(path=local_path, media_type="audio/mpeg")
@@ -4168,6 +4216,11 @@ async def get_latest_logs():
 
 @app.get("/api/library")
 async def api_get_library(current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso restringido: no tienes autorizacion para acceder a la biblioteca central de Google Drive. Solicita permiso al administrador."
+        )
     library = load_library()
     # Si la librería local está vacía, intentar restaurar desde Google Drive
     if not library:
@@ -4235,6 +4288,11 @@ async def api_health_check():
 
 @app.get("/api/gdrive/status")
 async def api_gdrive_status(current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos para consultar el estado del almacenamiento central de Google Drive."
+        )
     tokens = load_gdrive_tokens()
     has_token = bool(tokens.get("refresh_token") or tokens.get("access_token"))
     is_env_configured = bool(os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip())
@@ -4258,6 +4316,11 @@ async def api_gdrive_status(current_user: str = Depends(get_current_user)):
 
 @app.post("/api/gdrive/sync")
 async def api_gdrive_manual_sync(current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "write"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos para sincronizar el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+        )
     try:
         # 1. Sincronizar usuarios (bidireccional seguro)
         await gdrive_sync_users_from_cloud()
@@ -4319,6 +4382,11 @@ async def api_admin_gdrive_diagnostic(current_user: str = Depends(get_current_us
 
 @app.delete("/api/library/{task_id}")
 async def api_delete_from_library(task_id: str, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "delete"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos de eliminacion sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+        )
     library = load_library()
     track_to_delete = next((t for t in library if t.get("id") == task_id), None)
     if not track_to_delete:
@@ -4356,6 +4424,11 @@ async def api_delete_from_library(task_id: str, current_user: str = Depends(get_
 
 @app.post("/api/library/{task_id}/rename")
 async def api_rename_track(task_id: str, request: Request, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "write"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos de modificacion sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+        )
     data = await request.json()
     new_title = data.get("title", "").strip()
     if not new_title:
@@ -4462,7 +4535,12 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
     raise HTTPException(status_code=500, detail=f"No se pudo descargar el audio original: {last_err or 'enlace no disponible'}")
 
 @app.get("/api/stems/{task_id}/{stem_type}")
-async def get_stem_audio(task_id: str, stem_type: str):
+async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "download"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos sobre los stems de Google Drive. Solicita autorizacion al administrador."
+        )
     if stem_type not in ["vocals", "instrumental"]:
         raise HTTPException(status_code=400, detail="Tipo de stem no válido")
     library = load_library()
@@ -4574,7 +4652,12 @@ def build_master_filter(width: float, eq: str, loud: str) -> str:
     return ",".join(filters)
 
 @app.get("/api/download/{task_id}/{audio_format}")
-async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none"):
+async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none", current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "download"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+        )
     if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
 
@@ -4691,7 +4774,12 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/download_voiceover/{task_id}/{audio_format}")
-async def download_voiceover_direct(task_id: str, audio_format: str):
+async def download_voiceover_direct(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "download"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+        )
     if audio_format not in ["mp3", "wav"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
 
@@ -4755,8 +4843,30 @@ async def get_me(request: Request):
         name = "Rodrigo"
     picture = user.get('picture', '')
     is_admin = (email == ADMIN_EMAIL.strip().lower())
+    users = load_users()
+    user_rec = users.get(email, {})
+    drive_access = is_admin or bool(user_rec.get("drive_access", False))
+    perms = user_rec.get("permissions") if not is_admin else {
+        "drive_read": True,
+        "drive_download": True,
+        "drive_write": True,
+        "drive_delete": True
+    }
     return JSONResponse(
-        content={"logged_in": True, "name": name, "email": email, "picture": picture, "is_admin": is_admin},
+        content={
+            "logged_in": True,
+            "name": name,
+            "email": email,
+            "picture": picture,
+            "is_admin": is_admin,
+            "drive_access": drive_access,
+            "permissions": perms or {
+                "drive_read": drive_access,
+                "drive_download": drive_access,
+                "drive_write": False,
+                "drive_delete": False
+            }
+        },
         headers=headers
     )
 
@@ -4793,17 +4903,40 @@ async def admin_toggle_user(request: Request, current_user: str = Depends(get_cu
         raise HTTPException(status_code=403, detail="Solo el administrador puede gestionar usuarios.")
     data = await request.json()
     target_email = data.get("email", "").strip().lower()
-    new_status = data.get("status", "active")
 
     if target_email == ADMIN_EMAIL:
-        raise HTTPException(status_code=400, detail="No puedes bloquear tu propia cuenta de administrador.")
+        raise HTTPException(status_code=400, detail="No puedes modificar los permisos ni bloquear la cuenta principal del administrador.")
 
     users = load_users()
     if target_email not in users:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    users[target_email]["status"] = "blocked" if new_status == "blocked" else "active"
+
+    # Modificar estado de bloqueo/activo si viene especificado
+    if "status" in data:
+        new_status = data.get("status", "active")
+        users[target_email]["status"] = "blocked" if new_status == "blocked" else "active"
+
+    # Modificar acceso a Google Drive central si viene especificado
+    if "drive_access" in data:
+        drive_enabled = bool(data["drive_access"])
+        users[target_email]["drive_access"] = drive_enabled
+        if "permissions" in data and isinstance(data["permissions"], dict):
+            users[target_email]["permissions"] = {
+                "drive_read": bool(data["permissions"].get("drive_read", drive_enabled)),
+                "drive_download": bool(data["permissions"].get("drive_download", drive_enabled)),
+                "drive_write": bool(data["permissions"].get("drive_write", False)),
+                "drive_delete": bool(data["permissions"].get("drive_delete", False))
+            }
+        else:
+            users[target_email]["permissions"] = {
+                "drive_read": drive_enabled,
+                "drive_download": drive_enabled,
+                "drive_write": bool(users[target_email].get("permissions", {}).get("drive_write", False)),
+                "drive_delete": bool(users[target_email].get("permissions", {}).get("drive_delete", False))
+            }
+
     users[target_email]["updated_at"] = now_str
     save_users(users)
     return {"status": "success", "user": users[target_email]}
@@ -4834,12 +4967,20 @@ async def serve_spa(request: Request):
     if not user_record:
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         name = user.get('name') or user.get('given_name') or (email.split('@')[0].capitalize() if email else "Usuario")
+        is_admin_user = (email == ADMIN_EMAIL)
         user_record = {
             "email": email,
             "name": name,
             "picture": user.get('picture', ''),
             "status": "active",
-            "role": "admin" if email == ADMIN_EMAIL else "user",
+            "role": "admin" if is_admin_user else "user",
+            "drive_access": is_admin_user,
+            "permissions": {
+                "drive_read": is_admin_user,
+                "drive_download": is_admin_user,
+                "drive_write": is_admin_user,
+                "drive_delete": is_admin_user
+            },
             "created_at": now_str,
             "last_login": now_str
         }
@@ -5020,6 +5161,13 @@ async def auth_callback(request: Request):
                     "picture": picture,
                     "status": "active",
                     "role": "user",
+                    "drive_access": False,
+                    "permissions": {
+                        "drive_read": False,
+                        "drive_download": False,
+                        "drive_write": False,
+                        "drive_delete": False
+                    },
                     "created_at": now_str,
                     "last_login": now_str
                 }

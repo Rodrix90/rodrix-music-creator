@@ -7244,14 +7244,29 @@ function fmtDur(s){ s = Math.round(+s || 0); return s ? Math.floor(s/60) + ':' +
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 async function loadLibrary(){
-  try {
-    const r = await fetch('/api/library');
-    if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
-    const j = await r.json();
-    setServer(true);
-    renderLibrary(j.tracks || []);
-  } catch (e) { setServer(false); $('libList').innerHTML = '<div class="empty">No se pudo cargar la librería.</div>'; }
-}
+     try {
+       const r = await fetch('/api/library');
+       if (r.status === 401) { location.href = '/login'; return; }
+       if (r.status === 403) {
+         setServer(true);
+         const l = $('libList');
+         if (l) {
+           l.innerHTML = `
+             <div class="empty" style="padding:40px 16px;text-align:center">
+               <div style="font-size:36px;color:#FBBF24;margin-bottom:12px"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+               <h4 style="font-weight:700;color:var(--text);margin-bottom:6px">Almacenamiento Central Restringido</h4>
+               <p style="font-size:12.5px;color:var(--muted);max-width:440px;margin:0 auto;line-height:1.5">
+                 Tu cuenta está activa, pero el acceso a las grabaciones del Google Drive central de Rodrigo (5 TB) requiere autorización explícita del administrador.
+               </p>
+             </div>`;
+         }
+         return;
+       }
+       const j = await r.json();
+       setServer(true);
+       renderLibrary(j.tracks || []);
+     } catch (e) { setServer(false); $('libList').innerHTML = '<div class="empty">No se pudo cargar la librería.</div>'; }
+   }
 function setServer(ok){
   $('serverBadge').classList.toggle('off', !ok);
   $('serverText').textContent = ok ? 'Servidor Online' : 'Servidor Offline';
@@ -9048,6 +9063,12 @@ async function loadUsers() {
       const btnAction = isBlocked ? 'active' : 'blocked';
       const btnText = isBlocked ? '🔓 Habilitar' : '🔒 Bloquear';
       const btnColor = isBlocked ? '#22C55E' : '#EF4444';
+      const hasDrive = isAdmin || Boolean(u.drive_access);
+      const driveBadgeClass = hasDrive ? 'badge-active' : 'badge-blocked';
+      const driveBadgeText = isAdmin ? '☁ Drive 5TB (Total)' : (hasDrive ? '☁ Drive: Autorizado' : '🔒 Drive: Restringido');
+      const driveBtnAction = !hasDrive;
+      const driveBtnText = hasDrive ? '🔒 Revocar Drive' : '☁ Autorizar Drive';
+      const driveBtnColor = hasDrive ? '#F59E0B' : '#3B82F6';
       const avatarHtml = u.picture
         ? `<img src="${esc(u.picture)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover" alt="">`
         : `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7C3AED);display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff">${esc((u.name||u.email||'U')[0].toUpperCase())}</div>`;
@@ -9057,9 +9078,10 @@ async function loadUsers() {
           <div style="display:flex;align-items:center;gap:12px;min-width:200px">
             ${avatarHtml}
             <div>
-              <div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px">
+              <div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                 ${esc(u.name || 'Sin Nombre')}
                 <span class="${badgeClass}">${badgeText}</span>
+                <span class="${driveBadgeClass}" style="font-size:10px">${driveBadgeText}</span>
               </div>
               <div style="font-size:11.5px;color:var(--muted)">${esc(u.email)}</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px"><i class="ph ph-clock"></i> Último ingreso: ${esc(u.last_login || u.created_at || 'Nunca')}</div>
@@ -9067,9 +9089,14 @@ async function loadUsers() {
           </div>
           <div>
             ${isAdmin ? `<span style="font-size:11px;color:var(--muted);font-style:italic">Cuenta Principal</span>` : `
-              <button type="button" class="btn-sec" onclick="toggleUserStatus('${esc(u.email)}', '${btnAction}')" style="border-color:${btnColor};color:${btnColor};font-size:12px;padding:6px 12px;cursor:pointer">
-                ${btnText}
-              </button>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <button type="button" class="btn-sec" onclick="toggleUserDriveAccess('${esc(u.email)}', ${driveBtnAction})" style="border-color:${driveBtnColor};color:${driveBtnColor};font-size:11.5px;padding:5px 10px;cursor:pointer">
+                  ${driveBtnText}
+                </button>
+                <button type="button" class="btn-sec" onclick="toggleUserStatus('${esc(u.email)}', '${btnAction}')" style="border-color:${btnColor};color:${btnColor};font-size:11.5px;padding:5px 10px;cursor:pointer">
+                  ${btnText}
+                </button>
+              </div>
             `}
           </div>
         </div>
@@ -9077,6 +9104,26 @@ async function loadUsers() {
     }).join('');
   } catch(e) {
     console.error(e);
+  }
+}
+
+async function toggleUserDriveAccess(email, enableDrive) {
+  const actionName = enableDrive ? 'autorizar el acceso al almacenamiento Google Drive central' : 'revocar el acceso al almacenamiento Google Drive central';
+  if (!confirm(`¿Estás seguro de que deseas ${actionName} para ${email}?`)) return;
+  try {
+    const r = await fetch('/api/admin/toggle_user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, drive_access: enableDrive })
+    });
+    if (r.ok) {
+      loadUsers();
+    } else {
+      const err = await r.json();
+      alert(err.detail || 'Error al cambiar permisos de Google Drive.');
+    }
+  } catch(e) {
+    alert('Error de conexión.');
   }
 }
 
