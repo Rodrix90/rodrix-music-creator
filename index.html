@@ -1853,6 +1853,9 @@ body.mode-pro .assistant-prominent {
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
@@ -1869,6 +1872,10 @@ body.mode-pro .assistant-prominent {
   border-radius: 18px;
   max-width: 480px;
   width: 100%;
+  max-height: calc(100dvh - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  margin: auto;
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -2607,6 +2614,48 @@ html, body {
   }
 }
 
+/* Ajustes para Teclado Virtual y Pantallas Compactas (max-width: 480px) */
+@media (max-width: 480px) {
+  .app-dialog-card {
+    padding: 18px 16px !important;
+    border-radius: 16px !important;
+    gap: 14px !important;
+  }
+  .app-dialog-input {
+    font-size: 16px !important; /* Evita auto-zoom en iOS y Android WebView al abrir teclado */
+  }
+  .global-mini-player {
+    padding: 0 8px !important;
+    gap: 6px !important;
+  }
+  .gplayer-thumb {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+  }
+  .gplayer-btn {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 17px !important;
+  }
+  .gplayer-btn-play {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 20px !important;
+  }
+  .gplayer-btn-icon {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 17px !important;
+  }
+  .gplayer-title {
+    font-size: 12.5px !important;
+  }
+  .gplayer-subtext {
+    font-size: 10.5px !important;
+  }
+}
+
 /* Pantallas extra compactas (320px - 360px como iPhone SE / Android pequeño) */
 @media (max-width: 360px) {
   .logo-text {
@@ -2622,6 +2671,31 @@ html, body {
   .center {
     padding-left: 8px !important;
     padding-right: 8px !important;
+  }
+  #gplayerRepeatBtn {
+    display: none !important;
+  }
+  .gplayer-btn {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 15px !important;
+  }
+  .gplayer-btn-play {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 18px !important;
+  }
+  .gplayer-btn-icon {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 15px !important;
+  }
+  .broadcast-vu-container {
+    padding: 8px 8px !important;
+  }
+  .vu-scale-ticks {
+    font-size: 8px !important;
+    padding: 0 4px !important;
   }
 }
 
@@ -4621,8 +4695,8 @@ html, body {
 </div> <!-- .app -->
 
 <!-- MODAL DE DIAGNÓSTICO Y REVISIÓN DE COINCIDENCIA DE CATÁLOGO COMERCIAL -->
-<div id="catalogRejectionModal" class="modal-backdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)">
-  <div style="background:#1A1B26;border:1px solid rgba(239,68,68,0.4);border-radius:14px;max-width:560px;width:100%;padding:22px;box-shadow:0 15px 40px rgba(0,0,0,0.7);color:#E2E8F0">
+<div id="catalogRejectionModal" class="modal-backdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="background:#1A1B26;border:1px solid rgba(239,68,68,0.4);border-radius:14px;max-width:560px;width:100%;max-height:calc(100dvh - 32px);max-height:calc(100vh - 32px);overflow-y:auto;margin:auto;box-sizing:border-box;padding:22px;box-shadow:0 15px 40px rgba(0,0,0,0.7);color:#E2E8F0">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       <div style="width:42px;height:42px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);display:grid;place-items:center;flex-shrink:0">
         <i class="ph ph-shield-warning" style="font-size:26px;color:#EF4444"></i>
@@ -4653,8 +4727,8 @@ html, body {
 </div>
 
 <!-- MODAL DE ENRIQUECIMIENTO CON 20 INSTRUMENTOS SF2 -->
-<div id="sf2EnrichmentModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);z-index:10001;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#131B2E;border:1px solid rgba(16,185,129,0.4);border-radius:18px;max-width:760px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,0.85);overflow:hidden">
+<div id="sf2EnrichmentModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);z-index:10001;align-items:center;justify-content:center;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+  <div style="background:#131B2E;border:1px solid rgba(16,185,129,0.4);border-radius:18px;max-width:760px;width:100%;max-height:calc(100dvh - 32px);max-height:92vh;margin:auto;box-sizing:border-box;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,0.85);overflow:hidden">
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(15,23,42,0.95);border-bottom:1px solid rgba(255,255,255,0.08)">
       <div style="display:flex;align-items:center;gap:10px">
@@ -4985,8 +5059,8 @@ html, body {
 </nav>
 
 <!-- MODAL DE PERFIL / ADMINISTRADOR -->
-<div id="profileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#1F1F2E;border:1px solid var(--border);border-radius:16px;max-width:380px;width:100%;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(0,0,0,0.6)">
+<div id="profileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+  <div style="background:#1F1F2E;border:1px solid var(--border);border-radius:16px;max-width:380px;width:100%;max-height:calc(100dvh - 32px);max-height:calc(100vh - 32px);overflow-y:auto;margin:auto;box-sizing:border-box;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(0,0,0,0.6)">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <h3 style="font-size:16px;font-weight:700">Mi Perfil</h3>
       <button type="button" onclick="toggleProfileModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">&times;</button>
@@ -6797,6 +6871,14 @@ let recPunchInSeconds = null; // Segundo donde el usuario quiere pisar
 let recordedVoiceBlob = null;
 let recAnimFrame = null;
 
+// VU-Meter Estéreo de Emisión (Broadcast Master)
+let recVuAnalyserL = null;
+let recVuAnalyserR = null;
+let recVuSplitter = null;
+let recVuAnimFrame = null;
+let recVuCurrentL = 0; // Porcentaje actual para balística suave (decay)
+let recVuCurrentR = 0;
+
 // Alternar entre pestañas Grabar en Vivo y Subir Archivo
 $('tabVoRecord').onclick = () => {
   $('tabVoRecord').classList.add('on');
@@ -6868,6 +6950,7 @@ function initRecWaveSurfer() {
   });
 
   recWs.on('finish', () => {
+    stopBroadcastVuMeter(true);
     $('btnRecPlayText').textContent = 'Pre-escuchar';
     $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
   });
@@ -7052,6 +7135,9 @@ async function startLiveRecording() {
     recScriptNode.connect(recMuteGain);
     recMuteGain.connect(recAudioCtx.destination);
 
+    // Conectar medidor VU-Meter estéreo de emisión con audio real del micrófono
+    startBroadcastVuMeter(recAudioCtx, recSourceNode);
+
     let isFirstChunk = isPunchInResume || (recPcmChunks.length === 0);
     recScriptNode.onaudioprocess = (e) => {
       if (!recIsRecording) return;
@@ -7156,6 +7242,7 @@ function pauseLiveRecording() {
   recIsPaused = true;
   clearInterval(recTimerInterval);
   cancelAnimationFrame(recAnimFrame);
+  stopBroadcastVuMeter(true);
 
   if (recScriptNode) {
     recScriptNode.disconnect();
@@ -7193,11 +7280,12 @@ function pauseLiveRecording() {
   }
 }
 
-// Pre-escucha (Play/Pausa en WaveSurfer)
+// Pre-escucha (Play/Pausa en WaveSurfer con medición VU real)
 function toggleRecPlayback() {
   if (!recWs) return;
   if (recWs.isPlaying()) {
     recWs.pause();
+    stopBroadcastVuMeter(true);
     $('btnRecPlayText').textContent = 'Pre-escuchar';
     $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
   } else {
@@ -7205,6 +7293,7 @@ function toggleRecPlayback() {
       window.GlobalAudioController.pause();
     }
     recWs.play();
+    startPlaybackVuMeter();
     $('btnRecPlayText').textContent = 'Pausa';
     $('btnRecPlay').querySelector('i').className = 'ph ph-pause-fill';
   }
@@ -7217,6 +7306,7 @@ function resetLiveRecording() {
     clearInterval(recTimerInterval);
     cancelAnimationFrame(recAnimFrame);
   }
+  stopBroadcastVuMeter(false);
   recIsPaused = false;
   recPcmChunks = [];
   recDurationMs = 0;
@@ -7257,6 +7347,7 @@ function applyLiveRecording() {
   if (recIsRecording) {
     pauseLiveRecording();
   }
+  stopBroadcastVuMeter(false);
   if (!recPcmChunks.length) {
     showToast('No hay audio grabado aún.', 'warn');
     return;
@@ -12082,41 +12173,230 @@ function openAlbumStitcherModal() {
   });
 }
 
-// --- 6. BROADCAST VU METER & VOCAL CHANNEL STRIP ---
-let vuMeterInterval = null;
+// --- 6. BROADCAST VU METER & VOCAL CHANNEL STRIP CON AUDIO REAL ---
 
 function initBroadcastVuMeter() {
   const barL = $('vuMeterFillL');
   const barR = $('vuMeterFillR');
-  if (!barL || !barR) return;
+  if (barL) barL.style.width = '0%';
+  if (barR) barR.style.width = '0%';
+  if ($('vuDbL')) $('vuDbL').textContent = '-inf dB';
+  if ($('vuDbR')) $('vuDbR').textContent = '-inf dB';
+  if ($('vuStatusText')) {
+    $('vuStatusText').textContent = 'Listo para emitir (Nivel bajo control)';
+    $('vuStatusText').style.color = '#6EE7B7';
+  }
+}
 
-  // Peak activity updater (responsive to recording and playback)
-  if (vuMeterInterval) clearInterval(vuMeterInterval);
-  vuMeterInterval = setInterval(() => {
-    const isRec = window.recIsRecording;
-    const isPlaying = window.GlobalAudioController && window.GlobalAudioController.isPlaying();
-
-    if (isRec || isPlaying) {
-      const peakL = Math.min(100, Math.max(15, Math.floor(Math.random() * 65 + 30)));
-      const peakR = Math.min(100, Math.max(12, Math.floor(peakL + (Math.random() * 10 - 5))));
-
-      barL.style.width = peakL + '%';
-      barR.style.width = peakR + '%';
-
-      const dbL = (peakL >= 96) ? 'CLIP' : ((-42 + (peakL * 0.42)).toFixed(1) + ' dB');
-      const dbR = (peakR >= 96) ? 'CLIP' : ((-42 + (peakR * 0.42)).toFixed(1) + ' dB');
-
-      if ($('vuDbL')) $('vuDbL').textContent = dbL;
-      if ($('vuDbR')) $('vuDbR').textContent = dbR;
-      if ($('vuStatusText')) $('vuStatusText').textContent = `Pico: ${dbL}`;
-    } else {
-      barL.style.width = '0%';
-      barR.style.width = '0%';
-      if ($('vuDbL')) $('vuDbL').textContent = '-inf dB';
-      if ($('vuDbR')) $('vuDbR').textContent = '-inf dB';
-      if ($('vuStatusText')) $('vuStatusText').textContent = 'Listo (Nivel bajo control)';
+// Extracción de pico de amplitud real (compatible con getFloatTimeDomainData y fallback getByteTimeDomainData)
+function getVuPeak(analyser, floatBuf, byteBuf) {
+  if (!analyser) return 0;
+  let max = 0;
+  if (typeof analyser.getFloatTimeDomainData === 'function') {
+    analyser.getFloatTimeDomainData(floatBuf);
+    for (let i = 0; i < floatBuf.length; i++) {
+      const v = Math.abs(floatBuf[i]);
+      if (v > max) max = v;
     }
-  }, 100);
+  } else if (typeof analyser.getByteTimeDomainData === 'function') {
+    analyser.getByteTimeDomainData(byteBuf);
+    for (let i = 0; i < byteBuf.length; i++) {
+      const v = Math.abs((byteBuf[i] - 128) / 128);
+      if (v > max) max = v;
+    }
+  }
+  return max;
+}
+
+// Medición en tiempo real durante grabación activa con AnalyserNode (Web Audio API)
+function startBroadcastVuMeter(audioCtx, sourceNode) {
+  if (!audioCtx || !sourceNode) return;
+  stopBroadcastVuMeter(false);
+
+  try {
+    recVuAnalyserL = audioCtx.createAnalyser();
+    recVuAnalyserR = audioCtx.createAnalyser();
+    recVuAnalyserL.fftSize = 512;
+    recVuAnalyserR.fftSize = 512;
+    recVuAnalyserL.smoothingTimeConstant = 0.2;
+    recVuAnalyserR.smoothingTimeConstant = 0.2;
+
+    const channels = sourceNode.channelCount || 1;
+    if (channels >= 2) {
+      recVuSplitter = audioCtx.createChannelSplitter(2);
+      sourceNode.connect(recVuSplitter);
+      recVuSplitter.connect(recVuAnalyserL, 0);
+      recVuSplitter.connect(recVuAnalyserR, 1);
+    } else {
+      // Micrófono mono estándar (celulares, lavalier): alimentación estéreo centrada en bus master
+      sourceNode.connect(recVuAnalyserL);
+      sourceNode.connect(recVuAnalyserR);
+    }
+  } catch (err) {
+    console.warn('[VU-Meter] Error al configurar nodos analizadores:', err);
+    return;
+  }
+
+  const floatL = new Float32Array(recVuAnalyserL.fftSize);
+  const floatR = new Float32Array(recVuAnalyserR.fftSize);
+  const byteL = new Uint8Array(recVuAnalyserL.fftSize);
+  const byteR = new Uint8Array(recVuAnalyserR.fftSize);
+
+  function renderVu() {
+    if (!recIsRecording) {
+      stopBroadcastVuMeter(true);
+      return;
+    }
+    recVuAnimFrame = requestAnimationFrame(renderVu);
+
+    const peakL = getVuPeak(recVuAnalyserL, floatL, byteL);
+    const peakR = getVuPeak(recVuAnalyserR, floatR, byteR);
+
+    // Amplitud a decibelios en rango de transmisión (-42 dB a 0 dB CLIP)
+    const dbL = peakL > 0.00005 ? 20 * Math.log10(peakL) : -Infinity;
+    const dbR = peakR > 0.00005 ? 20 * Math.log10(peakR) : -Infinity;
+
+    const targetPctL = dbL <= -42 ? 0 : (dbL >= 0 ? 100 : ((dbL + 42) / 42) * 100);
+    const targetPctR = dbR <= -42 ? 0 : (dbR >= 0 ? 100 : ((dbR + 42) / 42) * 100);
+
+    // Balística broadcast profesional: ataque instantáneo, decaimiento suave (~60%/s)
+    if (targetPctL >= recVuCurrentL) recVuCurrentL = targetPctL;
+    else recVuCurrentL = Math.max(0, recVuCurrentL - 3.2);
+
+    if (targetPctR >= recVuCurrentR) recVuCurrentR = targetPctR;
+    else recVuCurrentR = Math.max(0, recVuCurrentR - 3.2);
+
+    const barL = $('vuMeterFillL');
+    const barR = $('vuMeterFillR');
+    if (barL) barL.style.width = recVuCurrentL.toFixed(1) + '%';
+    if (barR) barR.style.width = recVuCurrentR.toFixed(1) + '%';
+
+    const textL = dbL <= -42 ? '-inf dB' : (dbL >= 0 ? '0.0 dB CLIP' : (dbL.toFixed(1) + ' dB'));
+    const textR = dbR <= -42 ? '-inf dB' : (dbR >= 0 ? '0.0 dB CLIP' : (dbR.toFixed(1) + ' dB'));
+    if ($('vuDbL')) $('vuDbL').textContent = textL;
+    if ($('vuDbR')) $('vuDbR').textContent = textR;
+
+    const maxDb = Math.max(dbL, dbR);
+    if ($('vuStatusText')) {
+      if (maxDb >= 0) {
+        $('vuStatusText').textContent = '🔴 CLIP (Saturación de emisión)';
+        $('vuStatusText').style.color = '#EF4444';
+      } else if (maxDb >= -18 && maxDb <= -3) {
+        $('vuStatusText').textContent = `Pico: ${maxDb.toFixed(1)} dB (Nivel óptimo)`;
+        $('vuStatusText').style.color = '#10B981';
+      } else if (maxDb < -18 && maxDb > -42) {
+        $('vuStatusText').textContent = `Pico: ${maxDb.toFixed(1)} dB (Señal moderada)`;
+        $('vuStatusText').style.color = '#F59E0B';
+      } else {
+        $('vuStatusText').textContent = 'Silencio (Esperando voz...)';
+        $('vuStatusText').style.color = '#6EE7B7';
+      }
+    }
+  }
+
+  recVuAnimFrame = requestAnimationFrame(renderVu);
+}
+
+// Medición en tiempo real durante pre-escucha en WaveSurfer (AudioBuffer real)
+function startPlaybackVuMeter() {
+  if (recVuAnimFrame) {
+    cancelAnimationFrame(recVuAnimFrame);
+    recVuAnimFrame = null;
+  }
+
+  function renderPlaybackVu() {
+    if (!recWs || !recWs.isPlaying()) {
+      stopBroadcastVuMeter(true);
+      return;
+    }
+    recVuAnimFrame = requestAnimationFrame(renderPlaybackVu);
+
+    const buf = recWs.getDecodedData();
+    if (!buf) return;
+
+    const curTime = recWs.getCurrentTime();
+    const rate = buf.sampleRate || 44100;
+    const startIdx = Math.floor(curTime * rate);
+    const windowSize = 512;
+    const totalSamples = buf.length;
+
+    let peakL = 0;
+    let peakR = 0;
+    const ch0 = buf.getChannelData(0);
+    const hasCh1 = buf.numberOfChannels > 1;
+    const ch1 = hasCh1 ? buf.getChannelData(1) : ch0;
+
+    const endIdx = Math.min(totalSamples, startIdx + windowSize);
+    for (let i = startIdx; i < endIdx; i++) {
+      const v0 = Math.abs(ch0[i]);
+      if (v0 > peakL) peakL = v0;
+      const v1 = Math.abs(ch1[i]);
+      if (v1 > peakR) peakR = v1;
+    }
+
+    const dbL = peakL > 0.00005 ? 20 * Math.log10(peakL) : -Infinity;
+    const dbR = peakR > 0.00005 ? 20 * Math.log10(peakR) : -Infinity;
+
+    const targetPctL = dbL <= -42 ? 0 : (dbL >= 0 ? 100 : ((dbL + 42) / 42) * 100);
+    const targetPctR = dbR <= -42 ? 0 : (dbR >= 0 ? 100 : ((dbR + 42) / 42) * 100);
+
+    if (targetPctL >= recVuCurrentL) recVuCurrentL = targetPctL;
+    else recVuCurrentL = Math.max(0, recVuCurrentL - 3.2);
+
+    if (targetPctR >= recVuCurrentR) recVuCurrentR = targetPctR;
+    else recVuCurrentR = Math.max(0, recVuCurrentR - 3.2);
+
+    const barL = $('vuMeterFillL');
+    const barR = $('vuMeterFillR');
+    if (barL) barL.style.width = recVuCurrentL.toFixed(1) + '%';
+    if (barR) barR.style.width = recVuCurrentR.toFixed(1) + '%';
+
+    const textL = dbL <= -42 ? '-inf dB' : (dbL >= 0 ? '0.0 dB CLIP' : (dbL.toFixed(1) + ' dB'));
+    const textR = dbR <= -42 ? '-inf dB' : (dbR >= 0 ? '0.0 dB CLIP' : (dbR.toFixed(1) + ' dB'));
+    if ($('vuDbL')) $('vuDbL').textContent = textL;
+    if ($('vuDbR')) $('vuDbR').textContent = textR;
+
+    const maxDb = Math.max(dbL, dbR);
+    if ($('vuStatusText')) {
+      $('vuStatusText').textContent = `Pre-escucha: ${maxDb <= -42 ? '-inf' : maxDb.toFixed(1)} dB`;
+      $('vuStatusText').style.color = '#38BDF8';
+    }
+  }
+
+  recVuAnimFrame = requestAnimationFrame(renderPlaybackVu);
+}
+
+// Detener animación y liberar recursos de medición
+function stopBroadcastVuMeter(isPaused) {
+  if (recVuAnimFrame) {
+    cancelAnimationFrame(recVuAnimFrame);
+    recVuAnimFrame = null;
+  }
+  if (recVuSplitter) {
+    try { recVuSplitter.disconnect(); } catch(e) {}
+    recVuSplitter = null;
+  }
+  if (recVuAnalyserL) {
+    try { recVuAnalyserL.disconnect(); } catch(e) {}
+    recVuAnalyserL = null;
+  }
+  if (recVuAnalyserR) {
+    try { recVuAnalyserR.disconnect(); } catch(e) {}
+    recVuAnalyserR = null;
+  }
+
+  recVuCurrentL = 0;
+  recVuCurrentR = 0;
+  const barL = $('vuMeterFillL');
+  const barR = $('vuMeterFillR');
+  if (barL) barL.style.width = '0%';
+  if (barR) barR.style.width = '0%';
+  if ($('vuDbL')) $('vuDbL').textContent = '-inf dB';
+  if ($('vuDbR')) $('vuDbR').textContent = '-inf dB';
+  if ($('vuStatusText')) {
+    $('vuStatusText').textContent = isPaused ? 'Pausado (Nivel bajo control)' : 'Listo para emitir';
+    $('vuStatusText').style.color = '#6EE7B7';
+  }
 }
 
 function updateVocalProcessing() {
