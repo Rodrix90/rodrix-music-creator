@@ -240,8 +240,7 @@ def _merge_two_tracks(c_track: dict, l_track: dict) -> dict:
     return normalize_track_persistence_state(merged_track)
 
 def _merge_two_users(c_user: dict, l_user: dict) -> dict:
-    """Fusiona dos registros del mismo usuario preservando bloqueos de seguridad y datos recientes."""
-    is_blocked = (l_user.get("status") == "blocked") or (c_user.get("status") == "blocked")
+    """Fusiona dos registros del mismo usuario preservando datos recientes y decisiones administrativas."""
     l_time = str(l_user.get("updated_at") or l_user.get("last_login") or l_user.get("created_at") or "")
     c_time = str(c_user.get("updated_at") or c_user.get("last_login") or c_user.get("created_at") or "")
 
@@ -255,8 +254,9 @@ def _merge_two_users(c_user: dict, l_user: dict) -> dict:
     last_login = max(str(l_user.get("last_login", "")), str(c_user.get("last_login", "")))
     if last_login:
         merged_record["last_login"] = last_login
-    if is_blocked:
-        merged_record["status"] = "blocked"
+    if not l_user.get("updated_at") and not c_user.get("updated_at"):
+        if (l_user.get("status") == "blocked") or (c_user.get("status") == "blocked"):
+            merged_record["status"] = "blocked"
     return merged_record
 
 def _load_deleted_tracks_unlocked() -> dict:
@@ -1332,7 +1332,7 @@ async def startup_event():
         client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={
-            'scope': 'openid email profile https://www.googleapis.com/auth/drive.file'
+            'scope': 'openid email profile'
         }
     )
     # 1. Restaurar lápidas de pistas eliminadas desde Google Drive (evita resurrección)
@@ -1373,7 +1373,23 @@ def get_current_user(request: Request):
 
     users = load_users()
     user_record = users.get(email)
-    if not user_record or user_record.get("status") == "blocked":
+    if not user_record:
+        # Auto-registro tolerante a reinicios y sincronización en segundo plano
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        name = user.get('name') or user.get('given_name') or (email.split('@')[0].capitalize() if email else "Usuario")
+        user_record = {
+            "email": email,
+            "name": name,
+            "picture": user.get('picture', ''),
+            "status": "active",
+            "role": "user",
+            "created_at": now_str,
+            "last_login": now_str
+        }
+        users[email] = user_record
+        save_users(users)
+
+    if user_record.get("status") == "blocked":
         raise HTTPException(status_code=403, detail="Tu usuario ha sido bloqueado por el administrador.")
 
     return email
@@ -4786,7 +4802,9 @@ async def admin_toggle_user(request: Request, current_user: str = Depends(get_cu
     if target_email not in users:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     users[target_email]["status"] = "blocked" if new_status == "blocked" else "active"
+    users[target_email]["updated_at"] = now_str
     save_users(users)
     return {"status": "success", "user": users[target_email]}
 
@@ -4813,8 +4831,23 @@ async def serve_spa(request: Request):
     users = load_users()
     user_record = users.get(email)
 
-    if email != ADMIN_EMAIL and (not user_record or user_record.get("status") == "blocked"):
-        return RedirectResponse(url="/login?error=Acceso%20Bloqueado:%20Comunícate%20con%20el%20administrador.")
+    if not user_record:
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        name = user.get('name') or user.get('given_name') or (email.split('@')[0].capitalize() if email else "Usuario")
+        user_record = {
+            "email": email,
+            "name": name,
+            "picture": user.get('picture', ''),
+            "status": "active",
+            "role": "admin" if email == ADMIN_EMAIL else "user",
+            "created_at": now_str,
+            "last_login": now_str
+        }
+        users[email] = user_record
+        save_users(users)
+
+    if email != ADMIN_EMAIL and user_record.get("status") == "blocked":
+        return RedirectResponse(url="/login?error=Acceso%20Bloqueado:%20Tu%20usuario%20ha%20sido%20desactivado%20por%20el%20administrador.")
 
     real_name = user.get('name') or user.get('given_name')
     if not real_name and email:
@@ -4845,7 +4878,7 @@ async def serve_login(request: Request):
         email = user.get('email', '').strip().lower()
         users = load_users()
         user_record = users.get(email)
-        if email == ADMIN_EMAIL or (user_record and user_record.get("status") != "blocked"):
+        if email == ADMIN_EMAIL or (user_record and user_record.get("status") != "blocked") or not user_record:
             return RedirectResponse(url="/")
 
     login_path = os.path.join(os.getcwd(), "login.html")
@@ -4867,22 +4900,75 @@ async def login_via_google(request: Request):
     redirect_uri = str(request.base_url) + "api/auth/callback"
     if "localhost" not in str(request.base_url):
         redirect_uri = redirect_uri.replace("http://", "https://")
-    # Solicitar acceso offline y consentimiento para obtener refresh_token permanente hacia Google Drive 5TB
+    # Scopes estándar de identidad para todos los usuarios (sin scopes sensibles de Google Drive)
     return await oauth.google.authorize_redirect(
         request,
         redirect_uri,
+        scope="openid email profile"
+    )
+
+@app.get("/api/admin/gdrive/link")
+async def admin_gdrive_link(request: Request, current_user: str = Depends(get_current_user)):
+    if current_user != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Solo el administrador puede vincular Google Drive.")
+    redirect_uri = str(request.base_url) + "api/admin/gdrive/callback"
+    if "localhost" not in str(request.base_url):
+        redirect_uri = redirect_uri.replace("http://", "https://")
+    return await oauth.google.authorize_redirect(
+        request,
+        redirect_uri,
+        scope="openid email profile https://www.googleapis.com/auth/drive.file",
         access_type="offline",
         prompt="consent"
     )
 
+@app.get("/api/admin/gdrive/callback")
+async def admin_gdrive_callback(request: Request):
+    error = request.query_params.get("error")
+    if error:
+        return HTMLResponse(f"<h3>Error de autorización con Google Drive: {error}</h3>", status_code=400)
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        user = token.get('userinfo')
+        email = (user.get('email') or '').strip().lower()
+        if email != ADMIN_EMAIL:
+            return HTMLResponse("<h3>Error: Esta cuenta no coincide con la del administrador.</h3>", status_code=403)
+        gdrive_tokens = {}
+        if token.get('refresh_token'):
+            gdrive_tokens['refresh_token'] = token.get('refresh_token')
+        if token.get('access_token'):
+            gdrive_tokens['access_token'] = token.get('access_token')
+        if token.get('expires_at'):
+            gdrive_tokens['expires_at'] = token.get('expires_at')
+        if gdrive_tokens:
+            save_gdrive_tokens(gdrive_tokens)
+            print("[GDRIVE] Tokens de Google Drive 5TB vinculados exitosamente por el administrador.")
+            try:
+                asyncio.create_task(gdrive_sync_library_from_cloud())
+            except Exception as e:
+                print(f"[GDRIVE] Error disparando sincronización: {e}")
+        return RedirectResponse(url="/?gdrive_linked=success")
+    except Exception as e:
+        print("Error en admin gdrive callback:", str(e))
+        return HTMLResponse(f"<h3>Error al vincular tokens: {e}</h3>", status_code=500)
+
 @app.get("/api/auth/callback")
 async def auth_callback(request: Request):
+    # Capturar posibles parámetros de error devueltos por Google OAuth
+    error = request.query_params.get("error")
+    if error:
+        error_desc = request.query_params.get("error_description", error)
+        print(f"[AUTH ERROR] Google devolvió error: {error} - {error_desc}")
+        if error == "access_denied":
+            return RedirectResponse(url="/login?error=Acceso%20denegado%20por%20Google.%20Verifica%20tu%20cuenta.")
+        return RedirectResponse(url=f"/login?error=Error%20de%20autenticaci%C3%B3n:%20{error}")
+
     try:
         token = await oauth.google.authorize_access_token(request)
         user = token.get('userinfo')
         if user:
             email = user.get('email', '').strip().lower()
-            name = user.get('name') or email.split('@')[0].capitalize()
+            name = user.get('name') or user.get('given_name') or email.split('@')[0].capitalize()
             picture = user.get('picture', '')
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -4899,7 +4985,7 @@ async def auth_callback(request: Request):
                 }
                 save_users(users)
 
-                # Guardar tokens de Google Drive 5TB de Rodrigo para respaldo eterno
+                # Si el token de Rodrigo incluye refresh_token, resguardarlo
                 gdrive_tokens = {}
                 if token.get('refresh_token'):
                     gdrive_tokens['refresh_token'] = token.get('refresh_token')
@@ -4909,7 +4995,7 @@ async def auth_callback(request: Request):
                     gdrive_tokens['expires_at'] = token.get('expires_at')
                 if gdrive_tokens:
                     save_gdrive_tokens(gdrive_tokens)
-                    print("[GDRIVE] ¡Tokens de Google Drive 5TB guardados exitosamente!")
+                    print("[GDRIVE] Tokens de Google Drive 5TB guardados exitosamente tras login de admin.")
                     try:
                         asyncio.create_task(gdrive_sync_library_from_cloud())
                     except Exception as e:
@@ -4918,6 +5004,7 @@ async def auth_callback(request: Request):
                 request.session['user'] = user
                 return RedirectResponse(url="/")
 
+            # Para cualquier otro usuario autenticado con Google
             if email in users:
                 user_record = users[email]
                 if user_record.get("status") == "blocked":
