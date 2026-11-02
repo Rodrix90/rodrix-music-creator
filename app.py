@@ -1394,6 +1394,50 @@ def user_has_drive_permission(email: str, permission: str = "read") -> bool:
         return True
     return False
 
+def task_belongs_to_user(task: Optional[dict], email: str) -> bool:
+    """
+    Verifica de forma estricta si una tarea en memoria pertenece al usuario autenticado.
+    El administrador principal (ADMIN_EMAIL) siempre tiene acceso.
+    Para otros usuarios, comprueba que task.get("owner_email") coincida exactamente con el email normalizado de Google.
+    """
+    if not task or not email:
+        return False
+    norm_user = email.strip().lower()
+    if norm_user == ADMIN_EMAIL.strip().lower():
+        return True
+    owner = (task.get("owner_email") or "").strip().lower()
+    return bool(owner and owner == norm_user)
+
+def find_task_and_check_ownership(target_id: str, email: str) -> tuple[bool, Optional[dict]]:
+    """
+    Busca si target_id corresponde a un task_id o a un track_id generado en memoria,
+    y verifica si pertenece al usuario autenticado (o si el usuario es el administrador).
+    Retorna (es_propietario: bool, tarea_encontrada: Optional[dict]).
+    """
+    if not target_id or not email:
+        return (False, None)
+    norm_user = email.strip().lower()
+    is_admin = (norm_user == ADMIN_EMAIL.strip().lower())
+
+    # 1. Busqueda directa por task_id
+    if target_id in TASKS:
+        task = TASKS[target_id]
+        owner = (task.get("owner_email") or "").strip().lower()
+        if is_admin or (owner and owner == norm_user):
+            return (True, task)
+        return (False, task)
+
+    # 2. Busqueda por track_id dentro de las pistas de cada tarea
+    for t_id, task in TASKS.items():
+        for tr in task.get("tracks", []):
+            if str(tr.get("id")) == str(target_id):
+                owner = (task.get("owner_email") or "").strip().lower()
+                if is_admin or (owner and owner == norm_user):
+                    return (True, task)
+                return (False, task)
+
+    return (False, None)
+
 def get_current_user(request: Request):
     user = request.session.get('user')
     if not user:
@@ -1731,6 +1775,7 @@ async def transform_audio(
         task_id = str(uuid.uuid4())
         TASKS[task_id] = {
             "id": task_id,
+            "owner_email": current_user.strip().lower(),
             "status": "IN_PROGRESS",
             "title": title or "Obra Musical",
             "logs": "",
@@ -1760,20 +1805,26 @@ async def transform_audio(
         raise HTTPException(status_code=500, detail=f"Error al preparar la pista para generación: {str(e)}")
 
 @app.get("/api/status/{task_id}")
-async def get_task_status(task_id: str):
-    if task_id not in TASKS:
+async def get_task_status(task_id: str, current_user: str = Depends(get_current_user)):
+    is_own, task = find_task_and_check_ownership(task_id, current_user)
+    if not task:
         raise HTTPException(status_code=404, detail="Task no encontrada")
-    res = dict(TASKS[task_id])
+    if not is_own:
+        raise HTTPException(status_code=403, detail="Acceso denegado: esta tarea pertenece a otro usuario.")
+    res = dict(task)
     res["id"] = task_id
     return res
 
 @app.delete("/api/task/{task_id}")
-async def cancel_task(task_id: str):
-    if task_id in TASKS:
-        TASKS[task_id]["status"] = "CANCELLED"
-        TASKS[task_id]["detail"] = "Cancelado por el usuario"
-        return {"status": "success"}
-    raise HTTPException(status_code=404, detail="Task no encontrada")
+async def cancel_task(task_id: str, current_user: str = Depends(get_current_user)):
+    is_own, task = find_task_and_check_ownership(task_id, current_user)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task no encontrada")
+    if not is_own:
+        raise HTTPException(status_code=403, detail="Acceso denegado: no puedes cancelar tareas de otros usuarios.")
+    task["status"] = "CANCELLED"
+    task["detail"] = "Cancelado por el usuario"
+    return {"status": "success"}
 
 @app.post("/api/process_voiceover")
 async def process_voiceover(
@@ -1815,8 +1866,9 @@ async def process_voiceover(
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {
         "id": task_id,
+        "owner_email": current_user.strip().lower(),
         "status": "IN_PROGRESS",
-        "title": title or "Predicación Pastoral",
+        "title": title or "Predicacion Pastoral",
         "logs": "",
         "tracks": [],
         "detail": "",
@@ -2269,24 +2321,34 @@ async def cache_track_audio(task_id: str, remote_url: str) -> str:
 @app.get("/api/audio_file/{task_id}")
 async def serve_cached_audio(task_id: str, current_user: str = Depends(get_current_user)):
     library = load_library()
-    track_in_library = next((t for t in library if t.get("id") == task_id), None)
-    is_session_task = (task_id in TASKS)
+    track_in_library = next((t for t in library if str(t.get("id")) == str(task_id)), None)
+    is_own_task, task_in_memory = find_task_and_check_ownership(task_id, current_user)
 
-    # Si es una pista de la biblioteca central protegida, exigir permisos de lectura en Drive
-    if track_in_library and not user_has_drive_permission(current_user, "read"):
-        if not is_session_task:
+    # 1. Si la pista esta en la biblioteca central de Google Drive:
+    if track_in_library:
+        # Exige permisos de lectura en Drive salvo que sea contenido propio generado en sesion
+        if not is_own_task and not user_has_drive_permission(current_user, "read"):
             raise HTTPException(
                 status_code=403,
                 detail="Acceso denegado al archivo de audio de Google Drive: se requiere autorizacion del administrador."
             )
 
+    # 2. Si no es de la biblioteca central pero existe como tarea en memoria de otro usuario:
+    if task_in_memory and not is_own_task:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: este audio fue generado por otro usuario."
+        )
+
+    # Servir audio local si existe
     local_path = os.path.join(TRACKS_DIR, f"{task_id}.mp3")
     if os.path.exists(local_path) and os.path.getsize(local_path) > 1000:
         return FileResponse(path=local_path, media_type="audio/mpeg")
-    track = track_in_library
-    if track:
-        # 1. Recuperar desde Google Drive 5TB si el servidor se reinició
-        gdrive_id = track.get("gdrive_id")
+
+    if track_in_library:
+        if not is_own_task and not user_has_drive_permission(current_user, "read"):
+            raise HTTPException(status_code=403, detail="Acceso denegado a Google Drive.")
+        gdrive_id = track_in_library.get("gdrive_id")
         if gdrive_id:
             try:
                 gbytes = await gdrive_download_file_bytes(gdrive_id)
@@ -2297,11 +2359,17 @@ async def serve_cached_audio(task_id: str, current_user: str = Depends(get_curre
                     return FileResponse(path=local_path, media_type="audio/mpeg")
             except Exception as e:
                 print(f"[GDRIVE] Error recuperando audio de Drive para {task_id}: {e}")
-        # 2. Redirigir a URL externa original
-        url = track.get("raw_audio_url") or track.get("audio_url")
+        url = track_in_library.get("raw_audio_url") or track_in_library.get("audio_url")
         if url and url.startswith("http"):
-            from fastapi.responses import RedirectResponse
             return RedirectResponse(url=url)
+
+    if is_own_task and task_in_memory:
+        for tr in task_in_memory.get("tracks", []):
+            if str(tr.get("id")) == str(task_id) or len(task_in_memory.get("tracks", [])) == 1:
+                remote_u = tr.get("raw_audio_url") or tr.get("audio_url")
+                if remote_u and remote_u.startswith("http"):
+                    return RedirectResponse(url=remote_u)
+
     raise HTTPException(status_code=404, detail="Audio no disponible")
 
 def resolve_effective_musical_config(
@@ -4065,7 +4133,7 @@ async def check_audio_compatibility(file: UploadFile = File(...)):
 # INFORME TÉCNICO DE DIAGNÓSTICO (DISPONIBLE PARA CUALQUIER TAREA FALLIDA O RECHAZADA)
 # -----------------------------------------------------------------------------
 @app.get("/api/diagnostic_report/{task_id}")
-async def get_diagnostic_report(task_id: str):
+async def get_diagnostic_report(task_id: str, current_user: str = Depends(get_current_user)):
     """Genera y descarga un informe técnico de diagnóstico sin credenciales ni claves privadas."""
     if not task_id or task_id.strip() in ["", "undefined", "null"]:
         return PlainTextResponse(
@@ -4074,7 +4142,9 @@ async def get_diagnostic_report(task_id: str):
             headers={"Content-Disposition": 'attachment; filename="diagnostico_error.txt"'}
         )
 
-    task = TASKS.get(task_id)
+    is_own, task = find_task_and_check_ownership(task_id, current_user)
+    if task and not is_own:
+        raise HTTPException(status_code=403, detail="Acceso denegado: este informe de diagnostico pertenece a otro usuario.")
     if not task:
         err_report = f"""================================================================================
 INFORME DE DIAGNÓSTICO NO DISPONIBLE
@@ -4207,16 +4277,22 @@ Este documento no contiene credenciales, claves de API ni datos confidenciales.
 
 
 @app.get("/api/latest-logs")
-async def get_latest_logs():
-    if not TASKS:
-        return PlainTextResponse("No hay tareas registradas desde el último reinicio.")
-    latest_task_id = list(TASKS.keys())[-1]
-    task = TASKS[latest_task_id]
+async def get_latest_logs(current_user: str = Depends(get_current_user)):
+    user_norm = current_user.strip().lower()
+    is_admin = (user_norm == ADMIN_EMAIL.strip().lower())
+
+    user_tasks = [
+        (tid, t) for tid, t in TASKS.items()
+        if is_admin or (t.get("owner_email") or "").strip().lower() == user_norm
+    ]
+    if not user_tasks:
+        return PlainTextResponse("No hay tareas registradas para tu usuario desde el ultimo reinicio.")
+    latest_task_id, task = user_tasks[-1]
 
     output = f"--- LOGS DE LA TAREA {latest_task_id} ---\n"
     output += f"Estado actual: {task.get('status')}\n"
     output += f"Error/Detalle: {sanitize_logs_text(task.get('detail', ''))}\n\n"
-    output += sanitize_logs_text(task.get("logs", "No hay logs aún."))
+    output += sanitize_logs_text(task.get("logs", "No hay logs aun."))
 
     return PlainTextResponse(output)
 
@@ -4542,11 +4618,22 @@ async def get_or_download_audio_file(task_id: str, track: dict, temp_fallback_fi
 
 @app.get("/api/stems/{task_id}/{stem_type}")
 async def get_stem_audio(task_id: str, stem_type: str, current_user: str = Depends(get_current_user)):
-    if not user_has_drive_permission(current_user, "download"):
+    library = load_library()
+    is_central_library_track = any(str(t.get("id")) == str(task_id) for t in library)
+    is_own_task, task_in_memory = find_task_and_check_ownership(task_id, current_user)
+
+    if is_central_library_track and not is_own_task and not user_has_drive_permission(current_user, "download"):
         raise HTTPException(
             status_code=403,
             detail="Acceso denegado: no tienes permisos sobre los stems de Google Drive. Solicita autorizacion al administrador."
         )
+
+    if task_in_memory and not is_own_task:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no puedes acceder a los stems generados por otro usuario."
+        )
+
     if stem_type not in ["vocals", "instrumental"]:
         raise HTTPException(status_code=400, detail="Tipo de stem no válido")
     library = load_library()
@@ -4660,16 +4747,23 @@ def build_master_filter(width: float, eq: str, loud: str) -> str:
 @app.get("/api/download/{task_id}/{audio_format}")
 async def download_track_format(task_id: str, audio_format: str, width: float = 1.0, eq: str = "none", loud: str = "none", current_user: str = Depends(get_current_user)):
     library = load_library()
-    is_central_library_track = any(t.get("id") == task_id for t in library)
-    is_session_task = (task_id in TASKS)
+    is_central_library_track = any(str(t.get("id")) == str(task_id) for t in library)
+    is_own_task, task_in_memory = find_task_and_check_ownership(task_id, current_user)
 
-    # Proteger pistas de la biblioteca central de Google Drive
-    if is_central_library_track and not user_has_drive_permission(current_user, "download"):
-        if not is_session_task:
-            raise HTTPException(
-                status_code=403,
-                detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
-            )
+    # 1. Proteger pistas de la biblioteca central de Google Drive
+    if is_central_library_track and not is_own_task and not user_has_drive_permission(current_user, "download"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
+        )
+
+    # 2. Impedir acceso cruzado a tareas de otros usuarios
+    if task_in_memory and not is_own_task:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no puedes descargar archivos generados por otro usuario."
+        )
+
     if audio_format not in ["wav", "flac", "mp3"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
 
@@ -4787,11 +4881,22 @@ async def download_track_format(task_id: str, audio_format: str, width: float = 
 
 @app.get("/api/download_voiceover/{task_id}/{audio_format}")
 async def download_voiceover_direct(task_id: str, audio_format: str, current_user: str = Depends(get_current_user)):
-    if not user_has_drive_permission(current_user, "download"):
+    library = load_library()
+    is_central_library_track = any(str(t.get("id")) == str(task_id) for t in library)
+    is_own_task, task_in_memory = find_task_and_check_ownership(task_id, current_user)
+
+    if is_central_library_track and not is_own_task and not user_has_drive_permission(current_user, "download"):
         raise HTTPException(
             status_code=403,
             detail="Acceso denegado: no tienes permisos de descarga sobre el almacenamiento central de Google Drive. Solicita autorizacion al administrador."
         )
+
+    if task_in_memory and not is_own_task:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: no puedes descargar la locucion generada por otro usuario."
+        )
+
     if audio_format not in ["mp3", "wav"]:
         raise HTTPException(status_code=400, detail="Formato no soportado")
 
@@ -6164,7 +6269,7 @@ async def api_serve_free_preview_audio(filename: str):
 
 
 @app.post("/api/free-instruments/generate")
-async def api_free_instruments_generate(request: Request):
+async def api_free_instruments_generate(request: Request, current_user: str = Depends(get_current_user)):
     """
     Genera una composición musical multipista real mediante MIDI y FluidSynth combinando
     los instrumentos gratuitos seleccionados, con BPM personalizado y volumen individual
@@ -6304,6 +6409,7 @@ async def api_free_instruments_generate(request: Request):
     # Registrar también en TASKS en memoria para que /api/download/{task_id}/{format} funcione aun si save_to_library=False
     TASKS[track_id] = {
         "id": track_id,
+        "owner_email": current_user.strip().lower(),
         "status": "SUCCESS",
         "title": title,
         "logs": "Sintetizado localmente con FluidSynth (0 créditos).",
@@ -6623,6 +6729,7 @@ async def api_track_enrich(track_id: str, request: Request, current_user: str = 
 
     TASKS[new_track_id] = {
         "id": new_track_id,
+        "owner_email": current_user.strip().lower(),
         "status": "SUCCESS",
         "title": new_title,
         "logs": "Enriquecida localmente con SF2 sin alterar la pista original (0 créditos).",
