@@ -5997,7 +5997,12 @@ async def api_batch_status(batch_id: str):
     return task
 
 @app.post("/api/merge_continuous_album")
-async def api_merge_continuous_album(payload: dict):
+async def api_merge_continuous_album(payload: dict, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: se requiere autorizacion para acceder y compilar pistas de la biblioteca central."
+        )
     track_ids = payload.get("track_ids", [])
     album_title = payload.get("album_title", "Himnario Devocional - 1 Hora de Adoración").strip()
     crossfade_sec = float(payload.get("crossfade_sec", 4.0))
@@ -6332,7 +6337,12 @@ def _find_track_by_id(track_id: str):
 
 
 @app.post("/api/tracks/{track_id}/analyze")
-async def api_track_analyze_musical(track_id: str, request: Request = None):
+async def api_track_analyze_musical(track_id: str, request: Request = None, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: se requiere autorizacion para analizar pistas de la biblioteca central."
+        )
     """
     Analiza una canción existente de la biblioteca para extraer su duración real,
     BPM exacto, métrica, tonalidad estimada y progresión armónica compás por compás.
@@ -6382,7 +6392,12 @@ async def api_track_analyze_musical(track_id: str, request: Request = None):
 
 
 @app.post("/api/tracks/{track_id}/enrich-preview")
-async def api_track_enrich_preview(track_id: str, request: Request):
+async def api_track_enrich_preview(track_id: str, request: Request, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: se requiere autorizacion para acceder a pistas de la biblioteca central."
+        )
     """
     Genera una preescucha rápida (hasta 30 segundos) de la sobregrabación SF2
     alineada con la canción original, para escuchar antes de procesar y guardar la mezcla completa.
@@ -6460,7 +6475,12 @@ async def api_track_enrich_preview(track_id: str, request: Request):
 
 
 @app.post("/api/tracks/{track_id}/enrich")
-async def api_track_enrich(track_id: str, request: Request):
+async def api_track_enrich(track_id: str, request: Request, current_user: str = Depends(get_current_user)):
+    if not user_has_drive_permission(current_user, "read"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: se requiere autorizacion para enriquecer pistas de la biblioteca central."
+        )
     """
     Enriquece una canción existente de Udio sobregrabando de forma no destructiva
     los 20 instrumentos gratuitos SoundFont2 con volumen independiente por pista,
