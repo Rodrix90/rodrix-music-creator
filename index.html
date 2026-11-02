@@ -1838,6 +1838,312 @@ body.mode-pro .assistant-prominent {
   /* Visible in both or adjusted */
 }
 
+
+/* ==========================================================================
+   SISTEMA CENTRALIZADO DE VENTANAS EMERGENTES Y DIÁLOGOS (APP DIALOG & TOASTS)
+   ========================================================================== */
+.app-dialog-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(8, 9, 15, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
+}
+
+.app-dialog-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.app-dialog-card {
+  background: #181926;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  max-width: 480px;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.12);
+  transform: scale(0.94) translateY(8px);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.app-dialog-overlay.active .app-dialog-card {
+  transform: scale(1) translateY(0);
+}
+
+.app-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+}
+
+.app-dialog-icon-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 24px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.app-dialog-icon-wrapper.info {
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #818CF8;
+}
+.app-dialog-icon-wrapper.success {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34D399;
+}
+.app-dialog-icon-wrapper.warning {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #FBBF24;
+}
+.app-dialog-icon-wrapper.danger {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #F87171;
+}
+
+.app-dialog-title-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 28px;
+}
+
+.app-dialog-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #F1F5F9;
+  line-height: 1.3;
+}
+
+.app-dialog-subtitle {
+  font-size: 11.5px;
+  color: #94A3B8;
+  line-height: 1.2;
+}
+
+.app-dialog-close {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.app-dialog-close:hover {
+  color: #F1F5F9;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #CBD5E1;
+  font-size: 13.5px;
+  line-height: 1.5;
+  word-break: break-word;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.app-dialog-message {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.app-dialog-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0F101A;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #F8FAFC;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.app-dialog-input:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.app-dialog-destructive-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #FCA5A5;
+  font-weight: 500;
+}
+.app-dialog-destructive-notice i {
+  font-size: 16px;
+  flex-shrink: 0;
+  color: #EF4444;
+}
+
+.app-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.app-dialog-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.app-dialog-btn-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.app-dialog-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+.app-dialog-btn-confirm {
+  background: linear-gradient(135deg, #4F46E5, #7C3AED);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+.app-dialog-btn-confirm:hover {
+  background: linear-gradient(135deg, #4338CA, #6D28D9);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+}
+
+.app-dialog-btn-confirm.danger {
+  background: linear-gradient(135deg, #DC2626, #B91C1C);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+.app-dialog-btn-confirm.danger:hover {
+  background: linear-gradient(135deg, #B91C1C, #991B1B);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
+}
+
+.app-dialog-btn-confirm.warning {
+  background: linear-gradient(135deg, #D97706, #B45309);
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
+}
+.app-dialog-btn-confirm.warning:hover {
+  background: linear-gradient(135deg, #B45309, #92400E);
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45);
+}
+
+.app-dialog-btn-confirm.success {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+}
+.app-dialog-btn-confirm.success:hover {
+  background: linear-gradient(135deg, #047857, #065F46);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
+}
+
+.app-dialog-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+#toastContainer {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  align-items: center;
+  max-width: 90vw;
+}
+
+.rodrix-toast {
+  color: #fff;
+  padding: 11px 20px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  animation: toastIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  max-width: 100%;
+  word-break: break-word;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(12px) scale(0.96); }
+}
+
 </style>
 </head>
 <body>
@@ -4268,8 +4574,332 @@ body.mode-pro .assistant-prominent {
   </div>
 </div>
 
+
+<!-- SISTEMA CENTRALIZADO DE DIÁLOGOS Y MODALES (APP DIALOG) -->
+<div id="appDialogOverlay" class="app-dialog-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
+  <div class="app-dialog-card" id="appDialogCard">
+    <div class="app-dialog-header">
+      <div class="app-dialog-icon-wrapper" id="appDialogIconWrap">
+        <i id="appDialogIcon" class="ph ph-info"></i>
+      </div>
+      <div class="app-dialog-title-group">
+        <h3 id="appDialogTitle" class="app-dialog-title">Confirmación</h3>
+        <span id="appDialogSubtitle" class="app-dialog-subtitle" style="display:none;"></span>
+      </div>
+      <button type="button" class="app-dialog-close" id="appDialogCloseBtn" aria-label="Cerrar">&times;</button>
+    </div>
+
+    <div class="app-dialog-body" id="appDialogBody">
+      <p id="appDialogMessage" class="app-dialog-message"></p>
+      <div id="appDialogInputContainer" class="app-dialog-input-wrap" style="display:none;">
+        <input type="text" id="appDialogInput" class="app-dialog-input" autocomplete="off" spellcheck="false" />
+      </div>
+      <div id="appDialogDestructiveNotice" class="app-dialog-destructive-notice" style="display:none;">
+        <i class="ph ph-warning-octagon"></i>
+        <span>Esta acción es irreversible y no podrá deshacerse.</span>
+      </div>
+    </div>
+
+    <div class="app-dialog-footer" id="appDialogFooter">
+      <button type="button" class="app-dialog-btn app-dialog-btn-cancel" id="appDialogCancelBtn">Cancelar</button>
+      <button type="button" class="app-dialog-btn app-dialog-btn-confirm" id="appDialogConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const $ = id => document.getElementById(id);
+
+/* ==========================================================================
+   RODRIX MUSIC CREATOR 4.0 - SISTEMA CENTRALIZADO DE MODALES Y NOTIFICACIONES
+   ========================================================================== */
+function showToast(msg, type = 'info', duration = 3800) {
+  let container = $('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = 'rodrix-toast';
+
+  let bg = 'linear-gradient(135deg, #4F46E5, #6366F1)';
+  let icon = 'ph-info';
+  let border = 'rgba(129,140,248,0.3)';
+
+  if (type === 'success' || type === 'ok') {
+    bg = 'linear-gradient(135deg, #059669, #10B981)';
+    icon = 'ph-check-circle';
+    border = 'rgba(52,211,153,0.3)';
+  } else if (type === 'err' || type === 'error' || type === 'danger') {
+    bg = 'linear-gradient(135deg, #DC2626, #EF4444)';
+    icon = 'ph-warning-circle';
+    border = 'rgba(248,113,113,0.3)';
+  } else if (type === 'warn' || type === 'warning') {
+    bg = 'linear-gradient(135deg, #D97706, #F59E0B)';
+    icon = 'ph-warning';
+    border = 'rgba(251,191,36,0.3)';
+  }
+
+  toast.style.background = bg;
+  toast.style.border = `1px solid ${border}`;
+  toast.innerHTML = `<i class="ph ${icon}" style="font-size:17px;flex-shrink:0;"></i><span>${msg}</span>`;
+  container.appendChild(toast);
+
+  let isDismissed = false;
+  const dismiss = () => {
+    if (isDismissed) return;
+    isDismissed = true;
+    toast.style.animation = 'toastOut 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+    setTimeout(() => {
+      try { if (toast.parentNode) toast.parentNode.removeChild(toast); } catch(e){}
+    }, 250);
+  };
+
+  toast.onclick = dismiss;
+  setTimeout(dismiss, duration);
+}
+
+window.AppDialog = (function() {
+  let activeResolve = null;
+  let currentDialogType = null;
+  let previousActiveElement = null;
+
+  function getElements() {
+    return {
+      overlay: $('appDialogOverlay'),
+      card: $('appDialogCard'),
+      iconWrap: $('appDialogIconWrap'),
+      icon: $('appDialogIcon'),
+      title: $('appDialogTitle'),
+      subtitle: $('appDialogSubtitle'),
+      closeBtn: $('appDialogCloseBtn'),
+      message: $('appDialogMessage'),
+      inputContainer: $('appDialogInputContainer'),
+      input: $('appDialogInput'),
+      destructiveNotice: $('appDialogDestructiveNotice'),
+      cancelBtn: $('appDialogCancelBtn'),
+      confirmBtn: $('appDialogConfirmBtn')
+    };
+  }
+
+  function close(result) {
+    const el = getElements();
+    if (!el.overlay) return;
+
+    el.overlay.classList.remove('active');
+    setTimeout(() => {
+      el.overlay.style.display = 'none';
+      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+        try { previousActiveElement.focus(); } catch(e){}
+      }
+    }, 220);
+
+    const res = activeResolve;
+    activeResolve = null;
+    currentDialogType = null;
+    if (res) res(result);
+  }
+
+  function show(options) {
+    return new Promise((resolve) => {
+      if (activeResolve) {
+        activeResolve(options.dialogMode === 'prompt' ? null : false);
+      }
+
+      activeResolve = resolve;
+      currentDialogType = options.dialogMode || 'confirm';
+      previousActiveElement = document.activeElement;
+
+      const el = getElements();
+      if (!el.overlay) {
+        console.error("AppDialog overlay no encontrado en el DOM.");
+        resolve(options.dialogMode === 'prompt' ? null : false);
+        return;
+      }
+
+      el.confirmBtn.disabled = false;
+      el.cancelBtn.disabled = false;
+      el.confirmBtn.className = 'app-dialog-btn app-dialog-btn-confirm';
+      el.iconWrap.className = 'app-dialog-icon-wrapper';
+
+      const visualType = options.type || (options.destructive ? 'danger' : 'info');
+      el.iconWrap.classList.add(visualType);
+
+      let defaultIcon = 'ph-info';
+      if (visualType === 'success') defaultIcon = 'ph-check-circle';
+      if (visualType === 'warning') defaultIcon = 'ph-warning';
+      if (visualType === 'danger') defaultIcon = options.destructive ? 'ph-trash' : 'ph-warning-octagon';
+      el.icon.className = `ph ${options.icon || defaultIcon}`;
+
+      if (visualType === 'danger' || options.destructive) {
+        el.confirmBtn.classList.add('danger');
+      } else if (visualType === 'warning') {
+        el.confirmBtn.classList.add('warning');
+      } else if (visualType === 'success') {
+        el.confirmBtn.classList.add('success');
+      }
+
+      el.title.textContent = options.title || (options.dialogMode === 'alert' ? 'Aviso' : (options.dialogMode === 'prompt' ? 'Ingreso de Datos' : 'Confirmación'));
+      if (options.subtitle) {
+        el.subtitle.textContent = options.subtitle;
+        el.subtitle.style.display = 'block';
+      } else {
+        el.subtitle.style.display = 'none';
+      }
+
+      el.message.textContent = options.message || '';
+
+      if (options.destructive) {
+        el.destructiveNotice.style.display = 'flex';
+        el.destructiveNotice.querySelector('span').textContent = options.destructiveText || 'Esta acción es irreversible y no podrá deshacerse.';
+      } else {
+        el.destructiveNotice.style.display = 'none';
+      }
+
+      if (options.dialogMode === 'alert') {
+        el.cancelBtn.style.display = 'none';
+        el.confirmBtn.style.display = 'inline-flex';
+        el.confirmBtn.textContent = options.confirmText || 'Entendido';
+        el.inputContainer.style.display = 'none';
+      } else if (options.dialogMode === 'prompt') {
+        el.cancelBtn.style.display = 'inline-flex';
+        el.cancelBtn.textContent = options.cancelText || 'Cancelar';
+        el.confirmBtn.style.display = 'inline-flex';
+        el.confirmBtn.textContent = options.confirmText || 'Aceptar';
+        el.inputContainer.style.display = 'flex';
+        el.input.value = options.defaultValue || '';
+        el.input.placeholder = options.placeholder || '';
+        if (options.maxLength) el.input.maxLength = options.maxLength;
+      } else {
+        el.cancelBtn.style.display = 'inline-flex';
+        el.cancelBtn.textContent = options.cancelText || 'Cancelar';
+        el.confirmBtn.style.display = 'inline-flex';
+        el.confirmBtn.textContent = options.confirmText || 'Confirmar';
+        el.inputContainer.style.display = 'none';
+      }
+
+      el.overlay.style.display = 'flex';
+      void el.overlay.offsetWidth;
+      el.overlay.classList.add('active');
+
+      setTimeout(() => {
+        if (options.dialogMode === 'prompt') {
+          el.input.focus();
+          el.input.select();
+        } else if (options.destructive) {
+          el.cancelBtn.focus();
+        } else {
+          el.confirmBtn.focus();
+        }
+      }, 50);
+    });
+  }
+
+  function init() {
+    const el = getElements();
+    if (!el.overlay) return;
+
+    el.cancelBtn.onclick = () => {
+      if (el.cancelBtn.disabled) return;
+      el.cancelBtn.disabled = true;
+      close(currentDialogType === 'prompt' ? null : false);
+    };
+
+    el.closeBtn.onclick = () => {
+      close(currentDialogType === 'prompt' ? null : false);
+    };
+
+    el.confirmBtn.onclick = () => {
+      if (el.confirmBtn.disabled) return;
+      el.confirmBtn.disabled = true;
+      if (currentDialogType === 'prompt') {
+        close(el.input.value);
+      } else {
+        close(true);
+      }
+    };
+
+    el.input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        el.confirmBtn.click();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        el.cancelBtn.click();
+      }
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && el.overlay && el.overlay.classList.contains('active')) {
+        e.preventDefault();
+        close(currentDialogType === 'prompt' ? null : false);
+      }
+    });
+
+    el.overlay.onclick = (e) => {
+      if (e.target === el.overlay) {
+        close(currentDialogType === 'prompt' ? null : false);
+      }
+    };
+  }
+
+  return {
+    init,
+    alert: (message, options = {}) => {
+      return show({
+        message,
+        dialogMode: 'alert',
+        title: options.title || 'Aviso',
+        type: options.type || 'info',
+        confirmText: options.confirmText || 'Entendido',
+        icon: options.icon
+      });
+    },
+    confirm: (message, options = {}) => {
+      return show({
+        message,
+        dialogMode: 'confirm',
+        title: options.title || 'Confirmación',
+        type: options.type || (options.destructive ? 'danger' : 'warning'),
+        confirmText: options.confirmText || 'Confirmar',
+        cancelText: options.cancelText || 'Cancelar',
+        destructive: options.destructive || false,
+        destructiveText: options.destructiveText,
+        icon: options.icon
+      });
+    },
+    prompt: (message, defaultValue = '', options = {}) => {
+      return show({
+        message,
+        defaultValue,
+        dialogMode: 'prompt',
+        title: options.title || 'Ingreso de Datos',
+        placeholder: options.placeholder || '',
+        confirmText: options.confirmText || 'Aceptar',
+        cancelText: options.cancelText || 'Cancelar',
+        type: options.type || 'info',
+        maxLength: options.maxLength,
+        icon: options.icon || 'ph-pencil-simple'
+      });
+    }
+  };
+})();
+
+// Reemplazos de protección a nivel de ventana para evitar diálogos nativos
+window.alert = function(msg) {
+  return AppDialog.alert(String(msg));
+};
+window.confirm = function(msg) {
+  console.warn("Llamada sincrónica a confirm() interceptada. Use await AppDialog.confirm()");
+  return AppDialog.confirm(String(msg));
+};
+window.prompt = function(msg, def) {
+  console.warn("Llamada sincrónica a prompt() interceptada. Use await AppDialog.prompt()");
+  return AppDialog.prompt(String(msg), def);
+};
+
 let currentTask = null, pollTimer = null, progressTimer = null, progress = 0;
 let currentTrackId = null;
 
@@ -4368,7 +4998,12 @@ $('nav-usuarios').onclick = e => { e.preventDefault(); showView('usuarios'); };
 $('nav-ajustes').onclick = e => { e.preventDefault(); showView('ajustes'); };
 $('refreshUsersBtn').onclick = loadUsers;
 $('nav-ayuda').onclick = e => { e.preventDefault();
-  alert('Cómo usar Rodrix Music Creator:\n\n1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio con fotos reales y genera música con IA.\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, elimina ruidos y retumbos, ecualiza y mezcla música devocional muy suave con auto-ducking.\n3. Librería: Escucha en el reproductor de onda, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.');
+  AppDialog.alert('1. Solapa "Crear Canción": Elige un preset de culto (Pentecostal, Adoración, Himno, Juvenil) o tu propio estilo, selecciona equipamiento de estudio con fotos reales y genera música con IA.\n\n2. Solapa "Voz en Off / Predicación": Sube el audio del pastor grabado con su celular. Restaura la voz, elimina ruidos y retumbos, ecualiza y mezcla música devocional muy suave con auto-ducking.\n\n3. Librería: Escucha en el reproductor de onda, descarga (MP3/WAV/FLAC) y administra todos tus audios masterizados.', {
+    title: 'Cómo usar Rodrix Music Creator',
+    type: 'info',
+    icon: 'ph-book-open',
+    confirmText: 'Entendido'
+  });
 };
 
 function toggleProfileModal() {
@@ -4381,7 +5016,12 @@ async function contactUdioSupport(mode) {
   try {
     const res = await fetch('/api/admin/support_info');
     if (!res.ok) {
-      alert('Acceso restringido: Solo el usuario administrador rodryandy puede acceder al soporte de UDIO.');
+      AppDialog.alert('Acceso restringido: Solo el usuario administrador rodryandy puede acceder al soporte de UDIO.', {
+        title: 'Acceso Restringido',
+        type: 'warning',
+        icon: 'ph-shield-warning',
+        confirmText: 'Entendido'
+      });
       return;
     }
     const info = await res.json();
@@ -4798,7 +5438,7 @@ $('applyGearBtn').addEventListener('click', () => {
   }
 
   if (!arr.length && !ampPrompts.length) {
-    alert('Selecciona primero al menos un instrumento, amplificador o consola del rack.');
+    showToast('Selecciona primero al menos un instrumento, amplificador o consola del rack.', 'warn');
     return;
   }
   let cur = $('styleInput').value.trim();
@@ -5796,9 +6436,14 @@ async function startLiveRecording() {
   } catch (err) {
     console.error('Error micrófono:', err);
     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      alert('Permiso de micrófono no habilitado por el WebView.\n\n⚠️ Si estás en la APK instalada: necesitas actualizar la APK a la versión con micrófono tocando el botón "Descargar APK" (la versión anterior que tenías instalada no tenía el puente nativo de audio activado).');
+      AppDialog.alert('Permiso de micrófono no habilitado por el WebView.\n\n⚠️ Si estás en la APK instalada: necesitas actualizar la APK a la versión con micrófono tocando el botón "Descargar APK" (la versión anterior que tenías instalada no tenía el puente nativo de audio activado).', {
+      title: 'Permiso de Micrófono Requerido',
+      type: 'warning',
+      icon: 'ph-microphone-slash',
+      confirmText: 'Entendido'
+    });
     } else {
-      alert('Error al acceder al micrófono (' + (err.name || 'Error') + '): ' + (err.message || 'Verifica los permisos en tu dispositivo.'));
+      showToast('Error al acceder al micrófono (' + (err.name || 'Error') + '): ' + (err.message || 'Verifica los permisos en tu dispositivo.'), 'err');
     }
   }
 }
@@ -5950,7 +6595,7 @@ function applyLiveRecording() {
     pauseLiveRecording();
   }
   if (!recPcmChunks.length) {
-    alert('No hay audio grabado aún.');
+    showToast('No hay audio grabado aún.', 'warn');
     return;
   }
   recordedVoiceBlob = pcmToWav(recPcmChunks, recSampleRate);
@@ -6085,7 +6730,7 @@ $('voiceoverForm').addEventListener('submit', async e => {
     file = $('voAudioInput').files[0];
   }
   if (!file) {
-    alert('Por favor graba tu mensaje con el micrófono o selecciona un archivo de audio para continuar.');
+    showToast('Por favor graba tu mensaje con el micrófono o selecciona un archivo de audio para continuar.', 'warn');
     return;
   }
 
@@ -6175,7 +6820,7 @@ $('voiceoverForm').addEventListener('submit', async e => {
     }, 1500);
 
   } catch(err) {
-    alert('Error al procesar: ' + err.message);
+    showToast('Error al procesar: ' + err.message, 'err');
     $('voSubmitBtn').disabled = false;
     $('voProgressWrap').style.display = 'none';
   }
@@ -6698,7 +7343,7 @@ window.loadHymnIntoMainCreator = function(idx) {
 if ($('btnLaunchSingleGlobal')) {
   $('btnLaunchSingleGlobal').addEventListener('click', () => {
     if (!scannedHymnsData.length) {
-      alert('Primero analiza al menos una partitura.');
+      showToast('Primero analiza al menos una partitura.', 'warn');
       return;
     }
     generateSingleHymn(0);
@@ -6708,7 +7353,7 @@ if ($('btnLaunchSingleGlobal')) {
 if ($('btnLaunchBatch')) {
   $('btnLaunchBatch').addEventListener('click', async () => {
     if (!scannedHymnsData.length) {
-      alert('Primero analiza al menos una partitura.');
+      showToast('Primero analiza al menos una partitura.', 'warn');
       return;
     }
 
@@ -6767,7 +7412,7 @@ if ($('btnLaunchBatch')) {
       pollBatchStatus();
       showToast('Generación en lote iniciada. Se irá creando cada himno uno a uno.', 'info');
     } catch (err) {
-      alert('Error: ' + err.message);
+      showToast('Error: ' + err.message, 'err');
       $('btnLaunchBatch').disabled = false;
     }
   });
@@ -6820,7 +7465,12 @@ if ($('btnMergeAlbum')) {
     }
 
     if (trackIds.length < 2) {
-      alert('Se necesitan al menos 2 canciones para compilar un álbum continuo. Genera primero los himnos o selecciónalos en la Librería.');
+      AppDialog.alert('Se necesitan al menos 2 canciones para compilar un álbum continuo. Genera primero los himnos o selecciónalos en la Librería.', {
+      title: 'Compilador de Álbum Continuo',
+      type: 'warning',
+      icon: 'ph-disc',
+      confirmText: 'Entendido'
+    });
       return;
     }
 
@@ -6860,7 +7510,7 @@ if ($('btnMergeAlbum')) {
       showToast('¡Álbum continuo de 1 hora creado con éxito!', 'ok');
       await loadLibrary();
     } catch (err) {
-      alert('Error creando álbum: ' + err.message);
+      showToast('Error creando álbum: ' + err.message, 'err');
     } finally {
       $('btnMergeAlbum').disabled = false;
       $('albumMergeSpinner').style.display = 'none';
@@ -7181,14 +7831,19 @@ function closeCatalogRejectionModal() {
 async function downloadDiagnosticReport(taskId) {
   const targetId = taskId || currentDiagnosticTaskId;
   if (!targetId || targetId === 'undefined' || targetId === 'null') {
-    alert("No se encontró el identificador de la tarea para generar el informe de diagnóstico.");
+    showToast("No se encontró el identificador de la tarea para generar el informe de diagnóstico.", "err");
     return;
   }
   try {
     const res = await fetch(`/api/diagnostic_report/${encodeURIComponent(targetId)}`);
     const txt = await res.text();
     if (!res.ok) {
-      alert(`No se pudo obtener el informe de diagnóstico:\n\n${txt}`);
+      AppDialog.alert(`No se pudo obtener el informe de diagnóstico:\n\n${txt}`, {
+        title: 'Informe de Diagnóstico',
+        type: 'danger',
+        icon: 'ph-warning-octagon',
+        confirmText: 'Cerrar'
+      });
       return;
     }
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
@@ -7201,7 +7856,7 @@ async function downloadDiagnosticReport(taskId) {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   } catch (err) {
-    alert(`Error al descargar el informe: ${err.message}`);
+    showToast(`Error al descargar el informe: ${err.message}`, 'err');
   }
 }
 
@@ -7411,7 +8066,13 @@ async function renameTrack(id) {
   const t = ($('libList')._tracks || []).find(x => x.id === id);
   if (!t) return;
   const currentTitle = t.title || '';
-  const newTitle = prompt('Escribe el nuevo nombre para este audio:', currentTitle);
+  const newTitle = await AppDialog.prompt('Escribe el nuevo nombre para este audio:', currentTitle, {
+    title: 'Renombrar Pista',
+    placeholder: 'Nuevo título...',
+    confirmText: 'Guardar Nombre',
+    cancelText: 'Cancelar',
+    icon: 'ph-pencil-simple'
+  });
   if (newTitle === null) return;
   const trimmed = newTitle.trim();
   if (!trimmed || trimmed === currentTitle) return;
@@ -7607,34 +8268,7 @@ async function downloadSelectedTracks(trackIds = null) {
   }
 }
 
-function showToast(msg, type = 'info') {
-  let container = $('toastContainer');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toastContainer';
-    container.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999999;display:flex;flex-direction:column;gap:8px;pointer-events:none;align-items:center;';
-    document.body.appendChild(container);
-  }
-  const toast = document.createElement('div');
-  const bg = type === 'success' ? '#10B981' : type === 'err' ? '#EF4444' : '#6366F1';
-  toast.style.cssText = `background:${bg};color:#fff;padding:10px 18px;border-radius:30px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:inline-flex;align-items:center;gap:8px;pointer-events:auto;animation:toastIn 0.3s ease forwards;`;
-
-  let icon = 'ph-info';
-  if (type === 'success') icon = 'ph-check-circle';
-  if (type === 'err') icon = 'ph-warning-circle';
-
-  toast.innerHTML = `<i class="ph ${icon}" style="font-size:16px;"></i> <span>${msg}</span>`;
-  container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translate(-50%, 10px)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => {
-      try { if (toast.parentNode) toast.parentNode.removeChild(toast); } catch(e){}
-    }, 300);
-  }, 3500);
-}
+/* showToast centralizado en cabecera */
 
 
 /* ==========================================================================
@@ -8788,7 +9422,18 @@ $('libList').addEventListener('click', async e => {
     showToast(`Parámetros de "${t.title}" cargados listos para extender duración.`, 'info');
     logLine(`Modo Extender: Canción "${t.title}" preparada en el panel para continuarla.`);
   } else if (act === 'del') {
-    if (!confirm('¿Eliminar esta pista de la librería?')) return;
+    const t = ($('libList')._tracks || []).find(x => x.id === id);
+    const trackTitle = t ? t.title : 'esta pista';
+    const confirmed = await AppDialog.confirm(`¿Estás seguro de que deseas eliminar permanentemente "${trackTitle}" de la librería?`, {
+      title: 'Eliminar Pista',
+      type: 'danger',
+      destructive: true,
+      destructiveText: 'Esta acción borrará la canción y no se podrá recuperar.',
+      confirmText: 'Eliminar Pista',
+      cancelText: 'Cancelar',
+      icon: 'ph-trash'
+    });
+    if (!confirmed) return;
     const r = await fetch('/api/library/' + encodeURIComponent(id), { method:'DELETE' });
     if (r.ok) {
       if (id === currentTrackId) {
@@ -8876,14 +9521,29 @@ async function syncGDriveNow() {
     const res = await fetch('/api/gdrive/sync', { method: 'POST' });
     const data = await res.json();
     if (data.status === 'success') {
-      alert(`¡Librería respaldada exitosamente en tu Google Drive 5 TB!\nTotal canciones: ${data.total_tracks}`);
+      AppDialog.alert(`¡Librería respaldada exitosamente en tu Google Drive 5 TB!\nTotal canciones: ${data.total_tracks}`, {
+        title: 'Copia de Seguridad Google Drive',
+        type: 'success',
+        icon: 'ph-cloud-check',
+        confirmText: 'Excelente'
+      });
       loadLibrary();
       checkGDriveStatus();
     } else {
-      alert('Aviso al respaldar: ' + (data.message || 'Error desconocido'));
+      AppDialog.alert('Aviso al respaldar: ' + (data.message || 'Error desconocido'), {
+        title: 'Aviso Google Drive',
+        type: 'warning',
+        icon: 'ph-warning',
+        confirmText: 'Entendido'
+      });
     }
   } catch (e) {
-    alert('Error al conectar con Google Drive: ' + e.message);
+    AppDialog.alert('Error al conectar con Google Drive: ' + e.message, {
+      title: 'Error de Conexión Google Drive',
+      type: 'danger',
+      icon: 'ph-cloud-slash',
+      confirmText: 'Cerrar'
+    });
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -8959,13 +9619,13 @@ $('saveDictBtn').addEventListener('click', async () => {
       body: JSON.stringify({ content })
     });
     if (r.ok) {
-      alert('¡Diccionario guardado permanentemente en el servidor!');
+      showToast('¡Diccionario guardado permanentemente en el servidor!', 'success');
       logLine('Diccionario de pronunciación guardado exitosamente.');
     } else {
-      alert('Error al guardar el diccionario.');
+      showToast('Error al guardar el diccionario.', 'err');
     }
   } catch (e) {
-    alert('Error de conexión al guardar el diccionario.');
+    showToast('Error de conexión al guardar el diccionario.', 'err');
   }
 });
 
@@ -8977,7 +9637,7 @@ $('syncDictBtn').addEventListener('click', async () => {
       $('pronInput').value = j.content || '';
       logLine('Diccionario cargado desde el servidor.');
     }
-  } catch(e){ alert('Error al cargar.'); }
+  } catch(e){ showToast('Error al cargar diccionario.', 'err'); }
 });
 
 /* ---------- Masterización (se aplica al descargar) ---------- */
@@ -9136,7 +9796,16 @@ async function loadUsers() {
 
 async function toggleUserDriveAccess(email, enableDrive) {
   const actionName = enableDrive ? 'autorizar el acceso al almacenamiento Google Drive central' : 'revocar el acceso al almacenamiento Google Drive central';
-  if (!confirm(`¿Estás seguro de que deseas ${actionName} para ${email}?`)) return;
+  const confirmed = await AppDialog.confirm(`¿Estás seguro de que deseas ${actionName} para la cuenta:\n${email}?`, {
+    title: enableDrive ? 'Autorizar Google Drive' : 'Revocar Acceso a Google Drive',
+    type: enableDrive ? 'info' : 'warning',
+    destructive: !enableDrive,
+    destructiveText: !enableDrive ? 'El usuario perderá inmediatamente el acceso a la biblioteca central de 5 TB.' : null,
+    confirmText: enableDrive ? 'Autorizar Acceso' : 'Revocar Acceso',
+    cancelText: 'Cancelar',
+    icon: enableDrive ? 'ph-cloud-arrow-up' : 'ph-cloud-slash'
+  });
+  if (!confirmed) return;
   try {
     const r = await fetch('/api/admin/toggle_user', {
       method: 'POST',
@@ -9144,19 +9813,30 @@ async function toggleUserDriveAccess(email, enableDrive) {
       body: JSON.stringify({ email, drive_access: enableDrive })
     });
     if (r.ok) {
+      showToast(enableDrive ? 'Acceso a Google Drive autorizado exitosamente.' : 'Acceso a Google Drive revocado exitosamente.', 'success');
       loadUsers();
     } else {
       const err = await r.json();
-      alert(err.detail || 'Error al cambiar permisos de Google Drive.');
+      showToast(err.detail || 'Error al cambiar permisos de Google Drive.', 'err');
     }
   } catch(e) {
-    alert('Error de conexión.');
+    showToast('Error de conexión con el servidor.', 'err');
   }
 }
 
 async function toggleUserStatus(email, newStatus) {
-  const actionName = newStatus === 'blocked' ? 'bloquear' : 'habilitar';
-  if (!confirm(`¿Estás seguro de que deseas ${actionName} el acceso a ${email}?`)) return;
+  const isBlocking = newStatus === 'blocked';
+  const actionName = isBlocking ? 'bloquear el acceso al sistema para' : 'habilitar la cuenta de';
+  const confirmed = await AppDialog.confirm(`¿Estás seguro de que deseas ${actionName} la cuenta:\n${email}?`, {
+    title: isBlocking ? 'Bloquear Usuario' : 'Habilitar Usuario',
+    type: isBlocking ? 'danger' : 'info',
+    destructive: isBlocking,
+    destructiveText: isBlocking ? 'El usuario no podrá iniciar sesión en la aplicación mientras permanezca bloqueado.' : null,
+    confirmText: isBlocking ? 'Bloquear Usuario' : 'Habilitar Cuenta',
+    cancelText: 'Cancelar',
+    icon: isBlocking ? 'ph-user-minus' : 'ph-user-check'
+  });
+  if (!confirmed) return;
   try {
     const r = await fetch('/api/admin/toggle_user', {
       method: 'POST',
@@ -9164,13 +9844,14 @@ async function toggleUserStatus(email, newStatus) {
       body: JSON.stringify({ email, status: newStatus })
     });
     if (r.ok) {
+      showToast(isBlocking ? 'Usuario bloqueado exitosamente.' : 'Usuario habilitado exitosamente.', 'success');
       loadUsers();
     } else {
       const err = await r.json();
-      alert(err.detail || 'Error al cambiar estado.');
+      showToast(err.detail || 'Error al cambiar estado del usuario.', 'err');
     }
   } catch(e) {
-    alert('Error de conexión.');
+    showToast('Error de conexión con el servidor.', 'err');
   }
 }
 
@@ -10413,6 +11094,7 @@ function toggleStudioMode() {
 
 // Initial mode setup
 document.addEventListener('DOMContentLoaded', () => {
+  AppDialog.init();
   loadUserInfo();
   setStudioMode(currentStudioMode);
   initVisualMetricWidget();
@@ -10718,7 +11400,12 @@ function loadCuratedHymn(hymnId) {
 }
 
 function openAlbumStitcherModal() {
-  alert('Compilador de Álbum Continuo de 1 Hora:\n\nSelecciona pistas en Mi Librería usando las casillas de verificación para compilar un setlist continuo sin silencios con normalización EBU R128 (-14 LUFS).');
+  AppDialog.alert('Compilador de Álbum Continuo de 1 Hora:\n\nSelecciona pistas en Mi Librería usando las casillas de verificación para compilar un setlist continuo sin silencios con normalización EBU R128 (-14 LUFS).', {
+    title: 'Compilador de Álbum Continuo',
+    type: 'info',
+    icon: 'ph-disc',
+    confirmText: 'Entendido'
+  });
 }
 
 // --- 6. BROADCAST VU METER & VOCAL CHANNEL STRIP ---
