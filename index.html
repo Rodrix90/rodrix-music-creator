@@ -3690,33 +3690,11 @@ html, body {
           </div>
         </details>
 
-        <div class="field" id="lyricsFieldContainer">
-          <div class="label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <span style="font-weight:700;display:flex;align-items:center;gap:6px">
-              <i class="ph ph-text-t"></i> Modo de Generación
-            </span>
-            <div style="display:flex;gap:6px;align-items:center">
-              <button type="button" class="btn-sec" id="btnClearLyrics" style="padding:2px 8px;font-size:11px;border-radius:6px;height:auto;color:#FCA5A5;border-color:rgba(239,68,68,0.3)" title="Borrar texto del box de letra"><i class="ph ph-trash"></i> Limpiar Letra</button>
-            </div>
-          </div>
-
-          <!-- Selector de Modo de Letra de 3 estados -->
-          <div class="lyrics-mode-selector" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 10px;background:rgba(255,255,255,0.03);padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
-            <button type="button" class="mode-tab-btn active" data-mode="custom" id="btnModeCustom" style="padding:8px 6px;font-size:12px;font-weight:700;border-radius:8px;border:none;cursor:pointer;background:#4F46E5;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s">
-              <i class="ph ph-pencil-simple"></i> Letra Propia
-            </button>
-            <button type="button" class="mode-tab-btn" data-mode="instrumental" id="btnModeInstrumental" style="padding:8px 6px;font-size:12px;font-weight:600;border-radius:8px;border:none;cursor:pointer;background:transparent;color:#94A3B8;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s">
-              <i class="ph ph-waveform"></i> Instrumental
-            </button>
-            <button type="button" class="mode-tab-btn" data-mode="auto" id="btnModeAuto" style="padding:8px 6px;font-size:12px;font-weight:600;border-radius:8px;border:none;cursor:pointer;background:transparent;color:#94A3B8;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s">
-              <i class="ph ph-sparkle"></i> Letra Nueva IA
-            </button>
-          </div>
-          <!-- Inputs ocultos para sincronización de estado y compatibilidad -->
-          <input type="checkbox" id="instrumental" style="display:none">
-          <input type="hidden" id="lyricsModeInput" value="custom">
-
-          <div id="lyricsModeNotice" style="display:none;padding:8px 12px;border-radius:8px;font-size:11.5px;margin-bottom:8px;line-height:1.4"></div>
+        <div class="field">
+          <label class="label" for="lyricsInput">
+            <span>Letra</span>
+            <span class="check"><input type="checkbox" id="instrumental"> Instrumental</span>
+          </label>
           <textarea id="lyricsInput" placeholder="[Verse]&#10;Escribe aquí tu letra..."></textarea>
         </div>
 
@@ -4748,110 +4726,6 @@ html, body {
   </div>
 </div>
 
-<!-- MODAL DE VISTA PREVIA DE PARÁMETROS ANTES DE GENERAR -->
-<div id="parameterPreviewModal" class="modal-backdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);overflow-y:auto;-webkit-overflow-scrolling:touch">
-  <div style="background:#131B2E;border:1px solid rgba(99,102,241,0.4);border-radius:16px;max-width:620px;width:100%;max-height:calc(100dvh - 32px);max-height:92vh;overflow-y:auto;margin:auto;box-sizing:border-box;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,0.8);color:#E2E8F0;display:flex;flex-direction:column;gap:14px">
-    <div style="display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:12px">
-      <div style="width:40px;height:40px;border-radius:10px;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);display:grid;place-items:center;flex-shrink:0">
-        <i class="ph ph-sliders-horizontal" style="font-size:22px;color:#818CF8"></i>
-      </div>
-      <div>
-        <h3 style="font-size:16px;font-weight:700;color:#F8FAFC;margin:0">Confirmar Parámetros de Generación</h3>
-        <div style="font-size:11.5px;color:#94A3B8">Revisa la configuración resuelta antes de enviar la solicitud (Consumo: 10 créditos)</div>
-      </div>
-    </div>
-
-    <!-- Grid de Parámetros -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
-      <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
-        <span style="color:#94A3B8;display:block;font-size:11px">Título:</span>
-        <strong id="previewTitle" style="color:#F1F5F9;font-size:13px">-</strong>
-      </div>
-      <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
-        <span style="color:#94A3B8;display:block;font-size:11px">Modo de Letra:</span>
-        <strong id="previewMode" style="color:#A5B4FC;font-size:13px">-</strong>
-      </div>
-      <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
-        <span style="color:#94A3B8;display:block;font-size:11px">Modelo IA:</span>
-        <strong id="previewModel" style="color:#F1F5F9">-</strong>
-      </div>
-      <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
-        <span style="color:#94A3B8;display:block;font-size:11px">Tempo / Arreglos:</span>
-        <strong id="previewBpm" style="color:#F1F5F9">-</strong>
-      </div>
-    </div>
-
-    <div style="background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);font-size:12px">
-      <span style="color:#94A3B8;display:block;font-size:11px;margin-bottom:2px">Audio de Referencia (Upload & Cover):</span>
-      <span id="previewAudioRef" style="color:#CBD5E1;font-weight:600">Ninguno (Generación pura sin audio previo)</span>
-    </div>
-
-    <div style="background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);font-size:12px">
-      <span style="color:#94A3B8;display:block;font-size:11px;margin-bottom:2px">Estilo Positivo a Enviar:</span>
-      <div id="previewStyle" style="color:#E2E8F0;font-size:11.5px;max-height:60px;overflow-y:auto;line-height:1.4"></div>
-    </div>
-
-    <div style="background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);font-size:12px">
-      <span style="color:#94A3B8;display:block;font-size:11px;margin-bottom:2px">Filtros de Exclusión (Negative Tags):</span>
-      <div id="previewExclude" style="color:#94A3B8;font-size:11px;max-height:45px;overflow-y:auto;line-height:1.3"></div>
-    </div>
-
-    <div style="background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);font-size:12px">
-      <span style="color:#94A3B8;display:block;font-size:11px;margin-bottom:2px">Texto de Letra Efectivo a Enviar:</span>
-      <div id="previewLyrics" style="color:#A7F3D0;font-size:11.5px;max-height:70px;overflow-y:auto;white-space:pre-wrap;font-family:monospace;background:rgba(0,0,0,0.25);padding:6px;border-radius:6px"></div>
-    </div>
-
-    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;flex-wrap:wrap">
-      <button type="button" class="btn-sec" onclick="closeParameterPreviewModal()" style="padding:8px 16px;border-radius:8px;font-size:12.5px">Cancelar</button>
-      <button type="button" class="btn-primary" id="btnConfirmGenerate" style="padding:8px 20px;border-radius:8px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px">
-        <i class="ph ph-sparkle"></i> Confirmar y Generar (10 cr)
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL DE RECHAZO POR DERECHOS DE AUTOR EN LA LETRA (COPYRIGHT) -->
-<div id="lyricsCopyrightModal" class="modal-backdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);overflow-y:auto;-webkit-overflow-scrolling:touch">
-  <div style="background:#1A1B26;border:1px solid rgba(245,158,11,0.5);border-radius:14px;max-width:580px;width:100%;max-height:calc(100dvh - 32px);max-height:calc(100vh - 32px);overflow-y:auto;margin:auto;box-sizing:border-box;padding:22px;box-shadow:0 15px 40px rgba(0,0,0,0.8);color:#E2E8F0">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-      <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.35);display:grid;place-items:center;flex-shrink:0">
-        <i class="ph ph-copyright" style="font-size:26px;color:#FBBF24"></i>
-      </div>
-      <div>
-        <h2 style="font-size:15px;font-weight:700;color:#FDE68A;margin:0">Rechazo por Derechos de Autor en la Letra</h2>
-        <div style="font-size:11.5px;color:#94A3B8">Filtro de Copyright de Udio API (Tus créditos no se consumieron)</div>
-      </div>
-    </div>
-    <p style="font-size:12.5px;color:#CBD5E1;line-height:1.5;margin-bottom:12px">
-      El proveedor Udio API detectó que la letra enviada contiene fragmentos de una obra protegida por derechos de autor y <strong>rechazó la solicitud sin consumir créditos</strong>:
-    </p>
-    <div id="copyrightErrorExcerptBox" style="background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px;margin-bottom:14px;font-size:11.5px;font-family:monospace;color:#FCD34D;max-height:80px;overflow-y:auto">
-      Your lyrics contain copyrighted material. Please change it and try again.
-    </div>
-
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;line-height:1.55">
-      <strong style="color:#A78BFA;display:flex;align-items:center;gap:5px"><i class="ph ph-arrow-circle-right"></i> Opciones para continuar:</strong>
-      <ul style="margin:8px 0 0 18px;padding:0;color:#CBD5E1">
-        <li><strong>Modificar la letra:</strong> Cambia las frases protegidas por una versión propia en el box de letra.</li>
-        <li><strong>Generar Instrumental:</strong> Genera la música sin letra vocal (100% libre de restricciones de copyright).</li>
-      </ul>
-    </div>
-
-    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
-      <button type="button" class="btn-sec" onclick="closeLyricsCopyrightModal()" style="padding:7px 14px;border-radius:8px;font-size:12px">Cerrar</button>
-      <a id="btnDownloadCopyrightDiagReport" href="javascript:void(0)" onclick="downloadDiagnosticReport();return false;" class="btn-sec" style="padding:7px 14px;border-radius:8px;font-size:12px;display:inline-flex;align-items:center;gap:5px">
-        <i class="ph ph-file-text"></i> Diagnóstico (.txt)
-      </a>
-      <button type="button" class="btn-sec" id="btnSwitchToInstrumentalFromModal" style="padding:7px 14px;border-radius:8px;font-size:12.5px;color:#34D399;border-color:rgba(52,211,153,0.4)">
-        <i class="ph ph-waveform"></i> Modo Instrumental
-      </button>
-      <button type="button" class="btn-primary" id="btnEditLyricsFromModal" style="padding:7px 16px;border-radius:8px;font-weight:700;font-size:12.5px">
-        <i class="ph ph-pencil-simple"></i> Editar Letra
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL DE ENRIQUECIMIENTO CON 20 INSTRUMENTOS SF2 -->
 <div id="sf2EnrichmentModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);z-index:10001;align-items:center;justify-content:center;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
   <div style="background:#131B2E;border:1px solid rgba(16,185,129,0.4);border-radius:18px;max-width:760px;width:100%;max-height:calc(100dvh - 32px);max-height:92vh;margin:auto;box-sizing:border-box;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,0.85);overflow:hidden">
@@ -5776,101 +5650,21 @@ document.querySelectorAll('#genderSeg button').forEach(b => b.addEventListener('
   b.classList.add('on'); gender = b.dataset.g;
 }));
 
-function setLyricsMode(mode, clearText = false) {
-  const m = mode || 'custom';
-  const customBtn = $('btnModeCustom');
-  const instrBtn = $('btnModeInstrumental');
-  const autoBtn = $('btnModeAuto');
-  const hiddenMode = $('lyricsModeInput');
-  const hiddenInstr = $('instrumental');
-  const notice = $('lyricsModeNotice');
-  const input = $('lyricsInput');
-
-  if (hiddenMode) hiddenMode.value = m;
-
-  [customBtn, instrBtn, autoBtn].forEach(b => {
-    if (b) {
-      b.classList.remove('active');
-      b.style.background = 'transparent';
-      b.style.color = '#94A3B8';
-    }
-  });
-
-  if (m === 'instrumental') {
-    if (instrBtn) {
-      instrBtn.classList.add('active');
-      instrBtn.style.background = '#059669';
-      instrBtn.style.color = '#fff';
-    }
-    if (hiddenInstr) hiddenInstr.checked = true;
-    if (input) {
-      input.style.opacity = '0.45';
-      input.placeholder = "[Modo Instrumental - La pista se generará 100% instrumental sin voces ni texto]";
-    }
-    if (notice) {
-      notice.style.display = 'block';
-      notice.style.background = 'rgba(5,150,105,0.12)';
-      notice.style.border = '1px solid rgba(5,150,105,0.3)';
-      notice.style.color = '#6EE7B7';
-      notice.innerHTML = '<i class="ph ph-waveform" style="margin-right:4px"></i> <strong>Modo Instrumental Activo:</strong> Se enviará una solicitud puramente instrumental sin palabras de letra. No se consumen créditos por textos rechazados.';
-    }
-  } else if (m === 'auto') {
-    if (autoBtn) {
-      autoBtn.classList.add('active');
-      autoBtn.style.background = '#7C3AED';
-      autoBtn.style.color = '#fff';
-    }
-    if (hiddenInstr) hiddenInstr.checked = false;
-    if (input) {
-      input.style.opacity = '0.45';
-      input.placeholder = "[Modo Letra Nueva IA - Udio redactará automáticamente una letra original basada en el estilo]";
-    }
-    if (notice) {
-      notice.style.display = 'block';
-      notice.style.background = 'rgba(124,58,237,0.12)';
-      notice.style.border = '1px solid rgba(124,58,237,0.3)';
-      notice.style.color = '#C4B5FD';
-      notice.innerHTML = '<i class="ph ph-sparkle" style="margin-right:4px"></i> <strong>Modo Letra Nueva IA Activo:</strong> El modelo de Udio generará una letra original adaptada al estilo y rítmica sin reusar letras previas.';
+$('instrumental').addEventListener('change', e => {
+  if (e.target.checked) {
+    if (!$('lyricsInput').value.trim()) {
+      $('lyricsInput').placeholder = "[Instrumental - Puedes escribir estructura [Drum Solo], [Part 1], etc. o dejarlo vacío]";
     }
   } else {
-    // Modo Custom (Letra Propia)
-    if (customBtn) {
-      customBtn.classList.add('active');
-      customBtn.style.background = '#4F46E5';
-      customBtn.style.color = '#fff';
-    }
-    if (hiddenInstr) hiddenInstr.checked = false;
-    if (input) {
-      input.style.opacity = '1';
-      input.disabled = false;
-      input.placeholder = "[Verse]\nEscribe aquí tu letra...";
-    }
-    if (notice) {
-      notice.style.display = 'none';
-    }
+    $('lyricsInput').placeholder = "[Verse]\nEscribe aquí tu letra...";
   }
-
-  if (clearText && input) {
-    input.value = '';
-  }
-}
-
-if ($('btnModeCustom')) $('btnModeCustom').addEventListener('click', () => setLyricsMode('custom'));
-if ($('btnModeInstrumental')) $('btnModeInstrumental').addEventListener('click', () => setLyricsMode('instrumental'));
-if ($('btnModeAuto')) $('btnModeAuto').addEventListener('click', () => setLyricsMode('auto'));
-
-if ($('btnClearLyrics')) {
-  $('btnClearLyrics').addEventListener('click', () => {
-    if ($('lyricsInput')) $('lyricsInput').value = '';
-    showToast('Letra borrada del formulario.', 'info');
-  });
-}
-
+});
 $('lyricsInput').addEventListener('input', () => {
   const val = $('lyricsInput').value.trim();
-  const currentMode = $('lyricsModeInput') ? $('lyricsModeInput').value : 'custom';
-  if (val && currentMode !== 'custom' && !val.toLowerCase().startsWith('[instrumental]')) {
-    setLyricsMode('custom');
+  if (val && !val.toLowerCase().startsWith('[instrumental]') && $('instrumental').checked) {
+    $('instrumental').checked = false;
+    $('lyricsInput').style.opacity = 1;
+    $('lyricsInput').disabled = false;
   }
 });
 $('clearAudio').addEventListener('click', () => {
@@ -6121,9 +5915,19 @@ document.querySelectorAll('.preset-card').forEach(card => {
       $('styleInput').value = p.style;
       $('excludeInput').value = p.exclude;
       if (typeof p.instrumental === 'boolean') {
-        setLyricsMode(p.instrumental ? 'instrumental' : 'custom');
+        $('instrumental').checked = p.instrumental;
         if (p.lyrics) {
           $('lyricsInput').value = p.lyrics;
+          $('lyricsInput').disabled = false;
+          $('lyricsInput').style.opacity = 1;
+        } else {
+          $('lyricsInput').disabled = p.instrumental;
+          $('lyricsInput').style.opacity = p.instrumental ? 0.4 : 1;
+        }
+        if (p.instrumental) {
+          $('lyricsInput').placeholder = "[Instrumental - Estructura o solo instrumental]";
+        } else {
+          $('lyricsInput').placeholder = "[Verse]\nEscribe aquí tu letra...";
         }
       }
       if (card.dataset.preset === 'pentecostal') {
@@ -6974,8 +6778,7 @@ if ($('btnSendCleanLyrics')) {
     if (!currentHarmonicAnalysis) runHarmonicAnalysis();
     if (currentHarmonicAnalysis && currentHarmonicAnalysis.cleanLyrics) {
       $('lyricsInput').value = currentHarmonicAnalysis.cleanLyrics;
-      setLyricsMode('custom');
-      showToast('Letra limpia sin acordes transferida al box de Letra (Modo Letra Propia activo).', 'ok');
+      showToast('Letra limpia sin acordes transferida al box de Letra.', 'ok');
       logLine('Letra limpia importada desde la tablatura.');
     } else {
       showToast('No se detectó letra para transferir en el texto.', 'info');
@@ -8628,27 +8431,28 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('art_bass_slap', effCfg.bassSlap ? 'true' : 'false');
   fd.append('art_bass_pickup', effCfg.bassPickup ? 'true' : 'false');
   fd.append('active_preset', effCfg.activePreset);
-  const selectedLyricsMode = ($('lyricsModeInput') && $('lyricsModeInput').value) || (instr ? 'instrumental' : 'custom');
   let userLyrics = $('lyricsInput').value.trim();
 
-  let lyricsToSend = '';
-  let isInstrumentalFinal = false;
-
-  if (selectedLyricsMode === 'instrumental' || instr) {
-    isInstrumentalFinal = true;
-    lyricsToSend = '[Instrumental]';
-  } else if (selectedLyricsMode === 'auto') {
-    isInstrumentalFinal = false;
-    lyricsToSend = '';
-  } else {
-    isInstrumentalFinal = false;
-    lyricsToSend = userLyrics;
+  // Si el usuario no puso letra en el box principal pero la tablatura tenía letra limpia, usarla automáticamente
+  if (!userLyrics && currentHarmonicAnalysis && currentHarmonicAnalysis.cleanLyrics) {
+    userLyrics = currentHarmonicAnalysis.cleanLyrics;
+    $('lyricsInput').value = userLyrics;
+    logLine('Usando letra limpia extraída automáticamente de la tablatura.');
   }
 
-  fd.append('lyrics_mode', selectedLyricsMode);
+  let lyricsToSend = '';
+  if (instr) {
+    if (isSoloPianoPrayerMode) lyricsToSend = '[Instrumental - Solo Piano]';
+    else if (isSoloGuitarMode) lyricsToSend = '[Instrumental - Solo Guitar]';
+    else if (isSoloBassMode) lyricsToSend = '[Instrumental - Solo Bass]';
+    else if (isSoloDrumMode) lyricsToSend = '[Instrumental - Solo Drums]';
+    else lyricsToSend = (userLyrics ? (userLyrics.toLowerCase().includes('[instrumental]') ? userLyrics : `[Instrumental]\n\n${userLyrics}`) : '[Instrumental]');
+  } else {
+    lyricsToSend = userLyrics;
+  }
   fd.append('lyrics', lyricsToSend);
   fd.append('title', $('titleInput').value.trim());
-  fd.append('include_lyrics', isInstrumentalFinal ? 'false' : 'true');
+  fd.append('include_lyrics', instr ? 'false' : 'true');
   fd.append('bypass_copyright', $('bypass').checked);
   fd.append('is_public_domain', ($('chkPublicDomain') && $('chkPublicDomain').checked) ? 'true' : 'false');
 
@@ -8693,25 +8497,23 @@ $('genForm').addEventListener('submit', async e => {
     }
   }
 
-  showParameterPreviewModal(fd, async () => {
-    $('console').innerHTML = '';
-    setBusy(true); startProgress();
-    logLine('Enviando solicitud al servidor...');
-    try {
-      const r = await fetch('/api/transform', { method:'POST', body: fd });
-      if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
-      if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.detail || ('HTTP ' + r.status)); }
-      const j = await r.json();
-      if (j.duplicate_prevented) {
-        logLine('Aviso: ' + (j.message || 'Solicitud idéntica detectada. Reutilizando tarea activa.'), 'warn');
-      }
-      currentTask = j.task_id;
-      pollTimer = setInterval(poll, 3000); poll();
-    } catch (err) {
-      logLine('ERROR: ' + err.message, 'err');
-      stopProgress(false, 'Error'); setBusy(false);
+  $('console').innerHTML = '';
+  setBusy(true); startProgress();
+  logLine('Enviando solicitud al servidor...');
+  try {
+    const r = await fetch('/api/transform', { method:'POST', body: fd });
+    if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
+    if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.detail || ('HTTP ' + r.status)); }
+    const j = await r.json();
+    if (j.duplicate_prevented) {
+      logLine('Aviso: ' + (j.message || 'Solicitud idéntica detectada. Reutilizando tarea activa.'), 'warn');
     }
-  });
+    currentTask = j.task_id;
+    pollTimer = setInterval(poll, 3000); poll();
+  } catch (err) {
+    logLine('ERROR: ' + err.message, 'err');
+    stopProgress(false, 'Error'); setBusy(false);
+  }
 });
 
 
@@ -8830,9 +8632,7 @@ async function poll(){
       if (failedTaskId) {
         logLine(`[Diagnóstico disponible]: Puedes descargar el informe técnico haciendo clic en el modal o con Task ID: ${failedTaskId}`, 'info');
       }
-      if (t.lyrics_copyright || t.error_type === 'LYRICS_COPYRIGHT') {
-        showLyricsCopyrightModal(failedTaskId, t.detail);
-      } else if (t.catalog_rejection) {
+      if (t.catalog_rejection) {
         showCatalogRejectionModal(failedTaskId);
       }
     } else if (t.status === 'CANCELLED') {
@@ -8847,110 +8647,6 @@ $('cancelBtn').addEventListener('click', async () => {
   await fetch('/api/task/' + currentTask, { method:'DELETE' }).catch(()=>{});
   logLine('Cancelando...');
 });
-
-
-/* ---------- MODALES DE CONTROL: VISTA PREVIA Y COPYRIGHT DE LETRA ---------- */
-let pendingGenerationConfirmCallback = null;
-
-function showParameterPreviewModal(fd, onConfirm) {
-  pendingGenerationConfirmCallback = onConfirm;
-
-  if ($('previewTitle')) $('previewTitle').textContent = fd.get('title') || 'Obra Musical';
-
-  const mode = fd.get('lyrics_mode') || 'custom';
-  let modeLabel = 'Letra Propia (Personalizada)';
-  if (mode === 'instrumental') modeLabel = 'Instrumental (100% Pura Música sin Voces)';
-  else if (mode === 'auto') modeLabel = 'Letra Nueva IA (Udio escribirá la letra)';
-  if ($('previewMode')) $('previewMode').textContent = modeLabel;
-
-  if ($('previewModel')) $('previewModel').textContent = (fd.get('model') || 'chirp-v4-5') + ' (10 créditos)';
-  if ($('previewBpm')) $('previewBpm').textContent = (fd.get('target_bpm') || '0') + ' BPM';
-
-  let refText = 'Ninguno (Generación pura sin audio de referencia)';
-  if ($('audioInput') && $('audioInput').files && $('audioInput').files[0]) {
-    refText = 'Archivo subido: ' + $('audioInput').files[0].name + ' (Upload & Cover)';
-  } else if (window.activeLoadedSkeleton) {
-    refText = 'Guía melódica: ' + window.activeLoadedSkeleton + ' (Upload & Cover)';
-  }
-  if ($('previewAudioRef')) $('previewAudioRef').textContent = refText;
-
-  if ($('previewStyle')) $('previewStyle').textContent = fd.get('style') || '(Por defecto)';
-  if ($('previewExclude')) $('previewExclude').textContent = fd.get('exclude_styles') || 'Ninguna';
-
-  let lyricsPreviewText = '';
-  if (mode === 'instrumental') {
-    lyricsPreviewText = '[Instrumental] (Sin texto de letra vocal)';
-  } else if (mode === 'auto') {
-    lyricsPreviewText = '[Letra Nueva IA] (El proveedor compondrá una letra original basada en el estilo)';
-  } else {
-    const rawLyrics = fd.get('lyrics') || '';
-    lyricsPreviewText = rawLyrics ? (rawLyrics.length > 250 ? rawLyrics.substring(0, 250) + '...' : rawLyrics) : '(Sin texto de letra ingresado)';
-  }
-  if ($('previewLyrics')) $('previewLyrics').textContent = lyricsPreviewText;
-
-  const m = $('parameterPreviewModal');
-  if (m) m.style.display = 'flex';
-}
-
-function closeParameterPreviewModal() {
-  const m = $('parameterPreviewModal');
-  if (m) m.style.display = 'none';
-  pendingGenerationConfirmCallback = null;
-}
-
-if ($('btnConfirmGenerate')) {
-  $('btnConfirmGenerate').addEventListener('click', () => {
-    const cb = pendingGenerationConfirmCallback;
-    closeParameterPreviewModal();
-    if (typeof cb === 'function') {
-      cb();
-    }
-  });
-}
-
-function showLyricsCopyrightModal(taskId, detail) {
-  if (taskId && taskId !== 'undefined' && taskId !== 'null') {
-    currentDiagnosticTaskId = taskId;
-  }
-  const excerptBox = $('copyrightErrorExcerptBox');
-  if (excerptBox) {
-    excerptBox.textContent = detail || 'Your lyrics contain copyrighted material. Please change it and try again.';
-  }
-  const btn = $('btnDownloadCopyrightDiagReport');
-  if (btn && currentDiagnosticTaskId) {
-    btn.href = `/api/diagnostic_report/${encodeURIComponent(currentDiagnosticTaskId)}`;
-    btn.download = `diagnostico_copyright_${currentDiagnosticTaskId}.txt`;
-  }
-  const m = $('lyricsCopyrightModal');
-  if (m) m.style.display = 'flex';
-}
-
-function closeLyricsCopyrightModal() {
-  const m = $('lyricsCopyrightModal');
-  if (m) m.style.display = 'none';
-}
-
-if ($('btnEditLyricsFromModal')) {
-  $('btnEditLyricsFromModal').addEventListener('click', () => {
-    closeLyricsCopyrightModal();
-    setLyricsMode('custom');
-    showView('crear');
-    if ($('lyricsInput')) {
-      $('lyricsInput').focus();
-      $('lyricsInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    showToast('Modifica las frases con derechos de autor y presiona Generar.', 'info');
-  });
-}
-
-if ($('btnSwitchToInstrumentalFromModal')) {
-  $('btnSwitchToInstrumentalFromModal').addEventListener('click', () => {
-    closeLyricsCopyrightModal();
-    setLyricsMode('instrumental');
-    showView('crear');
-    showToast('Modo Instrumental activado. Presiona Generar para crear la pista sin voces.', 'ok');
-  });
-}
 
 /* ---------- Librería ---------- */
 function fmtDur(s){ s = Math.round(+s || 0); return s ? Math.floor(s/60) + ':' + String(s%60).padStart(2,'0') : '--:--'; }
