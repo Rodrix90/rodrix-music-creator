@@ -1528,6 +1528,52 @@ async def upload_to_uguu_async(file_path: str) -> str | None:
         print("Error subiendo a Uguu:", e)
     return None
 
+
+def format_provider_tags(neg_str: str, max_len: int = 80) -> str:
+    """
+    Formatea las etiquetas de exclusión negativa para el parámetro oficial 'tags' de UdioAPI
+    respetando el límite documentado de 80 caracteres sin truncar palabras por la mitad.
+    """
+    if not neg_str:
+        return ""
+    tags = [t.strip() for t in neg_str.split(",") if t.strip()]
+    res = []
+    curr_len = 0
+    for t in tags:
+        extra = len(t) if not res else len(t) + 2
+        if curr_len + extra <= max_len:
+            res.append(t)
+            curr_len += extra
+        else:
+            break
+    if not res and tags:
+        return tags[0][:max_len].strip()
+    return ", ".join(res)
+
+def sanitize_positive_style(style_text: str, max_chars: int = 1000) -> str:
+    """
+    Sanitiza el estilo positivo eliminando cláusulas negativas ('no ...', 'zero ...', 'sin ...')
+    y garantizando que la longitud respete el límite oficial de 1.000 caracteres de UdioAPI.
+    """
+    if not style_text:
+        return ""
+    parts = [p.strip() for p in style_text.split(",") if p.strip()]
+    pos_parts = []
+    for p in parts:
+        p_lower = p.lower()
+        if re.match(r"^(?:no\s+|zero\s+|sin\s+|without\s+)", p_lower):
+            continue
+        pos_parts.append(p)
+    cleaned = ", ".join(pos_parts)
+    cleaned = re.sub(r",\s*,+", ",", cleaned).strip(" ,")
+    if len(cleaned) <= max_chars:
+        return cleaned
+    truncated = cleaned[:max_chars]
+    last_comma = truncated.rfind(",")
+    if last_comma > 200:
+        return truncated[:last_comma].strip(" ,")
+    return truncated.strip(" ,")
+
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_bin = "ffmpeg"
     if os.path.exists("ffmpeg.exe"):
@@ -1541,7 +1587,6 @@ def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
         "-y",
         "-i", input_path,
         "-vn",
-        "-t", "120",
         "-map_metadata", "-1",
         "-af", "aformat=channel_layouts=mono,asetrate=44100*1.025,aresample=44100,atempo=0.975,flanger=delay=4:depth=4:regen=15:width=70:speed=1.5,vibrato=f=3.0:d=0.25,compand=attacks=0:points=-80/-80|-15/-15|0/-15|20/-15",
         output_path
@@ -3132,6 +3177,17 @@ async def run_transform_task(
                     backup_upload_url = await upload_to_uguu_async(target_upload_file)
                 except Exception:
                     pass
+            if target_upload_file and os.path.exists(target_upload_file):
+                dur_check_sec = get_audio_duration_seconds(target_upload_file)
+                if dur_check_sec > 480.0:
+                    err_msg = f"El audio de referencia ({dur_check_sec:.1f} s) excede el límite máximo permitido de 8 minutos (480 s)."
+                    log_msg(f"ERROR: {err_msg}")
+                    TASKS[task_id]["status"] = "ERROR"
+                    TASKS[task_id]["error_type"] = "AUDIO_DURATION_EXCEEDED"
+                    TASKS[task_id]["detail"] = err_msg
+                    save_local_log()
+                    return
+
             if not upload_url and not backup_upload_url:
                 log_msg("ERROR: No se pudo subir el archivo de audio a ningún servidor temporal.")
                 raise Exception("Fallo al subir el audio a servidor temporal.")
@@ -3520,12 +3576,12 @@ async def run_transform_task(
                 genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
         elif is_vals_vienes:
             tempo_str = f", {bpm_tag}" if bpm_tag else ""
-            genre_anchor = f"sacred Viennese waltz hymn in 3/4 time{tempo_str}, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing, no 4/4 rhythm, no rock drums, no cumbia"
+            genre_anchor = f"sacred Viennese waltz hymn in 3/4 time{tempo_str}, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing"
         elif is_pentecostal:
             target_bpm_str = bpm_tag or "118 BPM"
             hihat_desc = eff_cfg["hihat_clause"] or "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
             bass_anchor = eff_cfg["bass_clause"] or "root-fifth alternating acoustic bassline"
-            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, zero synth bass, traditional two-step praise straight 4/4 rhythm, {target_bpm_str}, {bass_anchor}, church choir singing in unison, natural Spanish vocals, no black gospel, no soul, no melisma, no missing snare, no quiet snare, no missing cymbals"
+            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, traditional two-step praise straight 4/4 rhythm, {target_bpm_str}, {bass_anchor}, church choir singing in unison, natural Spanish vocals"
         elif is_traditional_hymn:
             tempo_str = f", {bpm_tag}" if bpm_tag else ""
             genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
@@ -3804,12 +3860,12 @@ async def run_transform_task(
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
             else:
                 priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
-                # Las exclusiones pertenecen estrictamente a negative_tags, no al estilo positivo
                 combined_parts = [p for p in [genre_anchor, priority_str, style] if p]
-                style = ", ".join(combined_parts)
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
+                raw_combined = ", ".join(combined_parts)
+                style = sanitize_positive_style(raw_combined, max_chars=1000)
 
             neg_final_str = ", ".join(dedup_neg)
+            style = sanitize_positive_style(style, max_chars=1000)
             log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
         else:
             if is_solo_piano_prayer:
@@ -3867,6 +3923,8 @@ async def run_transform_task(
         actual_weirdness = 0.15 if (is_drum_solo or is_guitar_solo or is_bass_solo) else (0.20 if is_drum_solo else max(0.0, min(1.0, round(float(weirdness) / 100.0, 2))))
         actual_audio_weight = max(0.0, min(1.0, round(float(audio_influence) / 100.0, 2)))
 
+        clean_positive_style = sanitize_positive_style(style, max_chars=1000)
+
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
             url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
@@ -3877,18 +3935,17 @@ async def run_transform_task(
                 cover_prompt = "[Instrumental]"
             elif is_auto_lyrics:
                 cover_custom_mode = False
-                cover_prompt = style
+                cover_prompt = clean_positive_style
             else:
                 cover_custom_mode = True
-                cover_prompt = final_lyrics or style
+                cover_prompt = final_lyrics or clean_positive_style
 
             payload = {
                 "upload_url": upload_url,
                 "model": model,
                 "custom_mode": cover_custom_mode,
                 "prompt": cover_prompt,
-                "style": style,
-                "tags": style,
+                "style": clean_positive_style,
                 "title": title,
                 "make_instrumental": is_instrumental,
                 "style_weight": actual_style_weight,
@@ -3897,11 +3954,11 @@ async def run_transform_task(
             }
             if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
+            # En el contrato oficial de UdioAPI, 'tags' indica las exclusiones negativas a evitar (máx 80 chars)
             if neg_final_str:
-                payload["negative_tags"] = neg_final_str
-                payload["negative_prompt"] = neg_final_str
-                payload["exclude_styles"] = neg_final_str
-                payload["excluded_tags"] = neg_final_str
+                clean_tags = format_provider_tags(neg_final_str, max_len=80)
+                if clean_tags:
+                    payload["tags"] = clean_tags
         else:
             log_msg("Usando endpoint V2 Generate")
             url_generate = "https://udioapi.pro/api/v2/generate"
@@ -3912,16 +3969,15 @@ async def run_transform_task(
                 gen_prompt = "[Instrumental]"
             elif is_auto_lyrics:
                 gen_custom_mode = False
-                gen_prompt = style
+                gen_prompt = clean_positive_style
             else:
                 gen_custom_mode = True
-                gen_prompt = final_lyrics or style
+                gen_prompt = final_lyrics or clean_positive_style
 
             payload = {
                 "custom_mode": gen_custom_mode,
                 "prompt": gen_prompt,
-                "style": style,
-                "tags": style,
+                "style": clean_positive_style,
                 "title": title,
                 "make_instrumental": is_instrumental,
                 "model": model,
@@ -3931,10 +3987,9 @@ async def run_transform_task(
             if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
             if neg_final_str:
-                payload["negative_tags"] = neg_final_str
-                payload["negative_prompt"] = neg_final_str
-                payload["exclude_styles"] = neg_final_str
-                payload["excluded_tags"] = neg_final_str
+                clean_tags = format_provider_tags(neg_final_str, max_len=80)
+                if clean_tags:
+                    payload["tags"] = clean_tags
 
         if task_id in TASKS:
             TASKS[task_id]["effective_config"] = eff_cfg
