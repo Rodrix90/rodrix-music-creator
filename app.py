@@ -1552,8 +1552,9 @@ def format_provider_tags(neg_str: str, max_len: int = 80) -> str:
 
 def sanitize_positive_style(style_text: str, max_chars: int = 1000) -> str:
     """
-    Sanitiza el estilo positivo eliminando cláusulas negativas ('no ...', 'zero ...', 'sin ...')
-    y garantizando que la longitud respete el límite oficial de 1.000 caracteres de UdioAPI.
+    Sanitiza el estilo positivo eliminando cláusulas negativas ('no ...', 'zero ...', 'sin ...', 'without ...')
+    y palabras negativas aisladas ('zero', 'no', 'sin', 'without'), garantizando que la longitud respete
+    el límite oficial de 1.000 caracteres de UdioAPI sin alterar descriptores musicales positivos legítimos.
     """
     if not style_text:
         return ""
@@ -1561,7 +1562,7 @@ def sanitize_positive_style(style_text: str, max_chars: int = 1000) -> str:
     pos_parts = []
     for p in parts:
         p_lower = p.lower()
-        if re.match(r"^(?:no\s+|zero\s+|sin\s+|without\s+)", p_lower):
+        if re.match(r"^(?:no|zero|sin|without)(?:\s+|$)", p_lower):
             continue
         pos_parts.append(p)
     cleaned = ", ".join(pos_parts)
