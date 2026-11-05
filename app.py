@@ -13,7 +13,7 @@ import tempfile
 import subprocess
 from typing import Optional
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Depends, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse, PlainTextResponse
 import json
@@ -1636,6 +1636,7 @@ async def api_engine_status(current_user: str = Depends(get_current_user)):
     })
 
 @app.post("/api/preview_parameters")
+@app.post("/api/generation/preview-parameters")
 async def preview_parameters(
     style: str = Form(...),
     lyrics: str = Form(""),
@@ -1733,6 +1734,56 @@ async def preview_parameters(
         "reference_audio_name": ref_name,
         "estimated_credits": 10
     })
+
+@app.get("/api/generation/preview-parameters")
+@app.get("/api/preview_parameters")
+async def preview_parameters_get(
+    style: str = Query(""),
+    lyrics: str = Query(""),
+    title: str = Query(""),
+    ignore_audio: bool = Query(False),
+    include_lyrics: bool = Query(True),
+    bypass_copyright: bool = Query(False),
+    exclude_styles: str = Query(""),
+    vocal_gender: str = Query("random"),
+    weirdness: int = Query(50),
+    style_influence: int = Query(50),
+    audio_influence: int = Query(25),
+    model: str = Query("chirp-v4-5"),
+    pronunciation: str = Query(""),
+    obfuscate: bool = Query(False),
+    skeleton_file: str = Query(""),
+    target_bpm: int = Query(0),
+    hihat_mode: str = Query(""),
+    active_preset: str = Query(""),
+    is_public_domain: bool = Query(False),
+    lyrics_mode: str = Query("custom"),
+    current_user: str = Depends(get_current_user)
+):
+    """Alias GET para consulta rápida de parámetros previstos sin consumo de créditos."""
+    return await preview_parameters(
+        style=style,
+        lyrics=lyrics,
+        title=title,
+        ignore_audio=ignore_audio,
+        include_lyrics=include_lyrics,
+        bypass_copyright=bypass_copyright,
+        exclude_styles=exclude_styles,
+        vocal_gender=vocal_gender,
+        weirdness=weirdness,
+        style_influence=style_influence,
+        audio_influence=audio_influence,
+        model=model,
+        pronunciation=pronunciation,
+        obfuscate=obfuscate,
+        skeleton_file=skeleton_file,
+        target_bpm=target_bpm,
+        hihat_mode=hihat_mode,
+        active_preset=active_preset,
+        is_public_domain=is_public_domain,
+        lyrics_mode=lyrics_mode,
+        current_user=current_user
+    )
 
 @app.post("/api/transform")
 async def transform_audio(
@@ -3494,7 +3545,8 @@ async def run_transform_task(
             genre_anchor = ", ".join(anchors)
 
         # Inyectar indicaciones estructurales de arreglo y transiciones en final_lyrics únicamente en modo vocal con letra
-        if not is_instrumental and not is_auto_lyrics and final_lyrics and final_lyrics.strip().lower() != "[instrumental]":
+        # En modo personalizado (custom), preservar la letra y etiquetas estructurales exactamente como las definió el usuario
+        if not is_instrumental and not is_auto_lyrics and norm_lyrics_mode != "custom" and final_lyrics and final_lyrics.strip().lower() != "[instrumental]":
             final_lyrics = inject_arrangement_cues_into_lyrics(
                 final_lyrics,
                 eff_cfg,
@@ -3752,7 +3804,8 @@ async def run_transform_task(
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
             else:
                 priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
-                combined_parts = [p for p in [genre_anchor, priority_str, style, key_bans_str] if p]
+                # Las exclusiones pertenecen estrictamente a negative_tags, no al estilo positivo
+                combined_parts = [p for p in [genre_anchor, priority_str, style] if p]
                 style = ", ".join(combined_parts)
                 style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
@@ -4078,7 +4131,54 @@ async def run_transform_task(
             elif is_credit_exhaustion:
                 log_msg("Generación detenida: Saldo de créditos insuficiente en la cuenta de la API.")
                 TASKS[task_id]["catalog_rejection"] = False
+                TASKS[task_id]["error_type"] = "INSUFFICIENT_CREDITS"
                 TASKS[task_id]["detail"] = "Créditos insuficientes: La cuenta de udioapi.pro no dispone de créditos para completar la tarea (Error 402). Verifique su suscripción."
+                TASKS[task_id]["status"] = "ERROR"
+                save_local_log()
+                return
+
+            elif any(k in err_lower for k in [
+                "internal error", "audio generation failed", "generation failed",
+                "task failed", "failed to generate", "api error: internal",
+                "api error: audio generation", "provider error"
+            ]):
+                log_msg(f"Fallo interno en el motor de generación del proveedor ({err_str}).")
+                diagnostic_info = {
+                    "task_id": task_id,
+                    "title": title,
+                    "model": model,
+                    "date_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "exact_error_message": err_str,
+                    "error_type": "PROVIDER_INTERNAL_ERROR",
+                    "is_public_domain": is_public_domain,
+                    "audio_filename": audio_filename or "N/A",
+                    "has_audio_reference": bool(upload_url)
+                }
+                TASKS[task_id]["catalog_rejection"] = False
+                TASKS[task_id]["error_type"] = "PROVIDER_INTERNAL_ERROR"
+                TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                TASKS[task_id]["detail"] = f"Fallo interno del proveedor: El motor musical reportó un error interno durante la generación ({err_str}). No se debe a la letra ni a la cuenta. Puede reintentar la operación."
+                TASKS[task_id]["status"] = "ERROR"
+                save_local_log()
+                return
+
+            elif any(k in err_lower for k in ["timeout", "timed out", "connecterror", "readerror", "pooltimeout", "connection refused"]):
+                log_msg(f"Fallo de conectividad con el proveedor ({err_str}).")
+                diagnostic_info = {
+                    "task_id": task_id,
+                    "title": title,
+                    "model": model,
+                    "date_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "exact_error_message": err_str,
+                    "error_type": "NETWORK_TIMEOUT",
+                    "is_public_domain": is_public_domain,
+                    "audio_filename": audio_filename or "N/A",
+                    "has_audio_reference": bool(upload_url)
+                }
+                TASKS[task_id]["catalog_rejection"] = False
+                TASKS[task_id]["error_type"] = "NETWORK_TIMEOUT"
+                TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                TASKS[task_id]["detail"] = f"Tiempo de espera agotado al conectar con el proveedor ({err_str}). Verifique la conexión a internet."
                 TASKS[task_id]["status"] = "ERROR"
                 save_local_log()
                 return
@@ -4086,6 +4186,7 @@ async def run_transform_task(
             else:
                 log_msg(f"ERROR: {err_str}")
                 save_local_log()
+                TASKS[task_id]["error_type"] = "UNKNOWN_ERROR"
                 TASKS[task_id]["detail"] = err_str
                 TASKS[task_id]["status"] = "ERROR"
 

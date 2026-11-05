@@ -177,15 +177,28 @@ class UdioProEngine(BaseMusicEngine):
 
                             if upload_url:
                                 raw_data = status_json.get("data", {})
-                                status = raw_data.get("type", "") or raw_data.get("status", "")
-                                response_array = raw_data.get("response_data", [])
+                                if not isinstance(raw_data, dict):
+                                    raw_data = {}
+                                status = (
+                                    raw_data.get("type", "")
+                                    or raw_data.get("status", "")
+                                    or status_json.get("status", "")
+                                    or status_json.get("type", "")
+                                )
+                                response_array = raw_data.get("response_data", []) or status_json.get("response_data", [])
+                                if not response_array and isinstance(raw_data, list):
+                                    response_array = raw_data
                                 if status.upper() in ["SUCCESS", "COMPLETED"]:
                                     tracks = response_array if isinstance(response_array, list) else [response_array]
                                     log_msg("Generación completada exitosamente.")
                                     break
                                 elif status.upper() in ["FAILED", "ERROR"]:
-                                    if isinstance(response_array, list) and len(response_array) > 0:
+                                    if isinstance(response_array, list) and len(response_array) > 0 and isinstance(response_array[0], dict):
                                         error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
+                                    elif status_json.get("message"):
+                                        error_msg = status_json.get("message")
+                                    elif raw_data.get("message"):
+                                        error_msg = raw_data.get("message")
                                     raise Exception(f"API Error: {error_msg}")
                             else:
                                 if isinstance(status_json, list):
@@ -216,7 +229,7 @@ class UdioProEngine(BaseMusicEngine):
                                     log_msg("Generación completada exitosamente.")
                                     break
                                 elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
-                                    raise Exception(f"API Error: {error_msg}")
+                                    raise Exception(f"API Task Error: {error_msg}")
 
                         log_msg(f"Sondeo Udio (Intento {i+1}): Estado={r_status.status_code}")
                         await asyncio.sleep(5)
@@ -230,11 +243,16 @@ class UdioProEngine(BaseMusicEngine):
                 err_str = str(e)
                 err_lower = err_str.lower()
 
-                # Reintentos ÚNICAMENTE para errores transitorios de red o servidor
+                # Si es un fallo definitivo de tarea del proveedor reportado en el sondeo,
+                # o derechos de autor, abortar sin reintentos
+                if "api task error:" in err_lower or "copyright" in err_lower:
+                    raise
+
+                # Reintentos ÚNICAMENTE para errores transitorios de transporte HTTP
                 is_transient = any(
                     k in err_lower for k in [
                         "408", "timeout", "timed out", "502", "503", "504", "bad gateway",
-                        "internal error", "500", "429", "too many requests"
+                        "500", "429", "too many requests"
                     ]
                 )
                 if is_transient and attempt < max_retries - 1:
