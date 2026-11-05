@@ -28,6 +28,12 @@ try:
 except ImportError:
     fal_client = None
 
+try:
+    from music_engine_adapter import get_music_engine, engine_registry
+except ImportError:
+    get_music_engine = None
+    engine_registry = None
+
 # Cargar variables de entorno en desarrollo local (en Render se inyectan en el entorno del contenedor)
 if not os.environ.get("RENDER"):
     load_dotenv()
@@ -1608,6 +1614,26 @@ def prune_recent_operations():
     expired = [k for k, v in RECENT_OPERATIONS.items() if now - v[1] > 60]
     for k in expired:
         RECENT_OPERATIONS.pop(k, None)
+
+@app.get("/api/engine/status")
+async def api_engine_status(current_user: str = Depends(get_current_user)):
+    """
+    Diagnóstico técnico del motor musical activo, motores disponibles y hardware del servidor.
+    Permite auditar la viabilidad de autoalojamiento sin alterar la interfaz visual.
+    """
+    if not engine_registry:
+        return JSONResponse(content={"status": "error", "message": "Motor adapter registry no disponible"})
+    return JSONResponse(content={
+        "status": "ok",
+        "active_engine": engine_registry.get_engine().engine_id,
+        "registry": engine_registry.list_engines(),
+        "hardware": engine_registry.get_system_hardware_info(),
+        "zero_cost_instruments": {
+            "available": True,
+            "engine": "local_sf2",
+            "count": 20
+        }
+    })
 
 @app.post("/api/preview_parameters")
 async def preview_parameters(
@@ -3866,294 +3892,203 @@ async def run_transform_task(
             log_msg(f"Filtros de exclusión enviados: {neg_final_str[:150]}...")
         log_msg(f"Letra prefijo/primeras líneas: {final_lyrics[:120].strip()}...")
 
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                log_msg(f"Submitting request to {url_generate} (Attempt {attempt+1}/{max_retries})...")
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    r = await client.post(url_generate, json=payload, headers=headers)
+        try:
+            active_engine = get_music_engine() if get_music_engine else None
+            if active_engine:
+                log_msg(f"Ejecutando generación con motor: {active_engine.name} ({active_engine.engine_id})")
+                tracks = await active_engine.generate_and_poll(
+                    task_id=task_id,
+                    payload=payload,
+                    upload_url=upload_url,
+                    log_msg=log_msg,
+                    is_task_cancelled=lambda: TASKS.get(task_id, {}).get("status") == "CANCELLED",
+                    api_key=UDIO_API_KEY
+                )
+            else:
+                raise Exception("No hay un motor musical disponible en el sistema.")
 
-                    if r.status_code == 402:
-                        raise Exception("No hay créditos suficientes en la API de Udio (Status 402).")
-                    elif r.status_code != 200:
-                        raise Exception(f"Error de API HTTP {r.status_code}: {r.text}")
+            final_tracks = []
+            for t in tracks:
+                if isinstance(t, dict):
+                    tid = t.get("id") or t.get("task_id")
+                    ttitle = t.get("title", title)
+                    taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
+                    timage = t.get("image_url") or t.get("image_path")
+                    tduration = t.get("duration", 0)
+                    tstatus = t.get("status", "SUCCESS")
 
-                    resp_json = r.json()
-                    work_id = resp_json.get("workId") or resp_json.get("id")
+                    if taudio:
+                        log_msg(f"Guardando copia permanente para {ttitle}...")
+                        taudio_cached = await cache_track_audio(tid, taudio)
 
-                    if not work_id:
-                        data_block = resp_json.get("data", {})
-                        if isinstance(data_block, dict):
-                            work_id = data_block.get("task_id")
-                        if not work_id:
-                            raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
+                        # Subir respaldo a la nube Catbox para persistencia garantizada
+                        local_track_file = os.path.join(TRACKS_DIR, f"{tid}.mp3")
+                        cloud_backup = None
+                        if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
+                            try:
+                                cloud_backup = await upload_to_catbox_async(local_track_file)
+                            except Exception:
+                                pass
 
-                    log_msg(f"Task successfully queued. ID: {work_id}")
+                        track_info = {
+                            "id": tid,
+                            "title": ttitle,
+                            "audio_url": taudio_cached,
+                            "raw_audio_url": taudio,
+                            "cloud_backup": cloud_backup,
+                            "image_url": timage,
+                            "duration": tduration,
+                            "status": tstatus,
+                            "lyrics": t.get("lyrics") or lyrics,
+                            "style": style,
+                            "model": model,
+                            "vocal_gender": vocal_gender,
+                            "weirdness": weirdness,
+                            "style_influence": style_influence,
+                            "audio_influence": audio_influence,
+                            "pronunciation": pronunciation,
+                            "obfuscate": obfuscate,
+                            "exclude_styles": exclude_styles
+                        }
 
-                    tracks = []
-                    for i in range(120):
-                        if TASKS.get(task_id, {}).get("status") == "CANCELLED":
-                            log_msg("Generación abortada por el usuario.")
-                            break
-
-                        if upload_url:
-                            r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
-                        else:
-                            r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
-
-                        if r_status.status_code == 200:
-                            status_json = r_status.json()
-                            error_msg = "La generación falló internamente."
-
-                            if upload_url:
-                                raw_data = status_json.get("data", {})
-                                status = raw_data.get("type", "") or raw_data.get("status", "")
-                                response_array = raw_data.get("response_data", [])
-                                if status.upper() in ["SUCCESS", "COMPLETED"]:
-                                    tracks = response_array if isinstance(response_array, list) else [response_array]
-                                    log_msg("Generación completada exitosamente.")
-                                    break
-                                elif status.upper() in ["FAILED", "ERROR"]:
-                                    if isinstance(response_array, list) and len(response_array) > 0:
-                                        error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
-                                    raise Exception(f"API Error: {error_msg}")
-                            else:
-                                if isinstance(status_json, list):
-                                    data = status_json
-                                    status = data[0].get("status", "") if len(data) > 0 else ""
+                        # Respaldo permanente en tu almacenamiento Google One / AI Pro (5 TB)
+                        if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
+                            try:
+                                log_msg(f"Respaldando pista en Google Drive 5TB...")
+                                g_res = await gdrive_upload_track_audio(tid, local_track_file, ttitle)
+                                if g_res and g_res.get("file_id"):
+                                    track_info["gdrive_id"] = g_res["file_id"]
+                                    track_info["gdrive_link"] = g_res.get("link")
+                                    log_msg(f"¡Copia respaldada en Google Drive! ID: {g_res['file_id']}")
                                 else:
-                                    status = status_json.get("status", "")
-                                    raw_data = status_json.get("data", {})
+                                    log_msg("AVISO: El MP3 aún no confirmó file_id en Google Drive. Queda en estado PENDING_BACKUP para reintento controlado.")
+                            except Exception as e:
+                                log_msg(f"Aviso al respaldar en Google Drive: {e}")
 
-                                    if isinstance(raw_data, dict):
-                                        if not status:
-                                            status = raw_data.get("type", "") or raw_data.get("status", "")
-                                        response_array = raw_data.get("response_data", [])
-                                        if isinstance(response_array, list) and len(response_array) > 0:
-                                            data = response_array
-                                            if response_array[0].get("fail_message"):
-                                                error_msg = response_array[0].get("fail_message")
-                                        else:
-                                            data = [raw_data]
-                                    else:
-                                        data = raw_data if isinstance(raw_data, list) else []
+                        normalize_track_persistence_state(track_info)
+                        final_tracks.append(track_info)
+                        add_track_to_library(track_info)
+                        log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid} | Persistencia: {track_info.get('persistence_status')})")
 
-                                if status.upper() in ["SUCCESS", "COMPLETED"]:
-                                    tracks = data
-                                    log_msg("Generación completada exitosamente.")
-                                    break
-                                elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
-                                    tracks = data
-                                    log_msg("Generación completada exitosamente.")
-                                    break
-                                elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
-                                    raise Exception(f"API Error: {error_msg}")
+            save_local_log()
+            TASKS[task_id]["tracks"] = final_tracks
+            all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
+            TASKS[task_id]["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
+            TASKS[task_id]["is_permanently_saved"] = all_persisted
+            TASKS[task_id]["status"] = "COMPLETED"
 
-                        log_msg(f"Polling (Attempt {i+1}): Status Code={r_status.status_code} | JSON={str(r_status.text)[:250]}")
-                        await asyncio.sleep(5)
+        except Exception as e:
+            err_str = str(e)
+            err_lower = err_str.lower()
 
-                    if not tracks:
-                        raise Exception("Tiempo de espera agotado. La tarea no finalizó a tiempo.")
+            # 1. Distinguir categorías específicas de error del proveedor
+            is_lyrics_copyright = any(
+                k in err_lower for k in [
+                    "lyrics contain copyrighted material",
+                    "copyrighted material",
+                    "copyrighted lyrics",
+                    "lyrics contain copyrighted",
+                    "lyrics contain copyright"
+                ]
+            )
+            is_catalog_match = any(
+                k in err_lower for k in [
+                    "matches an existing recording in our catalog",
+                    "existing recording in our catalog",
+                    "matches an existing recording"
+                ]
+            )
+            is_moderation_flag = any(
+                k in err_lower for k in [
+                    "moderation", "flagged", "content policy", "policy violation",
+                    "sensitive content", "prohibited content", "banned words"
+                ]
+            )
+            is_credit_exhaustion = any(
+                k in err_lower for k in [
+                    "402", "insufficient credits", "no hay créditos suficientes", "out of credits", "quota exceeded"
+                ]
+            )
 
-                    final_tracks = []
-                    for t in tracks:
-                        if isinstance(t, dict):
-                            tid = t.get("id") or t.get("task_id")
-                            ttitle = t.get("title", title)
-                            taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
-                            timage = t.get("image_url") or t.get("image_path")
-                            tduration = t.get("duration", 0)
-                            tstatus = t.get("status", "SUCCESS")
+            if is_lyrics_copyright:
+                rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                log_msg(f"Generación rechazada por derechos de autor en la letra ({err_str}). Abortando inmediatamente sin reintentos.")
+                diagnostic_info = {
+                    "task_id": task_id,
+                    "title": title,
+                    "model": model,
+                    "date_utc": rejection_date,
+                    "exact_error_message": err_str,
+                    "error_type": "LYRICS_COPYRIGHT",
+                    "lyrics_excerpt": (lyrics[:250] if lyrics else ""),
+                    "is_public_domain": is_public_domain,
+                    "audio_filename": audio_filename or "N/A",
+                    "has_audio_reference": bool(upload_url)
+                }
+                TASKS[task_id]["lyrics_copyright"] = True
+                TASKS[task_id]["catalog_rejection"] = False
+                TASKS[task_id]["error_type"] = "LYRICS_COPYRIGHT"
+                TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                TASKS[task_id]["detail"] = f"Rechazo por derechos de autor en la letra: El proveedor detectó texto protegido por copyright ({err_str}). Modifique la letra o seleccione el modo instrumental."
+                TASKS[task_id]["status"] = "ERROR"
+                save_local_log()
+                return
 
-                            if taudio:
-                                log_msg(f"Guardando copia permanente para {ttitle}...")
-                                taudio_cached = await cache_track_audio(tid, taudio)
+            elif is_catalog_match:
+                rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                log_msg(f"Generación rechazada por coincidencia de catálogo comercial ({err_str}). Guardando diagnóstico técnico.")
+                diagnostic_info = {
+                    "task_id": task_id,
+                    "title": title,
+                    "model": model,
+                    "date_utc": rejection_date,
+                    "exact_error_message": err_str,
+                    "error_type": "CATALOG_MATCH",
+                    "is_public_domain": is_public_domain,
+                    "audio_filename": audio_filename or "N/A",
+                    "has_audio_reference": bool(upload_url)
+                }
+                TASKS[task_id]["catalog_rejection"] = True
+                TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                TASKS[task_id]["detail"] = "Rechazo de catálogo comercial: El proveedor identificó una coincidencia con una grabación registrada en su catálogo. Verifique su saldo y registros en el panel de udioapi.pro. Puede descargar el informe técnico de diagnóstico (.txt) para consultar al soporte del proveedor."
+                TASKS[task_id]["status"] = "ERROR"
+                save_local_log()
+                return
 
-                                # Subir respaldo a la nube Catbox para persistencia garantizada
-                                local_track_file = os.path.join(TRACKS_DIR, f"{tid}.mp3")
-                                cloud_backup = None
-                                if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
-                                    try:
-                                        cloud_backup = await upload_to_catbox_async(local_track_file)
-                                    except Exception:
-                                        pass
+            elif is_moderation_flag:
+                log_msg(f"Generación rechazada por filtros de moderación/texto ({err_str}).")
+                diagnostic_info = {
+                    "task_id": task_id,
+                    "title": title,
+                    "model": model,
+                    "date_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "exact_error_message": err_str,
+                    "error_type": "CONTENT_MODERATION",
+                    "is_public_domain": is_public_domain,
+                    "audio_filename": audio_filename or "N/A",
+                    "has_audio_reference": bool(upload_url)
+                }
+                TASKS[task_id]["catalog_rejection"] = False
+                TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                TASKS[task_id]["detail"] = f"Moderación de contenido: El proveedor rechazó la solicitud por sus filtros de política o texto ({err_str}). Revise la letra y las etiquetas de estilo."
+                TASKS[task_id]["status"] = "ERROR"
+                save_local_log()
+                return
 
-                                track_info = {
-                                    "id": tid,
-                                    "title": ttitle,
-                                    "audio_url": taudio_cached,
-                                    "raw_audio_url": taudio,
-                                    "cloud_backup": cloud_backup,
-                                    "image_url": timage,
-                                    "duration": tduration,
-                                    "status": tstatus,
-                                    "lyrics": t.get("lyrics") or lyrics,
-                                    "style": style,
-                                    "model": model,
-                                    "vocal_gender": vocal_gender,
-                                    "weirdness": weirdness,
-                                    "style_influence": style_influence,
-                                    "audio_influence": audio_influence,
-                                    "pronunciation": pronunciation,
-                                    "obfuscate": obfuscate,
-                                    "exclude_styles": exclude_styles
-                                }
+            elif is_credit_exhaustion:
+                log_msg("Generación detenida: Saldo de créditos insuficiente en la cuenta de la API.")
+                TASKS[task_id]["catalog_rejection"] = False
+                TASKS[task_id]["detail"] = "Créditos insuficientes: La cuenta de udioapi.pro no dispone de créditos para completar la tarea (Error 402). Verifique su suscripción."
+                TASKS[task_id]["status"] = "ERROR"
+                save_local_log()
+                return
 
-                                # Respaldo permanente en tu almacenamiento Google One / AI Pro (5 TB)
-                                if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
-                                    try:
-                                        log_msg(f"Respaldando pista en Google Drive 5TB...")
-                                        g_res = await gdrive_upload_track_audio(tid, local_track_file, ttitle)
-                                        if g_res and g_res.get("file_id"):
-                                            track_info["gdrive_id"] = g_res["file_id"]
-                                            track_info["gdrive_link"] = g_res.get("link")
-                                            log_msg(f"¡Copia respaldada en Google Drive! ID: {g_res['file_id']}")
-                                        else:
-                                            log_msg("AVISO: El MP3 aún no confirmó file_id en Google Drive. Queda en estado PENDING_BACKUP para reintento controlado.")
-                                    except Exception as e:
-                                        log_msg(f"Aviso al respaldar en Google Drive: {e}")
+            else:
+                log_msg(f"ERROR: {err_str}")
+                save_local_log()
+                TASKS[task_id]["detail"] = err_str
+                TASKS[task_id]["status"] = "ERROR"
 
-                                normalize_track_persistence_state(track_info)
-                                final_tracks.append(track_info)
-                                add_track_to_library(track_info)
-                                log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid} | Persistencia: {track_info.get('persistence_status')})")
-
-                    save_local_log()
-                    TASKS[task_id]["tracks"] = final_tracks
-                    all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
-                    TASKS[task_id]["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
-                    TASKS[task_id]["is_permanently_saved"] = all_persisted
-                    TASKS[task_id]["status"] = "COMPLETED"
-
-                break
-            except Exception as e:
-                err_str = str(e)
-                err_lower = err_str.lower()
-
-                # 1. Distinguir categorías específicas de error del proveedor
-                is_lyrics_copyright = any(
-                    k in err_lower for k in [
-                        "lyrics contain copyrighted material",
-                        "copyrighted material",
-                        "copyrighted lyrics",
-                        "lyrics contain copyrighted",
-                        "lyrics contain copyright"
-                    ]
-                )
-                is_catalog_match = any(
-                    k in err_lower for k in [
-                        "matches an existing recording in our catalog",
-                        "existing recording in our catalog",
-                        "matches an existing recording"
-                    ]
-                )
-                is_moderation_flag = any(
-                    k in err_lower for k in [
-                        "moderation", "flagged", "content policy", "policy violation",
-                        "sensitive content", "prohibited content", "banned words"
-                    ]
-                )
-                is_credit_exhaustion = any(
-                    k in err_lower for k in [
-                        "402", "insufficient credits", "no hay créditos suficientes", "out of credits", "quota exceeded"
-                    ]
-                )
-
-                if is_lyrics_copyright:
-                    rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    log_msg(f"Generación rechazada por derechos de autor en la letra ({err_str}). Abortando inmediatamente sin reintentos.")
-                    diagnostic_info = {
-                        "task_id": task_id,
-                        "title": title,
-                        "model": model,
-                        "date_utc": rejection_date,
-                        "exact_error_message": err_str,
-                        "error_type": "LYRICS_COPYRIGHT",
-                        "lyrics_excerpt": (lyrics[:250] if lyrics else ""),
-                        "is_public_domain": is_public_domain,
-                        "audio_filename": audio_filename or "N/A",
-                        "has_audio_reference": bool(upload_url)
-                    }
-                    TASKS[task_id]["lyrics_copyright"] = True
-                    TASKS[task_id]["catalog_rejection"] = False
-                    TASKS[task_id]["error_type"] = "LYRICS_COPYRIGHT"
-                    TASKS[task_id]["diagnostic_info"] = diagnostic_info
-                    TASKS[task_id]["detail"] = f"Rechazo por derechos de autor en la letra: El proveedor detectó texto protegido por copyright ({err_str}). Modifique la letra o seleccione el modo instrumental."
-                    TASKS[task_id]["status"] = "ERROR"
-                    save_local_log()
-                    return
-
-                elif is_catalog_match:
-                    rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    log_msg(f"Generación rechazada por coincidencia de catálogo comercial ({err_str}). Guardando diagnóstico técnico.")
-                    diagnostic_info = {
-                        "task_id": task_id,
-                        "title": title,
-                        "model": model,
-                        "date_utc": rejection_date,
-                        "exact_error_message": err_str,
-                        "error_type": "CATALOG_MATCH",
-                        "is_public_domain": is_public_domain,
-                        "audio_filename": audio_filename or "N/A",
-                        "has_audio_reference": bool(upload_url)
-                    }
-                    TASKS[task_id]["catalog_rejection"] = True
-                    TASKS[task_id]["diagnostic_info"] = diagnostic_info
-                    TASKS[task_id]["detail"] = "Rechazo de catálogo comercial: El proveedor identificó una coincidencia con una grabación registrada en su catálogo. Verifique su saldo y registros en el panel de udioapi.pro. Puede descargar el informe técnico de diagnóstico (.txt) para consultar al soporte del proveedor."
-                    TASKS[task_id]["status"] = "ERROR"
-                    save_local_log()
-                    return
-
-                elif is_moderation_flag:
-                    log_msg(f"Generación rechazada por filtros de moderación/texto ({err_str}).")
-                    diagnostic_info = {
-                        "task_id": task_id,
-                        "title": title,
-                        "model": model,
-                        "date_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                        "exact_error_message": err_str,
-                        "error_type": "CONTENT_MODERATION",
-                        "is_public_domain": is_public_domain,
-                        "audio_filename": audio_filename or "N/A",
-                        "has_audio_reference": bool(upload_url)
-                    }
-                    TASKS[task_id]["catalog_rejection"] = False
-                    TASKS[task_id]["diagnostic_info"] = diagnostic_info
-                    TASKS[task_id]["detail"] = f"Moderación de contenido: El proveedor rechazó la solicitud por sus filtros de política o texto ({err_str}). Revise la letra y las etiquetas de estilo."
-                    TASKS[task_id]["status"] = "ERROR"
-                    save_local_log()
-                    return
-
-                elif is_credit_exhaustion:
-                    log_msg("Generación detenida: Saldo de créditos insuficiente en la cuenta de la API.")
-                    TASKS[task_id]["catalog_rejection"] = False
-                    TASKS[task_id]["detail"] = "Créditos insuficientes: La cuenta de udioapi.pro no dispone de créditos para completar la tarea (Error 402). Verifique su suscripción."
-                    TASKS[task_id]["status"] = "ERROR"
-                    save_local_log()
-                    return
-
-                # 2. Reintentos ÚNICAMENTE para errores transitorios de red o servidor (máximo 3 intentos)
-                is_transient_error = any(
-                    k in err_lower for k in [
-                        "408", "request timeout", "timeout", "timed out",
-                        "502", "503", "504", "gateway timeout", "bad gateway",
-                        "internal error", "500", "429", "too many requests"
-                    ]
-                )
-                if is_transient_error and attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 6
-                    log_msg(f"Fallo transitorio de conexión con el servidor ({err_str[:90]}). Reintentando {attempt+2}/{max_retries} en {wait_sec}s...")
-                    if upload_url and backup_upload_url and payload.get("upload_url") == upload_url:
-                        payload["upload_url"] = backup_upload_url
-                    await asyncio.sleep(wait_sec)
-                    continue
-                else:
-                    raise e
-    except Exception as e:
-        log_msg(f"ERROR: {str(e)}")
-        save_local_log()
-        TASKS[task_id]["detail"] = str(e)
-        TASKS[task_id]["status"] = "ERROR"
     finally:
         for p in created_temp_files:
             if p and os.path.exists(p):
