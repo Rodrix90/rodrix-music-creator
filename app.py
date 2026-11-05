@@ -1609,6 +1609,105 @@ def prune_recent_operations():
     for k in expired:
         RECENT_OPERATIONS.pop(k, None)
 
+@app.post("/api/preview_parameters")
+async def preview_parameters(
+    style: str = Form(...),
+    lyrics: str = Form(""),
+    title: str = Form(""),
+    ignore_audio: bool = Form(False),
+    include_lyrics: bool = Form(True),
+    bypass_copyright: bool = Form(False),
+    exclude_styles: str = Form(""),
+    vocal_gender: str = Form("random"),
+    weirdness: int = Form(50),
+    style_influence: int = Form(50),
+    audio_influence: int = Form(25),
+    model: str = Form("chirp-v4-5"),
+    pronunciation: str = Form(""),
+    obfuscate: bool = Form(False),
+    skeleton_file: str = Form(""),
+    target_bpm: int = Form(0),
+    hihat_mode: str = Form(""),
+    art_crash_toms: Optional[bool] = Form(None),
+    art_splash_ride: Optional[bool] = Form(None),
+    art_tom_grooves: Optional[bool] = Form(None),
+    art_bass_slap: Optional[bool] = Form(None),
+    art_bass_pickup: Optional[bool] = Form(None),
+    active_preset: str = Form(""),
+    is_public_domain: bool = Form(False),
+    lyrics_mode: str = Form("custom"),
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Calcula y devuelve la vista previa exacta de los parámetros que se enviarán al proveedor,
+    garantizando 0 consumo de créditos y previniendo fugas o errores de copyright.
+    """
+    def _val(x, d=None):
+        if hasattr(x, "default"):
+            return x.default if x.default is not Ellipsis else d
+        return x if x is not None else d
+
+    eff_title = str(_val(title, "Obra Musical") or "Obra Musical")
+    eff_style = str(_val(style, "") or "")
+    eff_lyrics = str(_val(lyrics, "") or "")
+    eff_preset = str(_val(active_preset, "") or "")
+    eff_bpm = int(_val(target_bpm, 0) or 0)
+    eff_hihat = str(_val(hihat_mode, "") or "")
+    norm_lyrics_mode = str(_val(lyrics_mode, "custom") or "custom").lower().strip()
+    eff_inc_lyrics = bool(_val(include_lyrics, True))
+    eff_model = str(_val(model, "chirp-v4-5") or "chirp-v4-5")
+    eff_excl = str(_val(exclude_styles, "") or "")
+    eff_skel = str(_val(skeleton_file, "") or "")
+    eff_gender = str(_val(vocal_gender, "random") or "random")
+
+    is_instrumental = (norm_lyrics_mode == "instrumental") or (not eff_inc_lyrics) or (eff_lyrics.strip().lower() == "[instrumental]")
+    is_auto_lyrics = (norm_lyrics_mode == "auto") and not is_instrumental
+
+    eff_cfg = resolve_effective_musical_config(
+        style=eff_style,
+        active_preset=eff_preset,
+        target_bpm=eff_bpm,
+        hihat_mode=eff_hihat,
+        art_crash_toms=art_crash_toms,
+        art_splash_ride=art_splash_ride,
+        art_tom_grooves=art_tom_grooves,
+        art_bass_slap=art_bass_slap,
+        art_bass_pickup=art_bass_pickup
+    )
+
+    if is_instrumental:
+        final_lyrics = "[Instrumental]"
+        prompt_preview = "[Instrumental] (Sin texto vocal)"
+        custom_mode = True
+    elif is_auto_lyrics:
+        final_lyrics = ""
+        prompt_preview = "[Letra Nueva IA] (Udio generará la letra automáticamente a partir del estilo)"
+        custom_mode = False
+    else:
+        final_lyrics = eff_lyrics.strip()
+        prompt_preview = final_lyrics[:200] + ("..." if len(final_lyrics) > 200 else "")
+        custom_mode = True
+
+    has_ref_audio = bool(eff_skel)
+    ref_name = os.path.basename(eff_skel) if eff_skel else "Ninguno (Generación pura)"
+
+    return JSONResponse(content={
+        "status": "success",
+        "title": eff_title,
+        "lyrics_mode": "instrumental" if is_instrumental else ("auto" if is_auto_lyrics else "custom"),
+        "is_instrumental": is_instrumental,
+        "custom_mode": custom_mode,
+        "prompt_preview": prompt_preview,
+        "style_preview": eff_style[:200] + ("..." if len(eff_style) > 200 else ""),
+        "exclude_preview": eff_excl[:150] + ("..." if len(eff_excl) > 150 else "") if eff_excl else "Ninguna",
+        "model": eff_model,
+        "target_bpm": eff_cfg.get("effective_bpm") or eff_bpm or 0,
+        "vocal_gender": eff_gender if not is_instrumental else "N/A (Instrumental)",
+        "has_reference_audio": has_ref_audio,
+        "reference_audio_name": ref_name,
+        "estimated_credits": 10
+    })
+
 @app.post("/api/transform")
 async def transform_audio(
     background_tasks: BackgroundTasks,
@@ -1638,6 +1737,7 @@ async def transform_audio(
     active_preset: str = Form(""),
     is_public_domain: bool = Form(False),
     client_operation_id: str = Form(""),
+    lyrics_mode: str = Form("custom"),
     current_user: str = Depends(get_current_user)
 ):
     try:
@@ -1758,7 +1858,7 @@ async def transform_audio(
                 content_hash = hashlib.sha256(audio_sample).hexdigest()
             else:
                 content_hash = "no_audio"
-            payload_str = f"{current_user}:{title}:{style}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}"
+            payload_str = f"{current_user}:{title}:{style}:{lyrics_mode}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}"
             op_key = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
         now_ts = time.time()
@@ -1793,7 +1893,7 @@ async def transform_audio(
             include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
             style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain,
             target_bpm, hihat_mode, art_crash_toms, art_splash_ride, art_tom_grooves,
-            art_bass_slap, art_bass_pickup, active_preset
+            art_bass_slap, art_bass_pickup, active_preset, lyrics_mode
         )
 
         return {"status": "started", "task_id": task_id}
@@ -2743,10 +2843,12 @@ def inject_arrangement_cues_into_lyrics(lyrics_str: str, cfg: dict, is_instrumen
     ejecute los Grooves en Toms, Crashes & Redobles en transiciones y la distribución
     musical de Bajo (Slap & Pop + Pick-up & Paso) en las secciones correspondientes.
     """
-    if is_solo_piano_prayer or is_drum_solo or is_guitar_solo or is_bass_solo:
+    if is_instrumental or is_solo_piano_prayer or is_drum_solo or is_guitar_solo or is_bass_solo:
         return lyrics_str
 
     base_lyrics = (lyrics_str or "").strip()
+    if not base_lyrics or base_lyrics.lower() == "[instrumental]":
+        return base_lyrics
     cues = []
     if cfg.get("bpm_tag"):
         cues.append(cfg["bpm_tag"])
@@ -2810,7 +2912,7 @@ async def run_transform_task(
     style_influence, audio_influence, model, pronunciation="", obfuscate=False,
     is_public_domain=False, target_bpm=0, hihat_mode="", art_crash_toms=None,
     art_splash_ride=None, art_tom_grooves=None, art_bass_slap=None,
-    art_bass_pickup=None, active_preset=""
+    art_bass_pickup=None, active_preset="", lyrics_mode="custom"
 ):
     def log_msg(msg):
         import datetime
@@ -2833,22 +2935,20 @@ async def run_transform_task(
         "Content-Type": "application/json"
     }
 
-    is_instrumental = not include_lyrics or (lyrics.strip().lower() == "[instrumental]")
+    norm_lyrics_mode = (lyrics_mode or "custom").lower().strip()
+    is_instrumental = (norm_lyrics_mode == "instrumental") or (not include_lyrics) or (lyrics.strip().lower() == "[instrumental]")
+    is_auto_lyrics = (norm_lyrics_mode == "auto") and not is_instrumental
+
     if is_instrumental and "(instrumental)" not in title.lower():
         title = f"{title} (Instrumental)"
 
-    # Preservar estructura de compases y secciones en temas instrumentales para duraciones largas
+    # Aislamiento estricto de modos: previene filtración de letras de sesiones anteriores
     if is_instrumental:
-        cleaned_lyrics = lyrics.strip() if lyrics else ""
-        if cleaned_lyrics and cleaned_lyrics.lower() != "[instrumental]":
-            if "[instrumental]" not in cleaned_lyrics.lower():
-                final_lyrics = f"[Instrumental]\n\n{cleaned_lyrics}"
-            else:
-                final_lyrics = cleaned_lyrics
-        else:
-            final_lyrics = "[Instrumental]"
+        final_lyrics = "[Instrumental]"
+    elif is_auto_lyrics:
+        final_lyrics = ""
     else:
-        final_lyrics = lyrics
+        final_lyrics = lyrics.strip()
 
     # Correcciones de pronunciación: una por línea con formato "palabra=como suena"
     if pronunciation.strip() and not is_instrumental and final_lyrics:
@@ -3367,16 +3467,17 @@ async def run_transform_task(
                 anchors.append(bpm_tag)
             genre_anchor = ", ".join(anchors)
 
-        # Inyectar indicaciones estructurales de arreglo y transiciones en final_lyrics
-        final_lyrics = inject_arrangement_cues_into_lyrics(
-            final_lyrics,
-            eff_cfg,
-            is_instrumental=is_instrumental,
-            is_solo_piano_prayer=is_solo_piano_prayer,
-            is_drum_solo=is_drum_solo,
-            is_guitar_solo=is_guitar_solo,
-            is_bass_solo=is_bass_solo,
-        )
+        # Inyectar indicaciones estructurales de arreglo y transiciones en final_lyrics únicamente en modo vocal con letra
+        if not is_instrumental and not is_auto_lyrics and final_lyrics and final_lyrics.strip().lower() != "[instrumental]":
+            final_lyrics = inject_arrangement_cues_into_lyrics(
+                final_lyrics,
+                eff_cfg,
+                is_instrumental=is_instrumental,
+                is_solo_piano_prayer=is_solo_piano_prayer,
+                is_drum_solo=is_drum_solo,
+                is_guitar_solo=is_guitar_solo,
+                is_bass_solo=is_bass_solo,
+            )
 
         # Vocal styling in style prompt (respetando estrictamente selecciones de voz solista vs coro):
         if is_instrumental:
@@ -3692,11 +3793,21 @@ async def run_transform_task(
             url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
             url_status = "https://udioapi.pro/api/v2/upload-cover/status"
 
+            if is_instrumental:
+                cover_custom_mode = True
+                cover_prompt = "[Instrumental]"
+            elif is_auto_lyrics:
+                cover_custom_mode = False
+                cover_prompt = style
+            else:
+                cover_custom_mode = True
+                cover_prompt = final_lyrics or style
+
             payload = {
                 "upload_url": upload_url,
                 "model": model,
-                "custom_mode": True,
-                "prompt": final_lyrics,
+                "custom_mode": cover_custom_mode,
+                "prompt": cover_prompt,
                 "style": style,
                 "tags": style,
                 "title": title,
@@ -3705,7 +3816,7 @@ async def run_transform_task(
                 "audio_weight": actual_audio_weight,
                 "weirdness_constraint": actual_weirdness
             }
-            if vocal_gender in ["male", "female"]:
+            if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
             if neg_final_str:
                 payload["negative_tags"] = neg_final_str
@@ -3717,9 +3828,19 @@ async def run_transform_task(
             url_generate = "https://udioapi.pro/api/v2/generate"
             url_status = "https://udioapi.pro/api/v2/feed"
 
+            if is_instrumental:
+                gen_custom_mode = True
+                gen_prompt = "[Instrumental]"
+            elif is_auto_lyrics:
+                gen_custom_mode = False
+                gen_prompt = style
+            else:
+                gen_custom_mode = True
+                gen_prompt = final_lyrics or style
+
             payload = {
-                "custom_mode": True,
-                "prompt": final_lyrics,
+                "custom_mode": gen_custom_mode,
+                "prompt": gen_prompt,
                 "style": style,
                 "tags": style,
                 "title": title,
@@ -3728,7 +3849,7 @@ async def run_transform_task(
                 "style_weight": actual_style_weight,
                 "weirdness_constraint": actual_weirdness
             }
-            if vocal_gender in ["male", "female"]:
+            if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
             if neg_final_str:
                 payload["negative_tags"] = neg_final_str
@@ -3910,6 +4031,15 @@ async def run_transform_task(
                 err_lower = err_str.lower()
 
                 # 1. Distinguir categorías específicas de error del proveedor
+                is_lyrics_copyright = any(
+                    k in err_lower for k in [
+                        "lyrics contain copyrighted material",
+                        "copyrighted material",
+                        "copyrighted lyrics",
+                        "lyrics contain copyrighted",
+                        "lyrics contain copyright"
+                    ]
+                )
                 is_catalog_match = any(
                     k in err_lower for k in [
                         "matches an existing recording in our catalog",
@@ -3929,7 +4059,31 @@ async def run_transform_task(
                     ]
                 )
 
-                if is_catalog_match:
+                if is_lyrics_copyright:
+                    rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    log_msg(f"Generación rechazada por derechos de autor en la letra ({err_str}). Abortando inmediatamente sin reintentos.")
+                    diagnostic_info = {
+                        "task_id": task_id,
+                        "title": title,
+                        "model": model,
+                        "date_utc": rejection_date,
+                        "exact_error_message": err_str,
+                        "error_type": "LYRICS_COPYRIGHT",
+                        "lyrics_excerpt": (lyrics[:250] if lyrics else ""),
+                        "is_public_domain": is_public_domain,
+                        "audio_filename": audio_filename or "N/A",
+                        "has_audio_reference": bool(upload_url)
+                    }
+                    TASKS[task_id]["lyrics_copyright"] = True
+                    TASKS[task_id]["catalog_rejection"] = False
+                    TASKS[task_id]["error_type"] = "LYRICS_COPYRIGHT"
+                    TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                    TASKS[task_id]["detail"] = f"Rechazo por derechos de autor en la letra: El proveedor detectó texto protegido por copyright ({err_str}). Modifique la letra o seleccione el modo instrumental."
+                    TASKS[task_id]["status"] = "ERROR"
+                    save_local_log()
+                    return
+
+                elif is_catalog_match:
                     rejection_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
                     log_msg(f"Generación rechazada por coincidencia de catálogo comercial ({err_str}). Guardando diagnóstico técnico.")
                     diagnostic_info = {
@@ -4202,7 +4356,15 @@ Este informe no contiene claves privadas ni datos sensibles.
     status_name = task.get("status", "DESCONOCIDO")
     error_type = diag.get("error_type", "CATALOG_MATCH" if is_catalog else "GENERIC")
 
-    if is_catalog or error_type == "CATALOG_MATCH":
+    if error_type == "LYRICS_COPYRIGHT" or task.get("lyrics_copyright"):
+        encabezado_tipo = "RECHAZO POR DERECHOS DE AUTOR EN LA LETRA (FILTRO DE COPYRIGHT)"
+        clasificacion = f"""El proveedor Udio API rechazó la solicitud debido a que la letra contiene texto identificado con derechos de autor comerciales ({exact_err})."""
+        procedimiento = """Acciones para corregir y volver a generar:
+1. Modifique el texto de la letra en el box de letra para remover frases protegidas.
+2. Si prefiere generar sólo la música, elija el modo 'Instrumental (Sin letra)' en el creador.
+3. Si desea que la IA invente una letra original, elija el modo 'Letra Nueva IA'.
+4. Para consultar con soporte técnico de Udio, adjunte este informe a support@udioapi.pro."""
+    elif is_catalog or error_type == "CATALOG_MATCH":
         encabezado_tipo = "COINCIDENCIA DE CATÁLOGO COMERCIAL (FILTRO DE AUDIO REGISTRADO)"
         clasificacion = """Rechazo automatizado por coincidencia de huella acústica con catálogo registrado en el proveedor.
 Consulte su saldo y registros de tareas en el panel de udioapi.pro para verificar el estado de los créditos."""
