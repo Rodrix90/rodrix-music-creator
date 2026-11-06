@@ -11,6 +11,7 @@ import asyncio
 import uuid
 import tempfile
 import subprocess
+import urllib.parse
 from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException, Request, Depends, BackgroundTasks
@@ -1527,6 +1528,95 @@ async def upload_to_uguu_async(file_path: str) -> str | None:
     except Exception as e:
         print("Error subiendo a Uguu:", e)
     return None
+
+ALLOWED_AUDIO_HOSTING_DOMAINS = {"a.uguu.se", "uguu.se", "files.catbox.moe", "catbox.moe"}
+MAX_AUDIO_VERIFY_BYTES = 100 * 1024 * 1024  # 100 MB límite de seguridad en memoria
+
+async def verify_public_audio_url_async(
+    url: str,
+    expected_sha256: str,
+    expected_size: int,
+    timeout: float = 30.0,
+    log_func=None
+) -> bool:
+    """
+    Verifica mediante solicitud HTTP GET real que la URL sea accesible, pertenezca a un dominio
+    permitido, devuelva HTTP 200, entregue la cantidad esperada de bytes y coincida con el hash SHA-256.
+    No se confía en HEAD ni en Content-Length declarado.
+    """
+    if not url or not isinstance(url, str):
+        if log_func:
+            log_func("Verificación de audio fallida: URL vacía o inválida.")
+        return False
+
+    try:
+        parsed = urllib.parse.urlparse(url.strip())
+        if parsed.scheme.lower() != "https":
+            if log_func:
+                log_func(f"Verificación de audio fallida: esquema no seguro ({parsed.scheme}) en {url}")
+            return False
+
+        domain = parsed.netloc.lower().split(":")[0]
+        is_allowed_domain = (
+            domain in {"uguu.se", "catbox.moe"}
+            or domain.endswith(".uguu.se")
+            or domain.endswith(".catbox.moe")
+        )
+        if not is_allowed_domain:
+            if log_func:
+                log_func(f"Verificación de audio fallida: dominio no autorizado ({domain}) en {url}")
+            return False
+    except Exception as e:
+        if log_func:
+            log_func(f"Verificación de audio fallida al analizar URL ({e}): {url}")
+        return False
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
+    try:
+        downloaded = bytearray()
+        hasher = hashlib.sha256()
+
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            async with client.stream("GET", url, headers=headers) as resp:
+                if resp.status_code != 200:
+                    if log_func:
+                        log_func(f"Verificación de audio fallida: HTTP {resp.status_code} en {url}")
+                    return False
+
+                async for chunk in resp.aiter_bytes(chunk_size=65536):
+                    if len(downloaded) + len(chunk) > MAX_AUDIO_VERIFY_BYTES:
+                        if log_func:
+                            log_func(f"Verificación de audio fallida: el archivo excede el límite máximo de memoria ({MAX_AUDIO_VERIFY_BYTES} bytes)")
+                        return False
+                    downloaded.extend(chunk)
+                    hasher.update(chunk)
+
+        if len(downloaded) != expected_size:
+            if log_func:
+                log_func(f"Verificación de audio fallida: tamaño descargado ({len(downloaded):,} bytes) != esperado ({expected_size:,} bytes)")
+            return False
+
+        calc_sha = hasher.hexdigest()
+        if calc_sha != expected_sha256:
+            if log_func:
+                log_func(f"Verificación de audio fallida: SHA-256 no coincide para {url}")
+            return False
+
+        if log_func:
+            log_func(f"Audio verificado exitosamente: {len(downloaded):,} bytes descargados e integridad SHA-256 validada al 100%.")
+        return True
+
+    except (httpx.RemoteProtocolError, httpx.TimeoutException, httpx.RequestError) as e:
+        if log_func:
+            log_func(f"Verificación de audio fallida por error de red/servidor ({type(e).__name__}: {e}) en {url}")
+        return False
+    except Exception as e:
+        if log_func:
+            log_func(f"Verificación de audio fallida ({e}) en {url}")
+        return False
 
 
 def format_provider_tags(neg_str: str, max_len: int = 80) -> str:
@@ -3168,16 +3258,6 @@ async def run_transform_task(
                     target_upload_file = temp_file_path
                     log_msg("Utilizando archivo de audio original.")
 
-            log_msg("Subiendo audio de referencia a servidor temporal de alta velocidad...")
-            upload_url = await upload_to_catbox_async(target_upload_file)
-            if not upload_url:
-                log_msg("Catbox no disponible, usando servidor alternativo (Uguu)...")
-                upload_url = await upload_to_uguu_async(target_upload_file)
-            else:
-                try:
-                    backup_upload_url = await upload_to_uguu_async(target_upload_file)
-                except Exception:
-                    pass
             if target_upload_file and os.path.exists(target_upload_file):
                 dur_check_sec = get_audio_duration_seconds(target_upload_file)
                 if dur_check_sec > 480.0:
@@ -3189,12 +3269,59 @@ async def run_transform_task(
                     save_local_log()
                     return
 
-            if not upload_url and not backup_upload_url:
-                log_msg("ERROR: No se pudo subir el archivo de audio a ningún servidor temporal.")
-                raise Exception("Fallo al subir el audio a servidor temporal.")
-            if not upload_url and backup_upload_url:
-                upload_url = backup_upload_url
-            log_msg(f"Audio de referencia vinculado exitosamente: {upload_url}")
+            if not target_upload_file or not os.path.exists(target_upload_file):
+                raise Exception(f"No se encontró el archivo de audio para subir: {target_upload_file}")
+
+            with open(target_upload_file, "rb") as _f_target:
+                _target_bytes = _f_target.read()
+            expected_sha256 = hashlib.sha256(_target_bytes).hexdigest()
+            expected_size = len(_target_bytes)
+
+            upload_url = None
+            log_msg("Preparando alojamiento y verificación de audio de referencia...")
+
+            # Paso 1: Intentar Uguu como alojamiento principal
+            log_msg("Subiendo audio de referencia a servidor temporal Uguu (alojamiento efímero de alta velocidad)...")
+            try:
+                candidate_url = await upload_to_uguu_async(target_upload_file)
+                if candidate_url:
+                    log_msg(f"Validando descarga real e integridad de audio en Uguu ({candidate_url})...")
+                    if await verify_public_audio_url_async(candidate_url, expected_sha256, expected_size, timeout=30.0, log_func=log_msg):
+                        upload_url = candidate_url
+                        log_msg(f"Audio de referencia verificado y vinculado exitosamente (Uguu): {upload_url}")
+                    else:
+                        log_msg("La URL de Uguu no superó la verificación de descarga real. Probando servidor de respaldo...")
+                else:
+                    log_msg("Aviso: Uguu no devolvió una URL. Probando servidor de respaldo...")
+            except Exception as e:
+                log_msg(f"Aviso Uguu ({e}). Probando servidor de respaldo...")
+
+            # Paso 2: Fallback a Catbox únicamente cuando Uguu falle o no pase la verificación
+            if not upload_url:
+                log_msg("Subiendo audio de referencia a servidor de respaldo Catbox...")
+                try:
+                    candidate_url = await upload_to_catbox_async(target_upload_file)
+                    if candidate_url:
+                        log_msg(f"Validando descarga real e integridad de audio en Catbox ({candidate_url})...")
+                        if await verify_public_audio_url_async(candidate_url, expected_sha256, expected_size, timeout=30.0, log_func=log_msg):
+                            upload_url = candidate_url
+                            log_msg(f"Audio de referencia verificado y vinculado exitosamente (Catbox): {upload_url}")
+                        else:
+                            log_msg("La URL de Catbox no superó la verificación de descarga real.")
+                    else:
+                        log_msg("Aviso: Catbox no devolvió una URL.")
+                except Exception as e:
+                    log_msg(f"Aviso Catbox ({e})")
+
+            # Paso 3: Circuit breaker: si ambos fallan, detener antes de UdioAPI
+            if not upload_url:
+                err_msg = "Error de alojamiento: Ningún servidor temporal entregó un enlace de audio descargable y verificado mediante SHA-256. Operación cancelada para proteger sus créditos."
+                log_msg(f"ERROR: {err_msg}")
+                TASKS[task_id]["status"] = "ERROR"
+                TASKS[task_id]["error_type"] = "AUDIO_HOSTING_VERIFICATION_FAILED"
+                TASKS[task_id]["detail"] = err_msg
+                save_local_log()
+                raise Exception(err_msg)
 
         # ----------
         # Helper: expand known instrument/effect keywords into richer descriptions
