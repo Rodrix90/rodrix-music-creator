@@ -7122,6 +7122,13 @@ async function startLiveRecording() {
       window.GlobalAudioController.pause();
       logLine('[AUDIO] Reproductor global pausado automáticamente para inicio de grabación.');
     }
+    // Pausar cualquier reproducción previa en WaveSurfer (pre-escucha) para evitar acople
+    if (recWs && recWs.isPlaying()) {
+      recWs.pause();
+      stopBroadcastVuMeter(true);
+      $('btnRecPlayText').textContent = 'Pre-escuchar';
+      $('btnRecPlay').querySelector('i').className = 'ph ph-play-fill';
+    }
     if (!recAudioCtx) {
       recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
       recSampleRate = recAudioCtx.sampleRate;
@@ -7137,7 +7144,8 @@ async function startLiveRecording() {
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false,
-            channelCount: 1
+            channelCount: 1,
+            sampleRate: { ideal: 48000 }
           }
         });
       } catch (errConstraint) {
@@ -7174,24 +7182,24 @@ async function startLiveRecording() {
     // 1. Nodo fuente de audio del micrófono (crudo, ancho de banda completo de estudio)
     recSourceNode = recAudioCtx.createMediaStreamSource(recMediaStream);
 
-    // 2. Analyser para animación del osciloscopio
+    // 2. Analyser para animación del osciloscopio (sin salida a altavoz)
     const analyser = recAudioCtx.createAnalyser();
     analyser.fftSize = 256;
 
-    // 3. ScriptProcessor con buffer de 8192 para captura limpia sin caídas en Android
-    recScriptNode = recAudioCtx.createScriptProcessor(8192, 1, 1);
+    // 3. ScriptProcessor con buffer de 4096 para baja latencia y estabilidad de hilo en Android
+    recScriptNode = recAudioCtx.createScriptProcessor(4096, 1, 1);
 
-    // 4. Nodo de Silencio MUTE: ¡CRUCIAL! Mantiene el procesamiento Web Audio activo
-    // SIN reproducir el micrófono por los altavoces del celular (lo cual provocaba acoples,
-    // chasquidos y pequeños golpecitos por retorno acústico).
+    // 4. Nodo de Silencio MUTE aislado: Terminal sink para mantener activo el procesamiento
+    // ¡NUNCA conectar a recAudioCtx.destination! La conexión a destination en Android
+    // abre el flujo de hardware a los altavoces, provocando acoples, chasquidos y realimentación.
     const recMuteGain = recAudioCtx.createGain();
     recMuteGain.gain.value = 0.0;
 
-    // Conectar nodos: Mic -> [Analyser, ScriptProcessor] -> MuteGain -> Destination
+    // Conectar nodos: Mic -> [Analyser, ScriptProcessor] -> MuteGain (aislado de destination)
     recSourceNode.connect(analyser);
     recSourceNode.connect(recScriptNode);
     recScriptNode.connect(recMuteGain);
-    recMuteGain.connect(recAudioCtx.destination);
+    // NOTA TÉCNICA: NO se conecta recMuteGain a recAudioCtx.destination para evitar retorno acústico en altavoces
 
     // Conectar medidor VU-Meter estéreo de emisión con audio real del micrófono
     startBroadcastVuMeter(recAudioCtx, recSourceNode);
@@ -7202,6 +7210,10 @@ async function startLiveRecording() {
       const inputData = e.inputBuffer.getChannelData(0);
       const chunk = new Float32Array(inputData);
 
+      // Silenciar explícitamente el buffer de salida para garantizar cero emisión a altavoces
+      const outputData = e.outputBuffer.getChannelData(0);
+      outputData.fill(0);
+
       // Micro fade-in de 12ms en el primer bloque para evitar clics o pops al iniciar / pisar
       if (isFirstChunk) {
         const fadeLen = Math.min(Math.floor(recSampleRate * 0.012), chunk.length);
@@ -7209,6 +7221,16 @@ async function startLiveRecording() {
           chunk[i] *= (i / fadeLen);
         }
         isFirstChunk = false;
+      }
+
+      // Prevención de clipping digital / saturación en picos vocales extremos (> 0.98)
+      for (let i = 0; i < chunk.length; i++) {
+        const s = chunk[i];
+        if (s > 0.98) {
+          chunk[i] = 0.98 + (s - 0.98) * 0.1;
+        } else if (s < -0.98) {
+          chunk[i] = -0.98 + (s + 0.98) * 0.1;
+        }
       }
 
       recPcmChunks.push(chunk);
@@ -7303,11 +7325,12 @@ function pauseLiveRecording() {
   stopBroadcastVuMeter(true);
 
   if (recScriptNode) {
-    recScriptNode.disconnect();
+    recScriptNode.onaudioprocess = null;
+    try { recScriptNode.disconnect(); } catch(e) {}
     recScriptNode = null;
   }
   if (recSourceNode) {
-    recSourceNode.disconnect();
+    try { recSourceNode.disconnect(); } catch(e) {}
     recSourceNode = null;
   }
 
@@ -7406,6 +7429,12 @@ function applyLiveRecording() {
     pauseLiveRecording();
   }
   stopBroadcastVuMeter(false);
+  if (recMediaStream) {
+    try {
+      recMediaStream.getTracks().forEach(t => t.stop());
+    } catch(e) {}
+    recMediaStream = null;
+  }
   if (!recPcmChunks.length) {
     showToast('No hay audio grabado aún.', 'warn');
     return;
