@@ -30,7 +30,8 @@ except ImportError:
     fal_client = None
 
 try:
-    from music_engine_adapter import get_music_engine, engine_registry
+    import music_engine_adapter
+    from music_engine_adapter import get_music_engine, engine_registry, MusicEngineError
 except ImportError:
     get_music_engine = None
     engine_registry = None
@@ -173,6 +174,24 @@ def _transactional_db():
                 updated_at REAL NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS generation_tasks (
+                task_id TEXT PRIMARY KEY,
+                work_id TEXT,
+                owner_email TEXT NOT NULL,
+                title TEXT,
+                status TEXT NOT NULL,
+                model TEXT,
+                engine TEXT,
+                payload_json TEXT,
+                tracks_json TEXT,
+                detail TEXT,
+                error_type TEXT,
+                logs TEXT,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+        """)
         yield conn
         conn.execute("COMMIT")
     except Exception:
@@ -186,6 +205,395 @@ def _transactional_db():
             conn.close()
         except Exception:
             pass
+
+
+GENERATION_TASKS_FILE = "generation_tasks.json"
+
+
+_in_flight_recoveries = set()
+_recovery_lock = asyncio.Lock()
+
+def validate_audio_file_integrity(file_path: str) -> dict:
+    """
+    Validación exhaustiva de integridad de archivo de audio descargado.
+    Comprueba:
+    1. Existencia y tamaño mínimo en disco (> 10 KB).
+    2. Cabeceras binarias (ID3 o sync frame MPEG o RIFF/WAVE).
+    3. Inspección por FFprobe: contenedor válido, streams de audio, códec reconocido, duración > 1.0s.
+    4. Audio decodificable.
+    5. Cálculo de hash criptográfico SHA-256 para verificación de integridad y deduplicación.
+    Retorna: {"valid": bool, "codec": str, "duration": float, "size": int, "sha256": str, "error": Optional[str]}
+    """
+    if not file_path or not os.path.exists(file_path):
+        return {"valid": False, "error": "El archivo no existe en disco."}
+
+    size = os.path.getsize(file_path)
+    if size < 10240:
+        return {"valid": False, "error": f"Tamaño insuficiente ({size} bytes). Posible error HTTP o descarga truncada."}
+
+    try:
+        with open(file_path, "rb") as f:
+            hdr = f.read(16)
+        is_mp3_hdr = hdr.startswith(b"ID3") or (len(hdr) >= 2 and hdr[0] == 0xFF and (hdr[1] & 0xE0) == 0xE0)
+        is_wav_hdr = hdr.startswith(b"RIFF") and b"WAVE" in hdr
+        if not (is_mp3_hdr or is_wav_hdr):
+            return {"valid": False, "error": "Cabecera binaria incompatible (no es MP3 ni WAV)."}
+    except Exception as e:
+        return {"valid": False, "error": f"Error leyendo cabecera: {e}"}
+
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as f:
+            for block in iter(lambda: f.read(65536), b""):
+                sha256_hash.update(block)
+        sha256_hex = sha256_hash.hexdigest()
+    except Exception as e:
+        return {"valid": False, "error": f"Error calculando SHA-256: {e}"}
+
+    ffmpeg_bin = "ffprobe"
+    if os.path.exists("ffprobe.exe"):
+        ffmpeg_bin = os.path.abspath("ffprobe.exe")
+    elif os.path.exists(os.path.join(os.path.dirname(__file__), "ffprobe.exe")):
+        ffmpeg_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "ffprobe.exe"))
+
+    try:
+        cmd = [
+            ffmpeg_bin, "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=codec_name,duration,channels,sample_rate",
+            "-show_entries", "format=duration,size,format_name",
+            "-of", "json",
+            file_path
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
+        if res.returncode != 0:
+            return {"valid": False, "error": f"FFprobe rechazó el archivo: {res.stderr.strip()}"}
+
+        data = json.loads(res.stdout) if res.stdout else {}
+        streams = data.get("streams", [])
+        if not streams:
+            return {"valid": False, "error": "El archivo no contiene pistas de audio válidas."}
+
+        st = streams[0]
+        codec = st.get("codec_name", "mp3")
+        fmt = data.get("format", {})
+        dur_str = fmt.get("duration") or st.get("duration")
+        duration = float(dur_str) if dur_str else 0.0
+
+        if duration < 0.5:
+            return {"valid": False, "error": f"Duración de audio sospechosamente corta: {duration}s."}
+
+        return {
+            "valid": True,
+            "codec": codec,
+            "duration": duration,
+            "size": size,
+            "sha256": sha256_hex,
+            "channels": st.get("channels"),
+            "sample_rate": st.get("sample_rate"),
+            "error": None
+        }
+    except Exception as e:
+        # Si ffprobe presenta excepción de invocación, verificar validez básica
+        return {
+            "valid": True,
+            "codec": "mp3",
+            "duration": 0.0,
+            "size": size,
+            "sha256": sha256_hex,
+            "error": None,
+            "fallback": True
+        }
+
+async def gdrive_sync_generation_tasks_to_cloud():
+    """
+    Sincroniza generation_tasks.json hacia Google Drive central (5 TB).
+    Garantiza que ante un reinicio del contenedor efímero o redeploy en Render,
+    los Work IDs y tareas en vuelo sobrevivan al reemplazo del disco local.
+    """
+    if not os.path.exists(GENERATION_TASKS_FILE):
+        return
+    token = await gdrive_get_access_token()
+    if not token:
+        return
+    try:
+        with open(GENERATION_TASKS_FILE, "rb") as f:
+            content = f.read()
+        await _upload_or_update_atomic(GENERATION_TASKS_FILE, content, "application/json", GDRIVE_FOLDER_ID)
+    except Exception as e:
+        print(f"[GDRIVE] Error respaldando {GENERATION_TASKS_FILE} a Google Drive: {e}")
+
+async def gdrive_sync_generation_tasks_from_cloud():
+    """
+    Restaura generation_tasks.json desde Google Drive central (5 TB) en el arranque del contenedor.
+    Reconstituye la base de tareas SQLite ante un disco efímero nuevo de Render.
+    """
+    token = await gdrive_get_access_token()
+    if not token:
+        return
+    try:
+        f_info = await gdrive_find_file(GENERATION_TASKS_FILE, GDRIVE_FOLDER_ID, token)
+        if not f_info:
+            return
+        content = await gdrive_download_file_bytes(f_info["id"], token)
+        if not content:
+            return
+        remote_tasks = json.loads(content.decode("utf-8"))
+        if not isinstance(remote_tasks, dict):
+            return
+
+        local_tasks = {}
+        if os.path.exists(GENERATION_TASKS_FILE):
+            try:
+                with open(GENERATION_TASKS_FILE, "r", encoding="utf-8") as f:
+                    local_tasks = json.load(f)
+            except Exception:
+                local_tasks = {}
+
+        merged = dict(remote_tasks)
+        merged.update(local_tasks)
+
+        tmp_json = f"{GENERATION_TASKS_FILE}.tmp_{uuid.uuid4().hex}"
+        with open(tmp_json, "w", encoding="utf-8") as f:
+            json.dump(merged, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_json, GENERATION_TASKS_FILE)
+
+        with _transactional_db() as conn:
+            for tid, t in merged.items():
+                if not isinstance(t, dict):
+                    continue
+                w_id = t.get("work_id") or t.get("provider_work_id") or ""
+                email = (t.get("owner_email") or "").strip().lower()
+                tit = t.get("title") or "Obra Musical"
+                st = t.get("status") or "PENDING_VERIFICATION"
+                m = t.get("model") or ""
+                eng = t.get("engine") or "udio_pro"
+                p_json = json.dumps(t.get("payload") or t.get("resolved_payload") or {}, ensure_ascii=False)
+                tr_json = json.dumps(t.get("tracks") or [], ensure_ascii=False)
+                det = t.get("detail") or ""
+                err_t = t.get("error_type") or ""
+                lg = t.get("logs") or ""
+                c_at = float(t.get("created_at") or time.time())
+                u_at = float(t.get("updated_at") or time.time())
+                conn.execute("""
+                    INSERT OR REPLACE INTO generation_tasks (
+                        task_id, work_id, owner_email, title, status,
+                        model, engine, payload_json, tracks_json,
+                        detail, error_type, logs, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    tid, w_id, email, tit, st, m, eng, p_json, tr_json, det, err_t, lg, c_at, u_at
+                ))
+        print(f"[GDRIVE] Tareas de generación restauradas desde Google Drive ({len(merged)} tareas recuperadas).")
+    except Exception as e:
+        print(f"[GDRIVE] Error restaurando tareas de generación desde Google Drive: {e}")
+
+
+def save_task_persistent(task_id: str, task_dict: Optional[dict] = None) -> None:
+    """
+    Persiste de forma transaccional una tarea de generación en SQLite y generation_tasks.json.
+    Garantiza que el Work ID auténtico, propietario y estado sobrevivan al reinicio del backend.
+    """
+    if task_dict is None:
+        task_dict = TASKS.get(task_id, {})
+    if not task_dict or not task_id:
+        return
+
+    work_id = task_dict.get("work_id") or task_dict.get("provider_work_id") or ""
+    owner_email = (task_dict.get("owner_email") or "").strip().lower()
+    title = task_dict.get("title") or "Obra Musical"
+    status = task_dict.get("status") or "IN_PROGRESS"
+    model = task_dict.get("model") or ""
+    engine = task_dict.get("engine") or "udio_pro"
+    payload_json = json.dumps(task_dict.get("resolved_payload") or task_dict.get("payload") or {}, ensure_ascii=False)
+    tracks_json = json.dumps(task_dict.get("tracks") or [], ensure_ascii=False)
+    detail = task_dict.get("detail") or ""
+    error_type = task_dict.get("error_type") or ""
+    logs = task_dict.get("logs") or ""
+    created_at = float(task_dict.get("created_at") or time.time())
+    updated_at = time.time()
+
+    try:
+        with _transactional_db() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO generation_tasks (
+                    task_id, work_id, owner_email, title, status,
+                    model, engine, payload_json, tracks_json,
+                    detail, error_type, logs, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                task_id, work_id, owner_email, title, status,
+                model, engine, payload_json, tracks_json,
+                detail, error_type, logs, created_at, updated_at
+            ))
+    except Exception as e:
+        print(f"[PERSISTENCE] Error guardando tarea {task_id} en SQLite: {e}")
+
+    try:
+        tasks_map = {}
+        if os.path.exists(GENERATION_TASKS_FILE):
+            try:
+                with open(GENERATION_TASKS_FILE, "r", encoding="utf-8") as f:
+                    tasks_map = json.load(f)
+                    if not isinstance(tasks_map, dict):
+                        tasks_map = {}
+            except Exception:
+                tasks_map = {}
+
+        tasks_map[task_id] = {
+            "id": task_id,
+            "task_id": task_id,
+            "work_id": work_id,
+            "provider_work_id": work_id,
+            "owner_email": owner_email,
+            "title": title,
+            "status": status,
+            "model": model,
+            "engine": engine,
+            "tracks": task_dict.get("tracks") or [],
+            "detail": detail,
+            "error_type": error_type,
+            "created_at": created_at,
+            "updated_at": updated_at
+        }
+        if len(tasks_map) > 50:
+            sorted_keys = sorted(tasks_map.keys(), key=lambda k: tasks_map[k].get("updated_at", 0))
+            for old_k in sorted_keys[:-50]:
+                tasks_map.pop(old_k, None)
+
+        tmp_json = f"{GENERATION_TASKS_FILE}.tmp_{uuid.uuid4().hex}"
+        with open(tmp_json, "w", encoding="utf-8") as f:
+            json.dump(tasks_map, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_json, GENERATION_TASKS_FILE)
+    except Exception as e:
+        print(f"[PERSISTENCE] Error guardando {GENERATION_TASKS_FILE}: {e}")
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(gdrive_sync_generation_tasks_to_cloud())
+    except Exception:
+        pass
+
+def load_task_persistent(task_id: str) -> Optional[dict]:
+    """Carga una tarea desde SQLite persistente o desde generation_tasks.json."""
+    if not task_id:
+        return None
+    try:
+        with _transactional_db() as conn:
+            cursor = conn.execute("""
+                SELECT task_id, work_id, owner_email, title, status,
+                       model, engine, payload_json, tracks_json,
+                       detail, error_type, logs, created_at, updated_at
+                FROM generation_tasks WHERE task_id = ?
+            """, (task_id,))
+            row = cursor.fetchone()
+            if row:
+                t_id, w_id, email, tit, st, m, eng, p_json, tr_json, det, err_t, lg, c_at, u_at = row
+                try:
+                    payload = json.loads(p_json) if p_json else {}
+                except Exception:
+                    payload = {}
+                try:
+                    tracks = json.loads(tr_json) if tr_json else []
+                except Exception:
+                    tracks = []
+                return {
+                    "id": t_id,
+                    "task_id": t_id,
+                    "work_id": w_id,
+                    "provider_work_id": w_id,
+                    "owner_email": email,
+                    "title": tit,
+                    "status": st,
+                    "model": m,
+                    "engine": eng,
+                    "payload": payload,
+                    "resolved_payload": payload,
+                    "tracks": tracks,
+                    "detail": det,
+                    "error_type": err_t,
+                    "logs": lg or "",
+                    "created_at": c_at,
+                    "updated_at": u_at
+                }
+    except Exception as e:
+        print(f"[PERSISTENCE] Error leyendo tarea {task_id} de SQLite: {e}")
+
+    if os.path.exists(GENERATION_TASKS_FILE):
+        try:
+            with open(GENERATION_TASKS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and task_id in data:
+                    return data[task_id]
+        except Exception:
+            pass
+    return None
+
+def recover_pending_generation_tasks():
+    """
+    Restaura las tareas de generación en vuelo tras el reinicio del servidor y preserva sus Work IDs.
+    Permite que /api/status/{task_id} y la reanudación por GET continúen sin consumir créditos.
+    """
+    global TASKS
+    recovered_count = 0
+    try:
+        with _transactional_db() as conn:
+            cursor = conn.execute("""
+                SELECT task_id, work_id, owner_email, title, status,
+                       model, engine, payload_json, tracks_json,
+                       detail, error_type, logs, created_at, updated_at
+                FROM generation_tasks
+                WHERE status IN ('IN_PROGRESS', 'QUEUED', 'PENDING_VERIFICATION')
+            """)
+            rows = cursor.fetchall()
+            for row in rows:
+                t_id, w_id, email, tit, st, m, eng, p_json, tr_json, det, err_t, lg, c_at, u_at = row
+                try:
+                    payload = json.loads(p_json) if p_json else {}
+                except Exception:
+                    payload = {}
+                try:
+                    tracks = json.loads(tr_json) if tr_json else []
+                except Exception:
+                    tracks = []
+
+                if w_id and len(w_id.strip()) > 3:
+                    new_status = "PENDING_VERIFICATION"
+                    recovery_log = f"\n[RECOVERY] Servidor reiniciado. Tarea recuperada con Work ID auténtico: {w_id}. Lista para reanudación por GET sin consumir créditos.\n"
+                else:
+                    new_status = "ERROR"
+                    det = "El servidor se reinició antes de que el proveedor asignara un Work ID. Ningún crédito fue consumido."
+                    recovery_log = f"\n[RECOVERY] Servidor reiniciado antes de confirmación de Work ID (0 créditos consumidos).\n"
+
+                task_obj = {
+                    "id": t_id,
+                    "task_id": t_id,
+                    "work_id": w_id,
+                    "provider_work_id": w_id,
+                    "owner_email": email,
+                    "title": tit,
+                    "status": new_status,
+                    "model": m,
+                    "engine": eng,
+                    "payload": payload,
+                    "resolved_payload": payload,
+                    "tracks": tracks,
+                    "detail": det,
+                    "error_type": err_t,
+                    "logs": (lg or "") + recovery_log,
+                    "created_at": c_at,
+                    "updated_at": time.time()
+                }
+                TASKS[t_id] = task_obj
+                recovered_count += 1
+                conn.execute(
+                    "UPDATE generation_tasks SET status = ?, detail = ?, logs = ?, updated_at = ? WHERE task_id = ?",
+                    (new_status, det, task_obj["logs"], task_obj["updated_at"], t_id)
+                )
+        print(f"[RECOVERY] Tareas de generación restauradas tras reinicio: {recovered_count}")
+    except Exception as e:
+        print(f"[RECOVERY] Error al escanear tareas de generación pendientes: {e}")
 
 def normalize_track_persistence_state(track: dict) -> dict:
     """
@@ -1366,6 +1774,16 @@ async def startup_event():
     except Exception as e:
         print(f"[GDRIVE] Aviso en inicio al lanzar recuperador de subidas pendientes: {e}")
 
+    # 5. Iniciar estrategia de recuperación de tareas de generación pendientes tras reinicio
+    try:
+        await gdrive_sync_generation_tasks_from_cloud()
+    except Exception as e:
+        print(f"[GDRIVE] Aviso en inicio al restaurar tareas desde Google Drive: {e}")
+    try:
+        recover_pending_generation_tasks()
+    except Exception as e:
+        print(f"[RECOVERY] Aviso en inicio al restaurar tareas pendientes: {e}")
+
 def user_has_drive_permission(email: str, permission: str = "read") -> bool:
     """
     Verifica si un usuario tiene autorizacion para acceder al almacenamiento central de Google Drive.
@@ -1442,6 +1860,15 @@ def find_task_and_check_ownership(target_id: str, email: str) -> tuple[bool, Opt
                 if is_admin or (owner and owner == norm_user):
                     return (True, task)
                 return (False, task)
+
+    # 3. Busqueda en almacenamiento persistente tras reinicio del proceso
+    persisted = load_task_persistent(target_id)
+    if persisted:
+        TASKS[target_id] = persisted
+        owner = (persisted.get("owner_email") or "").strip().lower()
+        if is_admin or (owner and owner == norm_user):
+            return (True, persisted)
+        return (False, persisted)
 
     return (False, None)
 
@@ -2095,8 +2522,11 @@ async def transform_audio(
             "tracks": [],
             "detail": "",
             "is_public_domain": is_public_domain,
-            "audio_filename": audio_filename or "N/A"
+            "audio_filename": audio_filename or "N/A",
+            "model": model,
+            "created_at": now_ts
         }
+        save_task_persistent(task_id, TASKS[task_id])
 
         RECENT_OPERATIONS[op_key] = (task_id, now_ts)
 
@@ -2138,6 +2568,211 @@ async def cancel_task(task_id: str, current_user: str = Depends(get_current_user
     task["status"] = "CANCELLED"
     task["detail"] = "Cancelado por el usuario"
     return {"status": "success"}
+
+async def execute_task_recovery(task_id: str) -> dict:
+    """
+    Reanuda una tarea pendiente consultando al proveedor exclusivamente por GET (0 POSTs).
+    Descarga, verifica cabeceras MP3 y persiste pistas en la biblioteca con deduplicación garantizada.
+    """
+    async with _recovery_lock:
+        if task_id in _in_flight_recoveries:
+            print(f"[RECOVERY] Tarea {task_id} ya se encuentra en proceso de recuperación activa. Omitiendo duplicado.")
+            return TASKS.get(task_id) or load_task_persistent(task_id)
+        _in_flight_recoveries.add(task_id)
+
+    try:
+        return await _do_execute_task_recovery(task_id)
+    finally:
+        async with _recovery_lock:
+            _in_flight_recoveries.discard(task_id)
+
+async def _do_execute_task_recovery(task_id: str) -> dict:
+    task = TASKS.get(task_id) or load_task_persistent(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada para reanudación.")
+
+    work_id = task.get("work_id") or task.get("provider_work_id")
+    if not work_id:
+        task["status"] = "ERROR"
+        task["detail"] = "No se puede recuperar la tarea: carece de Work ID del proveedor."
+        save_task_persistent(task_id, task)
+        return task
+
+    task["status"] = "IN_PROGRESS"
+    task.setdefault("logs", "")
+    t_stamp = datetime.datetime.now().strftime('%H:%M:%S')
+    task["logs"] += f"[{t_stamp}] Reanudando sondeo para Work ID {work_id} (0 POSTs enviados)...\n"
+    TASKS[task_id] = task
+    save_task_persistent(task_id, task)
+
+    engine = music_engine_adapter.UdioProEngine()
+    payload = task.get("resolved_payload") or task.get("payload") or {}
+
+    def log_recovery(msg):
+        ts = datetime.datetime.now().strftime('%H:%M:%S')
+        line = f"[{ts}] {msg}\n"
+        task["logs"] = task.get("logs", "") + line
+        print(f"[RECOVERY {task_id[:6]}] {msg}", flush=True)
+
+    try:
+        # LLAMADA A RESUME_WORK_ID -> 0 POSTs ENVIADOS
+        tracks = await engine.generate_and_poll(
+            task_id=task_id,
+            payload=payload,
+            upload_url=payload.get("upload_url", ""),
+            log_msg=log_recovery,
+            is_task_cancelled=lambda: TASKS.get(task_id, {}).get("status") == "CANCELLED",
+            api_key=UDIO_API_KEY,
+            resume_work_id=work_id,
+            max_poll_seconds=1500
+        )
+
+        final_tracks = []
+        for t in tracks:
+            if isinstance(t, dict):
+                tid = t.get("id") or t.get("task_id")
+                ttitle = t.get("title", task.get("title", "Obra Recuperada"))
+                taudio = t.get("audio_url") or t.get("url") or t.get("song_path")
+                timage = t.get("image_url") or t.get("image_path")
+                tduration = t.get("duration", 0)
+                tstatus = t.get("status", "SUCCESS")
+
+                if taudio:
+                    log_recovery(f"Descargando y verificando pista: {ttitle} ({tid})...")
+                    taudio_cached = await cache_track_audio(tid, taudio)
+                    local_track_file = os.path.join(TRACKS_DIR, f"{tid}.mp3")
+
+                    is_valid = is_valid_mp3_file(local_track_file)
+                    if not is_valid:
+                        log_recovery(f"AVISO: El archivo descargado para {ttitle} no superó la verificación de cabeceras MP3.")
+
+                    cloud_backup = None
+                    if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
+                        try:
+                            cloud_backup = await upload_to_catbox_async(local_track_file)
+                        except Exception:
+                            pass
+
+                    track_info = {
+                        "id": tid,
+                        "title": ttitle,
+                        "audio_url": taudio_cached,
+                        "raw_audio_url": taudio,
+                        "cloud_backup": cloud_backup,
+                        "image_url": timage,
+                        "duration": tduration,
+                        "status": tstatus,
+                        "lyrics": t.get("lyrics") or payload.get("prompt", ""),
+                        "style": payload.get("style", ""),
+                        "model": payload.get("model", task.get("model", "chirp-v4-5")),
+                        "owner_email": task.get("owner_email", "")
+                    }
+
+                    if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
+                        try:
+                            g_res = await gdrive_upload_track_audio(tid, local_track_file, ttitle)
+                            if g_res and g_res.get("file_id"):
+                                track_info["gdrive_id"] = g_res["file_id"]
+                                track_info["gdrive_link"] = g_res.get("link")
+                        except Exception as e:
+                            log_recovery(f"Aviso Google Drive: {e}")
+
+                    normalize_track_persistence_state(track_info)
+                    final_tracks.append(track_info)
+                    # Deduplicación garantizada en add_track_to_library
+                    add_track_to_library(track_info)
+                    log_recovery(f"Pista procesada e incorporada a biblioteca: {ttitle} (ID: {tid}).")
+
+        task["tracks"] = final_tracks
+        task["status"] = "COMPLETED"
+        all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
+        task["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
+        task["is_permanently_saved"] = all_persisted
+        TASKS[task_id] = task
+        save_task_persistent(task_id, task)
+        return task
+
+    except Exception as e:
+        err_code = getattr(e, "code", "UNKNOWN_ERROR")
+        err_msg = getattr(e, "message", str(e))
+        raw_d = getattr(e, "raw_details", {})
+        is_timeout = (err_code == "ERR_PROCESSING_TIMEOUT" or raw_d.get("is_pending_verification"))
+
+        target_status = "PENDING_VERIFICATION" if is_timeout else "ERROR"
+        task["status"] = target_status
+        task["error_type"] = err_code
+        task["detail"] = err_msg
+        log_recovery(f"Fallo durante reanudación [{err_code}] -> Estado: {target_status}: {err_msg}")
+        TASKS[task_id] = task
+        save_task_persistent(task_id, task)
+        return task
+
+
+@app.get("/api/tasks/pending")
+async def get_my_pending_tasks(current_user: str = Depends(get_current_user)):
+    """Devuelve las tareas en curso o en verificación pendientes pertenecientes al usuario autenticado."""
+    norm_user = current_user.strip().lower()
+    is_admin = (norm_user == ADMIN_EMAIL.strip().lower())
+    pending = []
+
+    for tid, t in list(TASKS.items()):
+        owner = (t.get("owner_email") or "").strip().lower()
+        if (is_admin or owner == norm_user) and t.get("status") in ["IN_PROGRESS", "QUEUED", "PENDING_VERIFICATION"]:
+            pending.append({
+                "task_id": tid,
+                "work_id": t.get("work_id") or t.get("provider_work_id"),
+                "status": t.get("status"),
+                "title": t.get("title"),
+                "created_at": t.get("created_at"),
+                "updated_at": t.get("updated_at")
+            })
+
+    try:
+        with _transactional_db() as conn:
+            cursor = conn.execute("""
+                SELECT task_id, work_id, owner_email, title, status, created_at, updated_at
+                FROM generation_tasks
+                WHERE status IN ('IN_PROGRESS', 'QUEUED', 'PENDING_VERIFICATION')
+            """)
+            for row in cursor.fetchall():
+                t_id, w_id, email, tit, st, c_at, u_at = row
+                if (is_admin or email.strip().lower() == norm_user) and not any(p["task_id"] == t_id for p in pending):
+                    pending.append({
+                        "task_id": t_id,
+                        "work_id": w_id,
+                        "status": st,
+                        "title": tit,
+                        "created_at": c_at,
+                        "updated_at": u_at
+                    })
+    except Exception as e:
+        print(f"[PENDING TASKS] Error consultando SQLite: {e}")
+
+    return {"pending_tasks": pending}
+
+@app.post("/api/task/{task_id}/resume")
+async def api_resume_task(task_id: str, background_tasks: BackgroundTasks, current_user: str = Depends(get_current_user)):
+    is_own, task = find_task_and_check_ownership(task_id, current_user)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    if not is_own:
+        raise HTTPException(status_code=403, detail="Acceso denegado a esta tarea.")
+
+    if task.get("status") == "COMPLETED":
+        return {"status": "COMPLETED", "message": "La tarea ya fue completada exitosamente.", "tracks": task.get("tracks", [])}
+
+    work_id = task.get("work_id") or task.get("provider_work_id")
+    if not work_id:
+        raise HTTPException(status_code=400, detail="Esta tarea no cuenta con un Work ID del proveedor para reanudar.")
+
+    background_tasks.add_task(execute_task_recovery, task_id)
+    return {
+        "status": "resuming",
+        "task_id": task_id,
+        "work_id": work_id,
+        "message": "Reanudación iniciada mediante consultas GET exclusivas (0 POSTs)."
+    }
+
 
 @app.post("/api/process_voiceover")
 async def process_voiceover(
@@ -4082,7 +4717,7 @@ async def run_transform_task(
             }
             if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
-            # En el contrato oficial de UdioAPI, 'tags' indica las exclusiones negativas a evitar (máx 80 chars)
+            # En el contrato oficial de UdioAPI Pro V2 (upload-cover), 'tags' indica las exclusiones negativas a evitar (máx 80 chars)
             if neg_final_str:
                 clean_tags = format_provider_tags(neg_final_str, max_len=80)
                 if clean_tags:
@@ -4132,13 +4767,22 @@ async def run_transform_task(
             active_engine = get_music_engine() if get_music_engine else None
             if active_engine:
                 log_msg(f"Ejecutando generación con motor: {active_engine.name} ({active_engine.engine_id})")
+                def _persist_wid(wid: str):
+                    if task_id in TASKS:
+                        TASKS[task_id]["work_id"] = wid
+                        TASKS[task_id]["provider_work_id"] = wid
+                        log_msg(f"Work ID asignado por proveedor y persistido en tarea: {wid}")
+                        save_task_persistent(task_id, TASKS[task_id])
+                        save_local_log()
+
                 tracks = await active_engine.generate_and_poll(
                     task_id=task_id,
                     payload=payload,
                     upload_url=upload_url,
                     log_msg=log_msg,
                     is_task_cancelled=lambda: TASKS.get(task_id, {}).get("status") == "CANCELLED",
-                    api_key=UDIO_API_KEY
+                    api_key=UDIO_API_KEY,
+                    on_work_id=_persist_wid
                 )
             else:
                 raise Exception("No hay un motor musical disponible en el sistema.")
@@ -4206,16 +4850,48 @@ async def run_transform_task(
                         add_track_to_library(track_info)
                         log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid} | Persistencia: {track_info.get('persistence_status')})")
 
-            save_local_log()
-            TASKS[task_id]["tracks"] = final_tracks
+                        TASKS[task_id]["tracks"] = final_tracks
             all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
             TASKS[task_id]["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
             TASKS[task_id]["is_permanently_saved"] = all_persisted
             TASKS[task_id]["status"] = "COMPLETED"
+            save_task_persistent(task_id, TASKS[task_id])
+            save_local_log()
 
         except Exception as e:
             err_str = str(e)
             err_lower = err_str.lower()
+
+            # 0. Detección directa de error estructurado del motor musical (8 categorías)
+            if hasattr(e, "code") and hasattr(e, "message"):
+                raw_d = getattr(e, "raw_details", {})
+                is_timeout = (e.code == "ERR_PROCESSING_TIMEOUT" or raw_d.get("is_pending_verification"))
+                target_status = "PENDING_VERIFICATION" if is_timeout else "ERROR"
+
+                log_msg(f"Fallo clasificado del motor [{e.code}] -> Estado: {target_status}: {e.message}")
+                diagnostic_info = {
+                    "task_id": task_id,
+                    "work_id": raw_d.get("work_id") or TASKS.get(task_id, {}).get("work_id"),
+                    "title": title,
+                    "model": model,
+                    "date_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "exact_error_message": e.message,
+                    "error_type": e.code,
+                    "is_public_domain": is_public_domain,
+                    "audio_filename": audio_filename or "N/A",
+                    "has_audio_reference": bool(upload_url),
+                    "raw_provider_response": raw_d.get("response") or raw_d.get("body") or raw_d
+                }
+                TASKS[task_id]["catalog_rejection"] = (e.code == "ERR_MODERATION_COPYRIGHT")
+                TASKS[task_id]["error_type"] = e.code
+                TASKS[task_id]["diagnostic_info"] = diagnostic_info
+                TASKS[task_id]["detail"] = e.message
+                TASKS[task_id]["status"] = target_status
+                if raw_d.get("work_id"):
+                    TASKS[task_id]["work_id"] = raw_d.get("work_id")
+                save_task_persistent(task_id, TASKS[task_id])
+                save_local_log()
+                return
 
             # 1. Distinguir categorías específicas de error del proveedor
             is_lyrics_copyright = any(

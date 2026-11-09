@@ -27,6 +27,52 @@ import httpx
 logger = logging.getLogger("rodrix.music_engine")
 
 
+class MusicEngineError(Exception):
+    """Excepción técnica estructurada con código de diagnóstico de 8 categorías para el motor musical."""
+    def __init__(self, code: str, message: str, raw_details: Optional[Dict[str, Any]] = None):
+        self.code = code
+        self.message = message
+        self.raw_details = raw_details or {}
+        super().__init__(f"[{code}] {message}")
+
+
+
+def classify_provider_failure(error_msg: str, status_json: dict, work_id: str) -> MusicEngineError:
+    """Clasifica un fallo reportado por el proveedor basándose exclusivamente en evidencia real verificable."""
+    err_l = (error_msg or "").lower()
+    if any(k in err_l for k in [
+        "copyright", "copyrighted material", "catalog", "matches an existing recording",
+        "moderation", "flagged by moderation", "policy violation", "sensitive content"
+    ]):
+        return MusicEngineError(
+            code="ERR_MODERATION_COPYRIGHT",
+            message=f"Generación rechazada por moderación o derechos de autor del proveedor: {error_msg}",
+            raw_details={"work_id": work_id, "error": error_msg, "response": status_json}
+        )
+    elif any(k in err_l for k in [
+        "cannot download", "failed to download", "upload_url", "source audio not found", "404"
+    ]):
+        return MusicEngineError(
+            code="ERR_HOSTING_INACCESSIBLE",
+            message=f"El servidor de Udio reportó error al descargar el audio de origen: {error_msg}",
+            raw_details={"work_id": work_id, "error": error_msg, "response": status_json}
+        )
+    elif any(k in err_l for k in [
+        "duration exceeds", "maximum duration", "unsupported audio format", "sample rate", "corrupt audio"
+    ]):
+        return MusicEngineError(
+            code="ERR_AUDIO_FORMAT_INCOMPATIBLE",
+            message=f"Audio de entrada incompatible o rechazado por el motor: {error_msg}",
+            raw_details={"work_id": work_id, "error": error_msg, "response": status_json}
+        )
+    else:
+        # Fallo interno genérico del worker (como en las 5 generaciones reales previas donde se reembolsaron créditos)
+        return MusicEngineError(
+            code="ERR_INTERNAL_WORKER_FAILURE",
+            message=f"Fallo interno en el worker del proveedor: {error_msg}",
+            raw_details={"work_id": work_id, "error": error_msg, "response": status_json}
+        )
+
 class BaseMusicEngine(ABC):
     """Interfaz base para cualquier motor de generación musical en Rodrix Music Creator."""
 
@@ -116,17 +162,32 @@ class UdioProEngine(BaseMusicEngine):
         log_msg: Callable[[str], None],
         is_task_cancelled: Callable[[], bool],
         api_key: Optional[str] = None,
+        on_work_id: Optional[Callable[[str], None]] = None,
+        resume_work_id: Optional[str] = None,
+        max_poll_seconds: int = 1500,  # 25 minutos para respetar ventana de procesamiento real (18-19 min)
     ) -> List[Dict[str, Any]]:
+        """
+        Ejecuta la generación o reanuda el sondeo con control de idempotencia estricto:
+        - Exactamente 1 POST inicial (NUNCA reintentar automáticamente si hay ambigüedad o timeout).
+        - Si resume_work_id está presente: 0 POSTs, salta directo al sondeo.
+        - Notificación inmediata de work_id mediante callback on_work_id para persistencia.
+        - Sondeo tolerante a fallas de red temporales durante hasta 25 minutos.
+        - Timeout local produce PENDING_VERIFICATION sin declarar fallo terminal ni consumir créditos.
+        """
         eff_api_key = api_key or os.environ.get("UDIO_API_KEY", "").strip()
         if not eff_api_key:
-            raise Exception("No se ha configurado la clave de API para Udio (UDIO_API_KEY).")
+            raise MusicEngineError(
+                code="ERR_AUTH_OR_CREDITS",
+                message="No se ha configurado la clave de API para Udio (UDIO_API_KEY)."
+            )
 
         headers = {
             "Authorization": f"Bearer {eff_api_key}",
             "Content-Type": "application/json",
         }
 
-        if upload_url:
+        is_upload_cover = bool(upload_url or payload.get("upload_url") or (resume_work_id and str(resume_work_id).startswith("upcov")))
+        if is_upload_cover:
             url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
             url_status = "https://udioapi.pro/api/v2/upload-cover/status"
             log_msg("Motor Udio: Usando endpoint V2 Upload & Cover")
@@ -135,133 +196,200 @@ class UdioProEngine(BaseMusicEngine):
             url_status = "https://udioapi.pro/api/v2/feed"
             log_msg("Motor Udio: Usando endpoint V2 Generate")
 
-        max_retries = 3
-        tracks: List[Dict[str, Any]] = []
+        work_id = resume_work_id
 
-        for attempt in range(max_retries):
+        # -------------------------------------------------------------------------
+        # FASE 1: DESPACHO HTTP POST (UN SOLO INTENTO EXACTO, SIN REINTENTO AMBIGUO)
+        # -------------------------------------------------------------------------
+        if not work_id:
             try:
-                log_msg(f"Enviando solicitud a {url_generate} (Intento {attempt+1}/{max_retries})...")
+                log_msg(f"Enviando solicitud a {url_generate} (exactamente 1 intento)...")
                 async with httpx.AsyncClient(timeout=60.0) as client:
-                    r = await client.post(url_generate, json=payload, headers=headers)
-
-                    if r.status_code == 402:
-                        raise Exception("No hay créditos suficientes en la API de Udio (Status 402).")
-                    elif r.status_code != 200:
-                        raise Exception(f"Error de API HTTP {r.status_code}: {r.text}")
-
-                    resp_json = r.json()
-                    work_id = resp_json.get("workId") or resp_json.get("id")
-
-                    if not work_id:
-                        data_block = resp_json.get("data", {})
-                        if isinstance(data_block, dict):
-                            work_id = data_block.get("task_id")
-                        if not work_id:
-                            raise Exception(f"No se recibió un ID de tarea válido. Respuesta: {r.text}")
-
-                    log_msg(f"Tarea encolada en el proveedor. ID: {work_id}")
-
-                    for i in range(120):
-                        if is_task_cancelled():
-                            log_msg("Generación abortada por el usuario.")
-                            break
-
-                        if upload_url:
-                            r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
-                        else:
-                            r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
-
-                        if r_status.status_code == 200:
-                            status_json = r_status.json()
-                            error_msg = "La generación falló internamente en el proveedor."
-
-                            if upload_url:
-                                raw_data = status_json.get("data", {})
-                                if not isinstance(raw_data, dict):
-                                    raw_data = {}
-                                status = (
-                                    raw_data.get("type", "")
-                                    or raw_data.get("status", "")
-                                    or status_json.get("status", "")
-                                    or status_json.get("type", "")
-                                )
-                                response_array = raw_data.get("response_data", []) or status_json.get("response_data", [])
-                                if not response_array and isinstance(raw_data, list):
-                                    response_array = raw_data
-                                if status.upper() in ["SUCCESS", "COMPLETED"]:
-                                    tracks = response_array if isinstance(response_array, list) else [response_array]
-                                    log_msg("Generación completada exitosamente.")
-                                    break
-                                elif status.upper() in ["FAILED", "ERROR"]:
-                                    if isinstance(response_array, list) and len(response_array) > 0 and isinstance(response_array[0], dict):
-                                        error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
-                                    elif status_json.get("message"):
-                                        error_msg = status_json.get("message")
-                                    elif raw_data.get("message"):
-                                        error_msg = raw_data.get("message")
-                                    raise Exception(f"API Error: {error_msg}")
-                            else:
-                                if isinstance(status_json, list):
-                                    data = status_json
-                                    status = data[0].get("status", "") if len(data) > 0 else ""
-                                else:
-                                    status = status_json.get("status", "")
-                                    raw_data = status_json.get("data", {})
-                                    if isinstance(raw_data, dict):
-                                        if not status:
-                                            status = raw_data.get("type", "") or raw_data.get("status", "")
-                                        response_array = raw_data.get("response_data", [])
-                                        if isinstance(response_array, list) and len(response_array) > 0:
-                                            data = response_array
-                                            if response_array[0].get("fail_message"):
-                                                error_msg = response_array[0].get("fail_message")
-                                        else:
-                                            data = [raw_data]
-                                    else:
-                                        data = raw_data if isinstance(raw_data, list) else []
-
-                                if status.upper() in ["SUCCESS", "COMPLETED"]:
-                                    tracks = data
-                                    log_msg("Generación completada exitosamente.")
-                                    break
-                                elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
-                                    tracks = data
-                                    log_msg("Generación completada exitosamente.")
-                                    break
-                                elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
-                                    raise Exception(f"API Task Error: {error_msg}")
-
-                        log_msg(f"Sondeo Udio (Intento {i+1}): Estado={r_status.status_code}")
-                        await asyncio.sleep(5)
-
-                    if not tracks:
-                        raise Exception("Tiempo de espera agotado. La tarea no finalizó a tiempo en el proveedor.")
-
-                    return tracks
-
-            except Exception as e:
-                err_str = str(e)
-                err_lower = err_str.lower()
-
-                # Si es un fallo definitivo de tarea del proveedor reportado en el sondeo,
-                # o derechos de autor, abortar sin reintentos
-                if "api task error:" in err_lower or "copyright" in err_lower:
-                    raise
-
-                # Reintentos ÚNICAMENTE para errores transitorios de transporte HTTP
-                is_transient = any(
-                    k in err_lower for k in [
-                        "408", "timeout", "timed out", "502", "503", "504", "bad gateway",
-                        "500", "429", "too many requests"
-                    ]
+                    post_response = await client.post(url_generate, json=payload, headers=headers)
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, httpx.TimeoutException) as net_err:
+                log_msg(f"Fallo de conexión o timeout durante POST ({net_err}). No se reintenta automáticamente para evitar consumos duplicados.")
+                raise MusicEngineError(
+                    code="ERR_PROVIDER_NETWORK",
+                    message=f"Error de conexión con UdioAPI antes de confirmar recepción: {net_err}. No se reintentó para evitar cobros duplicados.",
+                    raw_details={"url": url_generate, "error": str(net_err)}
                 )
-                if is_transient and attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 6
-                    log_msg(f"Fallo transitorio de conexión ({err_str}). Reintentando en {wait_sec}s...")
-                    await asyncio.sleep(wait_sec)
+
+            # Clasificación de códigos HTTP iniciales
+            if post_response.status_code == 401:
+                raise MusicEngineError(
+                    code="ERR_AUTH_OR_CREDITS",
+                    message="Autenticación rechazada: Clave de API de Udio no autorizada o expirada (HTTP 401).",
+                    raw_details={"status_code": 401, "body": post_response.text}
+                )
+            elif post_response.status_code == 402:
+                raise MusicEngineError(
+                    code="ERR_AUTH_OR_CREDITS",
+                    message="Créditos insuficientes: La cuenta de UdioAPI no dispone de saldo suficiente para generar la canción (HTTP 402).",
+                    raw_details={"status_code": 402, "body": post_response.text}
+                )
+            elif post_response.status_code in [400, 422]:
+                body_txt = post_response.text
+                body_lower = body_txt.lower()
+                if any(k in body_lower for k in ["duration", "exceed", "8 min", "8-minute"]):
+                    raise MusicEngineError(
+                        code="ERR_AUDIO_FORMAT_INCOMPATIBLE",
+                        message=f"Audio de entrada incompatible: Duración superior al límite permitido: {body_txt}",
+                        raw_details={"status_code": post_response.status_code, "body": body_txt}
+                    )
+                elif any(k in body_lower for k in ["download", "upload_url", "cannot fetch", "404", "inaccessible"]):
+                    raise MusicEngineError(
+                        code="ERR_HOSTING_INACCESSIBLE",
+                        message=f"El servidor de Udio reportó error al acceder al audio alojado: {body_txt}",
+                        raw_details={"status_code": post_response.status_code, "body": body_txt}
+                    )
+                else:
+                    raise MusicEngineError(
+                        code="ERR_VALIDATION_SCHEMA",
+                        message=f"Error de validación en parámetros enviados a UdioAPI (HTTP {post_response.status_code}): {body_txt}",
+                        raw_details={"status_code": post_response.status_code, "body": body_txt}
+                    )
+            elif post_response.status_code != 200:
+                raise MusicEngineError(
+                    code="ERR_PROVIDER_NETWORK",
+                    message=f"Error inesperado del servidor HTTP {post_response.status_code}: {post_response.text}",
+                    raw_details={"status_code": post_response.status_code, "body": post_response.text}
+                )
+
+            resp_json = post_response.json()
+            work_id = resp_json.get("workId") or resp_json.get("id")
+            if not work_id:
+                data_block = resp_json.get("data", {})
+                if isinstance(data_block, dict):
+                    work_id = data_block.get("task_id")
+                if not work_id:
+                    raise MusicEngineError(
+                        code="ERR_VALIDATION_SCHEMA",
+                        message=f"No se recibió un ID de tarea válido del proveedor. Respuesta: {post_response.text}",
+                        raw_details={"body": resp_json}
+                    )
+
+            log_msg(f"Tarea encolada en el proveedor. Work ID: {work_id}")
+            if on_work_id:
+                try:
+                    on_work_id(work_id)
+                except Exception as e_wid:
+                    logger.warning(f"Error en callback on_work_id: {e_wid}")
+        else:
+            log_msg(f"Reanudando sondeo para Work ID existente: {work_id} (0 POSTs enviados, 0 créditos consumidos)...")
+
+        # -------------------------------------------------------------------------
+        # FASE 2: SONDEO RESILIENTE (HASTA 25 MINUTOS, CERO REINTENTOS DE POST)
+        # -------------------------------------------------------------------------
+        tracks: List[Dict[str, Any]] = []
+        poll_interval = 6
+        elapsed = 0
+        poll_count = 0
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            while elapsed < max_poll_seconds:
+                if is_task_cancelled():
+                    log_msg("Generación abortada por el usuario.")
+                    return []
+
+                poll_count += 1
+                try:
+                    if upload_url:
+                        r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
+                    else:
+                        r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
+                except Exception as poll_net_err:
+                    log_msg(f"Aviso transitorio de red en consulta GET #{poll_count} ({poll_net_err}). Esperando siguiente ciclo...")
+                    await asyncio.sleep(poll_interval)
+                    elapsed += poll_interval
                     continue
-                # Si es copyright, moderación, saldo o error definitivo, re-lanzar para clasificación
-                raise
+
+                if r_status.status_code == 200:
+                    status_json = r_status.json()
+                    error_msg = "La generación falló internamente en el proveedor."
+
+                    if upload_url:
+                        raw_data = status_json.get("data", {})
+                        if not isinstance(raw_data, dict):
+                            raw_data = {}
+                        status = (
+                            raw_data.get("type", "")
+                            or raw_data.get("status", "")
+                            or status_json.get("status", "")
+                            or status_json.get("type", "")
+                        )
+                        response_array = raw_data.get("response_data", []) or status_json.get("response_data", [])
+                        if not response_array and isinstance(raw_data, list):
+                            response_array = raw_data
+
+                        if status.upper() in ["SUCCESS", "COMPLETED"]:
+                            tracks = response_array if isinstance(response_array, list) else [response_array]
+                            log_msg(f"Generación completada exitosamente en el proveedor tras {round(elapsed)}s.")
+                            return tracks
+                        elif status.upper() in ["FAILED", "ERROR"]:
+                            if isinstance(response_array, list) and len(response_array) > 0 and isinstance(response_array[0], dict):
+                                error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
+                            elif status_json.get("message"):
+                                error_msg = status_json.get("message")
+                            elif raw_data.get("message"):
+                                error_msg = raw_data.get("message")
+
+                            raise classify_provider_failure(error_msg, status_json, work_id)
+                        else:
+                            # Tarea en progreso o encolada en el cluster
+                            if poll_count % 5 == 0 or elapsed < 20:
+                                log_msg(f"Sondeo Udio [{work_id}]: Estado={status or 'IN_PROGRESS'} ({round(elapsed/60, 1)} min transcurridos)...")
+                    else:
+                        if isinstance(status_json, list):
+                            data = status_json
+                            status = data[0].get("status", "") if len(data) > 0 else ""
+                        else:
+                            status = status_json.get("status", "")
+                            raw_data = status_json.get("data", {})
+                            if isinstance(raw_data, dict):
+                                if not status:
+                                    status = raw_data.get("type", "") or raw_data.get("status", "")
+                                response_array = raw_data.get("response_data", [])
+                                if isinstance(response_array, list) and len(response_array) > 0:
+                                    data = response_array
+                                    if response_array[0].get("fail_message"):
+                                        error_msg = response_array[0].get("fail_message")
+                                else:
+                                    data = [raw_data]
+                            else:
+                                data = raw_data if isinstance(raw_data, list) else []
+
+                        if status.upper() in ["SUCCESS", "COMPLETED"]:
+                            log_msg("Generación completada exitosamente.")
+                            return data
+                        elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
+                            log_msg("Generación completada exitosamente.")
+                            return data
+                        elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
+                            raise classify_provider_failure(error_msg, status_json, work_id)
+                        else:
+                            if poll_count % 5 == 0 or elapsed < 20:
+                                log_msg(f"Sondeo Udio [{work_id}]: Estado={status or 'IN_PROGRESS'} ({round(elapsed/60, 1)} min transcurridos)...")
+                else:
+                    log_msg(f"Sondeo Udio #{poll_count}: Código HTTP {r_status.status_code}. Reintentando sondeo...")
+
+                # Intervalo dinámico: 6s en los primeros 2 min, luego 10s
+                current_sleep = 6 if elapsed < 120 else 10
+                await asyncio.sleep(current_sleep)
+                elapsed += current_sleep
+
+        # Si se agotaron los 25 minutos sin resolución terminal
+        raise MusicEngineError(
+            code="ERR_PROCESSING_TIMEOUT",
+            message=(
+                f"La tarea {work_id} continúa en proceso en el proveedor tras {round(elapsed/60)} minutos. "
+                f"El estado se preserva como PENDING_VERIFICATION para consultar sin consumir créditos adicionales."
+            ),
+            raw_details={
+                "work_id": work_id,
+                "is_pending_verification": True,
+                "elapsed_seconds": round(elapsed)
+            }
+        )
 
 
 class LocalSF2Engine(BaseMusicEngine):

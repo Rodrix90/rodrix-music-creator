@@ -8567,6 +8567,7 @@ $('genForm').addEventListener('submit', async e => {
       logLine('Aviso: ' + (j.message || 'Solicitud idéntica detectada. Reutilizando tarea activa.'), 'warn');
     }
     currentTask = j.task_id;
+    try { localStorage.setItem('rodrix_active_task_id', currentTask); } catch(e){}
     pollTimer = setInterval(poll, 3000); poll();
   } catch (err) {
     logLine('ERROR: ' + err.message, 'err');
@@ -8680,8 +8681,10 @@ async function poll(){
     const t = await r.json();
     renderLogs(t.logs);
     if (t.status === 'COMPLETED') {
+      try { localStorage.removeItem('rodrix_active_task_id'); } catch(e){}
       finish(); stopProgress(true, '¡Canción lista!'); await loadLibrary();
     } else if (t.status === 'ERROR') {
+      try { localStorage.removeItem('rodrix_active_task_id'); } catch(e){}
       const failedTaskId = currentTask || t.id;
       currentDiagnosticTaskId = failedTaskId;
       finish();
@@ -8694,7 +8697,12 @@ async function poll(){
         showCatalogRejectionModal(failedTaskId);
       }
     } else if (t.status === 'CANCELLED') {
+      try { localStorage.removeItem('rodrix_active_task_id'); } catch(e){}
       finish(); stopProgress(false, 'Cancelado');
+    } else if (t.status === 'PENDING_VERIFICATION') {
+      const wid = t.work_id || t.provider_work_id || '';
+      const pText = $('progressText');
+      if (pText) pText.textContent = `En verificación con proveedor (Work ID: ${wid || 'procesando'})...`;
     }
   } catch (err) { /* reintenta en el siguiente ciclo */ }
 }
@@ -11923,6 +11931,55 @@ document.addEventListener('DOMContentLoaded', () => {
   initVisualMetricWidget();
   drawPianoRollDemo('midiPianoRollCanvas');
   initBroadcastVuMeter();
+
+  // Restaurar y reanudar tarea pendiente tras recarga o reinicio del navegador
+  try {
+    const savedTaskId = localStorage.getItem('rodrix_active_task_id');
+    if (savedTaskId) {
+      fetch('/api/status/' + savedTaskId)
+        .then(r => r.ok ? r.json() : null)
+        .then(t => {
+          if (t && (t.status === 'IN_PROGRESS' || t.status === 'QUEUED' || t.status === 'PENDING_VERIFICATION')) {
+            currentTask = savedTaskId;
+            setBusy(true);
+            startProgress();
+            if (t.logs) renderLogs(t.logs);
+            const wid = t.work_id || t.provider_work_id || '';
+            logLine(`[Reanudación]: Reconectado a la tarea en curso (${savedTaskId}${wid ? ' | Work ID: ' + wid : ''}).`, 'info');
+            clearInterval(pollTimer);
+            pollTimer = setInterval(poll, 4000);
+            poll();
+          } else {
+            localStorage.removeItem('rodrix_active_task_id');
+            // Intentar recuperar desde backend si existe alguna otra tarea activa
+            fetchPendingTasksFallback();
+          }
+        })
+        .catch(() => { fetchPendingTasksFallback(); });
+    } else {
+      fetchPendingTasksFallback();
+    }
+  } catch(e){}
+
+  function fetchPendingTasksFallback() {
+    fetch('/api/tasks/pending')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.pending_tasks && data.pending_tasks.length > 0) {
+          const first = data.pending_tasks[0];
+          currentTask = first.task_id;
+          try { localStorage.setItem('rodrix_active_task_id', currentTask); } catch(e){}
+          setBusy(true);
+          startProgress();
+          const wid = first.work_id || '';
+          logLine(`[Reanudación]: Tarea activa recuperada desde servidor (${first.task_id}${wid ? ' | Work ID: ' + wid : ''}).`, 'info');
+          clearInterval(pollTimer);
+          pollTimer = setInterval(poll, 4000);
+          poll();
+        }
+      })
+      .catch(() => {});
+  }
 });
 
 // --- 2. HERO PROMPT LIBRE INSPIRATION PILLS ---
