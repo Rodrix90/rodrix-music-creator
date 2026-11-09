@@ -17,7 +17,12 @@
   --bg:#0F0F17; --side:#1F1F2E; --card:#2C2C3A; --border:#3A3A4D;
   --accent:#5A67D8; --accent-dark:#3540A3; --ok:#34D399; --danger:#F87171;
   --text:#E0E0E6; --muted:#9A9AB0; --radius:10px;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
+
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;background:var(--bg);color:var(--text);overflow:hidden}
@@ -212,15 +217,15 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
   .logo{justify-content:center}
 }
 @media(max-width:760px){
-  body{overflow:auto;padding-bottom:65px}
+  body{overflow:auto;padding-bottom:calc(65px + env(safe-area-inset-bottom, 0px))}
   .app{display:flex;flex-direction:column;height:auto;min-height:100vh}
-  .sidebar{position:sticky;top:0;z-index:900;flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border-right:none;border-bottom:1px solid var(--border);background:#181824}
+  .sidebar{position:sticky;top:0;z-index:900;flex-direction:row;align-items:center;justify-content:space-between;padding-top:max(10px,calc(10px + env(safe-area-inset-top,0px)));padding-bottom:10px;padding-left:max(14px,calc(14px + env(safe-area-inset-left,0px)));padding-right:max(14px,calc(14px + env(safe-area-inset-right,0px)));border-right:none;border-bottom:1px solid var(--border);background:#181824}
   .logo{margin:0}
   .sidebar .nav{display:none !important}
   .side-foot{display:none !important}
   .mobile-top-actions{display:flex !important}
   .mobile-bottom-nav{display:flex !important}
-  .center{padding:14px 12px 90px;overflow:visible}
+  .center{padding:14px 12px calc(90px + env(safe-area-inset-bottom, 0px));overflow:visible}
 }
 
 /* ---------- PRESETS DE CULTO & LITURGIA ---------- */
@@ -871,6 +876,13 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
     padding: 0 24px;
   }
 }
+@media (min-width: 641px) and (max-width: 1100px) {
+  .preset-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+    gap: 12px !important;
+  }
+}
+
 @media (min-width: 761px) and (max-width: 1100px) {
   .global-mini-player {
     left: 72px;
@@ -2257,7 +2269,10 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding-top: max(16px, calc(16px + env(safe-area-inset-top, 0px))) !important;
+  padding-bottom: 16px !important;
+  padding-left: max(16px, calc(16px + env(safe-area-inset-left, 0px))) !important;
+  padding-right: max(16px, calc(16px + env(safe-area-inset-right, 0px))) !important;
   background: #1A1B28;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -2460,7 +2475,10 @@ html, body {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding-top: max(10px, calc(10px + env(safe-area-inset-top, 0px))) !important;
+    padding-bottom: 10px !important;
+    padding-left: max(14px, calc(14px + env(safe-area-inset-left, 0px))) !important;
+    padding-right: max(14px, calc(14px + env(safe-area-inset-right, 0px))) !important;
     border-right: none;
     border-bottom: 1px solid var(--border);
     background: #181824;
@@ -2468,6 +2486,46 @@ html, body {
     max-width: 100vw !important;
     box-sizing: border-box;
     overflow-x: hidden;
+  }
+
+  /* Presets en móviles estrechos: 1 tarjeta por fila, textos completos y legibles */
+  .preset-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin: 6px 0 16px !important;
+  }
+  .preset-card {
+    padding: 14px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .preset-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+  }
+  .preset-title {
+    font-size: 13.5px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+  .btn-preset-use {
+    padding: 6px 14px !important;
+    font-size: 11.5px !important;
+    flex-shrink: 0 !important;
+    min-height: 32px !important;
+  }
+  .preset-desc {
+    font-size: 11.5px !important;
+    line-height: 1.45 !important;
+    color: var(--muted) !important;
+  }
+  .preset-tag {
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
   }
 
   .logo {
