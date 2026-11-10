@@ -7182,37 +7182,54 @@ async function startLiveRecording() {
     // 1. Nodo fuente de audio del micrófono (crudo, ancho de banda completo de estudio)
     recSourceNode = recAudioCtx.createMediaStreamSource(recMediaStream);
 
-    // 2. Analyser para animación del osciloscopio (sin salida a altavoz)
+    // 2. Analyser para animación del osciloscopio
     const analyser = recAudioCtx.createAnalyser();
     analyser.fftSize = 256;
 
-    // 3. ScriptProcessor con buffer de 4096 para baja latencia y estabilidad de hilo en Android
+    // 3. ScriptProcessor con buffer de 4096 para captura fluida y baja latencia
     recScriptNode = recAudioCtx.createScriptProcessor(4096, 1, 1);
 
-    // 4. Nodo de Silencio MUTE aislado: Terminal sink para mantener activo el procesamiento
-    // ¡NUNCA conectar a recAudioCtx.destination! La conexión a destination en Android
-    // abre el flujo de hardware a los altavoces, provocando acoples, chasquidos y realimentación.
+    // 4. Nodo de Silencio MUTE: mantiene activo el reloj de procesamiento Web Audio
+    // garantizando la ejecución continua de onaudioprocess sin reproducir el micrófono en los altavoces
     const recMuteGain = recAudioCtx.createGain();
     recMuteGain.gain.value = 0.0;
 
-    // Conectar nodos: Mic -> [Analyser, ScriptProcessor] -> MuteGain (aislado de destination)
+    // Conectar nodos: Mic -> [Analyser, ScriptProcessor] -> MuteGain(0) -> Destination
     recSourceNode.connect(analyser);
     recSourceNode.connect(recScriptNode);
     recScriptNode.connect(recMuteGain);
-    // NOTA TÉCNICA: NO se conecta recMuteGain a recAudioCtx.destination para evitar retorno acústico en altavoces
+    recMuteGain.connect(recAudioCtx.destination);
 
     // Conectar medidor VU-Meter estéreo de emisión con audio real del micrófono
     startBroadcastVuMeter(recAudioCtx, recSourceNode);
 
+    console.log('[REC DIAG] AudioContext estado:', recAudioCtx.state, '| sampleRate:', recSampleRate);
+    const audioTracks = recMediaStream.getAudioTracks();
+    console.log('[REC DIAG] MediaStream activo:', recMediaStream.active, '| Pistas:', audioTracks.length, audioTracks.map(t => `${t.label || 'mic'} (enabled=${t.enabled}, state=${t.readyState})`).join(', '));
+
     let isFirstChunk = isPunchInResume || (recPcmChunks.length === 0);
+    let processCallbackCount = 0;
+    let nonZeroSamplesSeen = 0;
+
     recScriptNode.onaudioprocess = (e) => {
       if (!recIsRecording) return;
+      processCallbackCount++;
+
+      // Silenciar explícitamente todos los canales de salida para garantizar silencio absoluto hacia destination
+      for (let ch = 0; ch < e.outputBuffer.numberOfChannels; ch++) {
+        e.outputBuffer.getChannelData(ch).fill(0);
+      }
+
       const inputData = e.inputBuffer.getChannelData(0);
       const chunk = new Float32Array(inputData);
 
-      // Silenciar explícitamente el buffer de salida para garantizar cero emisión a altavoces
-      const outputData = e.outputBuffer.getChannelData(0);
-      outputData.fill(0);
+      // Verificación de presencia de señal de audio real
+      for (let i = 0; i < chunk.length; i++) {
+        if (Math.abs(chunk[i]) > 0.0001) {
+          nonZeroSamplesSeen++;
+          break;
+        }
+      }
 
       // Micro fade-in de 12ms en el primer bloque para evitar clics o pops al iniciar / pisar
       if (isFirstChunk) {
@@ -7223,18 +7240,13 @@ async function startLiveRecording() {
         isFirstChunk = false;
       }
 
-      // Prevención de clipping digital / saturación en picos vocales extremos (> 0.98)
-      for (let i = 0; i < chunk.length; i++) {
-        const s = chunk[i];
-        if (s > 0.98) {
-          chunk[i] = 0.98 + (s - 0.98) * 0.1;
-        } else if (s < -0.98) {
-          chunk[i] = -0.98 + (s + 0.98) * 0.1;
-        }
-      }
-
       recPcmChunks.push(chunk);
       recDurationMs += (chunk.length / recSampleRate) * 1000;
+
+      // Diagnóstico seguro periódico cada ~1 segundo en consola
+      if (processCallbackCount % 11 === 1) {
+        console.log(`[REC AUDIO] Callback #${processCallbackCount} | Chunks: ${recPcmChunks.length} | Tiempo: ${formatRecTime(recDurationMs)} | Audio activo: ${nonZeroSamplesSeen > 0}`);
+      }
     };
 
     // Estados de UI

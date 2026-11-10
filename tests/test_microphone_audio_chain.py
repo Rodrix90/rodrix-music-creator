@@ -9,52 +9,59 @@ INDEX_HTML = os.path.join(REPO_DIR, "index.html")
 class TestMicrophoneAudioChain(unittest.TestCase):
     """
     Verifica que la cadena de captura del micrófono en index.html cumpla estrictamente
-    con los requisitos de seguridad acústica de Android:
-    1. 0 conexiones hacia audioContext.destination (evita realimentación / retorno por altavoz).
-    2. Buffer de baja latencia (4096).
-    3. Silenciado explícito de outputBuffer en onaudioprocess.
-    4. Soft limiter contra clipping digital (> 0.98).
+    con los requisitos de captura continua y seguridad acústica de Android:
+    1. Conexión de recMuteGain con ganancia 0.0 hacia audioContext.destination para mantener
+       activo el ciclo de reloj Web Audio en Chromium/Android WebView sin fuga sonora.
+    2. Buffer de 4096 para baja latencia y estabilidad de hilo en Android.
+    3. Silenciado explícito de todos los canales de outputBuffer en onaudioprocess.
+    4. Rango dinámico vocal natural preservado (sin limitador digital intrusivo).
     5. Pausa de reproductores activos antes de iniciar grabación.
     6. Liberación de pistas del MediaStream al aplicar o reiniciar.
+    7. Medidor VU-Meter aislado de altavoces.
+    8. Diagnósticos seguros en consola.
     """
 
     def setUp(self):
         with open(INDEX_HTML, "r", encoding="utf-8") as f:
             self.content = f.read()
 
-    def test_01_no_connection_to_audio_context_destination(self):
-        """1. Garantizar que ninguna salida del micrófono se conecte a audioContext.destination."""
-        # Buscar conexiones a .destination en la función startLiveRecording
+    def test_01_web_audio_active_clock_chain(self):
+        """1. Verificar que la cadena Web Audio mantenga el reloj activo vía MuteGain(0) -> destination."""
         start_rec_match = re.search(r"async function startLiveRecording\(\)\s*\{(.*?)\n\}", self.content, re.DOTALL)
         self.assertIsNotNone(start_rec_match, "startLiveRecording no encontrada")
         func_body = start_rec_match.group(1)
 
-        # No debe haber ninguna llamada a .connect(recAudioCtx.destination) ni a destination
-        active_destination_calls = [
-            line for line in func_body.splitlines()
-            if ".connect(" in line and "destination" in line and not line.strip().startswith("//")
-        ]
-        self.assertEqual(
-            len(active_destination_calls), 0,
-            f"Se encontró conexión activa hacia destination que provocaría feedback: {active_destination_calls}"
-        )
+        # Conexiones requeridas
+        self.assertIn("recSourceNode.connect(analyser);", func_body)
+        self.assertIn("recSourceNode.connect(recScriptNode);", func_body)
+        self.assertIn("recScriptNode.connect(recMuteGain);", func_body)
+        self.assertIn("recMuteGain.connect(recAudioCtx.destination);", func_body)
+        self.assertIn("recMuteGain.gain.value = 0.0;", func_body)
 
     def test_02_script_processor_buffer_size(self):
         """2. ScriptProcessor configurado con 4096 para baja latencia y estabilidad en Android."""
         self.assertIn("recAudioCtx.createScriptProcessor(4096, 1, 1)", self.content)
 
     def test_03_output_buffer_zeroed(self):
-        """3. El buffer de salida del ScriptProcessor se llena de ceros (silencio digital)."""
-        self.assertIn("outputData.fill(0)", self.content)
+        """3. El buffer de salida del ScriptProcessor se llena de ceros en todos los canales."""
+        start_rec_match = re.search(r"async function startLiveRecording\(\)\s*\{(.*?)\n\}", self.content, re.DOTALL)
+        self.assertIsNotNone(start_rec_match)
+        func_body = start_rec_match.group(1)
+        self.assertIn("e.outputBuffer.numberOfChannels", func_body)
+        self.assertIn(".fill(0)", func_body)
 
-    def test_04_soft_clipping_prevention(self):
-        """4. Limitador suave de picos (> 0.98) para evitar saturación y clipping digital."""
-        self.assertIn("0.98 + (s - 0.98) * 0.1", self.content)
-        self.assertIn("-0.98 + (s + 0.98) * 0.1", self.content)
+    def test_04_no_intrusive_limiter(self):
+        """4. Rango dinámico vocal natural preservado (sin limitador que deforme armónicos o dinámica)."""
+        start_rec_match = re.search(r"async function startLiveRecording\(\)\s*\{(.*?)\n\}", self.content, re.DOTALL)
+        self.assertIsNotNone(start_rec_match)
+        func_body = start_rec_match.group(1)
+        self.assertNotIn("0.98 + (s - 0.98)", func_body)
+        self.assertNotIn("-0.98 + (s + 0.98)", func_body)
 
     def test_05_pause_existing_playback_before_recording(self):
         """5. Se pausa cualquier reproductor activo (GlobalAudioController y WaveSurfer) antes de grabar."""
         start_rec_match = re.search(r"async function startLiveRecording\(\)\s*\{(.*?)\n\}", self.content, re.DOTALL)
+        self.assertIsNotNone(start_rec_match)
         func_body = start_rec_match.group(1)
         self.assertIn("GlobalAudioController.pause()", func_body)
         self.assertIn("recWs.pause()", func_body)
@@ -77,6 +84,14 @@ class TestMicrophoneAudioChain(unittest.TestCase):
         self.assertIsNotNone(vu_match)
         vu_body = vu_match.group(1)
         self.assertNotIn("destination", vu_body)
+
+    def test_08_safe_diagnostic_logs_present(self):
+        """8. Diagnósticos seguros sin secretos presentes en el flujo de grabación."""
+        start_rec_match = re.search(r"async function startLiveRecording\(\)\s*\{(.*?)\n\}", self.content, re.DOTALL)
+        self.assertIsNotNone(start_rec_match)
+        func_body = start_rec_match.group(1)
+        self.assertIn("[REC DIAG]", func_body)
+        self.assertIn("[REC AUDIO]", func_body)
 
 if __name__ == "__main__":
     unittest.main()
