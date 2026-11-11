@@ -36,6 +36,11 @@ except ImportError:
     get_music_engine = None
     engine_registry = None
 
+try:
+    import studio_virtual_catalog
+except ImportError:
+    studio_virtual_catalog = None
+
 # Cargar variables de entorno en desarrollo local (en Render se inyectan en el entorno del contenedor)
 if not os.environ.get("RENDER"):
     load_dotenv()
@@ -2827,6 +2832,8 @@ def build_prioritized_style(
     is_solo_mode: bool = False,
     max_chars: int = 1000,
     raw_user_style: str = "",
+    studio_selections: Optional[dict] = None,
+    studio_solo_mode: Optional[str] = None,
 ) -> dict:
     """
     Ensambla el campo 'style' respetando estrictamente la prioridad de 6 niveles dentro de 1.000 caracteres:
@@ -2949,7 +2956,13 @@ def build_prioritized_style(
     raw_combined = ", ".join(all_tokens)
     raw_len = len(raw_combined)
 
-    if raw_len <= max_chars:
+    has_active_studio = bool(
+        studio_virtual_catalog
+        and studio_selections
+        and studio_virtual_catalog.has_active_studio_selections(studio_selections)
+    )
+
+    if not has_active_studio and raw_len <= max_chars:
         return {
             "style": raw_combined,
             "raw_length": raw_len,
@@ -2957,9 +2970,11 @@ def build_prioritized_style(
             "truncated": False,
             "core_preserved": True,
             "dropped_secondary_count": 0,
+            "studio_profiles": None,
+            "compaction_notice": None,
         }
 
-    # Construir respetando Tiers 1-5 íntegramente y empaquetando Tier 6 hasta el límite de 1.000 caracteres
+    # Construir respetando Tiers 1-5 íntegramente y empaquetando Estudio Virtual + Tier 6 hasta max_chars
     selected: list[str] = []
     curr_len = 0
     for tok in core_tiers:
@@ -2969,6 +2984,30 @@ def build_prioritized_style(
             curr_len += extra
 
     core_preserved = (len(selected) == len(core_tiers))
+    remaining_budget = max(0, max_chars - curr_len - (2 if selected else 0))
+
+    studio_pack = None
+    studio_clauses_clean: list[str] = []
+    if has_active_studio:
+        studio_pack = studio_virtual_catalog.pack_studio_profiles_within_budget(
+            studio_selections,
+            available_budget=remaining_budget,
+            is_instrumental=is_instrumental,
+            solo_mode=studio_solo_mode,
+        )
+        # Intentar conservar máximo detalle si secondary_tier aún deja espacio; si no, priorizar Estudio Virtual
+        for clause in studio_pack.get("clauses", []):
+            cleaned_cl = sanitize_positive_style(clause, max_chars=max_chars)
+            for sub in _split_clean(cleaned_cl):
+                k = sub.lower()
+                if k and k not in seen_all:
+                    extra = len(sub) if not selected else len(sub) + 2
+                    if curr_len + extra <= max_chars:
+                        seen_all.add(k)
+                        selected.append(sub)
+                        studio_clauses_clean.append(sub)
+                        curr_len += extra
+
     dropped_secondary = 0
     for tok in secondary_tier:
         extra = len(tok) if not selected else len(tok) + 2
@@ -2979,13 +3018,22 @@ def build_prioritized_style(
             dropped_secondary += 1
 
     final_style = sanitize_positive_style(", ".join(selected), max_chars=max_chars)
+    raw_with_studio_len = raw_len + (len(studio_pack["joined_text"]) + 2 if (studio_pack and studio_pack.get("joined_text")) else 0)
+    was_compacted = bool(
+        dropped_secondary > 0
+        or (studio_pack and studio_pack.get("reduced_categories"))
+        or (studio_pack and studio_pack.get("omitted_categories"))
+        or len(final_style) < raw_with_studio_len
+    )
     return {
         "style": final_style,
-        "raw_length": raw_len,
+        "raw_length": raw_with_studio_len,
         "final_length": len(final_style),
-        "truncated": (dropped_secondary > 0 or len(final_style) < raw_len),
+        "truncated": was_compacted,
         "core_preserved": core_preserved,
         "dropped_secondary_count": dropped_secondary,
+        "studio_profiles": studio_pack,
+        "compaction_notice": studio_pack.get("notice") if studio_pack else None,
     }
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
@@ -3097,7 +3145,7 @@ async def api_engine_status(current_user: str = Depends(get_current_user)):
 @app.post("/api/preview_parameters")
 @app.post("/api/generation/preview-parameters")
 async def preview_parameters(
-    style: str = Form(...),
+    style: str = Form(""),
     lyrics: str = Form(""),
     title: str = Form(""),
     ignore_audio: bool = Form(False),
@@ -3122,6 +3170,12 @@ async def preview_parameters(
     active_preset: str = Form(""),
     is_public_domain: bool = Form(False),
     lyrics_mode: str = Form("custom"),
+    studio_drums: str = Form("auto"),
+    studio_guitar: str = Form("auto"),
+    studio_bass: str = Form("auto"),
+    studio_keyboard: str = Form("auto"),
+    studio_console: str = Form("auto"),
+    studio_mic: str = Form("auto"),
     current_user: str = Depends(get_current_user)
 ):
     """
@@ -3146,6 +3200,17 @@ async def preview_parameters(
     eff_skel = str(_val(skeleton_file, "") or "")
     eff_gender = str(_val(vocal_gender, "random") or "random")
 
+    studio_selections = None
+    if studio_virtual_catalog:
+        studio_selections = studio_virtual_catalog.normalize_studio_selections({
+            "drums": str(_val(studio_drums, "auto") or "auto"),
+            "guitars": str(_val(studio_guitar, "auto") or "auto"),
+            "basses": str(_val(studio_bass, "auto") or "auto"),
+            "keyboards": str(_val(studio_keyboard, "auto") or "auto"),
+            "consoles": str(_val(studio_console, "auto") or "auto"),
+            "microphones": str(_val(studio_mic, "auto") or "auto"),
+        })
+
     is_instrumental = (norm_lyrics_mode == "instrumental") or (not eff_inc_lyrics) or (eff_lyrics.strip().lower() == "[instrumental]")
     is_auto_lyrics = (norm_lyrics_mode == "auto") and not is_instrumental
 
@@ -3160,6 +3225,30 @@ async def preview_parameters(
         art_bass_slap=art_bass_slap,
         art_bass_pickup=art_bass_pickup
     )
+
+    solo_mode_preview = None
+    if is_instrumental:
+        if eff_preset == "guitar_solo":
+            solo_mode_preview = "guitar"
+        elif eff_preset == "bass_solo":
+            solo_mode_preview = "bass"
+        elif eff_preset == "piano_oracion":
+            solo_mode_preview = "piano"
+
+    style_build = build_prioritized_style(
+        genre_anchor=eff_cfg.get("meter_clause") or "",
+        bpm_tag=eff_cfg.get("bpm_tag") or "",
+        user_and_enriched_style=eff_style,
+        priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+        vocal_tag="",
+        is_instrumental=is_instrumental,
+        is_solo_mode=bool(solo_mode_preview),
+        max_chars=1000,
+        raw_user_style=eff_style,
+        studio_selections=studio_selections,
+        studio_solo_mode=solo_mode_preview,
+    )
+    computed_style = style_build["style"]
 
     if is_instrumental:
         final_lyrics = "[Instrumental]"
@@ -3184,7 +3273,13 @@ async def preview_parameters(
         "is_instrumental": is_instrumental,
         "custom_mode": custom_mode,
         "prompt_preview": prompt_preview,
-        "style_preview": eff_style[:200] + ("..." if len(eff_style) > 200 else ""),
+        "style_preview": computed_style[:200] + ("..." if len(computed_style) > 200 else ""),
+        "style_full_preview": computed_style,
+        "style_length": len(computed_style),
+        "style_max_chars": 1000,
+        "studio_profiles": style_build.get("studio_profiles"),
+        "compaction_notice": style_build.get("compaction_notice"),
+        "honesty_notice": studio_virtual_catalog.STUDIO_PROFILE_HONESTY_NOTICE if studio_virtual_catalog else "",
         "exclude_preview": eff_excl[:150] + ("..." if len(eff_excl) > 150 else "") if eff_excl else "Ninguna",
         "model": eff_model,
         "target_bpm": eff_cfg.get("effective_bpm") or eff_bpm or 0,
@@ -3247,7 +3342,7 @@ async def preview_parameters_get(
 @app.post("/api/transform")
 async def transform_audio(
     background_tasks: BackgroundTasks,
-    style: str = Form(...),
+    style: str = Form(""),
     lyrics: str = Form(...),
     title: str = Form(...),
     audio: UploadFile = File(None),
@@ -3275,6 +3370,12 @@ async def transform_audio(
     preserve_original_audio: bool = Form(False),
     client_operation_id: str = Form(""),
     lyrics_mode: str = Form("custom"),
+    studio_drums: str = Form("auto"),
+    studio_guitar: str = Form("auto"),
+    studio_bass: str = Form("auto"),
+    studio_keyboard: str = Form("auto"),
+    studio_console: str = Form("auto"),
+    studio_mic: str = Form("auto"),
     current_user: str = Depends(get_current_user)
 ):
     try:
@@ -3411,6 +3512,20 @@ async def transform_audio(
             if audio_influence < 50:
                 audio_influence = 65
 
+        studio_selections = (
+            studio_virtual_catalog.normalize_studio_selections({
+                "drums": studio_drums,
+                "guitars": studio_guitar,
+                "basses": studio_bass,
+                "keyboards": studio_keyboard,
+                "consoles": studio_console,
+                "microphones": studio_mic,
+            })
+            if studio_virtual_catalog
+            else None
+        )
+        studio_sig = json.dumps(studio_selections, sort_keys=True) if studio_selections else ""
+
         # Prevención de solicitudes duplicadas concurrentes por cliente / operación
         if client_operation_id:
             op_key = f"{current_user}:{client_operation_id}"
@@ -3421,7 +3536,7 @@ async def transform_audio(
                 content_hash = hashlib.sha256(audio_sample).hexdigest()
             else:
                 content_hash = "no_audio"
-            payload_str = f"{current_user}:{title}:{style}:{lyrics_mode}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}"
+            payload_str = f"{current_user}:{title}:{style}:{lyrics_mode}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}:{studio_sig}"
             op_key = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
         now_ts = time.time()
@@ -3447,6 +3562,7 @@ async def transform_audio(
             "is_public_domain": is_public_domain,
             "audio_filename": audio_filename or "N/A",
             "model": model,
+            "studio_profiles": studio_selections,
             "created_at": now_ts
         }
         save_task_persistent(task_id, TASKS[task_id])
@@ -3459,7 +3575,8 @@ async def transform_audio(
             include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
             style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain,
             target_bpm, hihat_mode, art_crash_toms, art_splash_ride, art_tom_grooves,
-            art_bass_slap, art_bass_pickup, active_preset, lyrics_mode, preserve_original_audio
+            art_bass_slap, art_bass_pickup, active_preset, lyrics_mode, preserve_original_audio,
+            studio_selections
         )
 
         return {"status": "started", "task_id": task_id}
@@ -4840,7 +4957,7 @@ async def run_transform_task(
     is_public_domain=False, target_bpm=0, hihat_mode="", art_crash_toms=None,
     art_splash_ride=None, art_tom_grooves=None, art_bass_slap=None,
     art_bass_pickup=None, active_preset="", lyrics_mode="custom",
-    preserve_original_audio=False
+    preserve_original_audio=False, studio_selections=None
 ):
     def log_msg(msg):
         import datetime
@@ -5519,9 +5636,28 @@ async def run_transform_task(
         # ----------
         # Rigorous Style Exclusion (Negative Prompting) & Priority Style Assembly
         # ----------
+        active_studio_solo = (
+            "drums" if is_drum_solo else (
+                "guitar" if is_guitar_solo else (
+                    "bass" if is_bass_solo else ("piano" if is_solo_piano_prayer else None)
+                )
+            )
+        )
+        norm_studio_selections = (
+            studio_virtual_catalog.normalize_studio_selections(studio_selections)
+            if (studio_virtual_catalog and studio_selections)
+            else None
+        )
+        studio_core_preview = (
+            studio_virtual_catalog.get_studio_core_tags_preview(norm_studio_selections, solo_mode=active_studio_solo)
+            if (studio_virtual_catalog and norm_studio_selections)
+            else []
+        )
+        pos_for_exclusions = ", ".join([p for p in ([style] + studio_core_preview) if p and str(p).strip()])
+
         neg_final_str, provider_tags_str, active_critical = resolve_negative_exclusions(
             exclude_styles=exclude_styles,
-            positive_style=style,
+            positive_style=pos_for_exclusions,
             is_solo_piano_prayer=is_solo_piano_prayer,
             is_guitar_solo=is_guitar_solo,
             is_bass_solo=is_bass_solo,
@@ -5546,6 +5682,8 @@ async def run_transform_task(
                 is_instrumental=True,
                 is_solo_mode=True,
                 max_chars=1000,
+                studio_selections=norm_studio_selections,
+                studio_solo_mode="drums",
             )
         elif is_guitar_solo:
             clean_style = re.sub(
@@ -5563,6 +5701,8 @@ async def run_transform_task(
                 is_instrumental=True,
                 is_solo_mode=True,
                 max_chars=1000,
+                studio_selections=norm_studio_selections,
+                studio_solo_mode="guitar",
             )
         elif is_bass_solo:
             clean_style = re.sub(
@@ -5580,6 +5720,8 @@ async def run_transform_task(
                 is_instrumental=True,
                 is_solo_mode=True,
                 max_chars=1000,
+                studio_selections=norm_studio_selections,
+                studio_solo_mode="bass",
             )
         elif is_solo_piano_prayer:
             clean_style = re.sub(
@@ -5597,6 +5739,8 @@ async def run_transform_task(
                 is_instrumental=True,
                 is_solo_mode=True,
                 max_chars=1000,
+                studio_selections=norm_studio_selections,
+                studio_solo_mode="piano",
             )
         else:
             active_vocal_tag = "" if is_instrumental else vocal_tag
@@ -5610,11 +5754,15 @@ async def run_transform_task(
                 is_solo_mode=False,
                 max_chars=1000,
                 raw_user_style=raw_style_before_enrich,
+                studio_selections=norm_studio_selections,
+                studio_solo_mode=None,
             )
 
         clean_positive_style = style_build["style"]
         style = clean_positive_style
 
+        if style_build.get("compaction_notice"):
+            log_msg(style_build["compaction_notice"])
         if style_build["truncated"]:
             log_msg(
                 f"Compactación prioritaria de style aplicada ({style_build['raw_length']} -> {style_build['final_length']}/1000 chars): "
@@ -8966,6 +9114,17 @@ async def api_amps_catalog():
     """Devuelve el catálogo de los 5 amplificadores virtuales y gabinetes de estudio (IR)."""
     return JSONResponse(
         content=virtual_amp_engine.get_amp_catalog_payload(),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+
+@app.get("/api/studio-profiles/catalog")
+async def api_studio_profiles_catalog():
+    """Devuelve el catálogo centralizado de los 6 selectores independientes del Estudio Virtual."""
+    if not studio_virtual_catalog:
+        raise HTTPException(status_code=503, detail="Catálogo del Estudio Virtual no disponible.")
+    return JSONResponse(
+        content=studio_virtual_catalog.get_studio_virtual_catalog_payload(),
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
     )
 
