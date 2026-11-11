@@ -124,6 +124,64 @@ LAST_GDRIVE_ERROR = {"error": None, "timestamp": None}
 LAST_GDRIVE_TASKS_SYNC = {"ok": None, "file_id": None, "error": None, "timestamp": None}
 LAST_GDRIVE_LIBRARY_SYNC = {"ok": None, "file_id": None, "tracks_count": 0, "error": None, "timestamp": None}
 
+GDRIVE_REQUIRED_DRIVE_SCOPES = (
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
+)
+GDRIVE_ALLOWED_ORIGINS = frozenset({"drive_refresh", "admin_gdrive_link"})
+LAST_GDRIVE_TOKEN_INFO = {
+    "token_origin": None,
+    "has_drive_scope": False,
+    "drive_permissions_verified": False,
+    "token_expires_at": None,
+    "refresh_source": None,
+    "scope": None,
+    "verified_at": None,
+}
+
+
+def _parse_scope_list(scope_value) -> list:
+    if not scope_value:
+        return []
+    raw_items = scope_value if isinstance(scope_value, (list, tuple, set)) else str(scope_value).split()
+    parsed = []
+    seen = set()
+    for item in raw_items:
+        norm = str(item or "").strip()
+        if norm and norm not in seen:
+            seen.add(norm)
+            parsed.append(norm)
+    return parsed
+
+
+def _normalize_scope_string(scope_value) -> str:
+    return " ".join(_parse_scope_list(scope_value))
+
+
+def _has_drive_write_scope(scope_value) -> bool:
+    scopes = {s.lower() for s in _parse_scope_list(scope_value)}
+    return any(req in scopes for req in GDRIVE_REQUIRED_DRIVE_SCOPES)
+
+
+def _refresh_token_fingerprint(refresh_token: Optional[str]) -> Optional[str]:
+    rt = (refresh_token or "").strip()
+    if not rt:
+        return None
+    return hashlib.sha256(rt.encode("utf-8")).hexdigest()[:16]
+
+
+def _has_scope_insufficiency_error(status_code: int, resp_text: str) -> bool:
+    if status_code != 403:
+        return False
+    low = (resp_text or "").lower()
+    return (
+        "access_token_scope_insufficient" in low
+        or "insufficient authentication scopes" in low
+        or "insufficientpermissions" in low
+        or "insufficient permissions" in low
+    )
+
+
 def _normalize_owner_email(email: Optional[str]) -> str:
     return (email or "").strip().lower()
 
@@ -857,26 +915,40 @@ def sanitize_logs_text(text: str) -> str:
         return ""
     # Redactar claves estilo sk- (Udio, OpenAI, etc.)
     s = re.sub(r'sk-[a-zA-Z0-9_\-]{8,}', '[PROTECTED_API_KEY]', text)
-    # Redactar tokens Bearer
+    # Redactar tokens Bearer y Google OAuth access tokens (ya29.*)
     s = re.sub(r'Bearer\s+[a-zA-Z0-9_\-\.]{15,}', 'Bearer [PROTECTED_TOKEN]', s, flags=re.IGNORECASE)
+    s = re.sub(r'ya29\.[a-zA-Z0-9_\-\.]{10,}', '[PROTECTED_ACCESS_TOKEN]', s)
     # Redactar secrets y tokens de Google / OAuth
     s = re.sub(r'GOCSPX-[a-zA-Z0-9_\-]{15,}', '[PROTECTED_GOOGLE_SECRET]', s)
     s = re.sub(r'1//[a-zA-Z0-9_\-]{10,}', '[PROTECTED_REFRESH_TOKEN]', s)
     s = re.sub(r'(client_secret|refresh_token|access_token|api_key|token|secret)[\'":=\s]+([a-zA-Z0-9_\-\./]{8,})', r'\1=[PROTECTED]', s, flags=re.IGNORECASE)
     return s
 
+def _write_gdrive_tokens_file(data: dict):
+    tmp_file = f"{GDRIVE_TOKEN_FILE}.tmp_{uuid.uuid4().hex}"
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp_file, GDRIVE_TOKEN_FILE)
+
 def load_gdrive_tokens():
     tokens = {}
     if os.path.exists(GDRIVE_TOKEN_FILE):
         try:
             with open(GDRIVE_TOKEN_FILE, "r", encoding="utf-8") as f:
-                tokens = json.load(f)
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    tokens = loaded
         except Exception as e:
-            print(f"[GDRIVE] Error leyendo {GDRIVE_TOKEN_FILE}: {e}")
+            print(f"[GDRIVE] Error leyendo {GDRIVE_TOKEN_FILE}: {sanitize_logs_text(str(e))}")
     # Prioridad absoluta al refresh token inyectado en variables de entorno (Render)
     env_refresh = os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip()
     if env_refresh:
         tokens["refresh_token"] = env_refresh
+        tokens["refresh_source"] = "env:GOOGLE_DRIVE_REFRESH_TOKEN"
+    elif (tokens.get("refresh_token") or "").strip():
+        tokens["refresh_source"] = "file:gdrive_token.json"
+    else:
+        tokens["refresh_source"] = None
     return tokens
 
 def save_gdrive_tokens(new_tokens):
@@ -885,29 +957,131 @@ def save_gdrive_tokens(new_tokens):
         if os.path.exists(GDRIVE_TOKEN_FILE):
             try:
                 with open(GDRIVE_TOKEN_FILE, "r", encoding="utf-8") as f:
-                    current = json.load(f)
+                    loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        current = loaded
             except Exception:
                 current = {}
-        current.update(new_tokens)
-        tmp_file = f"{GDRIVE_TOKEN_FILE}.tmp_{uuid.uuid4().hex}"
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(current, f, indent=2)
-        os.replace(tmp_file, GDRIVE_TOKEN_FILE)
+        clean_updates = {k: v for k, v in (new_tokens or {}).items() if k != "refresh_source"}
+        current.update(clean_updates)
+        _write_gdrive_tokens_file(current)
     except Exception as e:
-        print(f"[GDRIVE] Error guardando tokens locales: {e}")
+        print(f"[GDRIVE] Error guardando tokens locales: {sanitize_logs_text(str(e))}")
+
+def _sync_last_gdrive_token_info(tokens: dict, verified: bool):
+    scope_str = _normalize_scope_string((tokens or {}).get("scope"))
+    origin = (tokens or {}).get("token_origin")
+    has_scope = _has_drive_write_scope(scope_str)
+    LAST_GDRIVE_TOKEN_INFO.update({
+        "token_origin": origin,
+        "has_drive_scope": has_scope,
+        "drive_permissions_verified": bool(verified and has_scope and origin in GDRIVE_ALLOWED_ORIGINS),
+        "token_expires_at": (tokens or {}).get("expires_at"),
+        "refresh_source": (tokens or {}).get("refresh_source"),
+        "scope": scope_str or None,
+        "verified_at": (tokens or {}).get("verified_at"),
+    })
+
+def invalidate_cached_gdrive_access_token(reason: str = ""):
+    """Invalida únicamente el access token cacheado sin eliminar ni sobrescribir el refresh token de Drive."""
+    try:
+        if os.path.exists(GDRIVE_TOKEN_FILE):
+            try:
+                with open(GDRIVE_TOKEN_FILE, "r", encoding="utf-8") as f:
+                    current = json.load(f)
+                if not isinstance(current, dict):
+                    current = {}
+            except Exception:
+                current = {}
+            changed = False
+            for k in ("access_token", "expires_at", "token_origin", "scope", "refresh_fingerprint", "verified_at"):
+                if k in current:
+                    current.pop(k, None)
+                    changed = True
+            if changed:
+                _write_gdrive_tokens_file(current)
+    except Exception as e:
+        print(f"[GDRIVE] Error invalidando cache local de access token: {sanitize_logs_text(str(e))}")
+
+    tokens_after = load_gdrive_tokens()
+    LAST_GDRIVE_TOKEN_INFO.update({
+        "token_origin": None,
+        "has_drive_scope": False,
+        "drive_permissions_verified": False,
+        "token_expires_at": None,
+        "refresh_source": tokens_after.get("refresh_source"),
+        "scope": None,
+        "verified_at": None,
+    })
+    if reason:
+        print(f"[GDRIVE AUTH] Access token cacheado invalidado ({sanitize_logs_text(reason)}). Refresh token intacto.")
+
+async def _fetch_google_token_scope(access_token: str, client: Optional[httpx.AsyncClient] = None) -> Optional[str]:
+    if not access_token:
+        return None
+    try:
+        async def _query(c: httpx.AsyncClient):
+            return await c.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"access_token": access_token},
+            )
+        if client is not None:
+            resp = await _query(client)
+        else:
+            async with httpx.AsyncClient(timeout=10.0) as tmp_client:
+                resp = await _query(tmp_client)
+        if resp.status_code == 200:
+            info = resp.json()
+            if isinstance(info, dict):
+                return _normalize_scope_string(info.get("scope"))
+        return None
+    except Exception as e:
+        print(f"[GDRIVE AUTH] No se pudo verificar scope del token: {sanitize_logs_text(str(e))}")
+        return None
+
+def _record_and_handle_gdrive_auth_error(status_code: int, resp_text: str, action: str = ""):
+    err_clean = sanitize_logs_text(resp_text)
+    print(f"[GDRIVE ERROR AUTENTICACIÓN] {status_code} ({action}): {err_clean}")
+    LAST_GDRIVE_ERROR["error"] = f"Error {status_code}: {err_clean}"
+    LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    if status_code == 401 or _has_scope_insufficiency_error(status_code, resp_text):
+        invalidate_cached_gdrive_access_token(f"HTTP {status_code} en {action}")
 
 async def gdrive_get_access_token():
     if os.environ.get("RODRIX_DISABLE_GDRIVE_NETWORK", "").strip() == "1":
         return None
     tokens = load_gdrive_tokens()
-    refresh_token = tokens.get("refresh_token")
+    refresh_token = (tokens.get("refresh_token") or "").strip()
+    refresh_source = tokens.get("refresh_source")
     if not refresh_token:
+        _sync_last_gdrive_token_info(tokens, verified=False)
         return None
 
-    access_token = tokens.get("access_token")
-    expires_at = tokens.get("expires_at", 0)
-    if access_token and time.time() < (expires_at - 60):
-        return access_token
+    expected_fp = _refresh_token_fingerprint(refresh_token)
+    access_token = (tokens.get("access_token") or "").strip()
+    try:
+        expires_at = float(tokens.get("expires_at") or 0)
+    except (TypeError, ValueError):
+        expires_at = 0.0
+    cached_origin = tokens.get("token_origin")
+    cached_scope = _normalize_scope_string(tokens.get("scope"))
+    cached_fp = tokens.get("refresh_fingerprint")
+
+    if access_token:
+        invalid_reason = None
+        if cached_origin not in GDRIVE_ALLOWED_ORIGINS:
+            invalid_reason = f"origen no autorizado o heredado ({cached_origin})"
+        elif not _has_drive_write_scope(cached_scope):
+            invalid_reason = "sin scope verificado de Google Drive (drive.file/drive)"
+        elif not cached_fp or cached_fp != expected_fp:
+            invalid_reason = "no corresponde al refresh_token de Drive activo"
+        elif time.time() >= (expires_at - 60):
+            invalid_reason = "access token expirado"
+
+        if not invalid_reason:
+            _sync_last_gdrive_token_info(tokens, verified=True)
+            return access_token
+        invalidate_cached_gdrive_access_token(invalid_reason)
 
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
     if not client_secret:
@@ -927,22 +1101,60 @@ async def gdrive_get_access_token():
             )
             if resp.status_code == 200:
                 data = resp.json()
-                new_token = data.get("access_token")
-                expires_in = data.get("expires_in", 3600)
+                new_token = (data.get("access_token") or "").strip()
+                if not new_token:
+                    LAST_GDRIVE_ERROR["error"] = "Respuesta OAuth sin access_token válido"
+                    LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    _sync_last_gdrive_token_info({"refresh_source": refresh_source}, verified=False)
+                    return None
+
+                try:
+                    expires_in = float(data.get("expires_in", 3600))
+                except (TypeError, ValueError):
+                    expires_in = 3600.0
+
+                granted_scope = _normalize_scope_string(data.get("scope"))
+                if not granted_scope:
+                    verified_scope = await _fetch_google_token_scope(new_token, client=client)
+                    if verified_scope is not None:
+                        granted_scope = verified_scope
+
+                if not _has_drive_write_scope(granted_scope):
+                    reason = (
+                        "ACCESS_TOKEN_SCOPE_INSUFFICIENT: El access token obtenido no incluye permisos de Google Drive (drive.file/drive)."
+                        if granted_scope
+                        else "Permisos de Google Drive no verificables en la respuesta OAuth (/token y /tokeninfo sin scope de Drive)."
+                    )
+                    print(f"[GDRIVE CRÍTICO] {reason}")
+                    invalidate_cached_gdrive_access_token(reason)
+                    LAST_GDRIVE_ERROR["error"] = reason
+                    LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    return None
+
+                rotated_rt = (data.get("refresh_token") or "").strip()
+                active_rt = rotated_rt if (rotated_rt and refresh_source != "env:GOOGLE_DRIVE_REFRESH_TOKEN") else refresh_token
+                now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                new_expires_at = time.time() + expires_in
                 save_data = {
                     "access_token": new_token,
-                    "expires_at": time.time() + expires_in
+                    "expires_at": new_expires_at,
+                    "token_origin": "drive_refresh",
+                    "scope": granted_scope,
+                    "refresh_fingerprint": _refresh_token_fingerprint(active_rt),
+                    "verified_at": now_iso,
                 }
-                if data.get("refresh_token"):
-                    save_data["refresh_token"] = data.get("refresh_token")
+                if rotated_rt and refresh_source != "env:GOOGLE_DRIVE_REFRESH_TOKEN":
+                    save_data["refresh_token"] = rotated_rt
                 save_gdrive_tokens(save_data)
                 LAST_GDRIVE_ERROR["error"] = None
-                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                LAST_GDRIVE_ERROR["timestamp"] = now_iso
+                _sync_last_gdrive_token_info({**save_data, "refresh_source": refresh_source}, verified=True)
                 return new_token
             else:
                 resp_text = resp.text
+                invalidate_cached_gdrive_access_token(f"Error OAuth refresh HTTP {resp.status_code}")
                 if "invalid_grant" in resp_text.lower():
-                    print(f"[GDRIVE CRÍTICO] Error de autenticación 'invalid_grant': El refresh token ha expirado o fue revocado por Google. Se requiere re-autenticación en /login.")
+                    print(f"[GDRIVE CRÍTICO] Error de autenticación 'invalid_grant': El refresh token ha expirado o fue revocado por Google. Se requiere re-autenticación administrativa en /api/admin/gdrive/link.")
                     LAST_GDRIVE_ERROR["error"] = "invalid_grant: El refresh token expiró o fue revocado por Google."
                 else:
                     err_clean = sanitize_logs_text(resp_text)
@@ -955,6 +1167,7 @@ async def gdrive_get_access_token():
         print(f"[GDRIVE] Excepción al contactar token endpoint: {err_clean}")
         LAST_GDRIVE_ERROR["error"] = f"Excepción de conexión: {err_clean}"
         LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        _sync_last_gdrive_token_info({"refresh_source": refresh_source}, verified=False)
     return None
 
 async def gdrive_find_file(filename, folder_id=GDRIVE_FOLDER_ID, token=None):
@@ -977,10 +1190,7 @@ async def gdrive_find_file(filename, folder_id=GDRIVE_FOLDER_ID, token=None):
                         print(f"[GDRIVE DEDUPLICACIÓN] Múltiples copias detectadas para '{filename}' ({len(files)} copias). Usando la más reciente ({files[0]['id']}).")
                     return files[0]
             elif resp.status_code in [401, 403]:
-                err_clean = sanitize_logs_text(resp.text)
-                print(f"[GDRIVE ERROR AUTENTICACIÓN] {resp.status_code} buscando {filename}: {err_clean}")
-                LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
-                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                _record_and_handle_gdrive_auth_error(resp.status_code, resp.text, f"buscar {filename}")
     except Exception as e:
         print(f"[GDRIVE] Error buscando {filename}: {e}")
     return None
@@ -1016,10 +1226,13 @@ async def _perform_resumable_upload(client, filename, content_bytes, mime_type, 
                 if init_resp.status_code == 200:
                     session_uri = init_resp.headers.get("Location")
                 elif init_resp.status_code in [400, 401, 403, 404]:
-                    err_clean = sanitize_logs_text(init_resp.text)
-                    print(f"[GDRIVE ERROR PERMANENTE] {init_resp.status_code} al iniciar sesión resumible: {err_clean}")
-                    LAST_GDRIVE_ERROR["error"] = f"Error {init_resp.status_code}: {err_clean}"
-                    LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    if init_resp.status_code in [401, 403]:
+                        _record_and_handle_gdrive_auth_error(init_resp.status_code, init_resp.text, f"iniciar resumible {filename}")
+                    else:
+                        err_clean = sanitize_logs_text(init_resp.text)
+                        print(f"[GDRIVE ERROR PERMANENTE] {init_resp.status_code} al iniciar sesión resumible: {err_clean}")
+                        LAST_GDRIVE_ERROR["error"] = f"Error {init_resp.status_code}: {err_clean}"
+                        LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                     return None
                 else:
                     print(f"[GDRIVE AVISO] Fallo al iniciar sesión resumible ({init_resp.status_code}), reintento {attempt+1}/{max_retries}")
@@ -1074,10 +1287,13 @@ async def _perform_resumable_upload(client, filename, content_bytes, mime_type, 
             elif put_resp.status_code == 308:
                 print(f"[GDRIVE RESUMABLE] Subida parcial registrada (308). Reanudando en próximo intento...")
             elif put_resp.status_code in [400, 401, 403, 404]:
-                err_clean = sanitize_logs_text(put_resp.text)
-                print(f"[GDRIVE ERROR PERMANENTE] {put_resp.status_code} al subir fragmento: {err_clean}")
-                LAST_GDRIVE_ERROR["error"] = f"Error {put_resp.status_code}: {err_clean}"
-                LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                if put_resp.status_code in [401, 403]:
+                    _record_and_handle_gdrive_auth_error(put_resp.status_code, put_resp.text, f"subir fragmento {filename}")
+                else:
+                    err_clean = sanitize_logs_text(put_resp.text)
+                    print(f"[GDRIVE ERROR PERMANENTE] {put_resp.status_code} al subir fragmento: {err_clean}")
+                    LAST_GDRIVE_ERROR["error"] = f"Error {put_resp.status_code}: {err_clean}"
+                    LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 return None
             else:
                 print(f"[GDRIVE AVISO] Error transitorio ({put_resp.status_code}) en intento {attempt+1}/{max_retries}")
@@ -1119,10 +1335,13 @@ async def _do_upload_or_update(filename, content_bytes, mime_type="application/o
                         print(f"[GDRIVE] Archivo {filename} actualizado en Drive (ID: {file_id}).")
                         return res_json
                     elif resp.status_code in [400, 401, 403, 404]:
-                        err_clean = sanitize_logs_text(resp.text)
-                        print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al actualizar {filename}: {err_clean}")
-                        LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
-                        LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        if resp.status_code in [401, 403]:
+                            _record_and_handle_gdrive_auth_error(resp.status_code, resp.text, f"actualizar {filename}")
+                        else:
+                            err_clean = sanitize_logs_text(resp.text)
+                            print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al actualizar {filename}: {err_clean}")
+                            LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
+                            LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                         return None
                     else:
                         print(f"[GDRIVE AVISO] Error transitorio ({resp.status_code}) en intento {attempt+1}/{max_retries}: {resp.text}")
@@ -1162,10 +1381,13 @@ async def _do_upload_or_update(filename, content_bytes, mime_type="application/o
                             print(f"[GDRIVE ERROR] Respuesta sin ID válido para {filename}.")
                             return None
                     elif resp.status_code in [400, 401, 403, 404]:
-                        err_clean = sanitize_logs_text(resp.text)
-                        print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al subir {filename}: {err_clean}")
-                        LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
-                        LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        if resp.status_code in [401, 403]:
+                            _record_and_handle_gdrive_auth_error(resp.status_code, resp.text, f"subir {filename}")
+                        else:
+                            err_clean = sanitize_logs_text(resp.text)
+                            print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al subir {filename}: {err_clean}")
+                            LAST_GDRIVE_ERROR["error"] = f"Error {resp.status_code}: {err_clean}"
+                            LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                         return None
                     else:
                         print(f"[GDRIVE AVISO] Error transitorio ({resp.status_code}) en intento {attempt+1}/{max_retries}")
@@ -1231,7 +1453,10 @@ async def gdrive_download_file_bytes(file_id, token=None):
                 if resp.status_code == 200:
                     return resp.content
                 elif resp.status_code in [400, 401, 403, 404]:
-                    print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al descargar {file_id}: {resp.text}")
+                    if resp.status_code in [401, 403]:
+                        _record_and_handle_gdrive_auth_error(resp.status_code, resp.text, f"descargar {file_id}")
+                    else:
+                        print(f"[GDRIVE ERROR PERMANENTE] {resp.status_code} al descargar {file_id}: {sanitize_logs_text(resp.text)}")
                     return None
         except (httpx.TimeoutException, httpx.NetworkError) as e:
             print(f"[GDRIVE AVISO] Reintento {attempt+1}/{max_retries} descargando {file_id}: {e}")
@@ -1631,8 +1856,10 @@ async def gdrive_trash_file(file_id: str):
             )
             if resp.status_code == 200:
                 print(f"[GDRIVE] Archivo {file_id} movido a la papelera en Google Drive.")
+            elif resp.status_code in [401, 403]:
+                _record_and_handle_gdrive_auth_error(resp.status_code, resp.text, f"eliminar {file_id}")
     except Exception as e:
-        print(f"[GDRIVE] Error enviando archivo {file_id} a la papelera: {e}")
+        print(f"[GDRIVE] Error enviando archivo {file_id} a la papelera: {sanitize_logs_text(str(e))}")
 
 async def recover_pending_uploads(max_retries: int = 3):
     """
@@ -6141,6 +6368,27 @@ async def api_get_library(current_user: str = Depends(get_current_user)):
             pass
     return JSONResponse(content={"status": "success", "tracks": library[::-1]})
 
+def _get_gdrive_verified_token_state(token_value: Optional[str], tokens_data: Optional[dict] = None) -> dict:
+    tokens_data = tokens_data if isinstance(tokens_data, dict) else load_gdrive_tokens()
+    info_origin = LAST_GDRIVE_TOKEN_INFO.get("token_origin")
+    info_scope = _normalize_scope_string(LAST_GDRIVE_TOKEN_INFO.get("scope"))
+    file_origin = tokens_data.get("token_origin")
+    file_scope = _normalize_scope_string(tokens_data.get("scope"))
+
+    token_origin = info_origin or file_origin
+    scope_str = info_scope or file_scope
+    has_drive_scope = _has_drive_write_scope(scope_str)
+    origin_allowed = token_origin in GDRIVE_ALLOWED_ORIGINS
+    verified = bool(token_value and has_drive_scope and origin_allowed)
+    return {
+        "drive_permissions_verified": verified,
+        "has_drive_scope": has_drive_scope,
+        "token_origin": token_origin,
+        "token_expires_at": LAST_GDRIVE_TOKEN_INFO.get("token_expires_at") or tokens_data.get("expires_at"),
+        "refresh_source": tokens_data.get("refresh_source") or LAST_GDRIVE_TOKEN_INFO.get("refresh_source"),
+        "verified_at": LAST_GDRIVE_TOKEN_INFO.get("verified_at") or tokens_data.get("verified_at"),
+    }
+
 @app.get("/api/health")
 async def api_health_check():
     """
@@ -6152,13 +6400,15 @@ async def api_health_check():
     has_refresh = bool(tokens.get("refresh_token"))
     library = load_library()
     users = load_users()
-    auth_ok = False
+    tok = None
     if has_refresh:
         try:
             tok = await gdrive_get_access_token()
-            auth_ok = bool(tok)
         except Exception:
-            auth_ok = False
+            tok = None
+    tokens_after = load_gdrive_tokens()
+    drive_state = _get_gdrive_verified_token_state(tok, tokens_after)
+    auth_ok = drive_state["drive_permissions_verified"]
 
     return JSONResponse(content={
         "status": "ok",
@@ -6175,6 +6425,11 @@ async def api_health_check():
         "gdrive": {
             "has_refresh_token": has_refresh,
             "oauth_working": auth_ok,
+            "drive_permissions_verified": drive_state["drive_permissions_verified"],
+            "has_drive_scope": drive_state["has_drive_scope"],
+            "token_origin": drive_state["token_origin"],
+            "token_expires_at": drive_state["token_expires_at"],
+            "refresh_source": drive_state["refresh_source"],
             "last_error": LAST_GDRIVE_ERROR.get("error"),
             "total_tracks": len(library),
             "persisted_gdrive_tracks": sum(1 for t in library if t.get("is_permanently_saved")),
@@ -6206,7 +6461,13 @@ async def api_gdrive_status(current_user: str = Depends(get_current_user)):
             detail="Acceso denegado: no tienes permisos para consultar el estado del almacenamiento central de Google Drive."
         )
     tokens = load_gdrive_tokens()
-    has_token = bool(tokens.get("refresh_token") or tokens.get("access_token"))
+    has_refresh = bool(tokens.get("refresh_token"))
+    has_verified_cached = bool(
+        tokens.get("access_token")
+        and tokens.get("token_origin") in GDRIVE_ALLOWED_ORIGINS
+        and _has_drive_write_scope(tokens.get("scope"))
+    )
+    has_token = bool(has_refresh or has_verified_cached)
     is_env_configured = bool(os.environ.get("GOOGLE_DRIVE_REFRESH_TOKEN", "").strip())
     library = load_library()
     users = load_users()
@@ -6216,6 +6477,11 @@ async def api_gdrive_status(current_user: str = Depends(get_current_user)):
     return JSONResponse(content={
         "status": "connected" if has_token else "disconnected",
         "has_token": has_token,
+        "has_refresh_token": has_refresh,
+        "has_drive_scope": _has_drive_write_scope(tokens.get("scope")),
+        "drive_permissions_verified": bool(LAST_GDRIVE_TOKEN_INFO.get("drive_permissions_verified") or has_verified_cached),
+        "token_origin": LAST_GDRIVE_TOKEN_INFO.get("token_origin") or tokens.get("token_origin"),
+        "refresh_source": tokens.get("refresh_source"),
         "is_env_configured": is_env_configured,
         "folder_id": GDRIVE_FOLDER_ID,
         "total_tracks": len(library),
@@ -6269,14 +6535,21 @@ async def api_admin_gdrive_diagnostic(current_user: str = Depends(get_current_us
 
     auth_ok = False
     auth_message = "Sin verificar"
+    drive_state = _get_gdrive_verified_token_state(None, tokens)
     try:
         token = await gdrive_get_access_token()
-        if token:
+        tokens_after = load_gdrive_tokens()
+        has_refresh = bool(tokens_after.get("refresh_token"))
+        drive_state = _get_gdrive_verified_token_state(token, tokens_after)
+        if token and drive_state["drive_permissions_verified"]:
             auth_ok = True
-            auth_message = "Autenticación activa y válida con Google Drive API."
+            auth_message = "Autenticación activa y permisos de Google Drive verificados."
+        elif token:
+            auth_ok = False
+            auth_message = "Se obtuvo access_token sin verificación de permisos de Google Drive (drive.file/drive)."
         else:
             auth_ok = False
-            auth_message = "No se pudo obtener un access_token válido. Verifique refresh_token o credenciales OAuth."
+            auth_message = "No se pudo obtener un access_token válido con permisos de Google Drive. Verifique refresh_token o credenciales OAuth."
     except Exception as e:
         auth_ok = False
         auth_message = f"Error al verificar autenticación: {sanitize_logs_text(str(e))}"
@@ -6287,6 +6560,12 @@ async def api_admin_gdrive_diagnostic(current_user: str = Depends(get_current_us
         "is_env_configured": is_env_configured,
         "has_refresh_token": has_refresh,
         "auth_working": auth_ok,
+        "drive_permissions_verified": drive_state["drive_permissions_verified"],
+        "has_drive_scope": drive_state["has_drive_scope"],
+        "token_origin": drive_state["token_origin"],
+        "token_expires_at": drive_state["token_expires_at"],
+        "refresh_source": drive_state["refresh_source"],
+        "verified_at": drive_state["verified_at"],
         "auth_message": auth_message,
         "last_error": LAST_GDRIVE_ERROR.get("error"),
         "last_error_time": LAST_GDRIVE_ERROR.get("timestamp")
@@ -7068,31 +7347,72 @@ async def admin_gdrive_link(request: Request, current_user: str = Depends(get_cu
 async def admin_gdrive_callback(request: Request):
     error = request.query_params.get("error")
     if error:
-        return HTMLResponse(f"<h3>Error de autorización con Google Drive: {error}</h3>", status_code=400)
+        return HTMLResponse(f"<h3>Error de autorización con Google Drive: {sanitize_logs_text(str(error))}</h3>", status_code=400)
     try:
         token = await oauth.google.authorize_access_token(request)
-        user = token.get('userinfo')
+        user = token.get('userinfo') or {}
         email = (user.get('email') or '').strip().lower()
         if email != ADMIN_EMAIL:
             return HTMLResponse("<h3>Error: Esta cuenta no coincide con la del administrador.</h3>", status_code=403)
-        gdrive_tokens = {}
-        if token.get('refresh_token'):
-            gdrive_tokens['refresh_token'] = token.get('refresh_token')
-        if token.get('access_token'):
-            gdrive_tokens['access_token'] = token.get('access_token')
-        if token.get('expires_at'):
-            gdrive_tokens['expires_at'] = token.get('expires_at')
-        if gdrive_tokens:
-            save_gdrive_tokens(gdrive_tokens)
-            print("[GDRIVE] Tokens de Google Drive 5TB vinculados exitosamente por el administrador.")
-            try:
-                asyncio.create_task(gdrive_sync_library_from_cloud())
-            except Exception as e:
-                print(f"[GDRIVE] Error disparando sincronización: {e}")
+
+        access_token = (token.get('access_token') or '').strip()
+        granted_scope = _normalize_scope_string(token.get('scope'))
+        if not _has_drive_write_scope(granted_scope) and access_token:
+            verified_scope = await _fetch_google_token_scope(access_token)
+            if verified_scope is not None:
+                granted_scope = verified_scope
+
+        if not _has_drive_write_scope(granted_scope):
+            reason = "ACCESS_TOKEN_SCOPE_INSUFFICIENT: La autorización administrativa no incluyó permisos de Google Drive (drive.file/drive)."
+            LAST_GDRIVE_ERROR["error"] = reason
+            LAST_GDRIVE_ERROR["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            print(f"[GDRIVE CRÍTICO] {reason} No se sobrescribieron tokens existentes.")
+            return HTMLResponse(
+                "<h3>Error: No se otorgaron permisos de Google Drive (drive.file). El token existente se mantiene intacto.</h3>",
+                status_code=403
+            )
+
+        current_tokens = load_gdrive_tokens()
+        incoming_rt = (token.get('refresh_token') or '').strip()
+        active_rt = incoming_rt or (current_tokens.get('refresh_token') or '').strip()
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        gdrive_tokens = {
+            'token_origin': 'admin_gdrive_link',
+            'scope': granted_scope,
+            'verified_at': now_iso,
+        }
+        if incoming_rt:
+            gdrive_tokens['refresh_token'] = incoming_rt
+        if access_token:
+            gdrive_tokens['access_token'] = access_token
+            expires_at = token.get('expires_at')
+            if not expires_at:
+                try:
+                    expires_at = time.time() + float(token.get('expires_in', 3600))
+                except (TypeError, ValueError):
+                    expires_at = time.time() + 3600
+            gdrive_tokens['expires_at'] = expires_at
+        if active_rt:
+            gdrive_tokens['refresh_fingerprint'] = _refresh_token_fingerprint(active_rt)
+
+        save_gdrive_tokens(gdrive_tokens)
+        LAST_GDRIVE_ERROR["error"] = None
+        LAST_GDRIVE_ERROR["timestamp"] = now_iso
+        _sync_last_gdrive_token_info(
+            {**current_tokens, **gdrive_tokens},
+            verified=bool(access_token),
+        )
+        print("[GDRIVE] Tokens de Google Drive 5TB vinculados y verificados por el administrador.")
+        try:
+            asyncio.create_task(gdrive_sync_library_from_cloud())
+        except Exception as e:
+            print(f"[GDRIVE] Error disparando sincronización: {sanitize_logs_text(str(e))}")
         return RedirectResponse(url="/?gdrive_linked=success")
     except Exception as e:
-        print("Error en admin gdrive callback:", str(e))
-        return HTMLResponse(f"<h3>Error al vincular tokens: {e}</h3>", status_code=500)
+        err_clean = sanitize_logs_text(str(e))
+        print("Error en admin gdrive callback:", err_clean)
+        return HTMLResponse(f"<h3>Error al vincular tokens: {err_clean}</h3>", status_code=500)
 
 @app.get("/api/auth/callback")
 async def auth_callback(request: Request):
@@ -7116,32 +7436,25 @@ async def auth_callback(request: Request):
 
             users = load_users()
             if email == ADMIN_EMAIL:
+                existing_admin = users.get(email, {}) if isinstance(users.get(email), dict) else {}
                 users[email] = {
+                    **existing_admin,
                     "email": email,
-                    "name": name or "Rodrigo",
+                    "name": name or existing_admin.get("name") or "Rodrigo",
                     "picture": picture,
                     "status": "active",
                     "role": "admin",
                     "last_login": now_str,
-                    "created_at": users.get(email, {}).get("created_at", now_str)
+                    "created_at": existing_admin.get("created_at", now_str)
                 }
                 save_users(users)
 
-                # Si el token de Rodrigo incluye refresh_token, resguardarlo
-                gdrive_tokens = {}
-                if token.get('refresh_token'):
-                    gdrive_tokens['refresh_token'] = token.get('refresh_token')
-                if token.get('access_token'):
-                    gdrive_tokens['access_token'] = token.get('access_token')
-                if token.get('expires_at'):
-                    gdrive_tokens['expires_at'] = token.get('expires_at')
-                if gdrive_tokens:
-                    save_gdrive_tokens(gdrive_tokens)
-                    print("[GDRIVE] Tokens de Google Drive 5TB guardados exitosamente tras login de admin.")
-                    try:
-                        asyncio.create_task(gdrive_sync_library_from_cloud())
-                    except Exception as e:
-                        print(f"[GDRIVE] Error disparando sincronización tras login: {e}")
+                # Separación estricta: los tokens de login ("openid email profile") nunca se guardan
+                # en gdrive_token.json ni sobrescriben el refresh_token / access_token de Google Drive.
+                try:
+                    asyncio.create_task(gdrive_sync_library_from_cloud())
+                except Exception as e:
+                    print(f"[GDRIVE] Error disparando sincronización tras login: {sanitize_logs_text(str(e))}")
 
                 request.session['user'] = user
                 return RedirectResponse(url="/")
@@ -7176,7 +7489,7 @@ async def auth_callback(request: Request):
             request.session['user'] = user
             return RedirectResponse(url="/")
     except Exception as e:
-        print("Error en OAuth callback:", str(e))
+        print("Error en OAuth callback:", sanitize_logs_text(str(e)))
         return RedirectResponse(url="/login?error=Error%20al%20conectar%20con%20Google")
 
     return RedirectResponse(url="/login?error=No%20se%20pudo%20obtener%20el%20usuario")
