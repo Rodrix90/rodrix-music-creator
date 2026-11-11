@@ -12,7 +12,7 @@ import uuid
 import tempfile
 import subprocess
 import urllib.parse
-from typing import Optional
+from typing import Any, Callable, Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -109,6 +109,7 @@ ADMIN_EMAIL = "rodryandy@gmail.com"
 
 import sqlite3
 import contextlib
+import threading
 
 # Locks para control de concurrencia y prevención de condiciones de carrera
 library_lock = asyncio.Lock()
@@ -116,9 +117,52 @@ users_lock = asyncio.Lock()
 deleted_tracks_lock = asyncio.Lock()
 _in_flight_uploads = {}
 _in_flight_lock = asyncio.Lock()
+_GENERATION_TASKS_FILE_LOCK = threading.Lock()
 
 # Registro técnico seguro de último error en Google Drive (sin secretos ni tokens)
 LAST_GDRIVE_ERROR = {"error": None, "timestamp": None}
+LAST_GDRIVE_TASKS_SYNC = {"ok": None, "file_id": None, "error": None, "timestamp": None}
+LAST_GDRIVE_LIBRARY_SYNC = {"ok": None, "file_id": None, "tracks_count": 0, "error": None, "timestamp": None}
+
+def _normalize_owner_email(email: Optional[str]) -> str:
+    return (email or "").strip().lower()
+
+# Catálogo oficial de modelos soportados por UdioAPI Pro v2 (mantiene compatibilidad legacy sin alterar tareas históricas)
+DEFAULT_UDIO_MODEL = "chirp-v6"
+SUPPORTED_UDIO_MODELS = {
+    "chirp-v6": {"credits": 12, "tier": "flagship", "legacy": False, "served_by": "chirp-v6"},
+    "chirp-v6-mini": {"credits": 10, "tier": "fast", "legacy": False, "served_by": "chirp-v6-mini"},
+    "chirp-v6-wild": {"credits": 12, "tier": "experimental", "legacy": False, "served_by": "chirp-v6-wild"},
+    "chirp-v5": {"credits": 12, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6"},
+    "chirp-v5-5": {"credits": 12, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6"},
+    "chirp-v4-5": {"credits": 10, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6-mini"},
+    "chirp-v4-5-plus": {"credits": 10, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6-mini"},
+    "chirp-v4-5-all": {"credits": 10, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6-mini"},
+    "chirp-v4": {"credits": 8, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6-mini"},
+    "chirp-v4-0": {"credits": 8, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6-mini"},
+    "chirp-v3-5": {"credits": 5, "tier": "legacy_alias", "legacy": True, "served_by": "chirp-v6-mini"},
+}
+
+def validate_udio_model(raw_model: Optional[str]) -> str:
+    """
+    Valida el identificador del modelo contra el catálogo vigente de UdioAPI Pro v2.
+    Acepta modelos chirp-v6 actuales y alias legacy documentados sin alterar tareas históricas.
+    """
+    cand = (raw_model or "").strip()
+    if not cand:
+        return DEFAULT_UDIO_MODEL
+    if cand not in SUPPORTED_UDIO_MODELS:
+        allowed = ", ".join(SUPPORTED_UDIO_MODELS.keys())
+        raise HTTPException(
+            status_code=400,
+            detail=f"Modelo '{cand}' no soportado por UdioAPI Pro v2. Modelos admitidos: {allowed}."
+        )
+    return cand
+
+def get_udio_model_credits(model_name: Optional[str]) -> int:
+    """Devuelve el costo estimado en créditos documentado por UdioAPI Pro v2 para el modelo dado."""
+    meta = SUPPORTED_UDIO_MODELS.get((model_name or "").strip())
+    return meta["credits"] if meta else 12
 
 def _get_db_path() -> str:
     """Devuelve la ruta de la base de datos transaccional compartida (SQLite ACID con bloqueo exclusivo entre procesos)."""
@@ -211,7 +255,21 @@ GENERATION_TASKS_FILE = "generation_tasks.json"
 
 
 _in_flight_recoveries = set()
+_recovery_tasks: dict[str, asyncio.Task] = {}
 _recovery_lock = asyncio.Lock()
+_TERMINAL_TASK_STATUSES = {"COMPLETED", "ERROR", "CANCELLED"}
+
+
+def is_verifiable_work_id(work_id: Any) -> bool:
+    """Verifica que un Work ID del proveedor sea auténtico y utilizable para reanudación por GET."""
+    if not isinstance(work_id, str):
+        return False
+    w = work_id.strip()
+    if len(w) <= 3:
+        return False
+    if w.lower() in {"none", "null", "undefined", "n/a", "false"}:
+        return False
+    return True
 
 def validate_audio_file_integrity(file_path: str) -> dict:
     """
@@ -305,23 +363,60 @@ def validate_audio_file_integrity(file_path: str) -> dict:
             "fallback": True
         }
 
+def _safe_payload_copy(payload_obj: Optional[dict]) -> dict:
+    """Devuelve una copia del payload omitiendo cualquier campo sensible si estuviera presente."""
+    if not isinstance(payload_obj, dict):
+        return {}
+    sensitive_keys = {"authorization", "api_key", "token", "secret", "refresh_token", "client_secret"}
+    return {k: v for k, v in payload_obj.items() if str(k).lower() not in sensitive_keys}
+
 async def gdrive_sync_generation_tasks_to_cloud():
     """
-    Sincroniza generation_tasks.json hacia Google Drive central (5 TB).
-    Garantiza que ante un reinicio del contenedor efímero o redeploy en Render,
-    los Work IDs y tareas en vuelo sobrevivan al reemplazo del disco local.
+    Sincroniza generation_tasks.json hacia Google Drive central (5 TB) usando gdrive_upload_or_update.
+    Garantiza actualización in-place sin duplicados y registro seguro de confirmación o error.
     """
     if not os.path.exists(GENERATION_TASKS_FILE):
-        return
+        return None
     token = await gdrive_get_access_token()
     if not token:
-        return
+        LAST_GDRIVE_TASKS_SYNC.update({
+            "ok": False,
+            "error": "Token de acceso de Google Drive no disponible",
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        })
+        return None
     try:
-        with open(GENERATION_TASKS_FILE, "rb") as f:
-            content = f.read()
-        await _upload_or_update_atomic(GENERATION_TASKS_FILE, content, "application/json", GDRIVE_FOLDER_ID)
+        with _GENERATION_TASKS_FILE_LOCK:
+            with open(GENERATION_TASKS_FILE, "rb") as f:
+                content = f.read()
+        res = await gdrive_upload_or_update(GENERATION_TASKS_FILE, content, "application/json", GDRIVE_FOLDER_ID)
+        fid = (res.get("file_id") or res.get("id")) if isinstance(res, dict) else None
+        if fid:
+            LAST_GDRIVE_TASKS_SYNC.update({
+                "ok": True,
+                "file_id": fid,
+                "error": None,
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            })
+            print(f"[GDRIVE CONFIRMADO] {GENERATION_TASKS_FILE} respaldado en Google Drive (ID: {fid}).")
+            return res
+        err_msg = LAST_GDRIVE_ERROR.get("error") or "No se obtuvo file_id válido al subir generation_tasks.json"
+        LAST_GDRIVE_TASKS_SYNC.update({
+            "ok": False,
+            "error": err_msg,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        })
+        print(f"[GDRIVE ERROR] No se pudo respaldar {GENERATION_TASKS_FILE} en Google Drive: {err_msg}")
+        return None
     except Exception as e:
-        print(f"[GDRIVE] Error respaldando {GENERATION_TASKS_FILE} a Google Drive: {e}")
+        err_safe = sanitize_logs_text(str(e))
+        LAST_GDRIVE_TASKS_SYNC.update({
+            "ok": False,
+            "error": err_safe,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        })
+        print(f"[GDRIVE] Error respaldando {GENERATION_TASKS_FILE} a Google Drive: {err_safe}")
+        return None
 
 async def gdrive_sync_generation_tasks_from_cloud():
     """
@@ -350,13 +445,31 @@ async def gdrive_sync_generation_tasks_from_cloud():
             except Exception:
                 local_tasks = {}
 
-        merged = dict(remote_tasks)
-        merged.update(local_tasks)
+        merged = {}
+        for tid, rt in remote_tasks.items():
+            if isinstance(rt, dict):
+                merged[tid] = dict(rt)
+        for tid, lt in local_tasks.items():
+            if not isinstance(lt, dict):
+                continue
+            if tid in merged:
+                r_upd = float(merged[tid].get("updated_at") or 0)
+                l_upd = float(lt.get("updated_at") or 0)
+                if l_upd >= r_upd:
+                    combined = dict(merged[tid])
+                    combined.update(lt)
+                    if not combined.get("work_id") and merged[tid].get("work_id"):
+                        combined["work_id"] = merged[tid]["work_id"]
+                        combined["provider_work_id"] = merged[tid]["work_id"]
+                    merged[tid] = combined
+            else:
+                merged[tid] = dict(lt)
 
-        tmp_json = f"{GENERATION_TASKS_FILE}.tmp_{uuid.uuid4().hex}"
-        with open(tmp_json, "w", encoding="utf-8") as f:
-            json.dump(merged, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_json, GENERATION_TASKS_FILE)
+        with _GENERATION_TASKS_FILE_LOCK:
+            tmp_json = f"{GENERATION_TASKS_FILE}.tmp_{uuid.uuid4().hex}"
+            with open(tmp_json, "w", encoding="utf-8") as f:
+                json.dump(merged, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_json, GENERATION_TASKS_FILE)
 
         with _transactional_db() as conn:
             for tid, t in merged.items():
@@ -430,41 +543,57 @@ def save_task_persistent(task_id: str, task_dict: Optional[dict] = None) -> None
         print(f"[PERSISTENCE] Error guardando tarea {task_id} en SQLite: {e}")
 
     try:
-        tasks_map = {}
-        if os.path.exists(GENERATION_TASKS_FILE):
-            try:
-                with open(GENERATION_TASKS_FILE, "r", encoding="utf-8") as f:
-                    tasks_map = json.load(f)
-                    if not isinstance(tasks_map, dict):
-                        tasks_map = {}
-            except Exception:
-                tasks_map = {}
+        with _GENERATION_TASKS_FILE_LOCK:
+            tasks_map = {}
+            if os.path.exists(GENERATION_TASKS_FILE):
+                try:
+                    with open(GENERATION_TASKS_FILE, "r", encoding="utf-8") as f:
+                        tasks_map = json.load(f)
+                        if not isinstance(tasks_map, dict):
+                            tasks_map = {}
+                except Exception:
+                    tasks_map = {}
 
-        tasks_map[task_id] = {
-            "id": task_id,
-            "task_id": task_id,
-            "work_id": work_id,
-            "provider_work_id": work_id,
-            "owner_email": owner_email,
-            "title": title,
-            "status": status,
-            "model": model,
-            "engine": engine,
-            "tracks": task_dict.get("tracks") or [],
-            "detail": detail,
-            "error_type": error_type,
-            "created_at": created_at,
-            "updated_at": updated_at
-        }
-        if len(tasks_map) > 50:
-            sorted_keys = sorted(tasks_map.keys(), key=lambda k: tasks_map[k].get("updated_at", 0))
-            for old_k in sorted_keys[:-50]:
-                tasks_map.pop(old_k, None)
+            safe_payload = _safe_payload_copy(task_dict.get("resolved_payload") or task_dict.get("payload"))
+            safe_diag_summary = task_dict.get("diagnostic_summary") or {}
+            safe_diag_info = task_dict.get("diagnostic_info") or {}
+            safe_logs = sanitize_logs_text((logs or "")[-4000:])
 
-        tmp_json = f"{GENERATION_TASKS_FILE}.tmp_{uuid.uuid4().hex}"
-        with open(tmp_json, "w", encoding="utf-8") as f:
-            json.dump(tasks_map, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_json, GENERATION_TASKS_FILE)
+            tasks_map[task_id] = {
+                "id": task_id,
+                "task_id": task_id,
+                "work_id": work_id,
+                "provider_work_id": work_id,
+                "owner_email": owner_email,
+                "title": title,
+                "status": status,
+                "model": model,
+                "engine": engine,
+                "payload": safe_payload,
+                "resolved_payload": safe_payload,
+                "tracks": task_dict.get("tracks") or [],
+                "detail": detail,
+                "error_type": error_type,
+                "persistence_status": task_dict.get("persistence_status"),
+                "is_permanently_saved": bool(task_dict.get("is_permanently_saved", False)),
+                "library_persisted": bool(task_dict.get("library_persisted", False)),
+                "library_gdrive_id": task_dict.get("library_gdrive_id"),
+                "provider_final_status": task_dict.get("provider_final_status"),
+                "diagnostic_summary": safe_diag_summary,
+                "diagnostic_info": safe_diag_info,
+                "logs": safe_logs,
+                "created_at": created_at,
+                "updated_at": updated_at
+            }
+            if len(tasks_map) > 50:
+                sorted_keys = sorted(tasks_map.keys(), key=lambda k: tasks_map[k].get("updated_at", 0))
+                for old_k in sorted_keys[:-50]:
+                    tasks_map.pop(old_k, None)
+
+            tmp_json = f"{GENERATION_TASKS_FILE}.tmp_{uuid.uuid4().hex}"
+            with open(tmp_json, "w", encoding="utf-8") as f:
+                json.dump(tasks_map, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_json, GENERATION_TASKS_FILE)
     except Exception as e:
         print(f"[PERSISTENCE] Error guardando {GENERATION_TASKS_FILE}: {e}")
 
@@ -544,11 +673,13 @@ def recover_pending_generation_tasks():
                        model, engine, payload_json, tracks_json,
                        detail, error_type, logs, created_at, updated_at
                 FROM generation_tasks
-                WHERE status IN ('IN_PROGRESS', 'QUEUED', 'PENDING_VERIFICATION')
+                WHERE status IN ('IN_PROGRESS', 'QUEUED', 'PENDING_VERIFICATION', 'PENDING_PERSISTENCE')
             """)
             rows = cursor.fetchall()
             for row in rows:
                 t_id, w_id, email, tit, st, m, eng, p_json, tr_json, det, err_t, lg, c_at, u_at = row
+                if str(st or "").upper() in _TERMINAL_TASK_STATUSES:
+                    continue
                 try:
                     payload = json.loads(p_json) if p_json else {}
                 except Exception:
@@ -558,7 +689,10 @@ def recover_pending_generation_tasks():
                 except Exception:
                     tracks = []
 
-                if w_id and len(w_id.strip()) > 3:
+                if str(st or "").upper() == "PENDING_PERSISTENCE" and isinstance(tracks, list) and len(tracks) > 0:
+                    new_status = "PENDING_PERSISTENCE"
+                    recovery_log = f"\n[RECOVERY] Servidor reiniciado. Tarea {t_id} restaurada en PENDING_PERSISTENCE para confirmar respaldo de pistas/biblioteca sin regenerar.\n"
+                elif is_verifiable_work_id(w_id):
                     new_status = "PENDING_VERIFICATION"
                     recovery_log = f"\n[RECOVERY] Servidor reiniciado. Tarea recuperada con Work ID auténtico: {w_id}. Lista para reanudación por GET sin consumir créditos.\n"
                 else:
@@ -571,7 +705,7 @@ def recover_pending_generation_tasks():
                     "task_id": t_id,
                     "work_id": w_id,
                     "provider_work_id": w_id,
-                    "owner_email": email,
+                    "owner_email": _normalize_owner_email(email),
                     "title": tit,
                     "status": new_status,
                     "model": m,
@@ -619,10 +753,13 @@ def normalize_track_persistence_state(track: dict) -> dict:
     return track
 
 def _merge_two_tracks(c_track: dict, l_track: dict) -> dict:
-    """Fusiona dos versiones de la misma pista preservando gdrive_id, links y cambios más recientes."""
+    """Fusiona dos versiones de la misma pista preservando gdrive_id, owner_email, links y cambios más recientes."""
     gdrive_id = l_track.get("gdrive_id") or c_track.get("gdrive_id")
     gdrive_link = l_track.get("gdrive_link") or c_track.get("gdrive_link")
     cloud_backup = l_track.get("cloud_backup") or c_track.get("cloud_backup")
+    c_owner = _normalize_owner_email(c_track.get("owner_email"))
+    l_owner = _normalize_owner_email(l_track.get("owner_email"))
+    preserved_owner = c_owner or l_owner
 
     try:
         l_time = float(l_track.get("updated_at") or 0)
@@ -651,6 +788,8 @@ def _merge_two_tracks(c_track: dict, l_track: dict) -> dict:
         merged_track["gdrive_link"] = gdrive_link
     if cloud_backup:
         merged_track["cloud_backup"] = cloud_backup
+    if preserved_owner:
+        merged_track["owner_email"] = l_owner if (l_is_newer and l_owner) else (c_owner or l_owner)
 
     return normalize_track_persistence_state(merged_track)
 
@@ -758,6 +897,8 @@ def save_gdrive_tokens(new_tokens):
         print(f"[GDRIVE] Error guardando tokens locales: {e}")
 
 async def gdrive_get_access_token():
+    if os.environ.get("RODRIX_DISABLE_GDRIVE_NETWORK", "").strip() == "1":
+        return None
     tokens = load_gdrive_tokens()
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
@@ -1193,24 +1334,99 @@ def add_track_to_library(track_info):
     track_info.setdefault("updated_at", time.time())
     save_library([track_info])
 
+
+def _set_pending_library_metadata_sync(pending: bool, payload_summary: Optional[dict] = None) -> None:
+    """Registra o limpia en SQLite el marcador de sincronización pendiente para library.json."""
+    try:
+        with _transactional_db() as conn:
+            if pending:
+                conn.execute(
+                    "INSERT OR REPLACE INTO pending_operations (id, op_type, payload_json, retry_count, status, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        "__LIBRARY_METADATA_SYNC__",
+                        "SYNC_LIBRARY",
+                        json.dumps(payload_summary or {}, ensure_ascii=False),
+                        0,
+                        "PENDING_LIBRARY_SYNC",
+                        time.time(),
+                    ),
+                )
+            else:
+                conn.execute("DELETE FROM pending_operations WHERE id = ?", ("__LIBRARY_METADATA_SYNC__",))
+    except Exception as e:
+        print(f"[PERSISTENCE] Aviso actualizando marcador SYNC_LIBRARY en SQLite: {e}")
+
+
+def _has_pending_library_metadata_sync() -> bool:
+    try:
+        with _transactional_db() as conn:
+            row = conn.execute(
+                "SELECT id FROM pending_operations WHERE id = ?",
+                ("__LIBRARY_METADATA_SYNC__",),
+            ).fetchone()
+            return row is not None
+    except Exception:
+        return False
+
+
+async def persist_tracks_to_library_and_confirm_cloud(
+    tracks_to_persist: list[dict],
+    log_fn: Optional[Callable[[str], None]] = None,
+) -> dict:
+    """
+    Guarda pistas en SQLite/library.json local de forma atómica (sin sobrescribir pistas existentes ni
+    metadatos de otros usuarios) y confirma la sincronización de library.json en Google Drive antes
+    de dar por completado el proceso integral.
+    """
+    normalized_batch = []
+    for tr in tracks_to_persist or []:
+        if isinstance(tr, dict) and tr.get("id"):
+            item = normalize_track_persistence_state(dict(tr))
+            item.setdefault("updated_at", time.time())
+            normalized_batch.append(item)
+
+    if not normalized_batch:
+        return {"ok": False, "file_id": None, "error": "Sin pistas válidas para persistir."}
+
+    save_library_atomic(normalized_batch)
+    sync_res = await gdrive_sync_library_to_cloud(load_library())
+    synced_ok = bool(isinstance(sync_res, dict) and sync_res.get("ok") and sync_res.get("file_id"))
+
+    if synced_ok:
+        _set_pending_library_metadata_sync(False)
+        if log_fn:
+            log_fn(f"Persistencia de metadatos en library.json confirmada en Google Drive (ID: {sync_res.get('file_id')}).")
+        return {"ok": True, "file_id": sync_res.get("file_id"), "tracks_count": sync_res.get("tracks_count", 0), "error": None}
+
+    err_detail = (sync_res.get("error") if isinstance(sync_res, dict) else None) or LAST_GDRIVE_LIBRARY_SYNC.get("error") or "No se pudo confirmar library.json en Google Drive"
+    _set_pending_library_metadata_sync(True, {"track_ids": [t.get("id") for t in normalized_batch], "error": err_detail})
+    if log_fn:
+        log_fn(f"AVISO: Metadatos guardados en almacenamiento local/SQLite; sincronización de library.json pendiente en Google Drive ({err_detail}).")
+    return {"ok": False, "file_id": None, "error": err_detail}
+
+
 async def gdrive_sync_library_to_cloud(library_data=None):
     """
     Sincroniza library.json hacia Google Drive con control de concurrencia optimista (CAS / Post-Write Verification).
-    Si dos instancias independientes suben al mismo tiempo sobre Google Drive, verifica la lectura posterior
-    a la escritura y re-fusiona automáticamente para garantizar 0 escrituras perdidas.
+    Retorna {"ok": bool, "file_id": Optional[str], "tracks_count": int, "error": Optional[str]}.
     """
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     async with library_lock:
         if library_data is None:
             library_data = load_library()
         if not library_data or not isinstance(library_data, list):
-            return
+            return {"ok": False, "file_id": None, "tracks_count": 0, "error": "Biblioteca vacía"}
         token = await gdrive_get_access_token()
         if not token:
+            err_msg = LAST_GDRIVE_ERROR.get("error") or "Token de acceso de Google Drive no disponible"
+            LAST_GDRIVE_LIBRARY_SYNC.update({"ok": False, "file_id": None, "error": err_msg, "timestamp": now_iso})
             print("[GDRIVE] Sincronización cancelada: no hay token de acceso válido.")
-            return
+            return {"ok": False, "file_id": None, "tracks_count": len(library_data), "error": err_msg}
         try:
             max_cas_attempts = 3
             current_local = list(library_data)
+            confirmed_fid = None
+            confirmed_count = len(current_local)
 
             for cas_attempt in range(max_cas_attempts):
                 deleted = load_deleted_tracks()
@@ -1246,50 +1462,70 @@ async def gdrive_sync_library_to_cloud(library_data=None):
                 final_lib = [t for tid, t in merged_map.items() if tid not in deleted]
                 save_library_atomic(final_lib)
                 current_local = final_lib
+                confirmed_count = len(final_lib)
 
                 # 3. Subir versión combinada a Google Drive
                 content_bytes = json.dumps(final_lib, indent=2, ensure_ascii=False).encode("utf-8")
                 res = await gdrive_upload_or_update(LIBRARY_FILE, content_bytes, "application/json")
-                if not (res and res.get("file_id")):
+                fid = (res.get("file_id") or res.get("id")) if isinstance(res, dict) else None
+                if not fid:
+                    err_msg = LAST_GDRIVE_ERROR.get("error") or "Google Drive no confirmó la subida de library.json"
+                    LAST_GDRIVE_LIBRARY_SYNC.update({"ok": False, "file_id": None, "tracks_count": len(final_lib), "error": err_msg, "timestamp": now_iso})
                     print(f"[GDRIVE ERROR] Google Drive no confirmó la subida de library.json.")
-                    return
+                    return {"ok": False, "file_id": None, "tracks_count": len(final_lib), "error": err_msg}
 
                 # 4. Verificación Post-Escritura (Read-After-Write CAS) contra colisiones multi-instancia
                 verify_info = await gdrive_find_file(LIBRARY_FILE, GDRIVE_FOLDER_ID, token)
                 if not verify_info or not verify_info.get("id"):
+                    confirmed_fid = fid
                     break
                 verify_bytes = await gdrive_download_file_bytes(verify_info["id"], token)
                 if not verify_bytes:
+                    confirmed_fid = fid
                     break
                 try:
                     remote_after = json.loads(verify_bytes.decode("utf-8"))
                 except Exception:
+                    confirmed_fid = fid
                     break
                 if not isinstance(remote_after, list):
+                    confirmed_fid = fid
                     break
 
                 # Si la lectura posterior es idéntica a la lectura previa y distinta de lo subido,
                 # es un mock estático de test unitario (no muta el estado remoto); finalizar con éxito.
                 if remote_after == cloud_tracks and remote_after != final_lib:
-                    print(f"[GDRIVE CONFIRMADO] Librería ({len(final_lib)} canciones) respaldada en Google Drive (ID: {res['file_id']}).")
+                    confirmed_fid = fid
+                    print(f"[GDRIVE CONFIRMADO] Librería ({len(final_lib)} canciones) respaldada en Google Drive (ID: {fid}).")
                     break
 
                 remote_after_ids = {t.get("id") for t in remote_after if isinstance(t, dict) and t.get("id")}
                 expected_ids = {t.get("id") for t in final_lib if isinstance(t, dict) and t.get("id")}
 
                 if expected_ids.issubset(remote_after_ids):
-                    # Integrar cualquier pista nueva que otra instancia haya agregado simultáneamente
                     if len(remote_after_ids - expected_ids) > 0:
                         current_local = current_local + remote_after
                         continue
-                    print(f"[GDRIVE CONFIRMADO] Librería ({len(final_lib)} canciones) respaldada y verificada en Google Drive (ID: {res['file_id']}).")
+                    confirmed_fid = fid
+                    print(f"[GDRIVE CONFIRMADO] Librería ({len(final_lib)} canciones) respaldada y verificada en Google Drive (ID: {fid}).")
                     break
                 else:
                     print(f"[GDRIVE CAS] Detectada escritura simultánea de otra instancia en library.json (intento {cas_attempt+1}/{max_cas_attempts}). Re-fusionando...")
                     current_local = current_local + remote_after
                     await asyncio.sleep(0.02)
+
+            if confirmed_fid:
+                LAST_GDRIVE_LIBRARY_SYNC.update({"ok": True, "file_id": confirmed_fid, "tracks_count": confirmed_count, "error": None, "timestamp": now_iso})
+                return {"ok": True, "file_id": confirmed_fid, "tracks_count": confirmed_count, "error": None}
+
+            err_cas = "No se pudo verificar CAS de library.json en Google Drive tras reintentos."
+            LAST_GDRIVE_LIBRARY_SYNC.update({"ok": False, "file_id": None, "tracks_count": confirmed_count, "error": err_cas, "timestamp": now_iso})
+            return {"ok": False, "file_id": None, "tracks_count": confirmed_count, "error": err_cas}
         except Exception as e:
-            print(f"[GDRIVE] Error al sincronizar librería a Drive: {e}")
+            err_safe = sanitize_logs_text(str(e))
+            LAST_GDRIVE_LIBRARY_SYNC.update({"ok": False, "file_id": None, "error": err_safe, "timestamp": now_iso})
+            print(f"[GDRIVE] Error al sincronizar librería a Drive: {err_safe}")
+            return {"ok": False, "file_id": None, "tracks_count": len(library_data), "error": err_safe}
 
 async def gdrive_sync_library_from_cloud():
     async with library_lock:
@@ -1506,10 +1742,42 @@ async def recover_pending_uploads(max_retries: int = 3):
                     t["persistence_status"] = "RETRY_SCHEDULED"
                 updated = True
 
-    if updated:
-        save_library_atomic(library)
-        await gdrive_sync_library_to_cloud(library)
-        print(f"[RECUPERACIÓN COMPLETA] Estado de persistencia de pistas pendientes actualizado y sincronizado.")
+    needs_lib_sync = updated or _has_pending_library_metadata_sync()
+    lib_sync_ok = False
+    lib_sync_res = None
+    if needs_lib_sync and library:
+        if updated:
+            save_library_atomic(library)
+        lib_sync_res = await gdrive_sync_library_to_cloud(load_library())
+        lib_sync_ok = bool(isinstance(lib_sync_res, dict) and lib_sync_res.get("ok") and lib_sync_res.get("file_id"))
+        _set_pending_library_metadata_sync(not lib_sync_ok)
+        print(f"[RECUPERACIÓN COMPLETA] Estado de persistencia de pistas/biblioteca sincronizado (ok={lib_sync_ok}).")
+
+    # Promover tareas en PENDING_PERSISTENCE si todas sus pistas y library.json quedaron confirmados en Drive
+    latest_lib_map = {t.get("id"): t for t in load_library() if isinstance(t, dict) and t.get("id")}
+    if lib_sync_ok or (not _has_pending_library_metadata_sync() and library):
+        for tid_p, task_p in list(TASKS.items()):
+            if str(task_p.get("status") or "").upper() != "PENDING_PERSISTENCE":
+                continue
+            tr_list = task_p.get("tracks") or []
+            if not tr_list:
+                continue
+            refreshed = []
+            for tr in tr_list:
+                t_id_cur = tr.get("id")
+                merged_tr = latest_lib_map.get(t_id_cur, tr)
+                normalize_track_persistence_state(merged_tr)
+                refreshed.append(merged_tr)
+            if refreshed and all(x.get("is_permanently_saved") for x in refreshed) and (lib_sync_ok or not _has_pending_library_metadata_sync()):
+                task_p["tracks"] = refreshed
+                task_p["library_persisted"] = True
+                if isinstance(lib_sync_res, dict) and lib_sync_res.get("file_id"):
+                    task_p["library_gdrive_id"] = lib_sync_res.get("file_id")
+                task_p["is_permanently_saved"] = True
+                task_p["persistence_status"] = "PERSISTED_GDRIVE"
+                task_p["status"] = "COMPLETED"
+                save_task_persistent(tid_p, task_p)
+                await gdrive_sync_generation_tasks_to_cloud()
 
 async def gdrive_upload_track_audio(task_id: str, file_path: str, title: str = ""):
     if not os.path.exists(file_path):
@@ -1768,13 +2036,7 @@ async def startup_event():
     except Exception as e:
         print(f"[GDRIVE] Aviso en inicio al leer librería desde Google Drive: {e}")
 
-    # 4. Iniciar estrategia de recuperación de subidas pendientes tras reinicio
-    try:
-        asyncio.create_task(recover_pending_uploads())
-    except Exception as e:
-        print(f"[GDRIVE] Aviso en inicio al lanzar recuperador de subidas pendientes: {e}")
-
-    # 5. Iniciar estrategia de recuperación de tareas de generación pendientes tras reinicio
+    # 4. Restaurar tareas de generación pendientes desde almacenamiento duradero
     try:
         await gdrive_sync_generation_tasks_from_cloud()
     except Exception as e:
@@ -1783,6 +2045,19 @@ async def startup_event():
         recover_pending_generation_tasks()
     except Exception as e:
         print(f"[RECOVERY] Aviso en inicio al restaurar tareas pendientes: {e}")
+
+    # 5. Iniciar recuperación automática segura (solo GET, 0 POSTs, sin repetir ni alterar terminales)
+    for tid_rec, task_rec in list(TASKS.items()):
+        st_rec = str(task_rec.get("status") or "").upper()
+        w_rec = task_rec.get("work_id") or task_rec.get("provider_work_id")
+        if (st_rec == "PENDING_VERIFICATION" and is_verifiable_work_id(w_rec)) or (st_rec == "PENDING_PERSISTENCE" and (task_rec.get("tracks") or is_verifiable_work_id(w_rec))):
+            schedule_task_recovery(tid_rec, task_rec)
+
+    # 6. Iniciar estrategia de recuperación de subidas y metadatos de biblioteca pendientes tras reinicio
+    try:
+        asyncio.create_task(recover_pending_uploads())
+    except Exception as e:
+        print(f"[GDRIVE] Aviso en inicio al lanzar recuperador de subidas pendientes: {e}")
 
 def user_has_drive_permission(email: str, permission: str = "read") -> bool:
     """
@@ -2046,26 +2321,230 @@ async def verify_public_audio_url_async(
         return False
 
 
-def format_provider_tags(neg_str: str, max_len: int = 80) -> str:
+_BANNED_ARTISTS_TAG_RE = re.compile(
+    r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b',
+    re.IGNORECASE
+)
+
+_SYNONYM_MAP_EXCLUSIONS = {
+    "cumbia": ["cumbia", "ritmo cumbia", "grupero", "norteño", "accordion", "guiro", "cumbia sonidera"],
+    "norteño": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
+    "norteno": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
+    "regional mexicano": ["regional mexican", "accordion", "bajo sexto", "corrido", "banda", "ranchera", "mariachi", "sierreño"],
+    "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "ritmo grupero", "accordion"],
+    "mexican": ["regional mexican", "norteño", "grupero", "ranchera", "mariachi", "accordion"],
+    "grupero": ["grupero", "onda grupera", "balada grupera", "ritmo grupero", "cumbia grupera", "sintetizador grupero"],
+    "bronco": ["ritmo grupero", "cumbia grupera", "norteño", "accordion"],
+    "latin ritmics": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
+    "ritmos latinos": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
+    "salsa": ["salsa", "salsa horns", "latin brass", "montuno"],
+    "bachata": ["bachata", "bachata bongo", "bongo beat"],
+    "autotune": ["autotune", "pitch correction", "robotic voice", "vocoder"],
+    "distortion": ["heavy distortion", "fuzz", "distorted guitar", "metal tone"],
+    "fuzz": ["fuzz guitar", "heavy distortion"],
+    "heavy metal": ["heavy metal", "screaming vocals", "metal drums"],
+    "electronics drums": ["electronic drums", "synth drums", "808 drums", "drum machine"],
+    "electronic drums": ["electronic drums", "synth drums", "808 drums", "drum machine"],
+    "reggaeton": ["reggaeton", "dembow beat", "urban latin"],
+    "trap": ["trap beat", "808 sub bass trap", "hi-hat rolls trap"],
+}
+
+_SYNTH_BASS_ALLOW_RE = re.compile(
+    r'\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass|electronic\s+bass|sub[\s_-]*bass\s+synth)\b',
+    re.IGNORECASE
+)
+_REAL_BASS_ALLOW_RE = re.compile(
+    r'\b(electric\s+bass|acoustic\s+bass|bass\s+guitar|fender\s+(?:american\s+deluxe\s+)?(?:jazz|precision)\s+bass|jazz\s+bass|precision\s+bass|stingray|contrabajo|upright\s+bass|bajo\s+el[eé]ctrico|bajo\s+ac[uú]stico|ampeg\s+svt)\b',
+    re.IGNORECASE
+)
+
+def format_provider_tags(neg_str: str, max_len: Optional[int] = None) -> str:
     """
-    Formatea las etiquetas de exclusión negativa para el parámetro oficial 'tags' de UdioAPI
-    respetando el límite documentado de 80 caracteres sin truncar palabras por la mitad.
+    Formatea las etiquetas de exclusión negativa para el parámetro oficial 'tags' de UdioAPI.
+    Elimina duplicados (exactos y de espaciado/guiones) preservando el orden prioritario y sin aplicar
+    un límite arbitrario de 80 caracteres (salvo que un llamador indique max_len explícitamente).
     """
     if not neg_str:
         return ""
-    tags = [t.strip() for t in neg_str.split(",") if t.strip()]
+    raw_tags = [re.sub(r'\s+', ' ', t).strip() for t in neg_str.split(",") if t.strip()]
+    seen_exact = set()
+    seen_compact = set()
     res = []
     curr_len = 0
-    for t in tags:
-        extra = len(t) if not res else len(t) + 2
-        if curr_len + extra <= max_len:
-            res.append(t)
+    for t in raw_tags:
+        if _BANNED_ARTISTS_TAG_RE.search(t):
+            continue
+        exact_key = t.lower()
+        compact_key = re.sub(r'[\s\-]+', '', exact_key)
+        if exact_key in seen_exact or compact_key in seen_compact:
+            continue
+        if max_len is not None:
+            extra = len(t) if not res else len(t) + 2
+            if curr_len + extra > max_len:
+                break
             curr_len += extra
-        else:
-            break
-    if not res and tags:
-        return tags[0][:max_len].strip()
+        seen_exact.add(exact_key)
+        seen_compact.add(compact_key)
+        res.append(t)
+    if max_len is not None and not res and raw_tags:
+        return raw_tags[0][:max_len].strip()
     return ", ".join(res)
+
+def _has_real_bass_intent(style_text: str) -> bool:
+    """Detecta intención de bajo acústico/eléctrico real sin confundirse con 'bass drum' ni 'synth bass'."""
+    sl = (style_text or "").lower()
+    if _SYNTH_BASS_ALLOW_RE.search(sl):
+        return False
+    if _REAL_BASS_ALLOW_RE.search(sl):
+        return True
+    cleaned = re.sub(r'\b(bass\s+drum|double\s+bass\s+drum|bassoons?)\b', '', sl)
+    return bool(re.search(r'\b(bass|bajo)\b', cleaned))
+
+def _auto_tag_conflicts_with_positive(tag: str, pos_style_lower: str) -> bool:
+    """Evita que una exclusión automática contradiga instrumentos o rasgos explícitos en el estilo positivo."""
+    tl = tag.lower().strip()
+    if not pos_style_lower or not tl:
+        return False
+    if any(k in tl for k in ["synth bass", "synthesizer bass", "808", "moog bass", "electronic bass", "keyboard bass", "sub bass synth"]):
+        return bool(_SYNTH_BASS_ALLOW_RE.search(pos_style_lower))
+    if any(k in tl for k in ["distortion", "fuzz"]):
+        return bool(re.search(r'\b(distortion|distorted|distorsionada|fuzz|overdrive|heavy\s+metal)\b', pos_style_lower))
+    if tl in ("drums", "drum kit", "acoustic drums", "no drums", "missing drums"):
+        return bool(re.search(r'\b(drums?|drum\s+kit|bater[ií]a|ludwig|dw\s+collector|yamaha\s+recording|century)\b', pos_style_lower))
+    if tl in ("bass", "bass guitar", "electric bass", "acoustic bass", "upright bass"):
+        return bool(re.search(r'\b(bass\s+guitar|electric\s+bass|jazz\s+bass|precision\s+bass|stingray|contrabajo|upright\s+bass|bajo)\b', pos_style_lower))
+    if "guitar" in tl:
+        return bool(re.search(r'\b(guitar|guitars|guitarra|stratocaster|telecaster|les\s+paul|martin\s+d-28)\b', pos_style_lower))
+    if any(k in tl for k in ["piano", "keyboard", "keyboards", "rhodes", "organ", "hammond"]):
+        return bool(re.search(r'\b(piano|keyboard|keyboards|teclado|rhodes|mks-20|motif|galaxy\s+dx|hammond|organ)\b', pos_style_lower))
+    if any(k in tl for k in ["synth", "synths", "synthesizer", "pads", "ambient pad"]):
+        return bool(re.search(r'\b(synth|synths|synthesizer|sintetizador|pads?|juno-106)\b', pos_style_lower))
+    if tl in ("cumbia", "ritmo cumbia", "latin rhythm", "ritmo latino", "salsa", "bachata", "reggaeton", "accordion"):
+        return bool(re.search(rf'\b{re.escape(tl)}\b', pos_style_lower))
+    return False
+
+def resolve_negative_exclusions(
+    exclude_styles: str,
+    positive_style: str,
+    is_solo_piano_prayer: bool = False,
+    is_guitar_solo: bool = False,
+    is_bass_solo: bool = False,
+    is_vals_vienes: bool = False,
+    is_pentecostal: bool = False,
+    is_drum_solo: bool = False,
+) -> tuple[str, str, list[str]]:
+    """
+    Construye exclusiones negativas separando prioridades manuales del usuario de las automáticas,
+    filtrando contradicciones contra instrumentos permitidos, eliminando duplicados y conservando
+    las exclusiones completas sin recorte arbitrario de 80 caracteres.
+    Retorna: (neg_final_str, provider_tags_str, active_critical_clauses)
+    """
+    pos_lower = (positive_style or "").lower()
+    raw_excl = [x.strip() for x in re.split(r'[,;\n]+', exclude_styles or "") if x.strip()]
+
+    manual_tags: list[str] = []
+    auto_tags: list[str] = []
+    stripped_style = positive_style or ""
+
+    for item in raw_excl:
+        manual_tags.append(item)
+        stripped_style = re.sub(rf'\b{re.escape(item)}\b', '', stripped_style, flags=re.IGNORECASE)
+        key = item.lower()
+        if key in _SYNONYM_MAP_EXCLUSIONS:
+            for syn in _SYNONYM_MAP_EXCLUSIONS[key]:
+                if not _auto_tag_conflicts_with_positive(syn, pos_lower):
+                    auto_tags.append(syn)
+                stripped_style = re.sub(rf'\b{re.escape(syn)}\b', '', stripped_style, flags=re.IGNORECASE)
+
+    # Exclusiones automáticas de bajo sintético cuando hay bajo real y NO se solicitó synth bass
+    if _has_real_bass_intent(pos_lower) and not is_solo_piano_prayer and not is_drum_solo and not is_guitar_solo:
+        auto_tags.extend([
+            "synth bass", "synthesizer bass", "808 bass", "808 sub",
+            "electronic bass", "moog bass", "midi bass", "synthesized bassline",
+            "digital sub bass", "keyboard bass", "synthetic bass", "fake bass",
+            "keytar", "sub-bass synth", "acid bass", "wobble bass", "reese bass"
+        ])
+
+    if is_solo_piano_prayer:
+        auto_tags.extend([
+            "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms",
+            "bass", "bass guitar", "electric bass", "acoustic bass", "synth bass", "upright bass",
+            "guitar", "electric guitar", "acoustic guitar", "guitars",
+            "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
+            "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
+            "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
+            "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
+        ])
+    elif is_guitar_solo:
+        auto_tags.extend([
+            "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms", "drum fills", "drum rolls",
+            "bass", "bass guitar", "electric bass", "acoustic bass", "synth bass", "upright bass",
+            "piano", "acoustic grand piano", "grand piano", "electric piano", "rhodes", "keyboard", "keyboards", "organ", "hammond",
+            "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
+            "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
+            "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
+            "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
+        ])
+    elif is_bass_solo:
+        auto_tags.extend([
+            "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms", "drum fills", "drum rolls",
+            "guitar", "electric guitar", "acoustic guitar", "guitars", "electric guitars", "lead guitar",
+            "piano", "acoustic grand piano", "grand piano", "electric piano", "rhodes", "keyboard", "keyboards", "organ", "hammond",
+            "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
+            "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
+            "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
+            "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
+        ])
+    elif is_drum_solo:
+        auto_tags.extend([
+            "guitar", "electric guitar", "acoustic guitar", "guitars", "electric guitars",
+            "bass", "bass guitar", "piano", "keyboard", "keyboards", "organ", "synth",
+            "synthesizer", "strings", "orchestra", "brass", "horns", "vocals", "singing",
+            "voice", "voices", "choir", "backing track", "melody", "chords", "harmony",
+            "song rhythm", "full band", "lead guitar", "heavy metal", "blast beats",
+            "double bass speed", "chaotic drumming"
+        ])
+
+    if is_vals_vienes:
+        auto_tags.extend(["cumbia", "ritmo cumbia", "4/4 beat", "4/4 rock drum beat", "straight rock drums", "modern drum kit", "trap", "808 bass", "electric guitar", "synths", "synthesizer", "autotune", "distortion", "reggaeton"])
+
+    if is_pentecostal:
+        auto_tags.extend([
+            "missing snare", "quiet snare", "weak snare", "no snare", "silent snare", "muffled snare",
+            "missing cymbals", "quiet cymbals", "no cymbals", "missing hi-hat", "kick drum only", "bass drum only",
+            "handclaps only", "no drum fills", "distant drums", "quiet drums", "muffled drums", "drums in background", "buried drums", "soft drums",
+            "afro gospel", "black gospel", "african american gospel", "soul", "neo-soul",
+            "blues scale", "melisma", "vocal runs", "r&b runs", "gospel shouts", "ad-libs",
+            "synth bass", "synthesizer bass", "808 bass", "808 sub",
+            "electronic bass", "moog bass", "midi bass", "synthesized bassline", "digital sub bass",
+            "a cappella", "acappella", "no drums", "missing drums", "tambourine only",
+            "percussion only", "tambourine dominant", "handclaps dominant",
+            "murga", "comparsa", "carnaval", "batucada", "candombe", "bombo de murga",
+            "tamboril", "marcha militar", "marching band", "brass band", "fanfare", "loose percussion",
+            "latin rhythm", "ritmo latino", "percusion latina", "latin percussion",
+            "syncopation", "sincopa", "tumbao", "contratiempos latinos", "offbeat accents",
+            "cumbia", "merengue", "salsa", "bachata", "reggaeton", "dembow", "tropical rhythm",
+            "reggae skank", "ska", "caribbean accent", "acento caribeño", "acento centroamericano",
+            "modismos caribeños", "caribbean vocals", "heavy rock drums",
+            "drum solos", "noisy drums", "electronic drums", "digital triggers", "drum machine",
+            "double bass drum", "blast beats", "overproduced drums", "latin groove", "muddy drums"
+        ])
+
+    is_any_solo = is_solo_piano_prayer or is_guitar_solo or is_bass_solo or is_drum_solo
+    filtered_auto = [
+        t for t in auto_tags
+        if is_any_solo or not _auto_tag_conflicts_with_positive(t, pos_lower)
+    ]
+
+    # Manuales primero, luego automáticos no conflictivos, deduplicados y sin recorte de 80 chars
+    combined_raw = ", ".join(manual_tags + filtered_auto)
+    provider_tags = format_provider_tags(combined_raw, max_len=None)
+    dedup_neg = [t.strip() for t in provider_tags.split(",") if t.strip()]
+
+    critical_instruments = ["accordion", "bajo sexto", "cumbia", "norteño", "corrido", "grupero", "polka", "distortion", "autotune"]
+    active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
+
+    return ", ".join(dedup_neg), provider_tags, active_critical
 
 def sanitize_positive_style(style_text: str, max_chars: int = 1000) -> str:
     """
@@ -2091,6 +2570,196 @@ def sanitize_positive_style(style_text: str, max_chars: int = 1000) -> str:
     if last_comma > 200:
         return truncated[:last_comma].strip(" ,")
     return truncated.strip(" ,")
+
+_GEAR_PRIMARY_INSTRUMENT_MAP = [
+    (re.compile(r'\b(ludwig|dw\s+collector|yamaha\s+recording|century\s+1994|drum\s+kit|drums?)\b', re.I), "live acoustic drum kit"),
+    (re.compile(r'\b(jazz\s+bass|precision\s+bass|fender\s+precision|music\s+man\s+stingray|stingray|yamaha\s+bass|electric\s+bass|bass\s+guitar)\b', re.I), "authentic electric bass guitar"),
+    (re.compile(r'\b(contrabajo|upright\s+(?:double\s+)?bass)\b', re.I), "acoustic upright double bass"),
+    (re.compile(r'\b(synth[\s_-]*bass|808\s+bass|moog\s+bass)\b', re.I), "synth bass"),
+    (re.compile(r'\b(stratocaster|telecaster|les\s+paul|electric\s+guitar)\b', re.I), "electric guitar"),
+    (re.compile(r'\b(martin\s+d-28|acoustic\s+(?:rhythm\s+|dreadnought\s+)?guitar)\b', re.I), "acoustic guitar"),
+    (re.compile(r'\b(cfx|motif\s+xs|motif\s+power|galaxy\s+dx|concert\s+grand\s+piano|acoustic\s+grand\s+piano|piano)\b', re.I), "acoustic grand piano"),
+    (re.compile(r'\b(rhodes|mks-?20|elec\s+piano\s+2|e\.piano\s+2|electric\s+piano)\b', re.I), "electric piano"),
+    (re.compile(r'\b(hammond\s+b3|pipe\s+organ|organ)\b', re.I), "Hammond B3 organ"),
+    (re.compile(r'\b(juno-?106|synthesizer|synth\s+pad|synth\s+lead)\b', re.I), "analog synthesizer"),
+    (re.compile(r'\b(orchestral\s+strings|string\s+quartet|string\s+ensemble|cuerdas|violins?|cellos?|violas?)\b', re.I), "orchestral strings"),
+]
+
+_SECONDARY_DETAIL_RE = re.compile(
+    r'\b(preamp|eq|pickups?|single-?coil|humbucker|fretboard|roundwound|flatwound|fret\s+buzz|ampeg|svt|b-15|twin\s+reverb|marshall|mesa|markbass|cabinet|8x10|4x10|2x12|speaker|jensen|celestion|eminence|beta\s+52a|sm57|u47|neve|ssl\s+4000|api\s+1608|tg12345|yamaha\s+tf5|console|op-amp|sas\s+synthesis|tape\s+saturation|gated\s+sustain|hydraulic\s+ebony|meinl|paiste|rack\s+toms?|floor\s+tom|keyscape|room\s+mic|1 foot from|direct-box|portaflex|alder\s+body|sitka\s+spruce|maple\s+drum|birch\s+drum|vintage\s+19\d\d|modern\s+hi-fi|slap\s+attack|low-mids|deep\s+tight\s+low\s+end|warm\s+tube\s+harmonic|analog\s+character|fingerstyle|thumb\s+and\s+finger|plugged\s+into)\b',
+    re.IGNORECASE
+)
+
+def build_prioritized_style(
+    genre_anchor: str,
+    bpm_tag: str,
+    user_and_enriched_style: str,
+    priority_rhythm_clauses: list[str],
+    vocal_tag: str = "",
+    is_instrumental: bool = False,
+    is_solo_mode: bool = False,
+    max_chars: int = 1000,
+    raw_user_style: str = "",
+) -> dict:
+    """
+    Ensambla el campo 'style' respetando estrictamente la prioridad de 6 niveles dentro de 1.000 caracteres:
+    1. Género musical y métrica seleccionados
+    2. Tempo BPM
+    3. Instrumentación principal (+ tonalidad/acordes)
+    4. Características rítmicas fundamentales
+    5. Instrucciones vocales (ej. voz femenina natural en español)
+    6. Detalles secundarios de amplificadores, marcas y técnicas instrumentales
+    """
+    tier1_genre: list[str] = []
+    tier2_bpm: list[str] = []
+    tier3_instruments: list[str] = []
+    tier4_rhythm: list[str] = []
+    tier5_vocals: list[str] = []
+    tier6_secondary: list[str] = []
+
+    def _split_clean(txt: str) -> list[str]:
+        return [re.sub(r'\s+', ' ', p).strip(" ,-") for p in (txt or "").split(",") if p.strip()]
+
+    # Tier 1: género/métrica desde genre_anchor (extrayendo bpm_tag para ubicarlo exactamente en Tier 2)
+    bpm_norm = (bpm_tag or "").strip().lower()
+    for seg in _split_clean(genre_anchor):
+        if bpm_norm and seg.lower() == bpm_norm:
+            continue
+        tier1_genre.append(seg)
+
+    # Tier 2: Tempo BPM
+    if bpm_tag and bpm_tag.strip():
+        tier2_bpm.append(bpm_tag.strip())
+
+    # Separar cláusulas del usuario / enriquecimiento entre género, instrumento principal, armonía y detalle secundario
+    vocal_lower = (vocal_tag or "").lower()
+    inferred_core_insts: list[str] = []
+
+    if not is_solo_mode:
+        positive_for_inst_scan = sanitize_positive_style(user_and_enriched_style or "", max_chars=50000)
+        for pat, core_name in _GEAR_PRIMARY_INSTRUMENT_MAP:
+            if pat.search(positive_for_inst_scan):
+                inferred_core_insts.append(core_name)
+
+    # Cláusulas ya procesadas en Tier 4 para evitar duplicados
+    rhythm_lower_set = {c.lower().strip() for c in (priority_rhythm_clauses or [])}
+    raw_lower_tokens = {s.lower() for s in _split_clean(raw_user_style)} if raw_user_style else set()
+
+    for seg in _split_clean(user_and_enriched_style):
+        sl = seg.lower()
+        if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sl):
+            continue
+        if bpm_norm and sl == bpm_norm:
+            continue
+        if sl in rhythm_lower_set:
+            continue
+        if vocal_lower and sl in vocal_lower:
+            continue
+        if is_solo_mode:
+            tier6_secondary.append(seg)
+            continue
+
+        # Acordes y tonalidad van en Tier 3 junto con la instrumentación principal
+        if sl.startswith("key of ") or sl.startswith("key:") or sl.startswith("chord progression:") or "featured instruments:" in sl:
+            tier3_instruments.append(seg)
+        elif _SECONDARY_DETAIL_RE.search(sl) or len(seg) > 65:
+            tier6_secondary.append(seg)
+        elif any(k in sl for k in ["drum", "bass", "guitar", "piano", "organ", "synth", "keyboard", "rhodes", "cajon", "cajón", "strings", "violin", "cello"]):
+            if raw_lower_tokens and sl not in raw_lower_tokens:
+                tier6_secondary.append(seg)
+            else:
+                tier3_instruments.append(seg)
+        elif "vocal" in sl or "choir" in sl or "tenor" in sl or "soprano" in sl or "baritone" in sl:
+            tier5_vocals.append(seg)
+        elif raw_lower_tokens and sl not in raw_lower_tokens:
+            # Sub-cláusulas derivadas de expansión de hardware/equipo (ej. "deep warm wooden tone") van en Tier 6
+            tier6_secondary.append(seg)
+        else:
+            tier1_genre.append(seg)
+
+    if not is_solo_mode:
+        tier3_instruments = inferred_core_insts + tier3_instruments
+
+    # Tier 4: Ritmo fundamental (sin repetir BPM)
+    for clause in (priority_rhythm_clauses or []):
+        for sub in _split_clean(clause):
+            if bpm_norm and sub.lower() == bpm_norm:
+                continue
+            tier4_rhythm.append(sub)
+
+    # Tier 5: Instrucciones vocales (o marca instrumental)
+    if is_instrumental:
+        tier5_vocals.append("instrumental")
+    elif vocal_tag:
+        for sub in _split_clean(vocal_tag):
+            if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sub.lower()):
+                continue
+            tier5_vocals.append(sub)
+
+    # Deduplicación global conservando orden prioritario Tiers 1 -> 6
+    seen_all = set()
+    def _dedup_tier(items: list[str]) -> list[str]:
+        out = []
+        for it in items:
+            cleaned_it = sanitize_positive_style(it, max_chars=max_chars)
+            for sub in _split_clean(cleaned_it):
+                k = sub.lower()
+                if k and k not in seen_all:
+                    seen_all.add(k)
+                    out.append(sub)
+        return out
+
+    core_tiers = (
+        _dedup_tier(tier1_genre)
+        + _dedup_tier(tier2_bpm)
+        + _dedup_tier(tier3_instruments)
+        + _dedup_tier(tier4_rhythm)
+        + _dedup_tier(tier5_vocals)
+    )
+    secondary_tier = _dedup_tier(tier6_secondary)
+
+    all_tokens = core_tiers + secondary_tier
+    raw_combined = ", ".join(all_tokens)
+    raw_len = len(raw_combined)
+
+    if raw_len <= max_chars:
+        return {
+            "style": raw_combined,
+            "raw_length": raw_len,
+            "final_length": raw_len,
+            "truncated": False,
+            "core_preserved": True,
+            "dropped_secondary_count": 0,
+        }
+
+    # Construir respetando Tiers 1-5 íntegramente y empaquetando Tier 6 hasta el límite de 1.000 caracteres
+    selected: list[str] = []
+    curr_len = 0
+    for tok in core_tiers:
+        extra = len(tok) if not selected else len(tok) + 2
+        if curr_len + extra <= max_chars:
+            selected.append(tok)
+            curr_len += extra
+
+    core_preserved = (len(selected) == len(core_tiers))
+    dropped_secondary = 0
+    for tok in secondary_tier:
+        extra = len(tok) if not selected else len(tok) + 2
+        if curr_len + extra <= max_chars:
+            selected.append(tok)
+            curr_len += extra
+        else:
+            dropped_secondary += 1
+
+    final_style = sanitize_positive_style(", ".join(selected), max_chars=max_chars)
+    return {
+        "style": final_style,
+        "raw_length": raw_len,
+        "final_length": len(final_style),
+        "truncated": (dropped_secondary > 0 or len(final_style) < raw_len),
+        "core_preserved": core_preserved,
+        "dropped_secondary_count": dropped_secondary,
+    }
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_bin = "ffmpeg"
@@ -2212,7 +2881,7 @@ async def preview_parameters(
     weirdness: int = Form(50),
     style_influence: int = Form(50),
     audio_influence: int = Form(25),
-    model: str = Form("chirp-v4-5"),
+    model: str = Form(DEFAULT_UDIO_MODEL),
     pronunciation: str = Form(""),
     obfuscate: bool = Form(False),
     skeleton_file: str = Form(""),
@@ -2245,7 +2914,7 @@ async def preview_parameters(
     eff_hihat = str(_val(hihat_mode, "") or "")
     norm_lyrics_mode = str(_val(lyrics_mode, "custom") or "custom").lower().strip()
     eff_inc_lyrics = bool(_val(include_lyrics, True))
-    eff_model = str(_val(model, "chirp-v4-5") or "chirp-v4-5")
+    eff_model = validate_udio_model(str(_val(model, DEFAULT_UDIO_MODEL) or DEFAULT_UDIO_MODEL))
     eff_excl = str(_val(exclude_styles, "") or "")
     eff_skel = str(_val(skeleton_file, "") or "")
     eff_gender = str(_val(vocal_gender, "random") or "random")
@@ -2295,7 +2964,7 @@ async def preview_parameters(
         "vocal_gender": eff_gender if not is_instrumental else "N/A (Instrumental)",
         "has_reference_audio": has_ref_audio,
         "reference_audio_name": ref_name,
-        "estimated_credits": 10
+        "estimated_credits": get_udio_model_credits(eff_model)
     })
 
 @app.get("/api/generation/preview-parameters")
@@ -2312,7 +2981,7 @@ async def preview_parameters_get(
     weirdness: int = Query(50),
     style_influence: int = Query(50),
     audio_influence: int = Query(25),
-    model: str = Query("chirp-v4-5"),
+    model: str = Query(DEFAULT_UDIO_MODEL),
     pronunciation: str = Query(""),
     obfuscate: bool = Query(False),
     skeleton_file: str = Query(""),
@@ -2363,7 +3032,7 @@ async def transform_audio(
     weirdness: int = Form(50),
     style_influence: int = Form(50),
     audio_influence: int = Form(25),
-    model: str = Form("chirp-v4-5"),
+    model: str = Form(DEFAULT_UDIO_MODEL),
     pronunciation: str = Form(""),
     obfuscate: bool = Form(False),
     skeleton_file: str = Form(""),
@@ -2376,6 +3045,7 @@ async def transform_audio(
     art_bass_pickup: Optional[bool] = Form(None),
     active_preset: str = Form(""),
     is_public_domain: bool = Form(False),
+    preserve_original_audio: bool = Form(False),
     client_operation_id: str = Form(""),
     lyrics_mode: str = Form("custom"),
     current_user: str = Depends(get_current_user)
@@ -2383,6 +3053,32 @@ async def transform_audio(
     try:
         if not UDIO_API_KEY:
             raise HTTPException(status_code=400, detail="Falta configurar UDIO_API_KEY")
+        model = validate_udio_model(model)
+
+        title = (title or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="El título es obligatorio.")
+        if len(title) > 100:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El título excede el límite máximo de 100 caracteres ({len(title)} caracteres)."
+            )
+
+        norm_lm = (lyrics_mode or "custom").lower().strip()
+        eff_is_instr = (norm_lm == "instrumental") or (not include_lyrics) or ((lyrics or "").strip().lower() == "[instrumental]")
+        eff_is_auto = (norm_lm == "auto") and not eff_is_instr
+        if not eff_is_instr and not eff_is_auto:
+            clean_lyr = (lyrics or "").strip()
+            if not clean_lyr:
+                raise HTTPException(
+                    status_code=400,
+                    detail="En modo personalizado con voz debes ingresar la letra original (o marcar la casilla Instrumental)."
+                )
+            if len(clean_lyr) > 5000:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La letra excede el límite máximo de 5000 caracteres ({len(clean_lyr)} caracteres)."
+                )
 
         prune_tasks()
         prune_recent_operations()
@@ -2536,7 +3232,7 @@ async def transform_audio(
             include_lyrics, bypass_copyright, exclude_styles, vocal_gender, weirdness,
             style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain,
             target_bpm, hihat_mode, art_crash_toms, art_splash_ride, art_tom_grooves,
-            art_bass_slap, art_bass_pickup, active_preset, lyrics_mode
+            art_bass_slap, art_bass_pickup, active_preset, lyrics_mode, preserve_original_audio
         )
 
         return {"status": "started", "task_id": task_id}
@@ -2569,10 +3265,113 @@ async def cancel_task(task_id: str, current_user: str = Depends(get_current_user
     task["detail"] = "Cancelado por el usuario"
     return {"status": "success"}
 
+async def finalize_task_tracks_persistence(
+    task_id: str,
+    final_tracks: list[dict],
+    log_fn: Optional[Callable[[str], None]] = None,
+) -> dict:
+    """
+    Confirma el respaldo completo (MP3 en Drive + metadatos de library.json en Drive)
+    antes de marcar la tarea como COMPLETED. Ante fallos de almacenamiento, conserva los
+    datos localmente en SQLite/JSON y deja la tarea en PENDING_PERSISTENCE sin repetir la generación.
+    """
+    task = TASKS.get(task_id) or {}
+    task["tracks"] = final_tracks
+    task["provider_final_status"] = "SUCCESS"
+
+    if final_tracks:
+        lib_confirm = await persist_tracks_to_library_and_confirm_cloud(final_tracks, log_fn)
+        all_mp3_persisted = all(bool(t.get("is_permanently_saved")) for t in final_tracks)
+        library_persisted = bool(lib_confirm.get("ok") and lib_confirm.get("file_id"))
+
+        task["library_persisted"] = library_persisted
+        if library_persisted:
+            task["library_gdrive_id"] = lib_confirm.get("file_id")
+
+        if all_mp3_persisted and library_persisted:
+            task["persistence_status"] = "PERSISTED_GDRIVE"
+            task["is_permanently_saved"] = True
+            task["status"] = "COMPLETED"
+            task["detail"] = ""
+        else:
+            task["is_permanently_saved"] = False
+            task["status"] = "PENDING_PERSISTENCE"
+            if all_mp3_persisted and not library_persisted:
+                task["persistence_status"] = "PENDING_LIBRARY_SYNC"
+                msg = (
+                    f"Audio respaldado en Drive; metadatos de library.json conservados localmente y pendientes de sincronizar "
+                    f"({lib_confirm.get('error') or 'reintento pendiente'}). No se repetirá la generación musical."
+                )
+            else:
+                task["persistence_status"] = "PENDING_BACKUP"
+                msg = (
+                    f"Pista generada y guardada localmente; respaldo completo en Google Drive pendiente "
+                    f"({lib_confirm.get('error') or 'reintento de subida MP3/biblioteca pendiente'}). No se repetirá la generación musical."
+                )
+            task["detail"] = msg
+            if log_fn:
+                log_fn(msg)
+    else:
+        task["library_persisted"] = False
+        task["is_permanently_saved"] = False
+        task["persistence_status"] = "PENDING_BACKUP"
+        task["status"] = "COMPLETED"
+
+    TASKS[task_id] = task
+    save_task_persistent(task_id, task)
+    sync_res = await gdrive_sync_generation_tasks_to_cloud()
+    if log_fn:
+        if isinstance(sync_res, dict) and (sync_res.get("file_id") or sync_res.get("id")):
+            log_fn(f"Respaldo de tarea en Google Drive confirmado (ID: {sync_res.get('file_id') or sync_res.get('id')}).")
+        elif LAST_GDRIVE_TASKS_SYNC.get("error"):
+            log_fn(f"Aviso respaldo generation_tasks.json en Google Drive: {LAST_GDRIVE_TASKS_SYNC.get('error')}")
+    return task
+
+
+def schedule_task_recovery(task_id: str, task_obj: Optional[dict] = None) -> dict:
+    """
+    Programa una única reanudación asíncrona segura (exclusivamente GET / persistencia, 0 POSTs)
+    si la tarea no es terminal, posee Work ID verificable (o pistas pendientes de respaldo)
+    y no tiene ya una recuperación activa en vuelo.
+    """
+    task = task_obj or TASKS.get(task_id) or load_task_persistent(task_id)
+    if not task:
+        return {"scheduled": False, "reason": "not_found"}
+
+    status = str(task.get("status") or "").upper()
+    if status in _TERMINAL_TASK_STATUSES:
+        return {"scheduled": False, "reason": "terminal", "status": status}
+
+    work_id = task.get("work_id") or task.get("provider_work_id")
+    is_pending_pers = (status == "PENDING_PERSISTENCE" and bool(task.get("tracks")))
+    if not is_pending_pers and not is_verifiable_work_id(work_id):
+        return {"scheduled": False, "reason": "missing_work_id", "status": status}
+
+    existing_task = _recovery_tasks.get(task_id)
+    if task_id in _in_flight_recoveries or (existing_task is not None and not existing_task.done()):
+        return {"scheduled": False, "reason": "already_resuming", "work_id": work_id}
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return {"scheduled": False, "reason": "no_running_loop", "work_id": work_id}
+
+    TASKS.setdefault(task_id, task)
+    bg_task = loop.create_task(execute_task_recovery(task_id))
+    _recovery_tasks[task_id] = bg_task
+
+    def _cleanup_ref(done_fut):
+        if _recovery_tasks.get(task_id) is done_fut:
+            _recovery_tasks.pop(task_id, None)
+
+    bg_task.add_done_callback(_cleanup_ref)
+    return {"scheduled": True, "reason": "started", "work_id": work_id}
+
+
 async def execute_task_recovery(task_id: str) -> dict:
     """
     Reanuda una tarea pendiente consultando al proveedor exclusivamente por GET (0 POSTs).
-    Descarga, verifica cabeceras MP3 y persiste pistas en la biblioteca con deduplicación garantizada.
+    Descarga, verifica integridad y persiste pistas + library.json con deduplicación garantizada.
     """
     async with _recovery_lock:
         if task_id in _in_flight_recoveries:
@@ -2591,10 +3390,49 @@ async def _do_execute_task_recovery(task_id: str) -> dict:
     if not task:
         raise HTTPException(status_code=404, detail="Tarea no encontrada para reanudación.")
 
+    cur_status = str(task.get("status") or "").upper()
+    if cur_status in _TERMINAL_TASK_STATUSES:
+        return task
+
+    def log_recovery(msg):
+        ts = datetime.datetime.now().strftime('%H:%M:%S')
+        line = f"[{ts}] {msg}\n"
+        task["logs"] = task.get("logs", "") + line
+        print(f"[RECOVERY {task_id[:6]}] {msg}", flush=True)
+
+    # Si las pistas ya fueron obtenidas y solo faltaba confirmar Drive/library.json: 0 llamadas a UdioAPI
+    if cur_status == "PENDING_PERSISTENCE" and isinstance(task.get("tracks"), list) and len(task.get("tracks")) > 0:
+        TASKS[task_id] = task
+        task_owner = _normalize_owner_email(task.get("owner_email"))
+        refreshed_tracks = []
+        for tr in task["tracks"]:
+            if not isinstance(tr, dict) or not tr.get("id"):
+                continue
+            item = dict(tr)
+            if task_owner and not item.get("owner_email"):
+                item["owner_email"] = task_owner
+            tid_tr = item["id"]
+            local_p = os.path.join(TRACKS_DIR, f"{tid_tr}.mp3")
+            if not (os.path.exists(local_p) and os.path.getsize(local_p) > 1000):
+                src_u = item.get("raw_audio_url") or item.get("cloud_backup")
+                if src_u and str(src_u).startswith("http"):
+                    await cache_track_audio(tid_tr, src_u)
+            if os.path.exists(local_p) and os.path.getsize(local_p) > 1000 and not item.get("gdrive_id"):
+                try:
+                    g_res = await gdrive_upload_track_audio(tid_tr, local_p, item.get("title", ""))
+                    if g_res and g_res.get("file_id"):
+                        item["gdrive_id"] = g_res["file_id"]
+                        item["gdrive_link"] = g_res.get("link")
+                except Exception as e:
+                    log_recovery(f"Aviso reintento Google Drive MP3: {e}")
+            normalize_track_persistence_state(item)
+            refreshed_tracks.append(item)
+        return await finalize_task_tracks_persistence(task_id, refreshed_tracks, log_recovery)
+
     work_id = task.get("work_id") or task.get("provider_work_id")
-    if not work_id:
+    if not is_verifiable_work_id(work_id):
         task["status"] = "ERROR"
-        task["detail"] = "No se puede recuperar la tarea: carece de Work ID del proveedor."
+        task["detail"] = "No se puede recuperar la tarea: carece de Work ID verificable del proveedor."
         save_task_persistent(task_id, task)
         return task
 
@@ -2607,12 +3445,7 @@ async def _do_execute_task_recovery(task_id: str) -> dict:
 
     engine = music_engine_adapter.UdioProEngine()
     payload = task.get("resolved_payload") or task.get("payload") or {}
-
-    def log_recovery(msg):
-        ts = datetime.datetime.now().strftime('%H:%M:%S')
-        line = f"[{ts}] {msg}\n"
-        task["logs"] = task.get("logs", "") + line
-        print(f"[RECOVERY {task_id[:6]}] {msg}", flush=True)
+    task_owner = _normalize_owner_email(task.get("owner_email"))
 
     try:
         # LLAMADA A RESUME_WORK_ID -> 0 POSTs ENVIADOS
@@ -2642,9 +3475,12 @@ async def _do_execute_task_recovery(task_id: str) -> dict:
                     taudio_cached = await cache_track_audio(tid, taudio)
                     local_track_file = os.path.join(TRACKS_DIR, f"{tid}.mp3")
 
-                    is_valid = is_valid_mp3_file(local_track_file)
-                    if not is_valid:
-                        log_recovery(f"AVISO: El archivo descargado para {ttitle} no superó la verificación de cabeceras MP3.")
+                    integrity_res = validate_audio_file_integrity(local_track_file)
+                    if not integrity_res.get("valid"):
+                        log_recovery(
+                            f"AVISO: El archivo descargado para {ttitle} no superó la verificación de cabeceras/integridad "
+                            f"({integrity_res.get('error', 'archivo inválido')})."
+                        )
 
                     cloud_backup = None
                     if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
@@ -2665,7 +3501,7 @@ async def _do_execute_task_recovery(task_id: str) -> dict:
                         "lyrics": t.get("lyrics") or payload.get("prompt", ""),
                         "style": payload.get("style", ""),
                         "model": payload.get("model", task.get("model", "chirp-v4-5")),
-                        "owner_email": task.get("owner_email", "")
+                        "owner_email": task_owner
                     }
 
                     if os.path.exists(local_track_file) and os.path.getsize(local_track_file) > 1000:
@@ -2678,19 +3514,12 @@ async def _do_execute_task_recovery(task_id: str) -> dict:
                             log_recovery(f"Aviso Google Drive: {e}")
 
                     normalize_track_persistence_state(track_info)
+                    track_info.setdefault("updated_at", time.time())
+                    save_library_atomic([track_info])
                     final_tracks.append(track_info)
-                    # Deduplicación garantizada en add_track_to_library
-                    add_track_to_library(track_info)
-                    log_recovery(f"Pista procesada e incorporada a biblioteca: {ttitle} (ID: {tid}).")
+                    log_recovery(f"Pista descargada e incorporada al registro local: {ttitle} (ID: {tid}).")
 
-        task["tracks"] = final_tracks
-        task["status"] = "COMPLETED"
-        all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
-        task["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
-        task["is_permanently_saved"] = all_persisted
-        TASKS[task_id] = task
-        save_task_persistent(task_id, task)
-        return task
+        return await finalize_task_tracks_persistence(task_id, final_tracks, log_recovery)
 
     except Exception as e:
         err_code = getattr(e, "code", "UNKNOWN_ERROR")
@@ -2710,19 +3539,25 @@ async def _do_execute_task_recovery(task_id: str) -> dict:
 
 @app.get("/api/tasks/pending")
 async def get_my_pending_tasks(current_user: str = Depends(get_current_user)):
-    """Devuelve las tareas en curso o en verificación pendientes pertenecientes al usuario autenticado."""
-    norm_user = current_user.strip().lower()
-    is_admin = (norm_user == ADMIN_EMAIL.strip().lower())
+    """Devuelve exclusivamente las tareas pendientes del usuario autenticado y activa reanudación GET segura cuando aplica."""
+    norm_user = _normalize_owner_email(current_user)
     pending = []
+    active_statuses = {"IN_PROGRESS", "QUEUED", "PENDING_VERIFICATION", "PENDING_PERSISTENCE"}
 
     for tid, t in list(TASKS.items()):
-        owner = (t.get("owner_email") or "").strip().lower()
-        if (is_admin or owner == norm_user) and t.get("status") in ["IN_PROGRESS", "QUEUED", "PENDING_VERIFICATION"]:
+        owner = _normalize_owner_email(t.get("owner_email"))
+        st = str(t.get("status") or "").upper()
+        if owner == norm_user and st in active_statuses:
+            wid = t.get("work_id") or t.get("provider_work_id")
+            can_resume = (st == "PENDING_VERIFICATION" and is_verifiable_work_id(wid)) or (st == "PENDING_PERSISTENCE" and bool(t.get("tracks")))
+            if can_resume:
+                schedule_task_recovery(tid, t)
             pending.append({
                 "task_id": tid,
-                "work_id": t.get("work_id") or t.get("provider_work_id"),
+                "work_id": wid,
                 "status": t.get("status"),
                 "title": t.get("title"),
+                "can_auto_resume": can_resume,
                 "created_at": t.get("created_at"),
                 "updated_at": t.get("updated_at")
             })
@@ -2732,16 +3567,25 @@ async def get_my_pending_tasks(current_user: str = Depends(get_current_user)):
             cursor = conn.execute("""
                 SELECT task_id, work_id, owner_email, title, status, created_at, updated_at
                 FROM generation_tasks
-                WHERE status IN ('IN_PROGRESS', 'QUEUED', 'PENDING_VERIFICATION')
+                WHERE status IN ('IN_PROGRESS', 'QUEUED', 'PENDING_VERIFICATION', 'PENDING_PERSISTENCE')
             """)
             for row in cursor.fetchall():
                 t_id, w_id, email, tit, st, c_at, u_at = row
-                if (is_admin or email.strip().lower() == norm_user) and not any(p["task_id"] == t_id for p in pending):
+                if _normalize_owner_email(email) == norm_user and not any(p["task_id"] == t_id for p in pending):
+                    persisted_obj = load_task_persistent(t_id)
+                    if persisted_obj:
+                        TASKS.setdefault(t_id, persisted_obj)
+                    st_up = str(st or "").upper()
+                    has_tr = bool((persisted_obj or {}).get("tracks"))
+                    can_resume = (st_up == "PENDING_VERIFICATION" and is_verifiable_work_id(w_id)) or (st_up == "PENDING_PERSISTENCE" and has_tr)
+                    if can_resume and persisted_obj:
+                        schedule_task_recovery(t_id, persisted_obj)
                     pending.append({
                         "task_id": t_id,
                         "work_id": w_id,
                         "status": st,
                         "title": tit,
+                        "can_auto_resume": can_resume,
                         "created_at": c_at,
                         "updated_at": u_at
                     })
@@ -2751,26 +3595,34 @@ async def get_my_pending_tasks(current_user: str = Depends(get_current_user)):
     return {"pending_tasks": pending}
 
 @app.post("/api/task/{task_id}/resume")
-async def api_resume_task(task_id: str, background_tasks: BackgroundTasks, current_user: str = Depends(get_current_user)):
+async def api_resume_task(task_id: str, current_user: str = Depends(get_current_user)):
     is_own, task = find_task_and_check_ownership(task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
     if not is_own:
         raise HTTPException(status_code=403, detail="Acceso denegado a esta tarea.")
 
-    if task.get("status") == "COMPLETED":
-        return {"status": "COMPLETED", "message": "La tarea ya fue completada exitosamente.", "tracks": task.get("tracks", [])}
+    cur_status = str(task.get("status") or "").upper()
+    if cur_status in _TERMINAL_TASK_STATUSES:
+        return {
+            "status": cur_status,
+            "already_terminal": True,
+            "message": f"La tarea ya se encuentra en estado terminal ({cur_status}).",
+            "tracks": task.get("tracks", []),
+        }
 
     work_id = task.get("work_id") or task.get("provider_work_id")
-    if not work_id:
-        raise HTTPException(status_code=400, detail="Esta tarea no cuenta con un Work ID del proveedor para reanudar.")
+    is_pending_pers = (cur_status == "PENDING_PERSISTENCE" and bool(task.get("tracks")))
+    if not is_pending_pers and not is_verifiable_work_id(work_id):
+        raise HTTPException(status_code=400, detail="Esta tarea no cuenta con un Work ID verificable del proveedor para reanudar.")
 
-    background_tasks.add_task(execute_task_recovery, task_id)
+    sched = schedule_task_recovery(task_id, task)
     return {
         "status": "resuming",
+        "already_resuming": (sched.get("reason") == "already_resuming"),
         "task_id": task_id,
         "work_id": work_id,
-        "message": "Reanudación iniciada mediante consultas GET exclusivas (0 POSTs)."
+        "message": "Reanudación verificada mediante consultas GET exclusivas (0 POSTs)."
     }
 
 
@@ -3760,7 +4612,8 @@ async def run_transform_task(
     style_influence, audio_influence, model, pronunciation="", obfuscate=False,
     is_public_domain=False, target_bpm=0, hihat_mode="", art_crash_toms=None,
     art_splash_ride=None, art_tom_grooves=None, art_bass_slap=None,
-    art_bass_pickup=None, active_preset="", lyrics_mode="custom"
+    art_bass_pickup=None, active_preset="", lyrics_mode="custom",
+    preserve_original_audio=False
 ):
     def log_msg(msg):
         import datetime
@@ -3787,8 +4640,13 @@ async def run_transform_task(
     is_instrumental = (norm_lyrics_mode == "instrumental") or (not include_lyrics) or (lyrics.strip().lower() == "[instrumental]")
     is_auto_lyrics = (norm_lyrics_mode == "auto") and not is_instrumental
 
+    title = (title or "").strip()
     if is_instrumental and "(instrumental)" not in title.lower():
-        title = f"{title} (Instrumental)"
+        suffix = " (Instrumental)"
+        base_title = title[:max(0, 100 - len(suffix))].rstrip() if len(title) + len(suffix) > 100 else title
+        title = f"{base_title}{suffix}"
+    if len(title) > 100:
+        title = title[:100].strip()
 
     # Aislamiento estricto de modos: previene filtración de letras de sesiones anteriores
     if is_instrumental:
@@ -3796,7 +4654,25 @@ async def run_transform_task(
     elif is_auto_lyrics:
         final_lyrics = ""
     else:
-        final_lyrics = lyrics.strip()
+        final_lyrics = (lyrics or "").strip()
+        if not final_lyrics:
+            err_msg = "Modo personalizado con voz sin letra original: solicitud cancelada antes de enviar al proveedor para evitar sustituir 'prompt' por estilo."
+            log_msg(f"ERROR: {err_msg}")
+            TASKS[task_id]["status"] = "ERROR"
+            TASKS[task_id]["error_type"] = "LYRICS_MISSING"
+            TASKS[task_id]["detail"] = err_msg
+            save_task_persistent(task_id, TASKS[task_id])
+            save_local_log()
+            return
+        if len(final_lyrics) > 5000:
+            err_msg = f"La letra excede el límite máximo permitido de 5000 caracteres ({len(final_lyrics)} caracteres)."
+            log_msg(f"ERROR: {err_msg}")
+            TASKS[task_id]["status"] = "ERROR"
+            TASKS[task_id]["error_type"] = "LYRICS_LENGTH_EXCEEDED"
+            TASKS[task_id]["detail"] = err_msg
+            save_task_persistent(task_id, TASKS[task_id])
+            save_local_log()
+            return
 
     # Correcciones de pronunciación: una por línea con formato "palabra=como suena"
     if pronunciation.strip() and not is_instrumental and final_lyrics:
@@ -3835,8 +4711,12 @@ async def run_transform_task(
                 if words and all(chord_token_pattern.match(w) for w in words) and len(words) >= 1 and len(words) <= 8:
                     extracted_chords.extend(words)
                 else:
-                    # Si tiene acordes inline tipo [D], removerlos de la letra
-                    inline_cleaned = re.sub(r'\[[A-G][b#]?[^\]]*\]', '', line)
+                    # Si tiene acordes inline tipo [D] o [Am7], removerlos sin borrar etiquetas estructurales ([Chorus], [Bridge], etc.)
+                    inline_cleaned = re.sub(
+                        r'\[[A-G][b#]?(?:maj7?|min7?|m7?|sus[24]?|dim7?|aug|add\d+|7|9|11|13)?(?:/[A-G][b#]?)?\]',
+                        '',
+                        line
+                    )
                     cleaned_lines.append(inline_cleaned)
             if extracted_chords and "chord progression" not in style.lower():
                 prog_str = " - ".join(extracted_chords[:12])
@@ -3866,7 +4746,10 @@ async def run_transform_task(
             with open(temp_file_path, "wb") as f:
                 f.write(audio_content)
 
-            if bypass_copyright:
+            effective_bypass = bool(bypass_copyright) and not bool(preserve_original_audio)
+            if preserve_original_audio:
+                log_msg("Audio original autorizado: preservando tono, tempo y timbre originales sin alteración acústica.")
+            if effective_bypass:
                 bypassed_file_path = f"bypassed_{uuid.uuid4().hex}.mp3"
                 created_temp_files.append(bypassed_file_path)
                 log_msg("Procesando modulación de audio con FFmpeg...")
@@ -4263,7 +5146,7 @@ async def run_transform_task(
         style = enrich_style(style)
         style = enrich_voice(style)
         style = sanitize_artist_names(style)
-        title = sanitize_artist_names(title)
+        title = sanitize_artist_names(title)[:100].strip()
 
         # Clean structural tags from style string (they belong in lyrics, not style)
         style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
@@ -4376,7 +5259,8 @@ async def run_transform_task(
                 is_bass_solo=is_bass_solo,
             )
 
-        # Vocal styling in style prompt (respetando estrictamente selecciones de voz solista vs coro):
+        # Vocal styling (respetando selecciones de voz solista vs coro; ensamblado limpiamente en Tier 5):
+        vocal_tag = ""
         if is_instrumental:
             if "instrumental" not in style.lower():
                 style = style + ", instrumental, no vocals"
@@ -4405,288 +5289,116 @@ async def run_transform_task(
                 else:
                     vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
 
-            if wants_solo_vocal:
-                if "spanish vocals" not in style.lower() and "solo vocals" not in style.lower():
-                    style = f"{style}, {vocal_tag}"
-            elif wants_choir:
-                if "church choir" not in style.lower() and "choir" not in style.lower():
-                    style = f"{style}, {vocal_tag}"
-            else:
-                if "spanish vocals" not in style.lower():
-                    style = f"{style}, {vocal_tag}"
-
         # ----------
-        # Rigorous Style Exclusion (Negative Prompting)
+        # Rigorous Style Exclusion (Negative Prompting) & Priority Style Assembly
         # ----------
-        neg_final_str = ""
-        key_bans_str = ""
-        if exclude_styles and exclude_styles.strip():
-            raw_excl = [x.strip() for x in re.split(r'[,;\n]+', exclude_styles) if x.strip()]
-
-            synonym_map = {
-                "cumbia": ["cumbia", "ritmo cumbia", "grupero", "norteño", "accordion", "guiro", "cumbia sonidera"],
-                "norteño": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
-                "norteno": ["norteño", "norteno", "accordion", "acordeon", "bajo sexto", "corrido", "polka", "regional mexicano"],
-                "regional mexicano": ["regional mexican", "accordion", "bajo sexto", "corrido", "banda", "ranchera", "mariachi", "sierreño"],
-                "mexicano": ["regional mexicano", "norteño", "grupero", "ranchera", "mariachi", "ritmo grupero", "accordion"],
-                "mexican": ["regional mexican", "norteño", "grupero", "ranchera", "mariachi", "accordion"],
-                "grupero": ["grupero", "onda grupera", "balada grupera", "ritmo grupero", "cumbia grupera", "sintetizador grupero"],
-                "bronco": ["ritmo grupero", "cumbia grupera", "norteño", "accordion"],
-                "latin ritmics": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
-                "ritmos latinos": ["tropical rhythm", "reggaeton beat", "dembow", "latin percussion"],
-                "salsa": ["salsa", "salsa horns", "latin brass", "montuno"],
-                "bachata": ["bachata", "bachata bongo", "bongo beat"],
-                "autotune": ["autotune", "pitch correction", "robotic voice", "vocoder"],
-                "distortion": ["heavy distortion", "fuzz", "distorted guitar", "metal tone"],
-                "fuzz": ["fuzz guitar", "heavy distortion"],
-                "heavy metal": ["heavy metal", "screaming vocals", "metal drums"],
-                "electronics drums": ["electronic drums", "synth drums", "808 drums", "drum machine"],
-                "electronic drums": ["electronic drums", "synth drums", "808 drums", "drum machine"],
-                "reggaeton": ["reggaeton", "dembow beat", "urban latin"],
-                "trap": ["trap beat", "808 sub bass trap", "hi-hat rolls trap"],
-            }
-
-            neg_tags_list = []
-            for item in raw_excl:
-                neg_tags_list.append(item)
-                # Strip directly from style if it matches
-                style = re.sub(rf'\b{re.escape(item)}\b', '', style, flags=re.IGNORECASE)
-                key = item.lower()
-                if key in synonym_map:
-                    for syn in synonym_map[key]:
-                        neg_tags_list.append(syn)
-                        style = re.sub(rf'\b{re.escape(syn)}\b', '', style, flags=re.IGNORECASE)
-
-            # Si se solicita bajo real (o en cualquier estilo con instrumentación acústica/eléctrica),
-            # forzar la expulsión estricta de cualquier sintetizador de bajo o 808 para garantizar sonido de bajo real de cuerdas
-            has_real_bass = any(k in style.lower() for k in [
-                "bass", "bajo", "fender", "precision", "jazz bass", "stingray", "contrabajo", "upright"
-            ])
-            if has_real_bass and not is_solo_piano_prayer:
-                for bass_anti in [
-                    "synth bass", "synthesizer bass", "synthbass", "808 bass", "808 sub", "sub bass synth",
-                    "electronic bass", "moog bass", "midi bass", "synthesized bassline", "digital sub bass",
-                    "techno bass", "keyboard bass", "synthetic bass", "fake bass", "keytar bass",
-                    "acid bass", "wobble bass", "reese bass", "electronic sub", "sine wave sub"
-                ]:
-                    neg_tags_list.append(bass_anti)
-
-            if is_solo_piano_prayer:
-                for solo_anti in [
-                    "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms",
-                    "bass", "bass guitar", "electric bass", "acoustic bass", "synth bass", "upright bass",
-                    "guitar", "electric guitar", "acoustic guitar", "guitars",
-                    "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
-                    "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
-                    "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
-                    "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
-                ]:
-                    neg_tags_list.append(solo_anti)
-
-            if is_guitar_solo:
-                for solo_anti in [
-                    "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms", "drum fills", "drum rolls",
-                    "bass", "bass guitar", "electric bass", "acoustic bass", "synth bass", "upright bass",
-                    "piano", "acoustic grand piano", "grand piano", "electric piano", "rhodes", "keyboard", "keyboards", "organ", "hammond",
-                    "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
-                    "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
-                    "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
-                    "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
-                ]:
-                    neg_tags_list.append(solo_anti)
-
-            if is_bass_solo:
-                for solo_anti in [
-                    "drums", "drum kit", "percussion", "acoustic drums", "snare", "kick drum", "bass drum", "hi-hat", "cymbals", "toms", "drum fills", "drum rolls",
-                    "guitar", "electric guitar", "acoustic guitar", "guitars", "electric guitars", "lead guitar",
-                    "piano", "acoustic grand piano", "grand piano", "electric piano", "rhodes", "keyboard", "keyboards", "organ", "hammond",
-                    "synthesizer", "synths", "synth lead", "synth pad", "pads", "ambient pad",
-                    "strings", "string quartet", "orchestra", "violin", "cello", "flute", "brass", "horns", "trumpet", "saxophone",
-                    "choir", "vocals", "singing", "voices", "voice", "lead vocals", "backing vocals", "vocal harmony",
-                    "band", "full band", "backing track", "rhythm section", "cumbia", "latin percussion"
-                ]:
-                    neg_tags_list.append(solo_anti)
-
-            if is_vals_vienes:
-                for vals_anti in ["cumbia", "ritmo cumbia", "4/4 beat", "4/4 rock drum beat", "straight rock drums", "modern drum kit", "trap", "808 bass", "electric guitar", "synths", "synthesizer", "autotune", "distortion", "reggaeton"]:
-                    neg_tags_list.append(vals_anti)
-
-            if is_pentecostal:
-                for pent_anti in [
-                    "missing snare", "quiet snare", "weak snare", "no snare", "silent snare", "muffled snare",
-                    "missing cymbals", "quiet cymbals", "no cymbals", "missing hi-hat", "kick drum only", "bass drum only",
-                    "handclaps only", "no drum fills", "distant drums", "quiet drums", "muffled drums", "drums in background", "buried drums", "soft drums",
-                    "afro gospel", "black gospel", "african american gospel", "soul", "neo-soul",
-                    "blues scale", "melisma", "vocal runs", "r&b runs", "gospel shouts", "ad-libs",
-                    "synth bass", "synthesizer bass", "synthbass", "808 bass", "808 sub", "sub bass synth",
-                    "electronic bass", "moog bass", "midi bass", "synthesized bassline", "digital sub bass",
-                    "a cappella", "acappella", "no drums", "missing drums", "tambourine only",
-                    "percussion only", "tambourine dominant", "handclaps dominant",
-                    "murga", "comparsa", "carnaval", "batucada", "candombe", "bombo de murga",
-                    "tamboril", "marcha militar", "marching band", "brass band", "fanfare", "loose percussion",
-                    "latin rhythm", "ritmo latino", "percusion latina", "latin percussion",
-                    "syncopation", "sincopa", "tumbao", "contratiempos latinos", "offbeat accents",
-                    "cumbia", "merengue", "salsa", "bachata", "reggaeton", "dembow", "tropical rhythm",
-                    "reggae skank", "ska", "caribbean accent", "acento caribeño", "acento centroamericano",
-                    "modismos caribeños", "caribbean vocals", "heavy rock drums",
-                    "drum solos", "noisy drums", "electronic drums", "digital triggers", "drum machine",
-                    "double bass drum", "blast beats", "overproduced drums", "latin groove", "muddy drums"
-                ]:
-                    neg_tags_list.append(pent_anti)
-
-            if is_drum_solo:
-                for drum_anti in [
-                    "guitar", "electric guitar", "acoustic guitar", "guitars", "electric guitars",
-                    "bass", "bass guitar", "piano", "keyboard", "keyboards", "organ", "synth",
-                    "synthesizer", "strings", "orchestra", "brass", "horns", "vocals", "singing",
-                    "voice", "voices", "choir", "backing track", "melody", "chords", "harmony",
-                    "song rhythm", "full band", "lead guitar", "heavy metal", "blast beats",
-                    "double bass speed", "chaotic drumming"
-                ]:
-                    neg_tags_list.append(drum_anti)
-
-            # Deduplicate negative tags & filter out artist names prohibited by Udio API
-            banned_artists_pattern = re.compile(r'\b(los\s+bukis|bukis|bronco|luis\s+miguel|cristian\s+castro|marcos\s+witt|steve\s+green|david\s+phelps|hillsong|elevation|bethel|beatles|queen|coldplay|u2|michael\s+jackson|whitney\s+houston|stevie\s+wonder|elton\s+john|juan\s+luis\s+guerra)\b', re.IGNORECASE)
-            seen = set()
-            dedup_neg = []
-            for t in neg_tags_list:
-                tl = t.lower().strip()
-                if tl and tl not in seen and not banned_artists_pattern.search(tl):
-                    seen.add(tl)
-                    dedup_neg.append(t.strip())
-
-            # Build direct key bans that MUST be front-loaded in style (e.g. no accordion, no cumbia, no norteño)
-            critical_instruments = ["accordion", "bajo sexto", "cumbia", "norteño", "corrido", "grupero", "polka", "distortion", "autotune"]
-            active_critical = [f"no {inst}" for inst in critical_instruments if any(inst in tag.lower() for tag in dedup_neg)]
-            if is_drum_solo:
-                for req_no in ["no guitars", "no bass", "no piano", "no synths", "no vocals", "no melody", "no chords"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if is_guitar_solo:
-                for req_no in ["solo guitar only", "isolated guitar", "no drums", "no percussion", "no bass", "no piano", "no keyboards", "no synths", "no strings", "no choir", "no vocals", "no backing track"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if is_bass_solo:
-                for req_no in ["solo bass only", "isolated bass", "no drums", "no percussion", "no guitars", "no piano", "no keyboards", "no synths", "no strings", "no choir", "no vocals", "no backing track"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if is_solo_piano_prayer:
-                for req_no in ["solo piano only", "no drums", "no percussion", "no bass", "no guitars", "no synths", "no strings", "no pads", "no choir", "no vocals"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if is_vals_vienes:
-                for req_no in ["no 4/4 beat", "no rock drums", "no electric guitar", "no synths", "no cumbia"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if is_pentecostal:
-                for req_no in ["no missing snare", "no quiet snare", "no missing cymbals", "no kick drum only", "no distant drums", "no synth bass", "no black gospel", "no afro gospel", "no soul", "no melisma", "no vocal runs", "no missing drums", "no tambourine dominant", "no handclaps solo", "no murga", "no comparsa", "no batucada", "no loose percussion", "no latin rhythm", "no syncopation", "no cumbia", "no caribbean accent", "no tumbao", "no chaotic drums"]:
-                    if req_no not in active_critical:
-                        active_critical.append(req_no)
-            if active_critical:
-                key_bans_str = ", ".join(active_critical)
-
-            # For drum solos, guitar solos, bass solos, and solo prayer piano, DO NOT put other instruments in positive style
-            if is_drum_solo:
-                clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', style, flags=re.IGNORECASE)
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, zero melodic instruments, unaccompanied percussion"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif is_guitar_solo:
-                clean_style = re.sub(
-                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                    '',
-                    style,
-                    flags=re.IGNORECASE
-                )
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"{genre_anchor}, {clean_style}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument, zero other instruments"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif is_bass_solo:
-                clean_style = re.sub(
-                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                    '',
-                    style,
-                    flags=re.IGNORECASE
-                )
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"{genre_anchor}, {clean_style}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument, zero other instruments"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif is_solo_piano_prayer:
-                clean_style = re.sub(
-                    r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                    '',
-                    style,
-                    flags=re.IGNORECASE
-                )
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            else:
-                priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
-                combined_parts = [p for p in [genre_anchor, priority_str, style] if p]
-                raw_combined = ", ".join(combined_parts)
-                style = sanitize_positive_style(raw_combined, max_chars=1000)
-
-            neg_final_str = ", ".join(dedup_neg)
-            style = sanitize_positive_style(style, max_chars=1000)
+        neg_final_str, provider_tags_str, active_critical = resolve_negative_exclusions(
+            exclude_styles=exclude_styles,
+            positive_style=style,
+            is_solo_piano_prayer=is_solo_piano_prayer,
+            is_guitar_solo=is_guitar_solo,
+            is_bass_solo=is_bass_solo,
+            is_vals_vienes=is_vals_vienes,
+            is_pentecostal=is_pentecostal,
+            is_drum_solo=is_drum_solo,
+        )
+        if neg_final_str:
             log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
-        else:
-            if is_solo_piano_prayer:
-                clean_style = re.sub(
-                    r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                    '',
-                    style,
-                    flags=re.IGNORECASE
-                )
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"{genre_anchor}, {clean_style}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance, zero other instruments"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif is_guitar_solo:
-                clean_style = re.sub(
-                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                    '',
-                    style,
-                    flags=re.IGNORECASE
-                )
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"{genre_anchor}, {clean_style}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument, zero other instruments"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif is_bass_solo:
-                clean_style = re.sub(
-                    r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                    '',
-                    style,
-                    flags=re.IGNORECASE
-                )
-                clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-                style = f"{genre_anchor}, {clean_style}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument, zero other instruments"
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
-            elif not is_drum_solo:
-                priority_str = ", ".join(eff_cfg.get("priority_clauses", []))
-                combined_parts = [p for p in [genre_anchor, priority_str, style] if p]
-                style = ", ".join(combined_parts)
-                style = re.sub(r',\s*,+', ',', style).strip(' ,')
 
-        # Deduplicar etiquetas separadas por coma preservando el orden de prioridad
-        if not is_solo_piano_prayer and not is_drum_solo and not is_guitar_solo and not is_bass_solo:
-            seen_style_tags = set()
-            dedup_style_tags = []
-            for raw_tag in style.split(","):
-                t_clean = re.sub(r'\s+', ' ', raw_tag).strip()
-                if not t_clean:
-                    continue
-                t_key = t_clean.lower()
-                if t_key not in seen_style_tags:
-                    seen_style_tags.add(t_key)
-                    dedup_style_tags.append(t_clean)
-            style = ", ".join(dedup_style_tags)
+        is_any_solo_mode = is_drum_solo or is_guitar_solo or is_bass_solo or is_solo_piano_prayer
+        if is_drum_solo:
+            clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', style, flags=re.IGNORECASE)
+            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+            solo_anchor = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, unaccompanied percussion"
+            style_build = build_prioritized_style(
+                genre_anchor=solo_anchor,
+                bpm_tag=bpm_tag,
+                user_and_enriched_style="",
+                priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+                vocal_tag="",
+                is_instrumental=True,
+                is_solo_mode=True,
+                max_chars=1000,
+            )
+        elif is_guitar_solo:
+            clean_style = re.sub(
+                r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                '', style, flags=re.IGNORECASE
+            )
+            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+            solo_anchor = f"{genre_anchor}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument"
+            style_build = build_prioritized_style(
+                genre_anchor=solo_anchor,
+                bpm_tag=bpm_tag,
+                user_and_enriched_style=clean_style,
+                priority_rhythm_clauses=[],
+                vocal_tag="",
+                is_instrumental=True,
+                is_solo_mode=True,
+                max_chars=1000,
+            )
+        elif is_bass_solo:
+            clean_style = re.sub(
+                r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                '', style, flags=re.IGNORECASE
+            )
+            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+            solo_anchor = f"{genre_anchor}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument"
+            style_build = build_prioritized_style(
+                genre_anchor=solo_anchor,
+                bpm_tag=bpm_tag,
+                user_and_enriched_style=clean_style,
+                priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+                vocal_tag="",
+                is_instrumental=True,
+                is_solo_mode=True,
+                max_chars=1000,
+            )
+        elif is_solo_piano_prayer:
+            clean_style = re.sub(
+                r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+                '', style, flags=re.IGNORECASE
+            )
+            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+            solo_anchor = f"{genre_anchor}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance"
+            style_build = build_prioritized_style(
+                genre_anchor=solo_anchor,
+                bpm_tag=bpm_tag,
+                user_and_enriched_style=clean_style,
+                priority_rhythm_clauses=[],
+                vocal_tag="",
+                is_instrumental=True,
+                is_solo_mode=True,
+                max_chars=1000,
+            )
+        else:
+            active_vocal_tag = "" if is_instrumental else vocal_tag
+            style_build = build_prioritized_style(
+                genre_anchor=genre_anchor,
+                bpm_tag=bpm_tag,
+                user_and_enriched_style=style,
+                priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+                vocal_tag=active_vocal_tag,
+                is_instrumental=is_instrumental,
+                is_solo_mode=False,
+                max_chars=1000,
+                raw_user_style=raw_style_before_enrich,
+            )
+
+        clean_positive_style = style_build["style"]
+        style = clean_positive_style
+
+        if style_build["truncated"]:
+            log_msg(
+                f"Compactación prioritaria de style aplicada ({style_build['raw_length']} -> {style_build['final_length']}/1000 chars): "
+                f"prioridades 1-5 (género, BPM, instrumentación, ritmo y voz) preservadas={style_build['core_preserved']}; "
+                f"detalles secundarios omitidos={style_build['dropped_secondary_count']}."
+            )
 
         # Compute weights cleanly clamped to documented ranges 0.00 - 1.00
         actual_style_weight = 0.85 if (is_drum_solo or is_guitar_solo or is_bass_solo) else max(0.0, min(1.0, round(float(style_influence) / 100.0, 2)))
         actual_weirdness = 0.15 if (is_drum_solo or is_guitar_solo or is_bass_solo) else (0.20 if is_drum_solo else max(0.0, min(1.0, round(float(weirdness) / 100.0, 2))))
         actual_audio_weight = max(0.0, min(1.0, round(float(audio_influence) / 100.0, 2)))
-
-        clean_positive_style = sanitize_positive_style(style, max_chars=1000)
 
         if upload_url:
             log_msg("Usando endpoint V2 Upload & Cover")
@@ -4701,7 +5413,7 @@ async def run_transform_task(
                 cover_prompt = clean_positive_style
             else:
                 cover_custom_mode = True
-                cover_prompt = final_lyrics or clean_positive_style
+                cover_prompt = final_lyrics
 
             payload = {
                 "upload_url": upload_url,
@@ -4717,11 +5429,8 @@ async def run_transform_task(
             }
             if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
-            # En el contrato oficial de UdioAPI Pro V2 (upload-cover), 'tags' indica las exclusiones negativas a evitar (máx 80 chars)
-            if neg_final_str:
-                clean_tags = format_provider_tags(neg_final_str, max_len=80)
-                if clean_tags:
-                    payload["tags"] = clean_tags
+            if provider_tags_str:
+                payload["tags"] = provider_tags_str
         else:
             log_msg("Usando endpoint V2 Generate")
             url_generate = "https://udioapi.pro/api/v2/generate"
@@ -4735,7 +5444,7 @@ async def run_transform_task(
                 gen_prompt = clean_positive_style
             else:
                 gen_custom_mode = True
-                gen_prompt = final_lyrics or clean_positive_style
+                gen_prompt = final_lyrics
 
             payload = {
                 "custom_mode": gen_custom_mode,
@@ -4749,18 +5458,42 @@ async def run_transform_task(
             }
             if vocal_gender in ["male", "female"] and not is_instrumental:
                 payload["gender"] = vocal_gender
-            if neg_final_str:
-                clean_tags = format_provider_tags(neg_final_str, max_len=80)
-                if clean_tags:
-                    payload["tags"] = clean_tags
+            if provider_tags_str:
+                payload["tags"] = provider_tags_str
+
+        safe_diag_summary = {
+            "model": payload.get("model"),
+            "custom_mode": payload.get("custom_mode"),
+            "make_instrumental": payload.get("make_instrumental"),
+            "style_length": len(payload.get("style") or ""),
+            "style_raw_length": style_build.get("raw_length"),
+            "style_truncated": style_build.get("truncated"),
+            "tags_sent": payload.get("tags") or "",
+            "weights": {
+                "style_weight": payload.get("style_weight"),
+                "audio_weight": payload.get("audio_weight"),
+                "weirdness_constraint": payload.get("weirdness_constraint"),
+            },
+            "gender": payload.get("gender"),
+            "preserve_original_audio": bool(preserve_original_audio),
+        }
 
         if task_id in TASKS:
             TASKS[task_id]["effective_config"] = eff_cfg
             TASKS[task_id]["resolved_payload"] = payload
+            TASKS[task_id]["diagnostic_summary"] = safe_diag_summary
 
-        log_msg(f"Estilo final enviado: {style[:200]}...")
-        if neg_final_str:
-            log_msg(f"Filtros de exclusión enviados: {neg_final_str[:150]}...")
+        log_msg(
+            f"Diagnóstico envío -> Modelo: {safe_diag_summary['model']} | "
+            f"custom_mode={safe_diag_summary['custom_mode']} | make_instrumental={safe_diag_summary['make_instrumental']} | "
+            f"style={safe_diag_summary['style_length']}/1000 chars"
+        )
+        log_msg(
+            f"Pesos de generación -> style_weight={payload.get('style_weight')}, "
+            f"audio_weight={payload.get('audio_weight')}, weirdness_constraint={payload.get('weirdness_constraint')}"
+        )
+        log_msg(f"Tags de exclusión enviados (tags): {payload.get('tags') or '(ninguno)'}")
+        log_msg(f"Estilo final enviado: {style[:250]}{'...' if len(style) > 250 else ''}")
         log_msg(f"Letra prefijo/primeras líneas: {final_lyrics[:120].strip()}...")
 
         try:
@@ -4810,6 +5543,7 @@ async def run_transform_task(
                             except Exception:
                                 pass
 
+                        track_owner = _normalize_owner_email(TASKS.get(task_id, {}).get("owner_email"))
                         track_info = {
                             "id": tid,
                             "title": ttitle,
@@ -4828,7 +5562,8 @@ async def run_transform_task(
                             "audio_influence": audio_influence,
                             "pronunciation": pronunciation,
                             "obfuscate": obfuscate,
-                            "exclude_styles": exclude_styles
+                            "exclude_styles": exclude_styles,
+                            "owner_email": track_owner,
                         }
 
                         # Respaldo permanente en tu almacenamiento Google One / AI Pro (5 TB)
@@ -4846,16 +5581,14 @@ async def run_transform_task(
                                 log_msg(f"Aviso al respaldar en Google Drive: {e}")
 
                         normalize_track_persistence_state(track_info)
+                        track_info.setdefault("updated_at", time.time())
+                        save_library_atomic([track_info])
                         final_tracks.append(track_info)
-                        add_track_to_library(track_info)
-                        log_msg(f"Pista procesada con éxito: {ttitle} (ID: {tid} | Persistencia: {track_info.get('persistence_status')})")
+                        log_msg(f"Pista descargada y registrada localmente: {ttitle} (ID: {tid} | Persistencia MP3: {track_info.get('persistence_status')})")
 
                         TASKS[task_id]["tracks"] = final_tracks
-            all_persisted = bool(final_tracks) and all(t.get("is_permanently_saved") for t in final_tracks)
-            TASKS[task_id]["persistence_status"] = "PERSISTED_GDRIVE" if all_persisted else "PENDING_BACKUP"
-            TASKS[task_id]["is_permanently_saved"] = all_persisted
-            TASKS[task_id]["status"] = "COMPLETED"
-            save_task_persistent(task_id, TASKS[task_id])
+
+            await finalize_task_tracks_persistence(task_id, final_tracks, log_msg)
             save_local_log()
 
         except Exception as e:
@@ -4884,12 +5617,19 @@ async def run_transform_task(
                 }
                 TASKS[task_id]["catalog_rejection"] = (e.code == "ERR_MODERATION_COPYRIGHT")
                 TASKS[task_id]["error_type"] = e.code
+                TASKS[task_id]["provider_final_status"] = "PENDING_VERIFICATION" if is_timeout else "FAILED"
+                diagnostic_info["diagnostic_summary"] = TASKS[task_id].get("diagnostic_summary", {})
                 TASKS[task_id]["diagnostic_info"] = diagnostic_info
                 TASKS[task_id]["detail"] = e.message
                 TASKS[task_id]["status"] = target_status
                 if raw_d.get("work_id"):
                     TASKS[task_id]["work_id"] = raw_d.get("work_id")
                 save_task_persistent(task_id, TASKS[task_id])
+                sync_res = await gdrive_sync_generation_tasks_to_cloud()
+                if isinstance(sync_res, dict) and (sync_res.get("file_id") or sync_res.get("id")):
+                    log_msg(f"Respaldo de diagnóstico en Google Drive confirmado (ID: {sync_res.get('file_id') or sync_res.get('id')}).")
+                elif LAST_GDRIVE_TASKS_SYNC.get("error"):
+                    log_msg(f"Aviso respaldo de diagnóstico en Google Drive: {LAST_GDRIVE_TASKS_SYNC.get('error')}")
                 save_local_log()
                 return
 
@@ -5235,8 +5975,24 @@ Este informe no contiene claves privadas ni datos sensibles.
         )
 
     diag = task.get("diagnostic_info", {})
+    ds = task.get("diagnostic_summary") or diag.get("diagnostic_summary") or {}
+    resolved_p = task.get("resolved_payload") or task.get("payload") or {}
     title = diag.get("title") or task.get("title") or "Obra Musical"
-    model = diag.get("model") or "udio-130-v2.0 / udioapi.pro"
+    model = ds.get("model") or resolved_p.get("model") or diag.get("model") or task.get("model") or "N/A"
+    work_id = diag.get("work_id") or task.get("work_id") or task.get("provider_work_id") or "N/A"
+    provider_final_status = task.get("provider_final_status") or diag.get("provider_final_status") or task.get("status", "DESCONOCIDO")
+    style_len = ds.get("style_length") if ds.get("style_length") is not None else len(resolved_p.get("style") or "")
+    tags_sent = ds.get("tags_sent") if "tags_sent" in ds else (resolved_p.get("tags") or "")
+    weights_d = ds.get("weights") or {
+        "style_weight": resolved_p.get("style_weight"),
+        "audio_weight": resolved_p.get("audio_weight"),
+        "weirdness_constraint": resolved_p.get("weirdness_constraint"),
+    }
+    gdrive_sync_status = (
+        f"CONFIRMADO (ID: {LAST_GDRIVE_TASKS_SYNC.get('file_id')})"
+        if LAST_GDRIVE_TASKS_SYNC.get("ok")
+        else (f"ERROR/PENDIENTE ({LAST_GDRIVE_TASKS_SYNC.get('error')})" if LAST_GDRIVE_TASKS_SYNC.get("error") else "Sin registro reciente")
+    )
     date_str = diag.get("date_utc") or datetime.datetime.now(datetime.timezone.utc).isoformat()
     exact_err = diag.get("exact_error_message") or task.get("detail") or "Sin mensaje de error especificado."
     is_catalog = task.get("catalog_rejection", False)
@@ -5304,10 +6060,16 @@ Rodrix Music Creator (Generación Musical Asistida por IA)
 DATOS DE LA SOLICITUD:
 --------------------------------------------------------------------------------
 Identificador de Tarea (Task ID) : {task_id}
+Work ID del Proveedor           : {work_id}
 Estado de la Tarea              : {status_name}
+Estado Final del Proveedor      : {provider_final_status}
 Fecha y Hora de Registro (UTC)  : {date_str}
 Título de la Obra               : {title}
-Modelo de Generación            : {model}
+Modelo Exacto Enviado           : {model}
+Longitud Final de style         : {style_len}/1000 caracteres
+Exclusiones Enviadas (tags)     : {tags_sent or '(ninguna)'}
+Pesos de Generación             : style_weight={weights_d.get('style_weight')}, audio_weight={weights_d.get('audio_weight')}, weirdness={weights_d.get('weirdness_constraint')}
+Respaldo Google Drive (Tareas)  : {gdrive_sync_status}
 Declaración de Dominio Público  : {'SÍ (Grabación propia de obra tradicional/autorizada)' if is_pd else 'NO declarada'}
 Audio de Referencia Vinculado   : {'SÍ' if has_audio else 'NO'}
 Archivo de Referencia Original  : {audio_file}
@@ -5418,7 +6180,9 @@ async def api_health_check():
             "persisted_gdrive_tracks": sum(1 for t in library if t.get("is_permanently_saved")),
             "pending_backup_tracks": sum(1 for t in library if t.get("persistence_status") in ("PENDING_BACKUP", "RETRY_SCHEDULED")),
             "unrecoverable_tracks": sum(1 for t in library if t.get("persistence_status") == "AUDIO_LOST_UNRECOVERABLE"),
-            "total_users": len(users)
+            "total_users": len(users),
+            "last_tasks_sync": LAST_GDRIVE_TASKS_SYNC,
+            "last_library_sync": LAST_GDRIVE_LIBRARY_SYNC
         },
         "free_instruments": {
             "enabled": True,
@@ -7140,7 +7904,7 @@ async def run_batch_worker(batch_id: str, hymns: list[dict], owner_email: str = 
         style = h.get("style", "sacred Christian hymn, church choir, classical strings")
         lyrics = h.get("lyrics", "[Verse 1]\nGloria a Dios en las alturas")
         title = h.get("title", f"Himno {idx+1}")
-        model = h.get("model", "chirp-v5")
+        model = validate_udio_model(h.get("model", DEFAULT_UDIO_MODEL))
         vocal_gender = h.get("vocal_gender", "male")
         exclude_styles = h.get("exclude_styles", "cumbia, trap, electronic, metal, distortion")
 

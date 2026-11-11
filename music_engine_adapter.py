@@ -186,7 +186,11 @@ class UdioProEngine(BaseMusicEngine):
             "Content-Type": "application/json",
         }
 
-        is_upload_cover = bool(upload_url or payload.get("upload_url") or (resume_work_id and str(resume_work_id).startswith("upcov")))
+        is_upload_cover = bool(
+            upload_url
+            or payload.get("upload_url")
+            or (resume_work_id and str(resume_work_id).strip().lower().startswith("upcov"))
+        )
         if is_upload_cover:
             url_generate = "https://udioapi.pro/api/v2/upload-cover/generate"
             url_status = "https://udioapi.pro/api/v2/upload-cover/status"
@@ -201,6 +205,12 @@ class UdioProEngine(BaseMusicEngine):
         # -------------------------------------------------------------------------
         # FASE 1: DESPACHO HTTP POST (UN SOLO INTENTO EXACTO, SIN REINTENTO AMBIGUO)
         # -------------------------------------------------------------------------
+        log_msg(
+            f"Parámetros verificados -> Modelo: {payload.get('model')} | style={len(payload.get('style') or '')} chars | "
+            f"tags={payload.get('tags') or '(ninguno)'} | weights=(style={payload.get('style_weight')}, "
+            f"audio={payload.get('audio_weight')}, weird={payload.get('weirdness_constraint')})"
+        )
+
         if not work_id:
             try:
                 log_msg(f"Enviando solicitud a {url_generate} (exactamente 1 intento)...")
@@ -293,7 +303,7 @@ class UdioProEngine(BaseMusicEngine):
 
                 poll_count += 1
                 try:
-                    if upload_url:
+                    if is_upload_cover:
                         r_status = await client.get(f"{url_status}?task_id={work_id}", headers=headers)
                     else:
                         r_status = await client.get(f"{url_status}?workId={work_id}", headers=headers)
@@ -305,12 +315,12 @@ class UdioProEngine(BaseMusicEngine):
 
                 if r_status.status_code == 200:
                     status_json = r_status.json()
-                    error_msg = "La generación falló internamente en el proveedor."
+                    default_error_msg = "La generación falló internamente en el proveedor."
+                    error_msg = default_error_msg
 
-                    if upload_url:
-                        raw_data = status_json.get("data", {})
-                        if not isinstance(raw_data, dict):
-                            raw_data = {}
+                    if is_upload_cover:
+                        raw_data_orig = status_json.get("data", {})
+                        raw_data = raw_data_orig if isinstance(raw_data_orig, dict) else {}
                         status = (
                             raw_data.get("type", "")
                             or raw_data.get("status", "")
@@ -318,20 +328,36 @@ class UdioProEngine(BaseMusicEngine):
                             or status_json.get("type", "")
                         )
                         response_array = raw_data.get("response_data", []) or status_json.get("response_data", [])
-                        if not response_array and isinstance(raw_data, list):
-                            response_array = raw_data
+                        if not response_array and isinstance(raw_data_orig, list):
+                            response_array = raw_data_orig
+                        if not status and isinstance(response_array, list) and len(response_array) > 0 and isinstance(response_array[0], dict):
+                            status = response_array[0].get("status", "") or response_array[0].get("type", "")
 
-                        if status.upper() in ["SUCCESS", "COMPLETED"]:
-                            tracks = response_array if isinstance(response_array, list) else [response_array]
-                            log_msg(f"Generación completada exitosamente en el proveedor tras {round(elapsed)}s.")
+                        status_upper = str(status or "").upper()
+                        first_item_status = ""
+                        if isinstance(response_array, list) and len(response_array) > 0 and isinstance(response_array[0], dict):
+                            first_item_status = str(response_array[0].get("status", "") or response_array[0].get("type", "")).upper()
+
+                        if status_upper in ["SUCCESS", "COMPLETED"]:
+                            tracks = response_array if isinstance(response_array, list) else ([response_array] if response_array else [])
+                            log_msg(f"Estado final proveedor [{work_id}]: {status_upper} tras {round(elapsed)}s.")
                             return tracks
-                        elif status.upper() in ["FAILED", "ERROR"]:
+                        elif status_upper in ["FAILED", "ERROR"] or first_item_status in ["FAILED", "ERROR"]:
+                            effective_fail_status = status_upper if status_upper in ["FAILED", "ERROR"] else first_item_status
+                            log_msg(f"Estado final proveedor [{work_id}]: {effective_fail_status} tras {round(elapsed)}s.")
                             if isinstance(response_array, list) and len(response_array) > 0 and isinstance(response_array[0], dict):
-                                error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or error_msg
-                            elif status_json.get("message"):
-                                error_msg = status_json.get("message")
-                            elif raw_data.get("message"):
-                                error_msg = raw_data.get("message")
+                                error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or default_error_msg
+                            if error_msg == default_error_msg:
+                                error_msg = (
+                                    raw_data.get("fail_message")
+                                    or raw_data.get("error_message")
+                                    or status_json.get("fail_message")
+                                    or status_json.get("error_message")
+                                    or status_json.get("message")
+                                    or raw_data.get("message")
+                                    or status_json.get("msg")
+                                    or default_error_msg
+                                )
 
                             raise classify_provider_failure(error_msg, status_json, work_id)
                         else:
@@ -341,7 +367,9 @@ class UdioProEngine(BaseMusicEngine):
                     else:
                         if isinstance(status_json, list):
                             data = status_json
-                            status = data[0].get("status", "") if len(data) > 0 else ""
+                            status = data[0].get("status", "") if len(data) > 0 and isinstance(data[0], dict) else ""
+                            if len(data) > 0 and isinstance(data[0], dict):
+                                error_msg = data[0].get("fail_message") or data[0].get("error_message") or data[0].get("message") or default_error_msg
                         else:
                             status = status_json.get("status", "")
                             raw_data = status_json.get("data", {})
@@ -351,20 +379,27 @@ class UdioProEngine(BaseMusicEngine):
                                 response_array = raw_data.get("response_data", [])
                                 if isinstance(response_array, list) and len(response_array) > 0:
                                     data = response_array
-                                    if response_array[0].get("fail_message"):
-                                        error_msg = response_array[0].get("fail_message")
+                                    if isinstance(response_array[0], dict) and (response_array[0].get("fail_message") or response_array[0].get("error_message")):
+                                        error_msg = response_array[0].get("fail_message") or response_array[0].get("error_message") or default_error_msg
                                 else:
                                     data = [raw_data]
+                                    if raw_data.get("fail_message") or raw_data.get("error_message") or raw_data.get("message"):
+                                        error_msg = raw_data.get("fail_message") or raw_data.get("error_message") or raw_data.get("message")
                             else:
                                 data = raw_data if isinstance(raw_data, list) else []
+                                if len(data) > 0 and isinstance(data[0], dict):
+                                    error_msg = data[0].get("fail_message") or data[0].get("error_message") or error_msg
+                            if error_msg == default_error_msg and status_json.get("message"):
+                                error_msg = status_json.get("message")
 
                         if status.upper() in ["SUCCESS", "COMPLETED"]:
-                            log_msg("Generación completada exitosamente.")
+                            log_msg(f"Estado final proveedor [{work_id}]: {status.upper()}.")
                             return data
                         elif len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["SUCCESS", "COMPLETED"]:
-                            log_msg("Generación completada exitosamente.")
+                            log_msg(f"Estado final proveedor [{work_id}]: SUCCESS.")
                             return data
                         elif status.upper() in ["FAILED", "ERROR"] or (len(data) > 0 and isinstance(data[0], dict) and data[0].get("status", "").upper() in ["FAILED", "ERROR"]):
+                            log_msg(f"Estado final proveedor [{work_id}]: {(status or 'FAILED').upper()}.")
                             raise classify_provider_failure(error_msg, status_json, work_id)
                         else:
                             if poll_count % 5 == 0 or elapsed < 20:

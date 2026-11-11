@@ -3753,7 +3753,7 @@ html, body {
             <span>Letra</span>
             <span class="check"><input type="checkbox" id="instrumental"> Instrumental</span>
           </label>
-          <textarea id="lyricsInput" placeholder="[Verse]&#10;Escribe aquí tu letra..."></textarea>
+          <textarea id="lyricsInput" maxlength="5000" placeholder="[Verse]&#10;Escribe aquí tu letra..."></textarea>
         </div>
 
         <div class="field">
@@ -3770,17 +3770,22 @@ html, body {
         <div class="grid2">
           <div class="field">
             <label class="label" for="titleInput">Título</label>
-            <input type="text" id="titleInput" required placeholder="Ej: Himno Épico">
+            <input type="text" id="titleInput" maxlength="100" required placeholder="Ej: Himno Épico">
           </div>
           <div class="field">
             <label class="label" for="modelInput">IA Model</label>
             <select id="modelInput">
-              <option value="chirp-v4-5">chirp-v4-5 (10 cr)</option>
-              <option value="chirp-v4-5-plus">chirp-v4-5-plus (10 cr)</option>
-              <option value="chirp-v5" selected>chirp-v5 (12 cr)</option>
-              <option value="chirp-v5-5">chirp-v5-5 (12 cr)</option>
-              <option value="chirp-v4">chirp-v4 (8 cr)</option>
-              <option value="chirp-v3-5">chirp-v3-5 (5 cr)</option>
+              <option value="chirp-v6" selected>chirp-v6 (12 cr - Flagship)</option>
+              <option value="chirp-v6-mini">chirp-v6-mini (10 cr - Rápido)</option>
+              <option value="chirp-v6-wild">chirp-v6-wild (12 cr - Experimental)</option>
+              <optgroup label="Modelos Legacy (Compatibilidad)">
+                <option value="chirp-v5">chirp-v5 (12 cr → chirp-v6)</option>
+                <option value="chirp-v5-5">chirp-v5-5 (12 cr → chirp-v6)</option>
+                <option value="chirp-v4-5">chirp-v4-5 (10 cr → chirp-v6-mini)</option>
+                <option value="chirp-v4-5-plus">chirp-v4-5-plus (10 cr)</option>
+                <option value="chirp-v4">chirp-v4 (8 cr)</option>
+                <option value="chirp-v3-5">chirp-v3-5 (5 cr)</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -3856,6 +3861,7 @@ html, body {
               </div>
             </div>
             <label class="check"><input type="checkbox" id="bypass" checked> Anti-Copyright (audio de referencia)</label>
+            <label class="check" title="Preserva tono, tempo y timbre originales en grabaciones propias o autorizadas sin modulación artificial."><input type="checkbox" id="chkPreserveOriginalAudio"> Preservar audio original autorizado sin alteración acústica (Recomendado para grabaciones propias)</label>
             <label class="check" title="Evita que la IA rechace la canción si la letra o himno coincide con temas conocidos."><input type="checkbox" id="obfuscate" checked> Anti-Copyright para Letra (Evasión activa contra 'copyrighted material')</label>
 
             <!-- TARJETA ADMINISTRADOR (SOLO VISIBLE SI ES ADMIN) -->
@@ -6216,6 +6222,32 @@ const GEAR_DETAILED_PROMPTS = {
   'contrabajo acustico': 'authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass'
 };
 
+const ANTI_SYNTH_BASS_TAGS = [
+  'synth bass', 'synthesizer bass', '808 bass', '808 sub', 'electronic bass',
+  'moog bass', 'midi bass', 'synthesized bassline', 'digital sub bass',
+  'keyboard bass', 'synthetic bass', 'fake bass', 'keytar', 'sub-bass synth'
+].join(', ');
+
+function mergeUniqueExclusionTags(...groups) {
+  const seen = new Set();
+  const seenCompact = new Set();
+  const out = [];
+  for (const grp of groups) {
+    if (!grp) continue;
+    for (const raw of String(grp).split(',')) {
+      const clean = raw.replace(/\s+/g, ' ').trim();
+      if (!clean) continue;
+      const key = clean.toLowerCase();
+      const compactKey = key.replace(/[\s\-]+/g, '');
+      if (seen.has(key) || seenCompact.has(compactKey)) continue;
+      seen.add(key);
+      seenCompact.add(compactKey);
+      out.push(clean);
+    }
+  }
+  return out.join(', ');
+}
+
 $('applyGearBtn').addEventListener('click', () => {
   const arr = Array.from(activeGear);
   const ampPrompts = [];
@@ -6249,15 +6281,13 @@ $('applyGearBtn').addEventListener('click', () => {
   }
   $('styleInput').value = cur;
 
-  // Si se seleccionó algún bajo del rack, prohibir automáticamente sintetizadores de bajo en exclusiones
+  // Si se seleccionó algún bajo real del rack (y no synth bass explícito), agregar exclusión sin duplicados
   const hasBassGear = arr.some(g => g.includes('bass') || g.includes('contrabajo') || g.includes('stingray') || g.includes('precision'));
-  if (hasBassGear) {
-    let excl = $('excludeInput').value.trim();
-    const antiSynth = 'synth bass, synthesizer bass, 808 bass, 808 sub, electronic bass, moog bass, midi bass, synthesized bassline, digital sub bass, keyboard bass, synthetic bass, fake bass, keytar, sub-bass synth';
-    if (!excl.toLowerCase().includes('synth bass')) {
-      $('excludeInput').value = excl ? `${excl}, ${antiSynth}` : antiSynth;
-      logLine('Filtro acústico activado: Baneo estricto de sintetizadores de bajo y 808 para garantizar sonido de bajo real.');
-    }
+  const hasExplicitSynthBassGear = /\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass)\b/i.test(cur);
+  if (hasBassGear && !hasExplicitSynthBassGear) {
+    const mergedExcl = mergeUniqueExclusionTags($('excludeInput').value, ANTI_SYNTH_BASS_TAGS);
+    $('excludeInput').value = mergedExcl;
+    logLine('Filtro acústico activado: Exclusión deduplicada de sintetizadores de bajo y 808 para garantizar sonido de bajo real.');
   }
 
   $('studioGearDetails').open = false;
@@ -8034,7 +8064,7 @@ window.generateSingleHymn = async function(idx) {
   fd.append('bypass_copyright', 'true');
   fd.append('weirdness', '20');
   fd.append('style_influence', '50');
-  fd.append('model', 'chirp-v5');
+  fd.append('model', ($('modelInput') && $('modelInput').value) || 'chirp-v6');
   fd.append('pronunciation', '');
   fd.append('obfuscate', 'true');
   fd.append('is_public_domain', ($('chkMidiPublicDomain') && $('chkMidiPublicDomain').checked) ? 'true' : 'false');
@@ -8232,7 +8262,7 @@ if ($('btnLaunchBatch')) {
         key: orig.key,
         vocal_gender: globalVocal === 'female' ? 'female' : (globalVocal === 'male' ? 'male' : 'random'),
         is_instrumental: globalVocal === 'instrumental',
-        model: 'chirp-v5'
+        model: ($('modelInput') && $('modelInput').value) || 'chirp-v6'
       });
     });
 
@@ -8555,28 +8585,33 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('bypass_copyright', $('bypass').checked);
   fd.append('is_public_domain', ($('chkPublicDomain') && $('chkPublicDomain').checked) ? 'true' : 'false');
 
-  // Exclusiones activas
-  let finalExclude = $('excludeInput').value.trim();
+  // Exclusiones activas (conserva exclusiones manuales primero, evita conflictos y elimina duplicados)
+  const manualExclude = $('excludeInput').value.trim();
+  const autoExcludeGroups = [];
   if (isSoloGuitarMode) {
-    const antiSoloGuitar = 'drums, drum kit, snare, kick drum, bass, bass guitar, electric bass, synth bass, piano, keyboards, organ, synths, strings, choir, vocals, full band, backing track, rhythm section';
-    finalExclude = finalExclude ? `${finalExclude}, ${antiSoloGuitar}` : antiSoloGuitar;
+    autoExcludeGroups.push('drums, drum kit, snare, kick drum, bass, bass guitar, electric bass, synth bass, piano, keyboards, organ, synths, strings, choir, vocals, full band, backing track, rhythm section');
   } else if (isSoloBassMode) {
-    const antiSoloBass = 'drums, drum kit, snare, kick drum, guitar, electric guitar, acoustic guitar, piano, keyboards, organ, synths, strings, choir, vocals, full band, backing track, rhythm section';
-    finalExclude = finalExclude ? `${finalExclude}, ${antiSoloBass}` : antiSoloBass;
+    autoExcludeGroups.push('drums, drum kit, snare, kick drum, guitar, electric guitar, acoustic guitar, piano, keyboards, organ, synths, strings, choir, vocals, full band, backing track, rhythm section');
   }
 
   if ($('chkNoLatin') && $('chkNoLatin').checked) {
-    const antiLatin = 'ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa';
-    finalExclude = finalExclude ? `${finalExclude}, ${antiLatin}` : antiLatin;
+    autoExcludeGroups.push('ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa');
   }
 
-  // Baneo obligatorio de sintetizadores de bajo cuando la pista lleva bajo real
-  const hasAnyBass = !isSoloGuitarMode && (($('chkBass') && $('chkBass').checked) || finalStyle.toLowerCase().includes('bass') || finalStyle.toLowerCase().includes('bajo'));
-  if (hasAnyBass) {
-    const antiSynth = 'synth bass, synthesizer bass, 808 bass, 808 sub, electronic bass, moog bass, midi bass, synthesized bassline, digital sub bass, keyboard bass, synthetic bass, fake bass, keytar, sub-bass synth';
-    finalExclude = finalExclude ? `${finalExclude}, ${antiSynth}` : antiSynth;
+  // Baneo automático de sintetizadores de bajo SOLO cuando hay bajo real y NO se pidió synth bass explícitamente
+  const lowerFinalStyle = finalStyle.toLowerCase();
+  const hasExplicitSynthBass = /\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass|electronic\s+bass|sub[\s_-]*bass\s+synth)\b/i.test(lowerFinalStyle);
+  const cleanedStyleForBassCheck = lowerFinalStyle.replace(/\b(bass\s+drum|double\s+bass\s+drum|bassoons?)\b/g, '');
+  const hasRealBassSelected = !isSoloGuitarMode && !hasExplicitSynthBass && (
+    ($('chkBass') && $('chkBass').checked) ||
+    /\b(bass|bajo|fender|precision|jazz\s+bass|stingray|contrabajo|upright)\b/i.test(cleanedStyleForBassCheck)
+  );
+  if (hasRealBassSelected) {
+    autoExcludeGroups.push(ANTI_SYNTH_BASS_TAGS);
   }
+  const finalExclude = mergeUniqueExclusionTags(manualExclude, ...autoExcludeGroups);
   fd.append('exclude_styles', finalExclude);
+  fd.append('preserve_original_audio', ($('chkPreserveOriginalAudio') && $('chkPreserveOriginalAudio').checked) ? 'true' : 'false');
   fd.append('vocal_gender', gender);
   fd.append('weirdness', $('weirdness').value);
   fd.append('style_influence', $('styleInfluence').value);
@@ -8598,7 +8633,7 @@ $('genForm').addEventListener('submit', async e => {
 
   $('console').innerHTML = '';
   setBusy(true); startProgress();
-  logLine('Enviando solicitud al servidor...');
+  logLine(`Enviando solicitud al servidor... Modelo: ${($('modelInput') && $('modelInput').value) || 'chirp-v6'} | Exclusions (tags): ${finalExclude || '(ninguna)'}`);
   try {
     const r = await fetch('/api/transform', { method:'POST', body: fd });
     if (r.status === 401 || r.status === 403) { location.href = '/login'; return; }
@@ -8714,6 +8749,37 @@ async function downloadDiagnosticReport(taskId) {
   }
 }
 
+const autoResumeRequestedTasks = new Set();
+function isVerifiableWorkId(wid) {
+  const w = String(wid || '').trim();
+  if (w.length <= 3) return false;
+  return !['none', 'null', 'undefined', 'n/a', 'false'].includes(w.toLowerCase());
+}
+async function requestSafeTaskResume(taskObj) {
+  if (!taskObj) return;
+  const taskId = String(taskObj.id || taskObj.task_id || '').trim();
+  const status = String(taskObj.status || '').toUpperCase();
+  const wid = String(taskObj.work_id || taskObj.provider_work_id || '').trim();
+  if (!taskId || ['COMPLETED', 'ERROR', 'CANCELLED'].includes(status)) return;
+  if (status === 'PENDING_VERIFICATION' && !isVerifiableWorkId(wid)) return;
+  if (status !== 'PENDING_VERIFICATION' && status !== 'PENDING_PERSISTENCE') return;
+  if (autoResumeRequestedTasks.has(taskId)) return;
+  autoResumeRequestedTasks.add(taskId);
+  if (wid) {
+    logLine(`[Reanudación automática]: Consultando progreso para Work ID ${wid} (exclusivo GET, sin nueva generación)...`, 'info');
+  } else if (status === 'PENDING_PERSISTENCE') {
+    logLine('[Reanudación automática]: Confirmando respaldo de pistas en Google Drive...', 'info');
+  }
+  try {
+    const res = await fetch('/api/task/' + encodeURIComponent(taskId) + '/resume', { method: 'POST' });
+    if (!res.ok) {
+      autoResumeRequestedTasks.delete(taskId);
+    }
+  } catch (e) {
+    autoResumeRequestedTasks.delete(taskId);
+  }
+}
+
 async function poll(){
   if (!currentTask) return;
   try {
@@ -8722,9 +8788,11 @@ async function poll(){
     const t = await r.json();
     renderLogs(t.logs);
     if (t.status === 'COMPLETED') {
+      autoResumeRequestedTasks.delete(currentTask);
       try { localStorage.removeItem('rodrix_active_task_id'); } catch(e){}
       finish(); stopProgress(true, '¡Canción lista!'); await loadLibrary();
     } else if (t.status === 'ERROR') {
+      autoResumeRequestedTasks.delete(currentTask);
       try { localStorage.removeItem('rodrix_active_task_id'); } catch(e){}
       const failedTaskId = currentTask || t.id;
       currentDiagnosticTaskId = failedTaskId;
@@ -8738,12 +8806,21 @@ async function poll(){
         showCatalogRejectionModal(failedTaskId);
       }
     } else if (t.status === 'CANCELLED') {
+      autoResumeRequestedTasks.delete(currentTask);
       try { localStorage.removeItem('rodrix_active_task_id'); } catch(e){}
       finish(); stopProgress(false, 'Cancelado');
+    } else if (t.status === 'PENDING_PERSISTENCE') {
+      const pText = $('progressText');
+      if (pText) pText.textContent = 'Audio generado. Confirmando respaldo en Google Drive...';
+      await loadLibrary();
+      requestSafeTaskResume(t);
     } else if (t.status === 'PENDING_VERIFICATION') {
       const wid = t.work_id || t.provider_work_id || '';
       const pText = $('progressText');
-      if (pText) pText.textContent = `En verificación con proveedor (Work ID: ${wid || 'procesando'})...`;
+      if (pText) pText.textContent = `En verificación con proveedor (Work ID: ${wid || 'sin asignar'})...`;
+      if (isVerifiableWorkId(wid)) {
+        requestSafeTaskResume(t);
+      }
     }
   } catch (err) { /* reintenta en el siguiente ciclo */ }
 }
@@ -11980,13 +12057,16 @@ document.addEventListener('DOMContentLoaded', () => {
       fetch('/api/status/' + savedTaskId)
         .then(r => r.ok ? r.json() : null)
         .then(t => {
-          if (t && (t.status === 'IN_PROGRESS' || t.status === 'QUEUED' || t.status === 'PENDING_VERIFICATION')) {
+          if (t && (t.status === 'IN_PROGRESS' || t.status === 'QUEUED' || t.status === 'PENDING_VERIFICATION' || t.status === 'PENDING_PERSISTENCE')) {
             currentTask = savedTaskId;
             setBusy(true);
             startProgress();
             if (t.logs) renderLogs(t.logs);
             const wid = t.work_id || t.provider_work_id || '';
             logLine(`[Reanudación]: Reconectado a la tarea en curso (${savedTaskId}${wid ? ' | Work ID: ' + wid : ''}).`, 'info');
+            if ((t.status === 'PENDING_VERIFICATION' && isVerifiableWorkId(wid)) || t.status === 'PENDING_PERSISTENCE') {
+              requestSafeTaskResume(t);
+            }
             clearInterval(pollTimer);
             pollTimer = setInterval(poll, 4000);
             poll();
@@ -12008,12 +12088,17 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(data => {
         if (data && data.pending_tasks && data.pending_tasks.length > 0) {
           const first = data.pending_tasks[0];
+          const firstStatus = String(first.status || '').toUpperCase();
+          if (['COMPLETED', 'ERROR', 'CANCELLED'].includes(firstStatus)) return;
           currentTask = first.task_id;
           try { localStorage.setItem('rodrix_active_task_id', currentTask); } catch(e){}
           setBusy(true);
           startProgress();
           const wid = first.work_id || '';
           logLine(`[Reanudación]: Tarea activa recuperada desde servidor (${first.task_id}${wid ? ' | Work ID: ' + wid : ''}).`, 'info');
+          if ((firstStatus === 'PENDING_VERIFICATION' && isVerifiableWorkId(wid)) || firstStatus === 'PENDING_PERSISTENCE') {
+            requestSafeTaskResume(first);
+          }
           clearInterval(pollTimer);
           pollTimer = setInterval(poll, 4000);
           poll();
