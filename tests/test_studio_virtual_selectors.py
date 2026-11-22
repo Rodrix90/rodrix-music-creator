@@ -390,6 +390,272 @@ class TestStudioVirtualSixSelectors(unittest.IsolatedAsyncioTestCase):
         self.assertIn('Advertencia por límite de', html)
         self.assertIn('[Omitida por límite de 1000 chars]', html)
 
+    def test_08_intelligent_style_optimization_1_3_and_6_selectors_no_padding_no_bias(self):
+        """Valida 1 selector (sin relleno artificial), 3 selectores y 6 selectores simultáneos aprovechando hasta 1000 chars."""
+        base_kwargs = dict(
+            genre_anchor="Progressive Worship Rock, 4/4 time signature",
+            bpm_tag="92 BPM",
+            user_and_enriched_style="Rock melódico argentino de autor",
+            priority_rhythm_clauses=["steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"],
+            vocal_tag="natural male Argentine Spanish vocals, clean expressive singing",
+            is_instrumental=False,
+            max_chars=1000,
+            raw_user_style="Rock melódico argentino de autor",
+        )
+
+        # 1) Un solo instrumento: entra sobrado (< 750 chars), NO agrega relleno artificial y mantiene las 3 capas íntegras
+        res_one = app.build_prioritized_style(**base_kwargs, studio_selections={"drums": "bonham"})
+        self.assertLessEqual(res_one["final_length"], 1000)
+        self.assertEqual(res_one["final_length"], studio_virtual_catalog.measure_udio_style_length(res_one["style"]))
+        self.assertFalse(res_one["truncated"])
+        self.assertEqual(res_one["studio_profiles"]["compaction_stage"], "full_3_layers")
+        self.assertEqual(res_one["studio_profiles"]["preserved_dimensions"]["drums"], ["physical", "performance", "studio"])
+        self.assertLess(res_one["final_length"], 650, "No debe inflar artificialmente un style que ya cabe completo")
+
+        # 2) Dos selectores (~720-850 chars): reutiliza espacio libre de categorías en auto, sin relleno artificial
+        res_two = app.build_prioritized_style(
+            genre_anchor="Modern Rock",
+            bpm_tag="104 BPM",
+            user_and_enriched_style="bright studio mix",
+            priority_rhythm_clauses=[],
+            vocal_tag="clear natural Spanish vocals",
+            is_instrumental=False,
+            max_chars=1000,
+            studio_selections={"guitars": "summers_tele61", "consoles": "api_console"},
+        )
+        self.assertLessEqual(res_two["final_length"], 1000)
+        self.assertEqual(res_two["studio_profiles"]["compaction_stage"], "full_3_layers")
+        self.assertFalse(res_two["truncated"])
+
+        # 3) Tres instrumentos simultáneos: conserva 3 dimensiones en los 3 sin favorecer solo a batería
+        res_three = app.build_prioritized_style(
+            **base_kwargs,
+            studio_selections={"drums": "peart", "guitars": "gilmour_black_strat", "basses": "miller_jazz_funk"},
+        )
+        self.assertLessEqual(res_three["final_length"], 1000)
+        self.assertGreaterEqual(res_three["final_length"], 940, "Debe aprovechar al máximo el límite de 1000 chars útiles")
+        self.assertGreater(res_three["raw_length"], 1000)
+        sp3 = res_three["studio_profiles"]
+        for cat_k in ("drums", "guitars", "basses"):
+            self.assertEqual(sp3["preserved_dimensions"][cat_k], ["physical", "performance", "studio"], f"{cat_k} debe conservar las 3 dimensiones")
+        # Equidad: ningún instrumento acapara desproporcionadamente el presupuesto frente a los otros dos
+        shares3 = list(sp3["per_category_chars"].values())
+        self.assertLess(max(shares3) - min(shares3), 90, f"Distribución desequilibrada en 3 selectores: {sp3['per_category_chars']}")
+
+        # 4) Seis selectores simultáneos: conserva las 6 categorías con 3 dimensiones y aprovechamiento > 95%
+        six_sel = {
+            "drums": "bonham",
+            "guitars": "gilmour_black_strat",
+            "basses": "arnedo_rock_argentino",
+            "keyboards": "hammond_b3",
+            "consoles": "neve_80",
+            "microphones": "telefunken_u47",
+        }
+        res_six = app.build_prioritized_style(**base_kwargs, studio_selections=six_sel)
+        self.assertLessEqual(res_six["final_length"], 1000)
+        self.assertEqual(res_six["final_length"], studio_virtual_catalog.measure_udio_style_length(res_six["style"]))
+        self.assertGreaterEqual(res_six["final_length"], 950, "Con 6 selectores debe aprovechar al máximo los 1000 chars")
+        self.assertGreater(res_six["raw_length"], 1800, "raw_length debe reflejar la longitud real sin compactar")
+        sp6 = res_six["studio_profiles"]
+        self.assertEqual(sp6["active_count"], 6)
+        self.assertEqual(sp6["omitted_categories"], [])
+        for cat_k in six_sel:
+            self.assertEqual(
+                sp6["preserved_dimensions"][cat_k],
+                ["physical", "performance", "studio"],
+                f"Categoría {cat_k} debe conservar físico, interpretación y producción",
+            )
+        # Comprobar ausencia de sesgo posicional (consola/teclado/mic reciben asignación comparable a batería/guitarra)
+        shares6 = sp6["per_category_chars"]
+        self.assertLess(max(shares6.values()) - min(shares6.values()), 75, f"Asignación desequilibrada en 6 selectores: {shares6}")
+
+    def test_09_extensive_prompts_explicit_omission_and_varied_genres_meters_vocals(self):
+        """Valida descripciones extensas, omisión explícita nunca silenciosa, y múltiples géneros, métricas y voces."""
+        all_six = {
+            "drums": "portnoy",
+            "guitars": "vai_evo",
+            "basses": "squire_rickenbacker_prog",
+            "keyboards": "yamaha_dx7",
+            "consoles": "ssl_4000",
+            "microphones": "akg_c414",
+        }
+
+        # Caso A: Diferentes géneros, métricas asimétricas y configuraciones vocales / instrumentales
+        configs = [
+            ("Progressive Metal Worship, strictly in 7/8 time signature (grouped 2+2+3)", "132 BPM", "clear natural female Spanish vocals", False),
+            ("Sacred Argentine Acoustic Ballad, 3/4 time signature", "74 BPM", "natural male Argentine Spanish solo vocals", False),
+            ("Jazz-Rock Funk Fusion, 4/4 time signature", "116 BPM", "", True),
+        ]
+        for anchor, bpm, vtag, is_inst in configs:
+            res = app.build_prioritized_style(
+                genre_anchor=anchor,
+                bpm_tag=bpm,
+                user_and_enriched_style="",
+                priority_rhythm_clauses=["syncopated accent feel"],
+                vocal_tag=vtag,
+                is_instrumental=is_inst,
+                max_chars=1000,
+                studio_selections=all_six,
+            )
+            self.assertLessEqual(res["final_length"], 1000)
+            self.assertTrue(res["core_preserved"])
+            self.assertIn(bpm, res["style"])
+            if is_inst:
+                self.assertIn("instrumental", res["style"].lower())
+            else:
+                self.assertIn("spanish", res["style"].lower())
+            self.assertEqual(len(res["studio_profiles"]["preserved_categories"]), 6)
+            self.assertEqual(res["studio_profiles"]["omitted_categories"], [])
+
+        # Caso B: Saturación extrema del prompt base (~880 chars) -> nunca omite silenciosamente, reporta motivo explícito
+        huge_base = ", ".join(f"symphonic melodic motif {i:02d} in D minor" for i in range(25))
+        res_overflow = app.build_prioritized_style(
+            genre_anchor=huge_base,
+            bpm_tag="100 BPM",
+            user_and_enriched_style="",
+            priority_rhythm_clauses=[],
+            vocal_tag="clear natural Spanish vocals",
+            is_instrumental=False,
+            max_chars=1000,
+            studio_selections=all_six,
+        )
+        self.assertLessEqual(res_overflow["final_length"], 1000)
+        sp_ov = res_overflow["studio_profiles"]
+        self.assertTrue(sp_ov["omitted_categories"], "Bajo saturación extrema debe registrar omisiones explícitas")
+        for omitted_k in sp_ov["omitted_categories"]:
+            self.assertIn(omitted_k, sp_ov["omitted_reasons"])
+            self.assertIn("Presupuesto insuficiente", sp_ov["omitted_reasons"][omitted_k])
+        self.assertIsNotNone(res_overflow["compaction_notice"])
+        self.assertIn("omitidas explícitamente", res_overflow["compaction_notice"])
+
+    def test_10_all_45_profiles_remain_distinct_under_active_compaction_and_unmodified_originals(self):
+        """Confirma que los 45 perfiles conservan descripciones originales intactas y se mantienen únicos bajo compactación."""
+        # Partner fijo de 5 perfiles para forzar compactación real en cada uno de los 45 perfiles evaluados
+        partners = {
+            "drums": "bonham",
+            "guitars": "gilmour_black_strat",
+            "basses": "arnedo_rock_argentino",
+            "keyboards": "hammond_b3",
+            "consoles": "neve_80",
+            "microphones": "telefunken_u47",
+        }
+        payload = studio_virtual_catalog.get_studio_virtual_catalog_payload()
+        for cat in payload["categories"]:
+            ck = cat["key"]
+            styles_for_cat = set()
+            for it in cat["items"]:
+                sel = dict(partners)
+                sel[ck] = it["id"]
+                res = app.build_prioritized_style(
+                    genre_anchor="Modern Studio Rock, 4/4 time signature",
+                    bpm_tag="100 BPM",
+                    user_and_enriched_style="emotive arrangement",
+                    priority_rhythm_clauses=["steady closed eighth-note hi-hat pattern"],
+                    vocal_tag="clear natural Spanish vocals",
+                    is_instrumental=False,
+                    max_chars=1000,
+                    studio_selections=sel,
+                )
+                self.assertLessEqual(res["final_length"], 1000)
+                self.assertEqual(res["studio_profiles"]["omitted_categories"], [])
+                styles_for_cat.add(res["style"])
+            self.assertEqual(
+                len(styles_for_cat),
+                len(cat["items"]),
+                f"Todos los perfiles de '{ck}' deben producir estilos diferenciados incluso bajo compactación de 6 selectores",
+            )
+
+    async def test_11_backend_dispatched_payload_matches_optimized_style_and_preserves_lyrics(self):
+        """Verifica sin consumir créditos que el backend envía exactamente el style optimizado y mantiene intacta la letra en prompt."""
+        captured = []
+
+        async def fake_post(url, json=None, headers=None, **kw):
+            captured.append(json)
+            mock_r = MagicMock()
+            mock_r.status_code = 200
+            mock_r.text = '{"code": 200, "data": {"workId": "gen_mock_opt_style", "task_id": "gen_mock_opt_style"}}'
+            mock_r.json.return_value = {"code": 200, "data": {"workId": "gen_mock_opt_style", "task_id": "gen_mock_opt_style"}}
+            return mock_r
+
+        status_mock = MagicMock()
+        status_mock.status_code = 200
+        status_mock.json.return_value = {"code": 200, "data": {"status": "SUCCESS", "response_data": []}}
+
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = fake_post
+        mock_client.get.return_value = status_mock
+
+        sel_six = {
+            "drums": "peart",
+            "guitars": "may_red_special",
+            "basses": "squire_rickenbacker_prog",
+            "keyboards": "hammond_b3",
+            "consoles": "ssl_4000",
+            "microphones": "telefunken_u47",
+        }
+        lyrics_exact = "[Verse 1]\nCon voz firme elevo mi canción\nEn compás perfecto de adoración\n[Chorus]\nTu luz brilla eterna en mi interior"
+
+        # 1) Obtener vista previa sin créditos desde /api/preview_parameters
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            prev_resp = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Prueba Paridad Optimización",
+                    "style": "Rock progresivo sinfónico",
+                    "lyrics": lyrics_exact,
+                    "include_lyrics": "true",
+                    "lyrics_mode": "custom",
+                    "vocal_gender": "male",
+                    "target_bpm": "94",
+                    "hihat_mode": "8th",
+                    "studio_drums": sel_six["drums"],
+                    "studio_guitar": sel_six["guitars"],
+                    "studio_bass": sel_six["basses"],
+                    "studio_keyboard": sel_six["keyboards"],
+                    "studio_console": sel_six["consoles"],
+                    "studio_mic": sel_six["microphones"],
+                },
+            )
+        self.assertEqual(prev_resp.status_code, 200)
+        prev_json = prev_resp.json()
+
+        # 2) Ejecutar run_transform_task con Udio mockeado (0 créditos, 0 red real)
+        task_id = "test-opt-style-parity"
+        app.TASKS[task_id] = {"id": task_id, "owner_email": "rodryandy@gmail.com", "logs": "", "status": "IN_PROGRESS"}
+        with patch("httpx.AsyncClient") as client_cls, \
+             patch.object(app, "gdrive_sync_generation_tasks_to_cloud", AsyncMock(return_value={"file_id": "drv_ok"})):
+            client_cls.return_value.__aenter__.return_value = mock_client
+            await app.run_transform_task(
+                task_id=task_id,
+                style="Rock progresivo sinfónico",
+                lyrics=lyrics_exact,
+                title="Prueba Paridad Optimización",
+                audio_content=None,
+                audio_filename=None,
+                ignore_audio=True,
+                include_lyrics=True,
+                bypass_copyright=False,
+                exclude_styles="",
+                vocal_gender="male",
+                weirdness=20,
+                style_influence=75,
+                audio_influence=25,
+                model="chirp-v6",
+                target_bpm=94,
+                hihat_mode="8th",
+                lyrics_mode="custom",
+                studio_selections=sel_six,
+            )
+
+        self.assertEqual(len(captured), 1)
+        sent_payload = captured[0]
+        self.assertEqual(sent_payload["prompt"], lyrics_exact)
+        self.assertEqual(sent_payload["style"], prev_json["style_full_preview"])
+        self.assertLessEqual(studio_virtual_catalog.measure_udio_style_length(sent_payload["style"]), 1000)
+        self.assertGreaterEqual(len(sent_payload["style"]), 940)
+        self.assertGreater(prev_json["style_raw_length"], 1800)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,8 @@ Reglas de diseño e integración con UdioAPI:
 
 from __future__ import annotations
 
+from functools import lru_cache
+import re
 from typing import Optional
 
 STUDIO_DEFAULT_ID = "auto"
@@ -794,6 +796,348 @@ _ITEMS_BY_CAT_AND_ID = {
 }
 
 
+_NEGATIVE_SUBCLAUSE_RE = re.compile(r"^(?:no|zero|sin|without)(?:\s+|$)", re.IGNORECASE)
+
+# Idiomas compuestos cuyo significado musical debe mantenerse coherente al compactar
+_IDIOM_COMPRESSION_RULES = [
+    (
+        r"\bkeeps\s+dense\s+rhythm\s+sections,\s+crisp\s+snare\s+snaps\s+and\s+fast\s+instrumental\s+transients\s+locked\s+forward\b",
+        "locked-forward dense rhythm sections, crisp snare snaps & fast attack",
+    ),
+    (
+        r"\bdistant\s+overhead\s+and\s+bright\s+wooden\s+room\s+microphones\s+with\s+warm\s+analog\s+tape\s+saturation\b",
+        "distant OH & wooden room mics, warm analog tape sat",
+    ),
+    (
+        r"\bwarm\s+ribbon\s+overhead\s+and\s+front-kit\s+miking\s+with\s+woody\s+midrange\s+clarity\s+and\s+gentle\s+tube\s+glue\b",
+        "warm ribbon OH & front-kit mics, woody mids clarity, tube glue",
+    ),
+    (
+        r"\belectro-mechanical\s+tonewheel\s+Hammond\s+B3\s+organ\s+with\s+harmonic\s+drawbars,\s+key-click\s+and\s+dual-speed\s+rotating\s+Leslie\s+122\s+speaker\b",
+        "tonewheel Hammond B3 organ w/ drawbars & dual-speed Leslie 122, key-click",
+    ),
+    (
+        r"\bstereo\s+horn\s+and\s+rotor\s+miking\s+capturing\s+Doppler\s+swirl\s+and\s+warm\s+vacuum-tube\s+preamp\s+saturation\b",
+        "stereo horn/rotor Doppler swirl, warm tube preamp sat",
+    ),
+    (
+        r"\b1980s\s+heavily\s+compressed\s+room\s+listen-mic\s+ambience\s+and\s+classic\s+gated\s+reverb\s+snare\s+and\s+tom\s+tail\b",
+        "80s crushed listen-mic room, gated rev snare & tom tail",
+    ),
+    (
+        r"\bweighty\s+cranked\s+tube\s+bass\s+head\s+and\s+8x10\s+cabinet\s+growl\s+with\s+gritty\s+midrange\s+rock\s+density\b",
+        "cranked tube bass head & 8x10 cab growl, gritty rock mids",
+    ),
+    (
+        r"\bdual\s+parallel\s+path\s+blending\s+tube\s+overdrive\s+growl\s+with\s+compressed\s+crisp\s+high-bite\s+direct\s+bass\s+signal\b",
+        "parallel tube OD growl + compressed high-bite DI bass",
+    ),
+    (
+        r"\bstereo\s+bi-amp\s+split\s+routing\s+gritty\s+treble\s+attack\s+into\s+bright\s+tube\s+amp\s+and\s+deep\s+low\s+fundamental\s+into\s+clean\s+sub\s+stack\b",
+        "stereo bi-amp gritty treble tube + clean sub stack",
+    ),
+    (
+        r"\blayered\s+multi-amp\s+studio\s+tracking\s+blending\s+crisp\s+small\s+low-watt\s+tube\s+room\s+mics\s+with\s+big\s+cranked\s+arena\s+stack\b",
+        "multi-amp small tube room mics + cranked arena stack",
+    ),
+    (
+        r"\bcutting\s+directly\s+through\s+loud\s+guitars\s+and\s+acoustic\s+drums\b",
+        "cutting loud dense mixes",
+    ),
+    (
+        r"\bsupports\s+upfront\s+intimate\s+chesty\s+delivery\s+as\s+well\s+as\s+powerful\s+belted\s+rock\s+singing\s+without\s+harsh\s+sibilance\b",
+        "upfront intimate chesty delivery, belted rock vocals, smooth sibilance",
+    ),
+    (
+        r"\bmatched\s+stereo\s+pair\s+of\s+small-diaphragm\s+condensers\s+inside\s+open\s+lid\s+with\s+natural\s+concert\s+hall\s+ambience\b",
+        "stereo SDC mics in open lid, concert hall ambience",
+    ),
+]
+
+# Etapa 1 (clean): eliminación de relleno verbal y abreviaturas musicales estándar sin perder hechos sonoros
+_CLEAN_COMPRESSION_RULES = [
+    (r"\breal physical\s+", ""),
+    (r"\bauthentic\s+", ""),
+    (r"\b(?:delivers|commands|supports|articulates|keeps|accents|faithfully translates)\s+", ""),
+    (r"\b(?:built|fitted|played)\s+with\s+", ", "),
+    (r"\b(?:pushed|driven|fed)\s+(?:by|with)\s+", "+ "),
+    (r"\bblended\s+with\s+", "+ "),
+    (r"\bstacked\s+over\s+", "+ "),
+    (r"\blayered\s+with\s+", "+ "),
+    (r"\bgenerating\s+", ", "),
+    (r"\bcapturing\s+", ", "),
+    (r"\bgiving\s+", ", "),
+    (r"\bproviding\s+", ", "),
+    (r"\bhighlighting\s+", "accenting "),
+    (r"\bas well as\b", "&"),
+    (r"\bthree-dimensional\b", "3D"),
+    (r"\bSolid State Logic\b", "SSL"),
+    (r"\belectro-mechanical\s+tonewheel\b", "tonewheel"),
+    (r"\belectro-mechanical\b", "electromechanical"),
+    (r"\bvacuum-tube\b", "tube"),
+    (r"\bPrecision electric bass guitar\b", "Precision electric bass"),
+    (r"\bJazz Bass guitar\b", "Jazz electric bass"),
+    (r"\bRickenbacker-style stereo bass guitar\b", "Rickenbacker stereo electric bass"),
+    (r"\belectric bass guitar\b", "electric bass"),
+    (r"\bStratocaster-style guitar\b", "Stratocaster guitar"),
+    (r"\bLes Paul-style guitar\b", "Les Paul guitar"),
+    (r"\bsingle-coil pickups\b", "single-coils"),
+    (r"\bsingle-coil pickup\b", "single-coil"),
+    (r"\bPAF-style humbucker\b", "PAF humbucker"),
+    (r"\bamplifiers\b", "amps"),
+    (r"\bamplifier\b", "amp"),
+    (r"\bcabinet\b", "cab"),
+    (r"\bcompression\b", "comp"),
+    (r"\bsaturation\b", "sat"),
+    (r"\bmidrange\b", "mids"),
+    (r"\bupper mids\b", "upper-mids"),
+    (r"\bupper-mid\b", "upper-mids"),
+    (r"\blow-end\b", "lows"),
+    (r"\btop-end\b", "highs"),
+    (r"\beighth-note\b", "8th-note"),
+    (r"\bsixteenth-note\b", "16th-note"),
+    (r"\bearly-1960s\b", "early-60s"),
+    (r"\blate-1960s\b", "late-60s"),
+    (r"\b1960s\b", "60s"),
+    (r"\b1970s\b", "70s"),
+    (r"\b1980s\b", "80s"),
+    (r"\btime-signature\b", "odd-meter"),
+    (r"(?<!-)\band\b(?!-)", "&"),
+    (r"(?<!-)\bwith\b(?!-)", ","),
+]
+
+# Etapa 2 (tight): terminología musical densa preservando timbre, técnica y producción distintivos
+_TIGHT_COMPRESSION_RULES = [
+    (r"\boverdrive\b", "OD"),
+    (r"\breverb\b", "rev"),
+    (r"\boverheads\b", "OH"),
+    (r"\boverhead\b", "OH"),
+    (r"\btransients\b", "attack"),
+    (r"\btransient\b", "attack"),
+    (r"\banalog mixing console\b", "analog console"),
+    (r"\bmixing console\b", "console"),
+    (r"\bmonophonic discrete analog subtractive synthesizer\b", "mono analog synth"),
+    (r"\b6-operator digital FM synthesizer engine\b", "6-op FM synth"),
+    (r"\bdigital FM synthesizer engine\b", "FM synth"),
+    (r"\bdual-speed rotating Leslie 122 speaker\b", "dual-speed Leslie 122"),
+    (r"\brotating Leslie 122 speaker\b", "Leslie 122"),
+    (r"\broundwound steel strings\b", "steel roundwounds"),
+    (r"\bsteel roundwound strings\b", "steel roundwounds"),
+    (r"\bheavy flatwound strings\b", "flatwounds"),
+    (r"\bfingerboard\b", "neck"),
+    (r"\bfretboard\b", "neck"),
+    (r"\bper-channel parametric EQ & stereo bus compressor\b", "parametric EQ & stereo bus comp"),
+    (r"\bhand-wound input & output transformers\b", "hand-wound transformers"),
+    (r"\bproportional-Q EQ & transformer-coupled stages\b", "proportional-Q EQ & transformers"),
+    (r"\blinear ultra-low-distortion preamps\b", "linear ultra-clean preamps"),
+    (r"\binternal shock mount & pop shield\b", "broadcast dynamic"),
+    (r"\bspherical mesh windscreen & classic 3-5 kHz presence peak\b", "3-5 kHz presence peak"),
+    (r"\bultra-fast attack detail & extended airy highs\b", "fast attack & airy highs"),
+    (r"\bM7-style capsule & custom output transformer\b", "M7 capsule & transformer"),
+    (r"\btransformer output & gentle presence rise\b", "transformer & presence rise"),
+    (r"\bsolid spruce soundboard, cast-iron frame & felt hammers\b", "spruce soundboard & felt hammers"),
+    (r"\bsteel tines, felt hammers & passive pickups\b", "steel tines & passive pickups"),
+    (r"\bsteel vibrating reeds & electrostatic pickup plate\b", "vibrating reeds & electrostatic pickup"),
+    (r"\bthree rich VCO oscillators & 24dB transistor ladder filter\b", "3 VCOs & 24dB ladder filter"),
+    (r"\bin warm studio room ambience\b", "in warm room"),
+    (r"\bacross dynamic ranges\b", ""),
+    (r"\b(?:iconic|timeless|pristine|gentle|mild|sturdy|sculpted|worn|custom|built-in|onboard|oversized)\s+", ""),
+]
+
+# Conceptos de estudio deduplicables entre perfiles activos para evitar redundancias y liberar presupuesto
+_STUDIO_CONCEPT_PATTERNS = {
+    "tape_sat": re.compile(r"\btape\s+(?:sat|saturation)\b", re.I),
+    "tube_sat": re.compile(r"\b(?:tube|vacuum-tube)\s+(?:preamp\s+)?(?:sat|saturation|warmth|harmonic|glue)\b", re.I),
+    "transformer_sat": re.compile(r"\btransformer\s+(?:sat|saturation|warmth)\b", re.I),
+    "room_amb": re.compile(r"\b(?:room\s+(?:mics?|ambience|air|wash)|concert\s+hall\s+ambience)\b", re.I),
+    "spring_rev": re.compile(r"\bspring\s+(?:rev|reverb)\b", re.I),
+    "plate_rev": re.compile(r"\bplate\s+(?:rev|reverb)\b", re.I),
+    "stereo_delay": re.compile(r"\b(?:tape\s+delay|stereo\s+delay|modulated\s+delay|stereo\s+echo|tape\s+echo)\b", re.I),
+    "optical_comp": re.compile(r"\boptical\s+(?:comp|compression|vocal\s+leveling)\b", re.I),
+    "fet_comp": re.compile(r"\bfet\s+(?:comp|compression)\b", re.I),
+    "bus_comp": re.compile(r"\bbus\s+(?:comp|compression|compressor)\b", re.I),
+    "rotary": re.compile(r"\b(?:rotary\s+speaker|rotating\s+speaker|leslie\s+122|doppler)\b", re.I),
+    "chorus": re.compile(r"\b(?:analog\s+chorus|stereo\s+chorus|rack\s+chorus|flanger-chorus)\b", re.I),
+}
+
+_ATOMIC_LEFT_ENDINGS = {
+    "w/", "with", "in", "on", "of", "for", "from", "to", "via", "+", "by",
+    "input", "birch", "horn", "snare", "kick", "slap", "gospel", "clean",
+    "open", "upper", "low", "baritone", "overhead", "oh", "head", "cabinet",
+    "rack", "china", "treble", "bass", "eq", "m7", "capsule", "transformer",
+    "soundboard", "tines", "reeds", "vcos", "attack", "highs", "mids",
+    "maple", "mahogany", "humbucker", "pop", "drawbars", "electric",
+}
+
+_STUDIO_DISTINCTIVE_KEYWORDS = (
+    "fuzz", "wah", "gated", "leslie", "doppler", "tape delay", "tape echo", "tape sat",
+    "high-gain", "4x12", "8x10", "1x15", "bi-amp", "vca", "fet", "optical", "class-a",
+    "el84", "plexi", "2520", "vibrato", "tremolo", "flanger", "phaser", "chorus",
+    "delay", "rotary", "multi-mic", "isolation", "sdc", "open lid", "mid-forward",
+    "transparent", "air", "stack", "tube", "comp", "sat", "od", "di", "eq", "snap",
+    "echo", "room",
+)
+
+
+_COMPILED_IDIOM_RULES = [(re.compile(p, re.IGNORECASE), r) for p, r in _IDIOM_COMPRESSION_RULES]
+_COMPILED_CLEAN_RULES = [(re.compile(p, re.IGNORECASE), r) for p, r in _CLEAN_COMPRESSION_RULES]
+_COMPILED_TIGHT_RULES = [(re.compile(p, re.IGNORECASE), r) for p, r in _TIGHT_COMPRESSION_RULES]
+_RE_MICROPHONES = re.compile(r"\bmicrophones\b", re.IGNORECASE)
+_RE_MICROPHONE = re.compile(r"\bmicrophone\b", re.IGNORECASE)
+_RE_DUAL_LDC = re.compile(r"\bdual-large-diaphragm\b", re.IGNORECASE)
+_RE_LDC = re.compile(r"\blarge-diaphragm\b", re.IGNORECASE)
+_RE_CAPSULE = re.compile(r"\bcapsule\b", re.IGNORECASE)
+
+
+@lru_cache(maxsize=2048)
+def _detect_studio_concepts(phrase: str) -> frozenset:
+    if not phrase:
+        return frozenset()
+    return frozenset(cn for cn, pat in _STUDIO_CONCEPT_PATTERNS.items() if pat.search(phrase))
+
+
+def measure_udio_style_length(text: str) -> int:
+    """
+    Calcula la longitud exacta del campo `style` con criterio compatible con APIs JSON/JS/UTF-16 y Python:
+    incluye espacios, separadores y puntuación.
+    """
+    if not text:
+        return 0
+    return max(len(text), len(text.encode("utf-16-le")) // 2)
+
+
+def _strip_negative_subclauses(text: str) -> str:
+    parts = [re.sub(r"\s+", " ", p).strip(" ,;-") for p in (text or "").split(",") if p.strip()]
+    return ", ".join(p for p in parts if not _NEGATIVE_SUBCLAUSE_RE.match(p))
+
+
+def _cleanup_musical_punct(s: str) -> str:
+    s = re.sub(r"\s*,\s*,\s*", ", ", s)
+    s = re.sub(r"\s*,\s*&\s*", " & ", s)
+    s = re.sub(r"\s*,\s*\+\s*", " + ", s)
+    s = re.sub(r"\s+", " ", s).strip(" ,;&+")
+    return s
+
+
+def _split_semantic_clauses(text: str) -> list[str]:
+    """Divide cláusulas respetando pares musicales atómicos (ej. 'slap & pop', 'birch & maple')."""
+    out: list[str] = []
+    for seg in (text or "").split(","):
+        seg = _cleanup_musical_punct(seg)
+        if not seg:
+            continue
+        m = re.search(r"\s+&\s+", seg)
+        if m:
+            left = seg[: m.start()].strip(" ,;")
+            right = seg[m.end() :].strip(" ,;")
+            lw, rw = len(left.split()), len(right.split())
+            last_l = left.split()[-1].lower() if left else ""
+            if ((lw >= 3 and rw >= 2) or (lw >= 2 and rw >= 3)) and last_l not in _ATOMIC_LEFT_ENDINGS:
+                out.append(left)
+                out.extend(_split_semantic_clauses(right))
+                continue
+        out.append(seg)
+    return out
+
+
+@lru_cache(maxsize=2048)
+def _render_cached_base_units(text: str, cat_key: str, layer: str, tier: str) -> tuple[str, ...]:
+    """Calcula y memoiza las unidades base comprimidas para una tupla (text, cat_key, layer, tier)."""
+    base = _strip_negative_subclauses(text)
+    if not base:
+        return ()
+    if tier == "full":
+        return (base,)
+
+    s = base
+    for pat, rep in _COMPILED_IDIOM_RULES:
+        s = pat.sub(rep, s)
+    for pat, rep in _COMPILED_CLEAN_RULES:
+        s = pat.sub(rep, s)
+    if cat_key != "microphones":
+        s = _RE_MICROPHONES.sub("mics", s)
+        s = _RE_MICROPHONE.sub("mic", s)
+    else:
+        s = _RE_DUAL_LDC.sub("dual-LDC", s)
+        s = _RE_LDC.sub("LDC", s)
+        if "microphone" not in s.lower() and "capsule" in s.lower():
+            s = _RE_CAPSULE.sub("microphone capsule", s, count=1)
+    s = _cleanup_musical_punct(s)
+    if tier == "clean":
+        return tuple(_split_semantic_clauses(s))
+
+    for pat, rep in _COMPILED_TIGHT_RULES:
+        s = pat.sub(rep, s)
+    s = _cleanup_musical_punct(s)
+    units = _split_semantic_clauses(s)
+    if not units:
+        return ()
+
+    if tier == "tight":
+        if layer == "physical":
+            return tuple(units[:3] if len(units) > 3 else units)
+        if layer == "performance" and len(units) > 2:
+            chosen = list(units[:2])
+            for extra_u in units[2:]:
+                if "moog bass" in extra_u.lower() and not any("moog bass" in c.lower() for c in chosen):
+                    chosen[-1] = extra_u
+            return tuple(chosen)
+        return tuple(units[:2] if len(units) > 2 else units)
+
+    if layer == "physical":
+        if len(units[0]) < 28 and len(units) > 1:
+            return tuple(units[:2])
+        return (units[0],)
+    if layer == "performance":
+        for u in units:
+            if "moog bass" in u.lower():
+                if u != units[0] and len(units[0]) + len(u) + 2 <= 66:
+                    return (units[0], u)
+                return (u,)
+        if len(units[0]) < 24 and len(units) > 1:
+            return tuple(units[:2])
+        return (units[0],)
+    # Para studio en essence devolvemos todas las unidades tight candidatas para elegir según conceptos ya reclamados
+    return tuple(units)
+
+
+def _render_profile_layer_units(
+    text: str,
+    cat_key: str,
+    layer: str,
+    tier: Optional[str],
+    claimed_concepts: Optional[set] = None,
+) -> list[str]:
+    """
+    Genera unidades musicales completas y coherentes para una capa (`physical`, `performance`, `studio`)
+    en el nivel de densidad pedido (`full`, `clean`, `tight`, `essence`) sin recortar palabras ni frases a medias.
+    """
+    if tier is None:
+        return []
+    cached = _render_cached_base_units(text, cat_key, layer, tier)
+    if not cached:
+        return []
+    if not (layer == "studio" and tier == "essence"):
+        return list(cached)
+
+    # layer == "studio" en nivel essence: priorizar rasgo de estudio más distintivo y no redundante
+    if len(cached) == 1:
+        return [cached[0]]
+    claimed = claimed_concepts or set()
+
+    def _studio_unit_score(u: str) -> tuple:
+        ul = u.lower()
+        u_concepts = _detect_studio_concepts(u)
+        is_novel = 1 if (not u_concepts or not u_concepts.issubset(claimed)) else 0
+        kw_score = 0
+        for kw in _STUDIO_DISTINCTIVE_KEYWORDS:
+            if kw in ul:
+                kw_score += 3 if kw not in ("room", "air") else 1
+        return (is_novel, kw_score, -len(u))
+
+    return [max(cached, key=_studio_unit_score)]
+
+
 def get_studio_virtual_catalog_payload() -> dict:
     """Devuelve el catálogo completo serializable y extensible para UI y diagnóstico."""
     return {
@@ -802,11 +1146,11 @@ def get_studio_virtual_catalog_payload() -> dict:
         "udio_style_max_chars": UDIO_STYLE_MAX_CHARS,
         "honesty_notice": STUDIO_PROFILE_HONESTY_NOTICE,
         "compaction_strategy": [
-            "1. Preservar género, métrica, BPM, tonalidad/acordes, ritmo y directivas vocales/instrumentales.",
-            "2. Mantener todas las categorías seleccionadas (!= 'auto') priorizando batería > bajo > guitarra > teclado > voz/mic > consola.",
-            "3. Si supera 1000 caracteres: recortar primero detalles de procesamiento de estudio de menor prioridad (Etapa 1).",
-            "4. Si sigue superando 1000 caracteres: reducir interpretación/extensión a descriptor compacto core_tag (3-6 palabras) conservando TODAS las categorías elegidas (Etapa 2).",
-            "5. Solo en saturación extrema de texto base del usuario registrar omisión explícita en metadatos/log, nunca silenciosa (Etapa 3)."
+            "1. Preservar género, métrica, BPM, tonalidad/acordes, ritmo y directivas vocales/instrumentales sin alterar la letra en prompt.",
+            "2. Mantener las 3 dimensiones musicales (sonido físico, interpretación y producción) en todas las categorías seleccionadas cuando exista presupuesto, sin relleno artificial si ya entra en <= 1000 caracteres.",
+            "3. Cuando supera 1000 caracteres: eliminar redundancias entre perfiles y comprimir progresivamente (clean -> tight -> essence) de forma equilibrada sin favorecer permanentemente a una categoría por posición.",
+            "4. Reutilizar dinámicamente cada carácter libre de categorías en Original / Automático y redistribuir el saldo sobrante para maximizar el detalle útil hasta 1000 caracteres exactos.",
+            "5. Solo bajo saturación extrema del prompt base reducir a core_tag o registrar omisión explícita con motivo claro en metadatos/log y #studioCompactionWarning, nunca silenciosa.",
         ],
         "categories": STUDIO_VIRTUAL_CATEGORIES,
     }
@@ -858,11 +1202,17 @@ def pack_studio_profiles_within_budget(
     available_budget: int,
     is_instrumental: bool = False,
     solo_mode: Optional[str] = None,
+    existing_context_clauses: Optional[list[str]] = None,
 ) -> dict:
     """
-    Traduce las selecciones activas a cláusulas técnicas dentro de `available_budget` caracteres
-    mediante reducción por capas (3 capas -> 2 capas -> 1 capa -> core_tag) para nunca eliminar
-    silenciosamente ninguna selección del usuario salvo saturación física del texto base.
+    Optimiza dinámicamente las selecciones activas del Estudio Virtual dentro de `available_budget`
+    caracteres (máximo 1.000 totales en UdioAPI Pro):
+    - Si todas las selecciones entran completas sin compactar: las devuelve íntegras sin relleno artificial.
+    - Si superan el presupuesto: aplica deduplicación cruzada, compresión terminológica musical progresiva
+      por capa (`full -> clean -> tight -> essence`) de manera equilibrada (sin sesgo posicional permanente),
+      preservando identidad sonora, técnicas interpretativas y producción.
+    - Reinvierte cualquier carácter sobrante del límite recuperando detalle real de los perfiles más compactados.
+    - Nunca omite silenciosamente una selección: en saturación extrema registra categoría y motivo explícito.
     """
     norm = normalize_studio_selections(selections)
     priority = STUDIO_CATEGORY_PRIORITY_INSTRUMENTAL if is_instrumental else STUDIO_CATEGORY_PRIORITY_VOCAL
@@ -881,6 +1231,7 @@ def pack_studio_profiles_within_budget(
         active_entries.append({
             "key": key,
             "id": sel_id,
+            "short_title": cat.get("short_title", key),
             "label": item["label"],
             "short_label": item["short_label"],
             "physical": item["physical_instrument"],
@@ -894,111 +1245,304 @@ def pack_studio_profiles_within_budget(
         return {
             "active_count": 0,
             "selections": norm,
+            "levels": {},
+            "layer_states": {},
+            "preserved_dimensions": {},
+            "per_category_chars": {},
             "clauses": [],
             "joined_text": "",
+            "raw_length": 0,
+            "final_length": 0,
+            "budget_available": max(0, int(available_budget)),
+            "budget_utilization_pct": 0.0,
             "compaction_stage": "none_active",
             "reduced_categories": [],
             "preserved_categories": [],
             "omitted_categories": [],
+            "omitted_reasons": {},
+            "deduplicated_concepts": [],
             "withheld_for_solo": withheld_for_solo,
             "notice": None,
         }
 
-    # Niveles por categoría:
-    # 3 = [physical, performance, studio]
-    # 2 = [physical, performance]
-    # 1 = [physical]
-    # 0 = [core_tag]
-    # -1 = omitido por falta física extrema de presupuesto
-    levels = {e["key"]: 3 for e in active_entries}
+    # Longitud real sin compactar de las 3 capas positivas (excluyendo cláusulas negativas que van en `tags`)
+    raw_full_parts = []
+    for e in active_entries:
+        for raw_field in (e["physical"], e["performance"], e["studio"]):
+            cleaned_pos = _strip_negative_subclauses(raw_field)
+            if cleaned_pos:
+                raw_full_parts.append(cleaned_pos)
+    raw_studio_len = measure_udio_style_length(", ".join(raw_full_parts))
 
-    def _render_clauses(lvl_map: dict) -> list:
-        out = []
+    base_seen = {
+        re.sub(r"\s+", " ", c).strip().lower()
+        for c in (existing_context_clauses or [])
+        if c and str(c).strip()
+    }
+
+    state = {e["key"]: {"phys": "full", "perf": "full", "stud": "full"} for e in active_entries}
+
+    def _assemble(st_map: dict, enable_concept_dedup: bool = False):
+        seen_exact = set(base_seen)
+        claimed_concepts = set()
+        if enable_concept_dedup:
+            for c in base_seen:
+                claimed_concepts.update(_detect_studio_concepts(c))
+            for e in active_entries:
+                k = e["key"]
+                pt = st_map[k]["phys"]
+                if pt and pt != "core_tag":
+                    for u in _render_profile_layer_units(e["physical"], k, "physical", pt):
+                        claimed_concepts.update(_detect_studio_concepts(u))
+
+        clauses_out: list[str] = []
+        per_cat_chars: dict[str, int] = {}
+        deduped_items: list[dict] = []
+
         for e in active_entries:
-            lvl = lvl_map[e["key"]]
-            if lvl == 3:
-                out.extend([e["physical"], e["performance"], e["studio"]])
-            elif lvl == 2:
-                out.extend([e["physical"], e["performance"]])
-            elif lvl == 1:
-                out.append(e["physical"])
-            elif lvl == 0:
-                out.append(e["core_tag"])
-        return out
+            k = e["key"]
+            pt = st_map[k]["phys"]
+            mt = st_map[k]["perf"]
+            st = st_map[k]["stud"]
+            cat_clauses: list[str] = []
 
-    def _joined_len(clauses: list) -> int:
-        return len(", ".join(clauses)) if clauses else 0
+            if pt == "core_tag":
+                phys_units = [_strip_negative_subclauses(e["core_tag"])]
+            else:
+                phys_units = _render_profile_layer_units(e["physical"], k, "physical", pt)
+
+            for u in phys_units:
+                ul = u.lower()
+                if ul and ul not in seen_exact:
+                    seen_exact.add(ul)
+                    cat_clauses.append(u)
+
+            if pt is not None and pt != "core_tag":
+                for u in _render_profile_layer_units(e["performance"], k, "performance", mt):
+                    ul = u.lower()
+                    if ul and ul not in seen_exact:
+                        seen_exact.add(ul)
+                        cat_clauses.append(u)
+
+                stud_units = _render_profile_layer_units(
+                    e["studio"],
+                    k,
+                    "studio",
+                    st,
+                    claimed_concepts=claimed_concepts if enable_concept_dedup else None,
+                )
+                kept_stud: list[str] = []
+                for idx_u, u in enumerate(stud_units):
+                    ul = u.lower()
+                    if not ul or ul in seen_exact:
+                        continue
+                    if enable_concept_dedup:
+                        u_concepts = _detect_studio_concepts(u)
+                        remaining_other = len(kept_stud) + (len(stud_units) - idx_u - 1)
+                        if u_concepts and u_concepts.issubset(claimed_concepts) and remaining_other >= 1:
+                            deduped_items.append({
+                                "category": k,
+                                "phrase": u,
+                                "concepts": sorted(u_concepts),
+                            })
+                            continue
+                        claimed_concepts.update(u_concepts)
+                    seen_exact.add(ul)
+                    kept_stud.append(u)
+                cat_clauses.extend(kept_stud)
+
+            per_cat_chars[k] = measure_udio_style_length(", ".join(cat_clauses)) if cat_clauses else 0
+            clauses_out.extend(cat_clauses)
+
+        joined_txt = ", ".join(clauses_out)
+        return clauses_out, joined_txt, measure_udio_style_length(joined_txt), per_cat_chars, deduped_items
 
     budget = max(0, int(available_budget))
-    clauses = _render_clauses(levels)
+    clauses, joined, cur_len, per_cat, deduped_items = _assemble(state, enable_concept_dedup=False)
     stage = "full_3_layers"
 
-    # Etapa 1: recortar capa de procesamiento de estudio (3 -> 2) empezando por menor prioridad
-    if _joined_len(clauses) > budget:
-        stage = "reduced_processing"
-        for e in reversed(active_entries):
-            if _joined_len(clauses) <= budget:
-                break
-            if levels[e["key"]] > 2:
-                levels[e["key"]] = 2
-                clauses = _render_clauses(levels)
+    if cur_len > budget:
+        # Paso 1: activar deduplicación cruzada antes de compactar o descartar información útil
+        clauses, joined, cur_len, per_cat, deduped_items = _assemble(state, enable_concept_dedup=True)
 
-    # Etapa 2a: recortar capa de interpretación (2 -> 1) empezando por menor prioridad
-    if _joined_len(clauses) > budget:
-        stage = "reduced_to_instrument_identity"
-        for e in reversed(active_entries):
-            if _joined_len(clauses) <= budget:
-                break
-            if levels[e["key"]] > 1:
-                levels[e["key"]] = 1
-                clauses = _render_clauses(levels)
+        # Paso 2: reducción equilibrada por capa (sin favorecer permanentemente a una categoría por posición)
+        step_down_schedule = [
+            ("clean_3_layers", "stud", "full", "clean"),
+            ("clean_3_layers", "perf", "full", "clean"),
+            ("clean_3_layers", "phys", "full", "clean"),
+            ("compact_processing_3_layers", "stud", "clean", "tight"),
+            ("compact_processing_3_layers", "stud", "tight", "essence"),
+            ("compact_all_3_layers", "perf", "clean", "tight"),
+            ("compact_all_3_layers", "phys", "clean", "tight"),
+            ("compact_all_3_layers", "perf", "tight", "essence"),
+            ("compact_all_3_layers", "phys", "tight", "essence"),
+            ("preserve_identity_and_performance", "stud", "essence", None),
+            ("preserve_identity_compact", "perf", "essence", None),
+            ("compact_core_tags", "phys", "essence", "core_tag"),
+            ("explicit_overflow", "phys", "core_tag", None),
+        ]
 
-    # Etapa 2b: compactar a core_tag (1 -> 0) empezando por menor prioridad, manteniendo TODAS las categorías
-    if _joined_len(clauses) > budget:
-        stage = "compact_preserves_all"
-        for e in reversed(active_entries):
-            if _joined_len(clauses) <= budget:
+        for stg_name, lyr, frm, to in step_down_schedule:
+            if cur_len <= budget:
                 break
-            if levels[e["key"]] > 0:
-                levels[e["key"]] = 0
-                clauses = _render_clauses(levels)
+            stage = stg_name
+            while cur_len > budget:
+                candidates = [e["key"] for e in active_entries if state[e["key"]][lyr] == frm]
+                if not candidates:
+                    break
+                if stg_name == "explicit_overflow":
+                    # En saturación física extrema: omitir primero la categoría de menor prioridad contextual
+                    pick = candidates[-1]
+                else:
+                    # Equidad dinámica: compactar primero el perfil que actualmente ocupa más caracteres (desempate por mayor ahorro)
+                    def _step_candidate_key(ck: str) -> tuple:
+                        tmp = {x: dict(v) for x, v in state.items()}
+                        tmp[ck][lyr] = to
+                        _, _, new_len, _, _ = _assemble(tmp, enable_concept_dedup=True)
+                        return (per_cat.get(ck, 0), cur_len - new_len)
 
-    # Etapa 3: guardia de desbordamiento extremo con registro explícito (nunca silencioso)
-    omitted = []
-    if _joined_len(clauses) > budget:
-        stage = "explicit_overflow"
-        for e in reversed(active_entries):
-            if _joined_len(clauses) <= budget:
-                break
-            levels[e["key"]] = -1
-            omitted.append(e["key"])
-            clauses = _render_clauses(levels)
+                    pick = max(candidates, key=_step_candidate_key)
+
+                state[pick][lyr] = to
+                if to == "core_tag" or (lyr == "phys" and to is None):
+                    state[pick]["perf"] = None
+                    state[pick]["stud"] = None
+                clauses, joined, cur_len, per_cat, deduped_items = _assemble(state, enable_concept_dedup=True)
+
+        # Paso 3: reinversión dinámica del saldo libre hasta `budget` (recuperando detalle real sin relleno artificial)
+        upgrade_tiers = {
+            "phys": ["core_tag", "essence", "tight", "clean", "full"],
+            "perf": [None, "essence", "tight", "clean", "full"],
+            "stud": [None, "essence", "tight", "clean", "full"],
+        }
+        upgrade_phases = [
+            ("perf", [None]),
+            ("stud", [None]),
+            ("phys", ["core_tag", "essence", "tight", "clean"]),
+            ("perf", ["essence", "tight", "clean"]),
+            ("stud", ["essence", "tight", "clean"]),
+        ]
+        improved = True
+        while improved and cur_len < budget:
+            improved = False
+            for lyr, allowed_from in upgrade_phases:
+                best_move = None
+                for e in active_entries:
+                    ck = e["key"]
+                    if state[ck]["phys"] is None:
+                        continue
+                    if lyr != "phys" and state[ck]["phys"] == "core_tag":
+                        continue
+                    cur_t = state[ck][lyr]
+                    if cur_t not in allowed_from:
+                        continue
+                    seq = upgrade_tiers[lyr]
+                    idx_t = seq.index(cur_t)
+                    if idx_t + 1 >= len(seq):
+                        continue
+                    nxt_t = seq[idx_t + 1]
+                    tmp = {x: dict(v) for x, v in state.items()}
+                    tmp[ck][lyr] = nxt_t
+                    _, _, new_len, _, _ = _assemble(tmp, enable_concept_dedup=True)
+                    if new_len <= budget and new_len > cur_len:
+                        # Equidad: priorizar el perfil más comprimido y con menor asignación de caracteres
+                        score = (-idx_t, -per_cat.get(ck, 0), new_len - cur_len)
+                        if best_move is None or score > best_move[0]:
+                            best_move = (score, ck, lyr, nxt_t)
+                if best_move is not None:
+                    _, ck, lyr, nxt_t = best_move
+                    state[ck][lyr] = nxt_t
+                    clauses, joined, cur_len, per_cat, deduped_items = _assemble(state, enable_concept_dedup=True)
+                    improved = True
+                    break
+
+    # Resumen compatible de niveles y dimensiones preservadas por categoría
+    levels: dict[str, int] = {}
+    preserved_dimensions: dict[str, list[str]] = {}
+    layer_states_out: dict[str, dict] = {}
+    for e in active_entries:
+        k = e["key"]
+        st = state[k]
+        dims = []
+        if st["phys"] is not None:
+            dims.append("physical")
+        if st["perf"] is not None:
+            dims.append("performance")
+        if st["stud"] is not None:
+            dims.append("studio")
+        preserved_dimensions[k] = dims
+        layer_states_out[k] = {
+            "physical": st["phys"],
+            "performance": st["perf"],
+            "studio": st["stud"],
+            "chars": per_cat.get(k, 0),
+        }
+        if st["phys"] is None:
+            levels[k] = -1
+        elif st["phys"] == "core_tag":
+            levels[k] = 0
+        elif st["phys"] == "full" and st["perf"] == "full" and st["stud"] == "full":
+            levels[k] = 3
+        elif st["perf"] is not None:
+            levels[k] = 2
+        else:
+            levels[k] = 1
 
     preserved = [e["key"] for e in active_entries if levels[e["key"]] >= 0]
+    omitted = [e["key"] for e in active_entries if levels[e["key"]] == -1]
     reduced = [e["key"] for e in active_entries if 0 <= levels[e["key"]] < 3]
+    all_three_dims_count = sum(1 for k in preserved if len(preserved_dimensions.get(k, [])) == 3)
+
+    omitted_reasons: dict[str, str] = {}
+    for k in omitted:
+        min_needed = measure_udio_style_length(_strip_negative_subclauses(_ITEMS_BY_CAT_AND_ID[k][norm[k]]["core_tag"]))
+        omitted_reasons[k] = (
+            f"Presupuesto insuficiente en style ({budget} chars disponibles tras prompt base; "
+            f"se requerían al menos +{min_needed + 2} chars adicionales para incluir '{k}')."
+        )
 
     notice = None
     if withheld_for_solo:
         notice = f"Modo solo activo ({solo_mode}): categorías de banda incompatibles retenidas: {', '.join(withheld_for_solo)}."
     elif omitted:
-        notice = f"Presupuesto máximo de {UDIO_STYLE_MAX_CHARS} caracteres agotado por prompt base: omitidas explícitamente {', '.join(omitted)}."
-    elif reduced:
         notice = (
-            f"Compactación prioritaria ({stage}): todas las categorías seleccionadas se conservaron "
-            f"reduciendo detalle secundario en {', '.join(reduced)} para respetar {UDIO_STYLE_MAX_CHARS} caracteres."
+            f"Presupuesto máximo de {UDIO_STYLE_MAX_CHARS} caracteres agotado por prompt base ({budget} chars disponibles para Estudio): "
+            f"omitidas explícitamente {', '.join(omitted)}."
         )
+    elif reduced:
+        if all_three_dims_count == len(active_entries):
+            notice = (
+                f"Optimización musical inteligente ({stage}): se conservaron las {len(active_entries)} categorías "
+                f"con sus 3 dimensiones (sonido físico, interpretación y producción) en versión condensada "
+                f"({raw_studio_len} -> {cur_len} chars en Estudio) para respetar {UDIO_STYLE_MAX_CHARS} caracteres."
+            )
+        else:
+            notice = (
+                f"Compactación dinámica ({stage}): se conservaron las {len(active_entries)} categorías seleccionadas "
+                f"reduciendo detalle secundario en {', '.join(reduced)} ({raw_studio_len} -> {cur_len} chars en Estudio) "
+                f"para respetar {UDIO_STYLE_MAX_CHARS} caracteres."
+            )
 
-    joined = ", ".join(clauses)
+    util_pct = round((cur_len / budget) * 100.0, 1) if budget > 0 else 0.0
     return {
         "active_count": len(active_entries),
         "selections": norm,
         "levels": levels,
+        "layer_states": layer_states_out,
+        "preserved_dimensions": preserved_dimensions,
+        "per_category_chars": per_cat,
         "clauses": clauses,
         "joined_text": joined,
+        "raw_length": raw_studio_len,
+        "final_length": cur_len,
+        "budget_available": budget,
+        "budget_utilization_pct": util_pct,
         "compaction_stage": stage,
         "reduced_categories": reduced,
         "preserved_categories": preserved,
         "omitted_categories": omitted,
+        "omitted_reasons": omitted_reasons,
+        "deduplicated_concepts": deduped_items,
         "withheld_for_solo": withheld_for_solo,
         "notice": notice,
     }

@@ -2952,9 +2952,15 @@ def build_prioritized_style(
     )
     secondary_tier = _dedup_tier(tier6_secondary)
 
+    _measure_len = (
+        studio_virtual_catalog.measure_udio_style_length
+        if (studio_virtual_catalog and hasattr(studio_virtual_catalog, "measure_udio_style_length"))
+        else len
+    )
+
     all_tokens = core_tiers + secondary_tier
     raw_combined = ", ".join(all_tokens)
-    raw_len = len(raw_combined)
+    raw_len = _measure_len(raw_combined)
 
     has_active_studio = bool(
         studio_virtual_catalog
@@ -2972,13 +2978,21 @@ def build_prioritized_style(
             "dropped_secondary_count": 0,
             "studio_profiles": None,
             "compaction_notice": None,
+            "style_optimization": {
+                "raw_total_chars": raw_len,
+                "final_chars": raw_len,
+                "max_chars": max_chars,
+                "utilization_pct": round((raw_len / max_chars) * 100.0, 1) if max_chars > 0 else 0.0,
+                "compacted": False,
+                "stage": "no_studio_active",
+            },
         }
 
-    # Construir respetando Tiers 1-5 íntegramente y empaquetando Estudio Virtual + Tier 6 hasta max_chars
+    # Construir respetando Tiers 1-5 íntegramente y optimizando Estudio Virtual + Tier 6 hasta max_chars exactos
     selected: list[str] = []
     curr_len = 0
     for tok in core_tiers:
-        extra = len(tok) if not selected else len(tok) + 2
+        extra = _measure_len(tok) if not selected else _measure_len(tok) + 2
         if curr_len + extra <= max_chars:
             selected.append(tok)
             curr_len += extra
@@ -2994,23 +3008,25 @@ def build_prioritized_style(
             available_budget=remaining_budget,
             is_instrumental=is_instrumental,
             solo_mode=studio_solo_mode,
+            existing_context_clauses=selected,
         )
-        # Intentar conservar máximo detalle si secondary_tier aún deja espacio; si no, priorizar Estudio Virtual
+        # Ingerir cláusulas optimizadas preservando su coherencia exacta (sin recortes a mitad de frase)
         for clause in studio_pack.get("clauses", []):
             cleaned_cl = sanitize_positive_style(clause, max_chars=max_chars)
-            for sub in _split_clean(cleaned_cl):
-                k = sub.lower()
-                if k and k not in seen_all:
-                    extra = len(sub) if not selected else len(sub) + 2
-                    if curr_len + extra <= max_chars:
-                        seen_all.add(k)
-                        selected.append(sub)
-                        studio_clauses_clean.append(sub)
-                        curr_len += extra
+            if not cleaned_cl:
+                continue
+            k = cleaned_cl.lower()
+            if k not in seen_all:
+                extra = _measure_len(cleaned_cl) if not selected else _measure_len(cleaned_cl) + 2
+                if curr_len + extra <= max_chars:
+                    seen_all.add(k)
+                    selected.append(cleaned_cl)
+                    studio_clauses_clean.append(cleaned_cl)
+                    curr_len += extra
 
     dropped_secondary = 0
     for tok in secondary_tier:
-        extra = len(tok) if not selected else len(tok) + 2
+        extra = _measure_len(tok) if not selected else _measure_len(tok) + 2
         if curr_len + extra <= max_chars:
             selected.append(tok)
             curr_len += extra
@@ -3018,22 +3034,38 @@ def build_prioritized_style(
             dropped_secondary += 1
 
     final_style = sanitize_positive_style(", ".join(selected), max_chars=max_chars)
-    raw_with_studio_len = raw_len + (len(studio_pack["joined_text"]) + 2 if (studio_pack and studio_pack.get("joined_text")) else 0)
+    final_len = _measure_len(final_style)
+    raw_studio_len = studio_pack.get("raw_length", 0) if studio_pack else 0
+    raw_with_studio_len = raw_len + (
+        (raw_studio_len + (2 if raw_len > 0 else 0)) if raw_studio_len > 0 else 0
+    )
     was_compacted = bool(
         dropped_secondary > 0
         or (studio_pack and studio_pack.get("reduced_categories"))
         or (studio_pack and studio_pack.get("omitted_categories"))
-        or len(final_style) < raw_with_studio_len
+        or final_len < raw_with_studio_len
     )
     return {
         "style": final_style,
         "raw_length": raw_with_studio_len,
-        "final_length": len(final_style),
+        "final_length": final_len,
         "truncated": was_compacted,
         "core_preserved": core_preserved,
         "dropped_secondary_count": dropped_secondary,
         "studio_profiles": studio_pack,
         "compaction_notice": studio_pack.get("notice") if studio_pack else None,
+        "style_optimization": {
+            "raw_total_chars": raw_with_studio_len,
+            "final_chars": final_len,
+            "max_chars": max_chars,
+            "utilization_pct": round((final_len / max_chars) * 100.0, 1) if max_chars > 0 else 0.0,
+            "compacted": was_compacted,
+            "stage": studio_pack.get("compaction_stage") if studio_pack else "no_studio_active",
+            "preserved_dimensions": studio_pack.get("preserved_dimensions", {}) if studio_pack else {},
+            "per_category_chars": studio_pack.get("per_category_chars", {}) if studio_pack else {},
+            "deduplicated_concepts": studio_pack.get("deduplicated_concepts", []) if studio_pack else [],
+            "omitted_reasons": studio_pack.get("omitted_reasons", {}) if studio_pack else {},
+        },
     }
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
@@ -3235,12 +3267,23 @@ async def preview_parameters(
         elif eff_preset == "piano_oracion":
             solo_mode_preview = "piano"
 
+    preview_vocal_tag = ""
+    if not is_instrumental:
+        low_style = eff_style.lower()
+        gender_kw = "male " if eff_gender == "male" else ("female " if eff_gender == "female" else "")
+        if "argentin" in low_style:
+            preview_vocal_tag = f"natural {gender_kw}Argentine Spanish vocals, clean expressive singing"
+        elif "mexican" in low_style or "mexicano" in low_style:
+            preview_vocal_tag = f"natural {gender_kw}Mexican Spanish vocals"
+        else:
+            preview_vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery"
+
     style_build = build_prioritized_style(
         genre_anchor=eff_cfg.get("meter_clause") or "",
         bpm_tag=eff_cfg.get("bpm_tag") or "",
         user_and_enriched_style=eff_style,
         priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
-        vocal_tag="",
+        vocal_tag=preview_vocal_tag,
         is_instrumental=is_instrumental,
         is_solo_mode=bool(solo_mode_preview),
         max_chars=1000,
@@ -3275,8 +3318,10 @@ async def preview_parameters(
         "prompt_preview": prompt_preview,
         "style_preview": computed_style[:200] + ("..." if len(computed_style) > 200 else ""),
         "style_full_preview": computed_style,
-        "style_length": len(computed_style),
+        "style_length": style_build.get("final_length", len(computed_style)),
+        "style_raw_length": style_build.get("raw_length", len(computed_style)),
         "style_max_chars": 1000,
+        "style_optimization": style_build.get("style_optimization"),
         "studio_profiles": style_build.get("studio_profiles"),
         "compaction_notice": style_build.get("compaction_notice"),
         "honesty_notice": studio_virtual_catalog.STUDIO_PROFILE_HONESTY_NOTICE if studio_virtual_catalog else "",
@@ -3312,6 +3357,12 @@ async def preview_parameters_get(
     active_preset: str = Query(""),
     is_public_domain: bool = Query(False),
     lyrics_mode: str = Query("custom"),
+    studio_drums: str = Query("auto"),
+    studio_guitar: str = Query("auto"),
+    studio_bass: str = Query("auto"),
+    studio_keyboard: str = Query("auto"),
+    studio_console: str = Query("auto"),
+    studio_mic: str = Query("auto"),
     current_user: str = Depends(get_current_user)
 ):
     """Alias GET para consulta rápida de parámetros previstos sin consumo de créditos."""
@@ -3336,6 +3387,12 @@ async def preview_parameters_get(
         active_preset=active_preset,
         is_public_domain=is_public_domain,
         lyrics_mode=lyrics_mode,
+        studio_drums=studio_drums,
+        studio_guitar=studio_guitar,
+        studio_bass=studio_bass,
+        studio_keyboard=studio_keyboard,
+        studio_console=studio_console,
+        studio_mic=studio_mic,
         current_user=current_user
     )
 
@@ -5843,6 +5900,7 @@ async def run_transform_task(
             "style_length": len(payload.get("style") or ""),
             "style_raw_length": style_build.get("raw_length"),
             "style_truncated": style_build.get("truncated"),
+            "style_optimization": style_build.get("style_optimization"),
             "tags_sent": payload.get("tags") or "",
             "weights": {
                 "style_weight": payload.get("style_weight"),
