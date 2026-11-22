@@ -2898,22 +2898,6 @@ html, body {
             </div>
           </div>
 
-          <!-- OPCIÓN DIRECTA: ENRIQUECER CANCIÓN EXISTENTE CON SF2 -->
-          <div style="margin-bottom:12px;padding:9px 12px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:30px;height:30px;border-radius:8px;background:rgba(16,185,129,0.18);display:grid;place-items:center;color:#34D399;font-size:16px">
-                <i class="ph ph-piano-keys"></i>
-              </div>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:#F8FAFC">¿Deseas enriquecer una canción de tu Biblioteca?</div>
-                <div style="font-size:10.5px;color:#94A3B8">Sobregraba instrumentos SF2 respetando 100% la voz, BPM y duración original con 0 créditos.</div>
-              </div>
-            </div>
-            <button type="button" class="btn-sec" onclick="openSf2EnrichmentModal()" style="padding:5px 12px;font-size:11.5px;color:#6EE7B7;border-color:rgba(16,185,129,0.4);border-radius:7px;display:inline-flex;align-items:center;gap:5px;cursor:pointer">
-              <i class="ph ph-waveform"></i> Enriquecer canción existente
-            </button>
-          </div>
-
           <!-- PRESETS DE CULTO Y LITURGIA -->
           <div class="field">
             <div class="label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
@@ -4772,7 +4756,7 @@ html, body {
             <button type="button" class="lib-filter-chip active" data-category="all" onclick="setLibCategoryFilter('all', this)">Todas las pistas</button>
             <button type="button" class="lib-filter-chip" data-category="ia" onclick="setLibCategoryFilter('ia', this)">✨ Canciones IA</button>
             <button type="button" class="lib-filter-chip" data-category="voiceover" onclick="setLibCategoryFilter('voiceover', this)">🎙️ Voz en Off</button>
-            <button type="button" class="lib-filter-chip" data-category="instrumental" onclick="setLibCategoryFilter('instrumental', this)">🎹 Instrumentales SF2</button>
+            <button type="button" class="lib-filter-chip" data-category="instrumental" onclick="setLibCategoryFilter('instrumental', this)">🎹 Instrumentales</button>
             <button type="button" class="lib-filter-chip" data-category="album" onclick="setLibCategoryFilter('album', this)">💿 Álbumes 1H</button>
           </div>
         </div>
@@ -4877,159 +4861,6 @@ html, body {
       <a id="btnDownloadDiagReport" href="javascript:void(0)" onclick="downloadDiagnosticReport();return false;" class="btn-primary" style="background:#DC2626;color:#fff;border:none;padding:7px 18px;border-radius:8px;font-weight:700;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">
         <i class="ph ph-file-text"></i> Descargar Informe (.txt)
       </a>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL DE ENRIQUECIMIENTO CON 20 INSTRUMENTOS SF2 -->
-<div id="sf2EnrichmentModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);z-index:10001;align-items:center;justify-content:center;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-  <div style="background:#131B2E;border:1px solid rgba(16,185,129,0.4);border-radius:18px;max-width:760px;width:100%;max-height:calc(100dvh - 32px);max-height:92vh;margin:auto;box-sizing:border-box;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,0.85);overflow:hidden">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(15,23,42,0.95);border-bottom:1px solid rgba(255,255,255,0.08)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#059669,#10B981);display:grid;place-items:center;color:#fff;font-size:18px">
-          <i class="ph ph-piano-keys"></i>
-        </div>
-        <div>
-          <h3 style="font-size:15px;font-weight:700;color:#F8FAFC;margin:0">Enriquecer Canción con Instrumentos SF2</h3>
-          <p style="font-size:11px;color:#94A3B8;margin:2px 0 0">Sobregrabación no destructiva con FluidSynth • 0 Créditos Udio/FAL • Mantiene voz, tempo y afinación al 100%</p>
-        </div>
-      </div>
-      <button type="button" onclick="closeSf2EnrichmentModal()" style="background:none;border:none;color:#94A3B8;font-size:22px;cursor:pointer;padding:4px;line-height:1">&times;</button>
-    </div>
-
-    <!-- Body Scrollable -->
-    <div style="padding:16px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;flex:1">
-      <!-- Selector de canción si se abre desde Crear o sin ID previo -->
-      <div id="sf2EnrichTrackSelectorBox" style="display:none;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">
-        <label style="font-size:11.5px;font-weight:700;color:#CBD5E1;display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <i class="ph ph-music-note"></i> Seleccionar canción de la Biblioteca para sobregrabar:
-        </label>
-        <select id="sf2EnrichTrackSelect" onchange="onSf2EnrichTrackSelected(this.value)" style="width:100%;padding:8px 12px;background:#0F172A;border:1px solid rgba(16,185,129,0.4);border-radius:8px;color:#F8FAFC;font-size:12.5px">
-          <!-- Opciones dinámicas de la biblioteca -->
-        </select>
-      </div>
-
-      <!-- Tarjeta de Análisis Acústico y Armónico -->
-      <div style="background:rgba(15,23,42,0.9);border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px 14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-          <div style="font-size:12px;font-weight:700;color:#93C5FD;display:flex;align-items:center;gap:6px">
-            <i class="ph ph-waveform"></i> <span id="sf2EnrichCardTitle">Canción Original</span>
-          </div>
-          <div id="sf2EnrichAnalysisStatus" style="font-size:11px;color:#FBBF24;display:flex;align-items:center;gap:4px">
-            <span class="spinner" style="width:12px;height:12px;border-width:2px;border-color:#FBBF24 transparent #FBBF24 transparent"></span> Analizando audio...
-          </div>
-        </div>
-
-        <!-- Métricas detectadas -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px">
-          <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase">Duración Real</div>
-            <div id="sf2MetricDuration" style="font-size:14px;font-weight:700;color:#34D399;margin-top:2px">--:--</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase">Tempo Exacto</div>
-            <div id="sf2MetricBpm" style="font-size:14px;font-weight:700;color:#60A5FA;margin-top:2px">-- BPM</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase">Tonalidad Detectada</div>
-            <div id="sf2MetricKey" style="font-size:14px;font-weight:700;color:#A78BFA;margin-top:2px">--</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#94A3B8;text-transform:uppercase">Total Compases</div>
-            <div id="sf2MetricBars" style="font-size:14px;font-weight:700;color:#FCD34D;margin-top:2px">--</div>
-          </div>
-        </div>
-
-        <!-- Progresión armónica compás por compás -->
-        <div style="margin-top:4px">
-          <div style="font-size:10.5px;font-weight:700;color:#94A3B8;margin-bottom:5px;display:flex;justify-content:space-between">
-            <span>Progresión Armónica Acústica (Compás por Compás):</span>
-            <span id="sf2ChordsSummaryText" style="color:#A7F3D0">--</span>
-          </div>
-          <div id="sf2ChordsTimelineStrip" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;max-height:56px;scrollbar-width:thin">
-            <span style="font-size:11px;color:#64748B">Esperando análisis...</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controles de Balance General de Mezcla -->
-      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px">
-        <div style="font-size:11.5px;font-weight:700;color:#CBD5E1;margin-bottom:8px;display:flex;align-items:center;gap:6px">
-          <i class="ph ph-sliders"></i> Balance de Mezcla de Audio:
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-              <span style="color:#94A3B8">Pista Original (Voz & Melodía Udio):</span>
-              <strong id="sf2OrigVolText" style="color:#60A5FA">95%</strong>
-            </div>
-            <input type="range" id="sf2OrigVolInput" min="10" max="150" step="5" value="95" style="width:100%;accent-color:#3B82F6" oninput="$('sf2OrigVolText').textContent=this.value+'%'">
-          </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-              <span style="color:#94A3B8">Acompañamiento SF2 Agregado:</span>
-              <strong id="sf2AccVolText" style="color:#10B981">75%</strong>
-            </div>
-            <input type="range" id="sf2AccVolInput" min="10" max="150" step="5" value="75" style="width:100%;accent-color:#10B981" oninput="$('sf2AccVolText').textContent=this.value+'%'">
-          </div>
-        </div>
-      </div>
-
-      <!-- Instrumentos SF2 a Sobregrabar (20 instrumentos / 21 variantes) -->
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-          <span style="font-size:12px;font-weight:700;color:#F8FAFC;display:flex;align-items:center;gap:6px">
-            <i class="ph ph-music-notes-plus" style="color:#10B981"></i> Selecciona los Instrumentos SF2 a Añadir:
-          </span>
-          <div style="display:flex;gap:4px">
-            <button type="button" class="btn-sec" onclick="setSf2EnrichQuickSelection('banda')" style="padding:2px 8px;font-size:11px;color:#93C5FD">Banda Completa</button>
-            <button type="button" class="btn-sec" onclick="setSf2EnrichQuickSelection('acustico')" style="padding:2px 8px;font-size:11px;color:#A7F3D0">Acústico / Íntimo</button>
-            <button type="button" class="btn-sec" onclick="setSf2EnrichQuickSelection('ninguno')" style="padding:2px 8px;font-size:11px">Ninguno</button>
-          </div>
-        </div>
-        <div id="sf2EnrichInstrumentsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;max-height:220px;overflow-y:auto;padding-right:4px">
-          <!-- Renderizado dinámico de los 20 instrumentos -->
-        </div>
-      </div>
-
-      <!-- Barra de Progreso y Estado de Procesamiento -->
-      <div id="sf2EnrichProgressBox" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:10px 14px">
-        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#A7F3D0;margin-bottom:6px">
-          <span id="sf2EnrichProgressStatusText">Procesando sobregrabación...</span>
-          <span id="sf2EnrichProgressPct">0%</span>
-        </div>
-        <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">
-          <div id="sf2EnrichProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#059669,#10B981);transition:width 0.3s ease"></div>
-        </div>
-      </div>
-
-      <!-- Caja de Resultado Exitoso -->
-      <div id="sf2EnrichSuccessBox" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.5);border-radius:12px;padding:12px 14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <span style="font-size:12.5px;font-weight:700;color:#A7F3D0" id="sf2EnrichSuccessTitle">¡Canción enriquecida con éxito!</span>
-          <div id="sf2EnrichDlButtons" style="display:flex;gap:6px">
-            <!-- Botones de descarga -->
-          </div>
-        </div>
-        <div id="sf2EnrichMetricsSummary" style="font-size:11px;color:#94A3B8;line-height:1.4"></div>
-      </div>
-
-      <!-- Reproductor de Audio Inline para Preescucha y Resultado -->
-      <audio id="sf2EnrichAudioPlayer" controls style="display:none;width:100%;margin-top:2px"></audio>
-    </div>
-
-    <!-- Footer Acciones -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:rgba(15,23,42,0.95);border-top:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:8px">
-      <button type="button" class="btn-sec" onclick="closeSf2EnrichmentModal()" style="padding:8px 16px;border-radius:8px;font-size:12px">Cerrar</button>
-      <div style="display:flex;gap:8px">
-        <button type="button" id="btnSf2EnrichPreview" class="btn-sec" onclick="executeSf2EnrichPreview()" style="padding:8px 16px;border-radius:8px;font-size:12px;color:#6EE7B7;border-color:rgba(16,185,129,0.4);display:inline-flex;align-items:center;gap:6px;cursor:pointer">
-          <i class="ph ph-play"></i> Preescuchar Mezcla (30s)
-        </button>
-        <button type="button" id="btnSf2EnrichGenerate" class="btn-primary" onclick="executeSf2EnrichFullSong()" style="padding:8px 18px;border-radius:8px;font-size:12.5px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;border:none;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
-          <i class="ph ph-check-circle"></i> Guardar Nueva Versión Enriquecida
-        </button>
-      </div>
     </div>
   </div>
 </div>
@@ -8996,7 +8827,6 @@ function renderLibrary(tracks){
         <div class="t-actions">
           <button class="btn-play-sm" data-act="play" style="${isThisPlaying ? 'background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;' : ''}"><i class="ph ${isThisPlaying ? 'ph-pause' : 'ph-play'}"></i> ${isThisPlaying ? 'Pausar' : 'Escuchar'}</button>
           <button class="icon-circle-btn share-wa" data-act="share" title="Enviar MP3 a WhatsApp / Telegram"><i class="ph ph-whatsapp-logo"></i></button>
-          <button class="icon-circle-btn" data-act="enrich-sf2" title="🎹 Enriquecer con Instrumentos SF2 (0 Créditos)" style="color:#10B981"><i class="ph ph-piano-keys"></i></button>
           <button class="icon-circle-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
           <button class="icon-circle-btn" data-act="extend" title="Extender canción (Alargar duración)"><i class="ph ph-arrows-out-line-horizontal"></i></button>
           <button class="icon-circle-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
@@ -9006,9 +8836,6 @@ function renderLibrary(tracks){
             <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-whatsapp-logo"></i> MP3 (&lt; 15MB WhatsApp)</a>
             <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (Studio Sin Comprimir)</a>
             <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
-            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
-            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Producción Gratuita SF2</div>
-            <a href="#" data-act-menu="enrich-sf2" data-id="${esc(t.id)}" style="color:#10B981;font-weight:700"><i class="ph ph-piano-keys"></i> Enriquecer con Instrumentos SF2 (0 Créditos)</a>
             <div style="border-top:1px solid var(--border);margin:3px 0"></div>
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Separación de Pistas (Stems)</div>
             <a href="#" data-stem="instrumental" data-id="${esc(t.id)}" title="Descargar pista instrumental para cantar en vivo"><i class="ph ph-waveform"></i> Pista Instrumental / Karaoke</a>
@@ -9408,7 +9235,7 @@ window.GlobalAudioController = (function() {
   }
 
   function pauseExternalPreviews() {
-    const playersToPause = ['ampAudioPlayer', 'voAudioPlayer', 'sf2EnrichAudioPlayer'];
+    const playersToPause = ['ampAudioPlayer', 'voAudioPlayer'];
     playersToPause.forEach(id => {
       const p = document.getElementById(id);
       if (p && !p.paused) {
@@ -10001,7 +9828,7 @@ window.GlobalAudioController = (function() {
     setupScrubber(document.getElementById('gplayerExpWaveform'));
 
     // Convivencia de audio: Si otros reproductores inician, pausar el reproductor global
-    ['voAudioPlayer', 'ampAudioPlayer', 'sf2EnrichAudioPlayer'].forEach(id => {
+    ['voAudioPlayer', 'ampAudioPlayer'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('play', () => {
@@ -10331,16 +10158,6 @@ function handleMasterMenuItemClick(e) {
     showToast(`Parámetros de "${t.title}" cargados para extender.`, 'info');
     return true;
   }
-
-  const menuEnrich = e.target.closest('a[data-act-menu="enrich-sf2"]');
-  if (menuEnrich) {
-    e.preventDefault();
-    e.stopPropagation();
-    const id = menuEnrich.dataset.id;
-    closeAllMasterMenus();
-    openSf2EnrichmentModal(id);
-    return true;
-  }
   return false;
 }
 
@@ -10351,13 +10168,6 @@ $('libList').addEventListener('click', async e => {
   if (!btn) { return; }
   const card = btn.closest('.track'); const id = card.dataset.id;
   const act = btn.dataset.act;
-
-  if (act === 'enrich-sf2') {
-    e.preventDefault();
-    e.stopPropagation();
-    openSf2EnrichmentModal(id);
-    return;
-  }
 
   if (act === 'play') {
     const t = ($('libList')._tracks || []).find(x => x.id === id); if (!t) return;
@@ -10901,375 +10711,6 @@ async function toggleUserStatus(email, newStatus) {
 loadLibrary();
 loadDictionary();
 loadUserInfo();
-
-/* ---------- ENRIQUECIMIENTO NO DESTRUCTIVO DE CANCIONES CON SF2 ---------- */
-let SF2_ENRICH_ACTIVE_TRACK_ID = null;
-let SF2_ENRICH_ANALYSIS = null;
-let SF2_ENRICH_CATALOG_ITEMS = [];
-let SF2_ENRICH_SELECTED_INSTRUMENTS = {
-  piano_cola: 80,
-  cuerdas: 60,
-  bajo_electrico: 75
-};
-
-async function _ensureSf2EnrichCatalogLoaded() {
-  if (SF2_ENRICH_CATALOG_ITEMS.length > 0) return;
-  try {
-    const r = await fetch('/api/free-instruments/catalog');
-    if (r.ok) {
-      const data = await r.json();
-      SF2_ENRICH_CATALOG_ITEMS = data.instruments || [];
-    }
-  } catch (e) {
-    console.warn('No se pudo cargar catálogo para enriquecimiento:', e);
-  }
-}
-
-async function openSf2EnrichmentModal(targetTrackId = null) {
-  const modal = $('sf2EnrichmentModal');
-  if (!modal) return;
-  await _ensureSf2EnrichCatalogLoaded();
-
-  const tracks = ($('libList')._tracks || []).filter(t => t && t.id);
-  const select = $('sf2EnrichTrackSelect');
-  const selectorBox = $('sf2EnrichTrackSelectorBox');
-
-  if (select) {
-    if (tracks.length === 0) {
-      select.innerHTML = '<option value="">No hay canciones en la biblioteca aún</option>';
-    } else {
-      select.innerHTML = tracks.map(t => `<option value="${esc(t.id)}">${esc(t.title || 'Canción')} (${fmtDur(t.duration)})</option>`).join('');
-    }
-  }
-
-  if (targetTrackId) {
-    SF2_ENRICH_ACTIVE_TRACK_ID = targetTrackId;
-    if (select) select.value = targetTrackId;
-    if (selectorBox) selectorBox.style.display = 'none';
-  } else {
-    if (selectorBox) selectorBox.style.display = 'block';
-    SF2_ENRICH_ACTIVE_TRACK_ID = select ? select.value : (tracks[0]?.id || null);
-  }
-
-  if ($('sf2EnrichProgressBox')) $('sf2EnrichProgressBox').style.display = 'none';
-  if ($('sf2EnrichSuccessBox')) $('sf2EnrichSuccessBox').style.display = 'none';
-  const player = $('sf2EnrichAudioPlayer');
-  if (player) {
-    player.pause();
-    player.style.display = 'none';
-  }
-
-  renderSf2EnrichInstrumentsGrid();
-  modal.style.display = 'flex';
-
-  if (SF2_ENRICH_ACTIVE_TRACK_ID) {
-    await analyzeSf2EnrichTrack(SF2_ENRICH_ACTIVE_TRACK_ID);
-  } else {
-    showToast('Selecciona o genera una canción primero para poder enriquecerla.', 'info');
-  }
-}
-
-function closeSf2EnrichmentModal() {
-  const modal = $('sf2EnrichmentModal');
-  if (modal) modal.style.display = 'none';
-  const player = $('sf2EnrichAudioPlayer');
-  if (player) player.pause();
-}
-
-function onSf2EnrichTrackSelected(trackId) {
-  if (!trackId) return;
-  SF2_ENRICH_ACTIVE_TRACK_ID = trackId;
-  analyzeSf2EnrichTrack(trackId);
-}
-
-async function analyzeSf2EnrichTrack(trackId) {
-  const tracks = $('libList')._tracks || [];
-  const track = tracks.find(t => t.id === trackId) || { title: 'Canción' };
-
-  if ($('sf2EnrichCardTitle')) $('sf2EnrichCardTitle').textContent = track.title || 'Canción Original';
-  const statusEl = $('sf2EnrichAnalysisStatus');
-  if (statusEl) {
-    statusEl.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;border-color:#FBBF24 transparent #FBBF24 transparent"></span> Analizando audio acústico...';
-    statusEl.style.color = '#FBBF24';
-  }
-
-  try {
-    const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hint_bpm: track.bpm, hint_key: track.musical_key })
-    });
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.detail || 'Error al analizar la pista');
-
-    SF2_ENRICH_ANALYSIS = j.analysis;
-    if ($('sf2MetricDuration')) $('sf2MetricDuration').textContent = j.analysis.duration_formatted || `${j.analysis.duration_sec}s`;
-    if ($('sf2MetricBpm')) $('sf2MetricBpm').textContent = `${j.analysis.bpm} BPM`;
-    if ($('sf2MetricKey')) $('sf2MetricKey').textContent = j.analysis.key?.name || j.analysis.key?.root || '--';
-    if ($('sf2MetricBars')) $('sf2MetricBars').textContent = `${j.analysis.total_bars} compases`;
-
-    if ($('sf2ChordsSummaryText')) {
-      const summaryList = j.analysis.chord_summary || [];
-      $('sf2ChordsSummaryText').textContent = summaryList.map(s => `${s.chord} (${s.bars}c)`).join(' → ') || 'Detectada';
-    }
-
-    const strip = $('sf2ChordsTimelineStrip');
-    if (strip) {
-      const timeline = j.analysis.chords_timeline || [];
-      strip.innerHTML = timeline.map(c => `
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(16,185,129,0.3);border-radius:6px;padding:3px 6px;text-align:center;min-width:38px;flex-shrink:0">
-          <div style="font-size:8.5px;color:#94A3B8">C.${c.bar}</div>
-          <div style="font-size:11px;font-weight:700;color:#6EE7B7">${esc(c.chord)}</div>
-        </div>
-      `).join('');
-    }
-
-    if (statusEl) {
-      statusEl.innerHTML = '✓ Armonía sincronizada';
-      statusEl.style.color = '#34D399';
-    }
-  } catch (err) {
-    if (statusEl) {
-      statusEl.innerHTML = '⚠️ Análisis estimado';
-      statusEl.style.color = '#F87171';
-    }
-    console.warn('Error al analizar audio:', err);
-  }
-}
-
-function setSf2EnrichQuickSelection(type) {
-  if (type === 'banda') {
-    SF2_ENRICH_SELECTED_INSTRUMENTS = {
-      piano_cola: 80,
-      cuerdas: 60,
-      bajo_electrico: 75,
-      bateria_acustica: 70
-    };
-  } else if (type === 'acustico') {
-    SF2_ENRICH_SELECTED_INSTRUMENTS = {
-      piano_cola: 85,
-      cuerdas: 65,
-      flautas: 50
-    };
-  } else {
-    SF2_ENRICH_SELECTED_INSTRUMENTS = {};
-  }
-  renderSf2EnrichInstrumentsGrid();
-}
-
-function renderSf2EnrichInstrumentsGrid() {
-  const grid = $('sf2EnrichInstrumentsGrid');
-  if (!grid) return;
-  const items = (SF2_ENRICH_CATALOG_ITEMS && SF2_ENRICH_CATALOG_ITEMS.length) ? SF2_ENRICH_CATALOG_ITEMS : [
-    { id: 'piano_cola', name: 'Piano de Cola', family: 'Teclados' },
-    { id: 'bajo_electrico', name: 'Bajo Eléctrico', family: 'Bajos' },
-    { id: 'bateria_acustica', name: 'Batería Acústica', family: 'Percusión' },
-    { id: 'organo', name: 'Órgano', family: 'Teclados' },
-    { id: 'cuerdas', name: 'Cuerdas / Strings', family: 'Sintetizadores' },
-    { id: 'flautas', name: 'Flautas', family: 'Vientos' },
-    { id: 'campanas', name: 'Campanas', family: 'Vientos' }
-  ];
-
-  grid.innerHTML = items.map(item => {
-    const isChecked = Object.prototype.hasOwnProperty.call(SF2_ENRICH_SELECTED_INSTRUMENTS, item.id);
-    const vol = isChecked ? SF2_ENRICH_SELECTED_INSTRUMENTS[item.id] : Math.round((item.default_volume || 1.0) * 100);
-    return `
-      <div style="background:rgba(15,23,42,0.85);border:1px solid ${isChecked ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.08)'};border-radius:8px;padding:6px 10px;display:flex;flex-direction:column;gap:4px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#F8FAFC;cursor:pointer;flex:1;min-width:0">
-            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="onSf2EnrichCheckToggle('${esc(item.id)}', this.checked)">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.name)}">${esc(item.name)}</span>
-          </label>
-          <span style="font-size:9.5px;color:#94A3B8;background:rgba(255,255,255,0.05);padding:1px 5px;border-radius:4px">${esc(item.family || '')}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:10.5px">
-          <span style="color:#94A3B8;min-width:38px">Vol: <strong id="sf2EnrichVolTxt_${esc(item.id)}" style="color:#6EE7B7">${vol}%</strong></span>
-          <input type="range" min="0" max="150" step="5" value="${vol}" style="flex:1;height:4px;accent-color:#10B981" oninput="onSf2EnrichVolChange('${esc(item.id)}', this.value)">
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function onSf2EnrichCheckToggle(id, checked) {
-  if (checked) {
-    SF2_ENRICH_SELECTED_INSTRUMENTS[id] = 80;
-  } else {
-    delete SF2_ENRICH_SELECTED_INSTRUMENTS[id];
-  }
-  renderSf2EnrichInstrumentsGrid();
-}
-
-function onSf2EnrichVolChange(id, val) {
-  const num = parseInt(val, 10);
-  const txt = document.getElementById('sf2EnrichVolTxt_' + id);
-  if (txt) txt.textContent = num + '%';
-  if (Object.prototype.hasOwnProperty.call(SF2_ENRICH_SELECTED_INSTRUMENTS, id)) {
-    SF2_ENRICH_SELECTED_INSTRUMENTS[id] = num;
-  }
-}
-
-async function executeSf2EnrichPreview() {
-  if (!SF2_ENRICH_ACTIVE_TRACK_ID) {
-    showToast('Selecciona una pista primero.', 'err');
-    return;
-  }
-  const instIds = Object.keys(SF2_ENRICH_SELECTED_INSTRUMENTS);
-  if (!instIds.length) {
-    showToast('Marca al menos un instrumento SF2 para la preescucha.', 'err');
-    return;
-  }
-
-  const btn = $('btnSf2EnrichPreview');
-  const origBtnText = btn ? btn.innerHTML : 'Preescuchar Mezcla (30s)';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Generando preescucha...';
-  }
-
-  const tracks = instIds.map(id => ({
-    id,
-    volume: Math.max(0.0, Math.min(1.5, (SF2_ENRICH_SELECTED_INSTRUMENTS[id] || 80) / 100.0))
-  }));
-
-  const origVol = Math.max(0.1, Math.min(1.5, (parseInt($('sf2OrigVolInput')?.value || '95', 10)) / 100.0));
-  const accVol = Math.max(0.1, Math.min(1.5, (parseInt($('sf2AccVolInput')?.value || '75', 10)) / 100.0));
-
-  try {
-    const res = await fetch(`/api/tracks/${encodeURIComponent(SF2_ENRICH_ACTIVE_TRACK_ID)}/enrich-preview`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tracks,
-        original_volume: origVol,
-        accompaniment_volume: accVol,
-        preview_seconds: 30.0,
-        amp_configs: (typeof getActiveAmpConfigs === 'function') ? getActiveAmpConfigs() : null,
-      })
-    });
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.detail || 'Error al generar la preescucha');
-
-    if (window.GlobalAudioController && window.GlobalAudioController.isPlaying()) {
-      window.GlobalAudioController.pause();
-    }
-    const player = $('sf2EnrichAudioPlayer');
-    if (player) {
-      player.style.display = 'block';
-      player.src = j.audio_url;
-      player.play().catch(() => {});
-    }
-    showToast('▶ Reproduciendo preescucha de 30s de la mezcla (0 créditos)', 'success');
-  } catch (err) {
-    showToast(err.message || 'Error en preescucha', 'err');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origBtnText;
-    }
-  }
-}
-
-async function executeSf2EnrichFullSong() {
-  if (!SF2_ENRICH_ACTIVE_TRACK_ID) {
-    showToast('Selecciona una pista primero.', 'err');
-    return;
-  }
-  const instIds = Object.keys(SF2_ENRICH_SELECTED_INSTRUMENTS);
-  if (!instIds.length) {
-    showToast('Marca al menos un instrumento SF2 para sobregrabar.', 'err');
-    return;
-  }
-
-  const btnGen = $('btnSf2EnrichGenerate');
-  const btnPrev = $('btnSf2EnrichPreview');
-  const pBox = $('sf2EnrichProgressBox');
-  const pBar = $('sf2EnrichProgressBar');
-  const pStatus = $('sf2EnrichProgressStatusText');
-  const pPct = $('sf2EnrichProgressPct');
-
-  if (btnGen) btnGen.disabled = true;
-  if (btnPrev) btnPrev.disabled = true;
-  if (pBox) pBox.style.display = 'block';
-  if (pBar) pBar.style.width = '25%';
-  if (pStatus) pStatus.textContent = 'Alineando notas y sintetizando pistas con FluidSynth...';
-  if (pPct) pPct.textContent = '25%';
-
-  const tracks = instIds.map(id => ({
-    id,
-    volume: Math.max(0.0, Math.min(1.5, (SF2_ENRICH_SELECTED_INSTRUMENTS[id] || 80) / 100.0))
-  }));
-
-  const origVol = Math.max(0.1, Math.min(1.5, (parseInt($('sf2OrigVolInput')?.value || '95', 10)) / 100.0));
-  const accVol = Math.max(0.1, Math.min(1.5, (parseInt($('sf2AccVolInput')?.value || '75', 10)) / 100.0));
-
-  try {
-    const progressInterval = setInterval(() => {
-      const cur = parseInt(pBar.style.width, 10) || 25;
-      if (cur < 85) {
-        pBar.style.width = (cur + 15) + '%';
-        pPct.textContent = (cur + 15) + '%';
-      }
-    }, 1500);
-
-    const res = await fetch(`/api/tracks/${encodeURIComponent(SF2_ENRICH_ACTIVE_TRACK_ID)}/enrich`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tracks,
-        original_volume: origVol,
-        accompaniment_volume: accVol,
-        save_to_library: true,
-        amp_configs: (typeof getActiveAmpConfigs === 'function') ? getActiveAmpConfigs() : null,
-      })
-    });
-    clearInterval(progressInterval);
-
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.detail || 'Error al enriquecer la canción');
-
-    if (pBar) pBar.style.width = '100%';
-    if (pPct) pPct.textContent = '100%';
-    if (pStatus) pStatus.textContent = '¡Mezcla finalizada y respaldada exitosamente!';
-
-    const successBox = $('sf2EnrichSuccessBox');
-    const successTitle = $('sf2EnrichSuccessTitle');
-    const dlBtns = $('sf2EnrichDlButtons');
-    const metricsEl = $('sf2EnrichMetricsSummary');
-    const player = $('sf2EnrichAudioPlayer');
-
-    if (successBox) successBox.style.display = 'block';
-    if (successTitle) successTitle.textContent = `🎵 "${j.track.title}" (${j.enrichment_metrics.duration_sec}s • ${j.enrichment_metrics.bpm} BPM)`;
-    if (dlBtns) {
-      dlBtns.innerHTML = `
-        <a href="${esc(j.download_urls.mp3)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#6EE7B7;border-color:rgba(16,185,129,0.4)">⬇ MP3</a>
-        <a href="${esc(j.download_urls.wav)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#93C5FD;border-color:rgba(59,130,246,0.4)">⬇ WAV</a>
-        <a href="${esc(j.download_urls.flac)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#C4B5FD;border-color:rgba(139,92,246,0.4)">⬇ FLAC</a>
-      `;
-    }
-    if (metricsEl) {
-      const gDriveStatus = j.track?.persistence_status === 'PERSISTED_GDRIVE' ? 'Google Drive 5TB' : 'Local';
-      metricsEl.innerHTML = `
-        <div><strong>Pistas añadidas:</strong> ${j.enrichment_metrics.tracks_rendered.map(t=>t.short_name).join(', ')}</div>
-        <div><strong>Sincronización:</strong> Duración exacta ${j.enrichment_metrics.duration_sec}s (Diferencia: 0.00s) | Pico: ${j.enrichment_metrics.peak_dbfs} dBFS | Guardado en: ${gDriveStatus}</div>
-      `;
-    }
-
-    if (player && j.track?.audio_url) {
-      player.style.display = 'block';
-      player.src = j.track.audio_url;
-      player.play().catch(() => {});
-    }
-
-    await loadLibrary();
-    showToast('¡Canción enriquecida guardada en tu biblioteca!', 'success');
-  } catch (err) {
-    showToast(err.message || 'Error al sobregrabar', 'err');
-  } finally {
-    if (btnGen) btnGen.disabled = false;
-    if (btnPrev) btnPrev.disabled = false;
-  }
-}
 
 /* ---------- SISTEMA DE AMPLIFICADORES VIRTUALES & GABINETES (IR) ---------- */
 let AMPS_CATALOG = [];
@@ -12929,7 +12370,6 @@ function renderLibraryFiltered(tracks) {
         <div class="t-actions">
           <button class="btn-play-sm" data-act="play" style="${isThisPlaying ? 'background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;' : ''}"><i class="ph ${isThisPlaying ? 'ph-pause' : 'ph-play'}"></i> ${isThisPlaying ? 'Pausar' : 'Escuchar'}</button>
           <button class="icon-circle-btn share-wa" data-act="share" title="Enviar MP3 a WhatsApp / Telegram"><i class="ph ph-whatsapp-logo"></i></button>
-          <button class="icon-circle-btn" data-act="enrich-sf2" title="🎹 Enriquecer con Instrumentos SF2 (0 Créditos)" style="color:#10B981"><i class="ph ph-piano-keys"></i></button>
           <button class="icon-circle-btn" data-act="reuse" title="Cargar parámetros de este himno en el formulario"><i class="ph ph-copy"></i></button>
           <button class="icon-circle-btn" data-act="extend" title="Extender canción (Alargar duración)"><i class="ph ph-arrows-out-line-horizontal"></i></button>
           <button class="icon-circle-btn" data-act="dl" title="Formatos de descarga"><i class="ph ph-download-simple"></i></button>
@@ -12939,9 +12379,6 @@ function renderLibraryFiltered(tracks) {
             <a href="#" data-dl="mp3" data-id="${esc(t.id)}"><i class="ph ph-whatsapp-logo"></i> MP3 (&lt; 15MB WhatsApp)</a>
             <a href="#" data-dl="wav" data-id="${esc(t.id)}"><i class="ph ph-waveform"></i> WAV (Studio Sin Comprimir)</a>
             <a href="#" data-dl="flac" data-id="${esc(t.id)}"><i class="ph ph-file-audio"></i> FLAC (Lossless)</a>
-            <div style="border-top:1px solid var(--border);margin:3px 0"></div>
-            <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Producción Gratuita SF2</div>
-            <a href="#" data-act-menu="enrich-sf2" data-id="${esc(t.id)}" style="color:#10B981;font-weight:700"><i class="ph ph-piano-keys"></i> Enriquecer con Instrumentos SF2 (0 Créditos)</a>
             <div style="border-top:1px solid var(--border);margin:3px 0"></div>
             <div style="padding:4px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Separación de Pistas (Stems)</div>
             <a href="#" data-stem="instrumental" data-id="${esc(t.id)}" title="Descargar pista instrumental para cantar en vivo"><i class="ph ph-waveform"></i> Pista Instrumental / Karaoke</a>

@@ -1369,9 +1369,73 @@ class TestStudioVirtualSixSelectors(unittest.IsolatedAsyncioTestCase):
             r_prev = await client.post("/api/free-instruments/preview", json={"instrument_id": "piano_cola"})
             self.assertIn(r_prev.status_code, (404, 405))
 
-            # Catálogo compartido para enriquecimiento de Biblioteca sigue operativo
-            r_shared_cat = await client.get("/api/free-instruments/catalog")
-            self.assertEqual(r_shared_cat.status_code, 200)
+    async def test_22_sf2_library_enrichment_removed_cleanly(self):
+        """Verifica eliminación definitiva del enriquecimiento SF2 de Biblioteca sin afectar Biblioteca, DSP ni STYLE FINAL."""
+        with open(os.path.join(REPO_DIR, "index.html"), "r", encoding="utf-8") as f:
+            html = f.read()
+
+        # 1) Banner, modal, botones de Biblioteca y funciones JS exclusivos retirados
+        for forbidden in [
+            "¿Deseas enriquecer una canción de tu Biblioteca?",
+            "Sobregraba instrumentos SF2 respetando 100% la voz, BPM y duración original con 0 créditos.",
+            "Enriquecer canción existente",
+            'id="sf2EnrichmentModal"',
+            "SF2_ENRICH_CATALOG_ITEMS",
+            "_ensureSf2EnrichCatalogLoaded",
+            "openSf2EnrichmentModal",
+            "closeSf2EnrichmentModal",
+            "analyzeSf2EnrichTrack",
+            "renderSf2EnrichInstrumentsGrid",
+            "executeSf2EnrichPreview",
+            "executeSf2EnrichFullSong",
+            "sf2EnrichAudioPlayer",
+            'data-act="enrich-sf2"',
+            'data-act-menu="enrich-sf2"',
+            "Producción Gratuita SF2",
+            "Enriquecer con Instrumentos SF2",
+            "/api/free-instruments/catalog",
+            "/enrich-preview",
+        ]:
+            self.assertNotIn(forbidden, html, f"No debe permanecer referencia al enriquecimiento SF2 en index.html: {forbidden}")
+
+        # 2) Componentes protegidos siguen intactos en index.html y en disco
+        for required in [
+            'id="engineCardUdio"',
+            'id="libList"',
+            'data-category="instrumental"',
+            'id="styleFinalPreviewSection"',
+            'id="globalMiniPlayer"',
+            'id="selStudioDrums"',
+        ]:
+            self.assertIn(required, html)
+        self.assertTrue(os.path.exists(os.path.join(REPO_DIR, "free_instruments_engine.py")))
+        self.assertFalse(hasattr(app, "free_instruments_engine"))
+
+        # 3) Endpoints retirados responden 404/405 y los servicios protegidos siguen operativos
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            for method, path in [
+                ("POST", "/api/tracks/demo_track/enrich"),
+                ("POST", "/api/tracks/demo_track/enrich-preview"),
+                ("POST", "/api/tracks/demo_track/analyze"),
+                ("GET", "/api/free-instruments/catalog"),
+                ("GET", "/api/free-instruments/preview-audio/demo.mp3"),
+            ]:
+                resp = await client.request(method, path)
+                self.assertIn(resp.status_code, (404, 405), f"{method} {path} debe estar retirado")
+
+            # Amplificadores virtuales DSP, health y Estudio Virtual siguen operativos
+            r_amps = await client.get("/api/amps/catalog")
+            self.assertEqual(r_amps.status_code, 200)
+
+            r_health = await client.get("/api/health")
+            self.assertEqual(r_health.status_code, 200)
+            self.assertEqual(r_health.json().get("status"), "ok")
+
+            r_cat = await client.get("/api/studio-profiles/catalog")
+            self.assertEqual(r_cat.status_code, 200)
+            self.assertEqual(len(r_cat.json().get("categories", [])), 6)
+            self.assertEqual(sum(len(c.get("items", [])) for c in r_cat.json().get("categories", [])), 45)
 
 
 if __name__ == "__main__":

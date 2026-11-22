@@ -222,8 +222,9 @@ class TestGlobalPersistentPlayer(unittest.TestCase):
     # 20. Convivencia bidireccional entre reproductores
     def test_20_bidirectional_preview_pause(self):
         """Comprueba que la reproducción de vistas previas externas pausan el reproductor global."""
-        self.assertIn("['voAudioPlayer', 'ampAudioPlayer', 'sf2EnrichAudioPlayer']", self.index_content)
+        self.assertIn("['voAudioPlayer', 'ampAudioPlayer']", self.index_content)
         self.assertNotIn("unifiedAudioPlayer", self.index_content)
+        self.assertNotIn("sf2EnrichAudioPlayer", self.index_content)
         self.assertIn("if (state.status === 'playing') pause()", self.index_content)
 
     # 21. Resiliencia de streaming y fallback de Google Drive en backend
