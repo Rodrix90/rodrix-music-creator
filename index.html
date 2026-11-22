@@ -1214,40 +1214,6 @@ body.mode-pro .pro-only-grid {
   background: rgba(245, 158, 11, 0.3);
 }
 
-/* Selector de Motor Dual (Udio API vs Motor SF2 Gratuito) */
-.engine-toggle-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 6px 0 14px;
-}
-.engine-choice-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1.5px solid var(--border-studio-subtle);
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
-}
-.engine-choice-card:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.06);
-}
-.engine-choice-card.active {
-  border-color: var(--accent-pro);
-  background: linear-gradient(145deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.8));
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
-}
-.engine-choice-card.engine-sf2.active {
-  border-color: var(--studio-emerald);
-  background: linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(15, 23, 42, 0.8));
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
-}
-
 /* VU Meter Estudio para Cabina de Voz */
 .broadcast-vu-container {
   display: flex;
@@ -2911,37 +2877,24 @@ html, body {
         </div>
 
         <form class="form-card" id="genForm" autocomplete="off">
-          <!-- SELECTOR DE MOTOR: IA UDIO VS INSTRUMENTAL GRATUITO FLUIDSYNTH -->
+          <!-- MOTOR DE PRODUCCIÓN MUSICAL (IA UDIO) -->
           <div class="field" style="margin-bottom:12px">
             <div class="label" style="display:flex;align-items:center;justify-content:space-between">
               <span>⚡ Motor de Producción Musical</span>
               <span id="engineBadgeInfo" style="font-size:10.5px;color:#A78BFA;font-weight:600">Voz Cantada & Banda IA</span>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px" id="engineSelectorGrid">
-              <label class="engine-card active" id="engineCardUdio" style="background:#181824;border:1px solid var(--accent);border-radius:10px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.2s">
-                <input type="radio" name="generation_engine" value="udio" checked style="accent-color:var(--accent)" onchange="onEngineChange('udio')">
+            <div id="engineSelectorGrid">
+              <div class="engine-card active" id="engineCardUdio" style="background:#181824;border:1px solid var(--accent);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:10px">
+                <i class="ph ph-sparkle" style="color:#A78BFA;font-size:18px;flex-shrink:0"></i>
                 <div>
                   <div style="font-weight:800;font-size:12px;color:#fff;display:flex;align-items:center;gap:6px">
-                    <i class="ph ph-sparkle" style="color:#A78BFA"></i> IA Musical Completa (Udio)
+                    IA Musical Completa (Udio)
                   </div>
                   <div style="font-size:10px;color:var(--muted);margin-top:2px">
                     Voz cantada, coro y banda generativa. Consume créditos Udio.
                   </div>
                 </div>
-              </label>
-
-              <label class="engine-card" id="engineCardFluidsynth" style="background:#181824;border:1px solid var(--border);border-radius:10px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.2s">
-                <input type="radio" name="generation_engine" value="fluidsynth" style="accent-color:#10B981" onchange="onEngineChange('fluidsynth')">
-                <div>
-                  <div style="font-weight:800;font-size:12px;color:#ECFDF5;display:flex;align-items:center;gap:6px">
-                    <i class="ph ph-music-notes-plus" style="color:#34D399"></i> Instrumental Gratuito (FluidSynth)
-                    <span class="badge" style="background:rgba(16,185,129,0.2);color:#6EE7B7;border-color:rgba(16,185,129,0.4);font-size:9px">0 Créditos</span>
-                  </div>
-                  <div style="font-size:10px;color:var(--muted);margin-top:2px">
-                    Sintetizado real con 20 instrumentos SF2 y BPM exacto. 100% instrumental.
-                  </div>
-                </div>
-              </label>
+              </div>
             </div>
           </div>
 
@@ -3719,67 +3672,9 @@ html, body {
               </div>
             </div>
 
-            <!-- INSTRUMENTACIÓN DE LA OBRA (20 INSTRUMENTOS REALES SF2) -->
-            <div style="margin-top:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px" id="integratedInstrumentsSection">
-              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:6px">
-                  <i class="ph ph-piano-keys" style="color:#6EE7B7"></i>
-                  <span>🎻 Instrumentación de la Obra (20 Instrumentos SF2):</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span id="activeInstrumentsCountBadge" class="badge" style="background:rgba(16,185,129,0.18);color:#6EE7B7;border-color:rgba(16,185,129,0.35);font-size:10.5px">5 instrumentos activos</span>
-                  <button type="button" class="btn-sec" onclick="toggleInstrumentsDrawer()" id="btnToggleInstDrawer" style="padding:3px 9px;font-size:11px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">
-                    <i class="ph ph-sliders"></i> <span id="lblToggleInstDrawer">Personalizar Instrumentos & Volúmenes (20 SF2)</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Strip de Chips Activos Rápido (para ver y desmarcar al vuelo) -->
-              <div class="band-strip" id="activeInstrumentsChipsStrip" style="margin-bottom:6px">
-                <!-- Se llena dinámicamente con los chips de los instrumentos activos -->
-              </div>
-
-              <!-- Selector de Duración y Compases para el Motor Gratuito -->
-              <div id="freeInstrumentalBarsRow" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px">
-                <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#D1D5DB">
-                  <i class="ph ph-timer" style="color:#34D399;font-size:15px"></i>
-                  <span><strong>Duración Instrumental:</strong></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px">
-                  <select id="freeInstrumentalBarsSelect" style="background:#0E0E17;border:1px solid rgba(255,255,255,0.15);color:#E2E8F0;border-radius:6px;padding:3px 8px;font-size:11px;font-family:inherit">
-                    <option value="8">8 compases (~16s • Muestra / Intro)</option>
-                    <option value="16" selected>16 compases (~32s • Sección Completa Verso + Coro)</option>
-                    <option value="32">32 compases (~1m 05s • Composición A-A-B-A)</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Desplegable Acordeón de los 20 Instrumentos y sus 21 variantes con Volúmenes y Preescucha -->
-              <div id="instrumentsDrawer" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08)">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-                  <span style="font-size:11px;color:#94A3B8">Haz clic para agregar o quitar instrumentos y ajustar sus volúmenes individuales (0 a 150%):</span>
-                  <div style="display:flex;gap:4px">
-                    <button type="button" class="btn-sec" onclick="setAllInstrumentsState(true)" style="padding:2px 7px;font-size:10.5px">Todos</button>
-                    <button type="button" class="btn-sec" onclick="setAllInstrumentsState(false)" style="padding:2px 7px;font-size:10.5px">Ninguno</button>
-                    <button type="button" class="btn-sec" onclick="restorePresetInstruments()" style="padding:2px 7px;font-size:10.5px;color:#A7F3D0">↺ Restaurar Preset</button>
-                  </div>
-                </div>
-
-                <!-- Grilla de los 20 Instrumentos (21 Variantes) -->
-                <div id="unifiedInstrumentsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
-                  <!-- Renderizado desde /api/free-instruments/catalog -->
-                </div>
-              </div>
-
-              <!-- Checkboxes ocultos para compatibilidad retroactiva con selectores legacy -->
-              <div style="display:none">
-                <input type="checkbox" id="chkDrums" checked>
-                <input type="checkbox" id="chkBass" checked>
-                <input type="checkbox" id="chkGuitar" checked>
-                <input type="checkbox" id="chkPiano">
-                <input type="checkbox" id="chkOrgan">
-                <input type="checkbox" id="chkNoLatin" checked>
-              </div>
+            <!-- Bandera compartida anti-cumbia / anti-ritmo latino utilizada por presets y exclusiones -->
+            <div style="display:none">
+              <input type="checkbox" id="chkNoLatin" checked>
             </div>
 
             <!-- ARTICULACIÓN RÍTMICA & ADORNOS (BATERÍA & BAJO) -->
@@ -3829,7 +3724,6 @@ html, body {
                   <div><strong style="color:#A78BFA">Hi-Hat:</strong> <span id="effSumHiHat">Corcheas (2 golpes/tiempo)</span></div>
                   <div><strong style="color:#A78BFA">Batería:</strong> <span id="effSumDrums">Crashes & Redobles en transiciones</span></div>
                   <div><strong style="color:#A78BFA">Bajo:</strong> <span id="effSumBass">Pick-up & Notas de Paso</span></div>
-                  <div><strong style="color:#A78BFA">Instrumentos:</strong> <span id="effSumInstruments">Banda de preset activa</span></div>
                 </div>
               </div>
             </div>
@@ -4165,16 +4059,6 @@ html, body {
         <div class="progress-wrap" id="progressWrap">
           <div class="progress-top"><span id="progressText">Iniciando...</span><span id="progressPct">0%</span></div>
           <div class="progress"><div id="progressFill"></div></div>
-        </div>
-
-        <!-- Caja de Resultado de Generación Unificada (Reproductor y Enlaces de Descarga Directa) -->
-        <div id="unifiedSynthesisResultBox" style="display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.4);font-size:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <div id="unifiedSynthesisStatusText" style="color:#ECFDF5;font-weight:700"></div>
-            <div id="unifiedExportLinksBox" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-          </div>
-          <div id="unifiedSynthesisMetricsText" style="margin-top:5px;color:#A7F3D0;font-size:11px"></div>
-          <audio id="unifiedAudioPlayer" controls style="width:100%;height:36px;margin-top:10px;display:none"></audio>
         </div>
 
         <details class="adv" id="consoleBox">
@@ -6145,15 +6029,11 @@ function clearActivePreset() {
   if (window.userExplicitControlFlags) {
     Object.keys(window.userExplicitControlFlags).forEach(k => { window.userExplicitControlFlags[k] = false; });
   }
-  if (window.userExplicitSf2Ids && typeof window.userExplicitSf2Ids.clear === 'function') {
-    window.userExplicitSf2Ids.clear();
-  }
   if ($('chkCrashToms')) $('chkCrashToms').checked = false;
   if ($('chkSplashRide')) $('chkSplashRide').checked = false;
   if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
   if ($('chkBassSlap')) $('chkBassSlap').checked = false;
   if ($('chkBassPickup')) $('chkBassPickup').checked = false;
-  if (typeof applyPresetInstruments === 'function') applyPresetInstruments('juvenil', { isInitialDefault: true });
   if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
   if (typeof scheduleStyleFinalPreview === 'function') scheduleStyleFinalPreview(true);
   logLine('Preset desactivado. Modo libre restaurado.');
@@ -6219,9 +6099,6 @@ document.querySelectorAll('.preset-card').forEach(card => {
           document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
           rPill.classList.add('active');
         }
-        if ($('chkDrums')) $('chkDrums').checked = true;
-        if ($('chkBass')) $('chkBass').checked = true;
-        if ($('chkGuitar')) $('chkGuitar').checked = true;
         if ($('chkNoLatin')) $('chkNoLatin').checked = true;
         const hiHat8th = document.querySelector('input[name="hihat_mode"][value="8th"]');
         if (hiHat8th) hiHat8th.checked = true;
@@ -6237,9 +6114,6 @@ document.querySelectorAll('.preset-card').forEach(card => {
           document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
           rPill.classList.add('active');
         }
-        if ($('chkDrums')) $('chkDrums').checked = true;
-        if ($('chkBass')) $('chkBass').checked = true;
-        if ($('chkGuitar')) $('chkGuitar').checked = true;
         if ($('chkNoLatin')) $('chkNoLatin').checked = true;
         if ($('userBpmInput')) $('userBpmInput').value = '125';
       } else if (card.dataset.preset === 'adoracion') {
@@ -6266,12 +6140,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
         $('excludeInput').value = pSound.exclude || WORSHIP_PRESETS.piano_oracion.exclude;
         if ($('userBpmInput')) $('userBpmInput').value = '60';
 
-        // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
-        if ($('chkDrums')) $('chkDrums').checked = false;
-        if ($('chkBass')) $('chkBass').checked = false;
-        if ($('chkGuitar')) $('chkGuitar').checked = false;
-        if ($('chkOrgan')) $('chkOrgan').checked = false;
-        if ($('chkPiano')) $('chkPiano').checked = true;
+        // Forzar estrictamente SOLO PIANO: Desactivar articulaciones de batería y bajo
         if ($('chkCrashToms')) $('chkCrashToms').checked = false;
         if ($('chkSplashRide')) $('chkSplashRide').checked = false;
         if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
@@ -6324,12 +6193,7 @@ document.querySelectorAll('.preset-card').forEach(card => {
         $('excludeInput').value = 'drums, drum kit, snare, kick drum, bass, bass guitar, electric bass, synth bass, piano, keyboards, organ, synths, strings, choir, vocals, backing track, full band, rhythm section';
         if ($('userBpmInput')) $('userBpmInput').value = '90';
 
-        // Forzar estrictamente SOLO GUITARRA: Desactivar todos los demás instrumentos
-        if ($('chkDrums')) $('chkDrums').checked = false;
-        if ($('chkBass')) $('chkBass').checked = false;
-        if ($('chkPiano')) $('chkPiano').checked = false;
-        if ($('chkOrgan')) $('chkOrgan').checked = false;
-        if ($('chkGuitar')) $('chkGuitar').checked = true;
+        // Forzar estrictamente SOLO GUITARRA: Desactivar articulaciones de batería y bajo
         if ($('chkCrashToms')) $('chkCrashToms').checked = false;
         if ($('chkSplashRide')) $('chkSplashRide').checked = false;
         if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
@@ -6366,7 +6230,6 @@ document.querySelectorAll('.preset-card').forEach(card => {
           if ($('rackChainText')) $('rackChainText').textContent = 'FENDER STRATOCASTER';
         }
       }
-      if (typeof applyPresetInstruments === 'function') applyPresetInstruments(card.dataset.preset);
       if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
       logLine(`Preset activado: ${card.querySelector('.preset-head span').textContent}`);
     }
@@ -6523,17 +6386,12 @@ document.querySelectorAll('.rhythm-pill').forEach(pill => {
       window.userExplicitControlFlags.rhythm = Boolean(r && r !== 'libre');
     }
     if (r === 'dos_pasos' || r === 'gospel_2step') {
-      if ($('chkDrums')) $('chkDrums').checked = true;
-      if ($('chkBass')) $('chkBass').checked = true;
-      if ($('chkGuitar')) $('chkGuitar').checked = true;
       if ($('chkNoLatin')) $('chkNoLatin').checked = true;
       showToast('Patrón fijado: Alabanza 2-Step (Bombo 1-3, Caja 2-4 a 118 BPM, batería al frente y bajo real)', 'info');
     } else if (r === 'worship_ballad') {
-      if ($('chkDrums')) $('chkDrums').checked = true;
       if ($('chkNoLatin')) $('chkNoLatin').checked = true;
       showToast('Patrón fijado: Balada 4/4 suave (68 BPM)', 'info');
     } else if (r === 'waltz_34') {
-      if ($('chkDrums')) $('chkDrums').checked = false;
       if ($('chkNoLatin')) $('chkNoLatin').checked = true;
       showToast('Patrón fijado: Vals Vienés 3/4', 'info');
     }
@@ -6686,22 +6544,6 @@ function updateEffectiveConfigSummary() {
       $('effSumBass').textContent = 'Base estándar eléctrica';
     }
   }
-  if ($('effSumInstruments')) {
-    if (typeof ACTIVE_UNIFIED_TRACKS !== 'undefined') {
-      const activeIds = Object.keys(ACTIVE_UNIFIED_TRACKS);
-      if (!activeIds.length) {
-        $('effSumInstruments').textContent = 'Ninguno seleccionado';
-      } else {
-        const names = activeIds.map(id => {
-          const it = (typeof FREE_CATALOG_ITEMS !== 'undefined' && FREE_CATALOG_ITEMS) ? FREE_CATALOG_ITEMS.find(x => x.id === id) : null;
-          return it ? it.name : id;
-        });
-        const summary = names.slice(0, 3).join(', ');
-        const extra = names.length > 3 ? ` (+${names.length - 3} más)` : '';
-        $('effSumInstruments').textContent = `${activeIds.length} activo(s): ${summary}${extra}`;
-      }
-    }
-  }
   if (typeof scheduleStyleFinalPreview === 'function') {
     scheduleStyleFinalPreview();
   }
@@ -6715,10 +6557,8 @@ window.userExplicitControlFlags = {
   tomGrooves: false,
   bassSlap: false,
   bassPickup: false,
-  instruments: false,
   rhythm: false
 };
-window.userExplicitSf2Ids = new Set();
 
 if ($('userBpmInput')) {
   $('userBpmInput').addEventListener('input', () => {
@@ -6763,14 +6603,9 @@ const _EXPLICIT_CHK_FLAG_MAP = {
   chkSplashRide: 'splashRide',
   chkTomGrooves: 'tomGrooves',
   chkBassSlap: 'bassSlap',
-  chkBassPickup: 'bassPickup',
-  chkDrums: 'instruments',
-  chkBass: 'instruments',
-  chkGuitar: 'instruments',
-  chkPiano: 'instruments',
-  chkOrgan: 'instruments'
+  chkBassPickup: 'bassPickup'
 };
-['chkCrashToms', 'chkSplashRide', 'chkTomGrooves', 'chkBassSlap', 'chkBassPickup', 'chkDrums', 'chkBass', 'chkGuitar', 'chkPiano', 'chkOrgan', 'chkNoLatin'].forEach(id => {
+['chkCrashToms', 'chkSplashRide', 'chkTomGrooves', 'chkBassSlap', 'chkBassPickup', 'chkNoLatin'].forEach(id => {
   const el = $(id);
   if (el) el.addEventListener('change', () => {
     const fk = _EXPLICIT_CHK_FLAG_MAP[id];
@@ -6794,12 +6629,7 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
       $('excludeInput').value = pSound.exclude;
     }
 
-    // Forzar estrictamente SOLO PIANO: Desactivar todos los demás instrumentos
-    if ($('chkDrums')) $('chkDrums').checked = false;
-    if ($('chkBass')) $('chkBass').checked = false;
-    if ($('chkGuitar')) $('chkGuitar').checked = false;
-    if ($('chkOrgan')) $('chkOrgan').checked = false;
-    if ($('chkPiano')) $('chkPiano').checked = true;
+    // Forzar estrictamente SOLO PIANO: Desactivar articulaciones de batería y bajo
     if ($('chkCrashToms')) $('chkCrashToms').checked = false;
     if ($('chkSplashRide')) $('chkSplashRide').checked = false;
     if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
@@ -6846,7 +6676,7 @@ document.querySelectorAll('input[name="prayer_piano_type"]').forEach(radio => {
       if ($('rackChainText')) $('rackChainText').textContent = targetGearId.toUpperCase();
     }
 
-    if (typeof applyPresetInstruments === 'function') applyPresetInstruments('piano_oracion');
+    if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
     showToast(`Sonido fijado: ${pSound.name}`, 'info');
     logLine(`Piano de Oración configurado con: ${pSound.name}`);
   });
@@ -8699,31 +8529,6 @@ function setBusy(b){
   $('cancelBtn').style.display = b ? 'block' : 'none';
 }
 
-/* ---------- Mapa limpio de instrumentos SF2 -> nombre musical canónico conciso (sin números de catálogo ni duplicaciones) ---------- */
-const SF2_ID_TO_STYLE_NAME = {
-  piano_cola: 'acoustic grand piano',
-  bajo_finger: 'electric bass',
-  bajo_slap: 'electric bass',
-  bateria_acustica: 'acoustic drums',
-  organo: 'Hammond B3 organ',
-  piano_fm_dx: 'FM electric piano',
-  piano_sintetizado: 'electric grand piano',
-  guitarra_acustica: 'acoustic guitar',
-  guitarra_distorsionada: 'overdriven electric guitar',
-  guitarra_limpia: 'clean electric guitar',
-  bateria_electronica: 'electronic drums',
-  bongos: 'bongos',
-  congas: 'congas',
-  cajon: 'Peruvian cajon',
-  maracas: 'maracas',
-  synth_bass: 'synth bass',
-  synth_lead: 'synth lead',
-  flautas: 'flute',
-  synth_pad: 'warm synth pad',
-  cuerdas: 'orchestral strings',
-  campanas: 'tubular bells'
-};
-
 /* ---------- Constructor compartido de parámetros musicales (/api/preview_parameters y /api/transform) ---------- */
 function buildGenerationStylePayload(opts = {}) {
   const forPreview = Boolean(opts && opts.forPreview);
@@ -8760,48 +8565,12 @@ function buildGenerationStylePayload(opts = {}) {
     userPromptLower.includes('bateria sola') ||
     userPromptLower.includes('batería sola')
   );
-  const isAnySoloInstrumentMode = instr && (isSoloGuitarMode || isSoloBassMode || isSoloDrumMode || isSoloPianoPrayerMode);
 
   const studioSelPayload = (typeof getStudioVirtualSelections === 'function')
     ? getStudioVirtualSelections()
     : { drums: 'auto', guitars: 'auto', basses: 'auto', keyboards: 'auto', consoles: 'auto', microphones: 'auto' };
 
-  // Instrumentos seleccionados EXPRESAMENTE por el usuario (los defaults internos de FluidSynth no se inyectan en `style`)
   const uFlags = (typeof window !== 'undefined' && window.userExplicitControlFlags) ? window.userExplicitControlFlags : {};
-  const explicitSf2Ids = (typeof window !== 'undefined' && window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0)
-    ? Array.from(window.userExplicitSf2Ids)
-    : [];
-  const activeTrackIds = (typeof ACTIVE_UNIFIED_TRACKS !== 'undefined' && ACTIVE_UNIFIED_TRACKS)
-    ? Object.keys(ACTIVE_UNIFIED_TRACKS)
-    : [];
-  const styleTrackIds = explicitSf2Ids.length > 0
-    ? explicitSf2Ids
-    : ((Boolean(activePreset) || Boolean(uFlags.instruments)) ? activeTrackIds : []);
-  const selectedInstruments = [];
-  const seenInstLower = new Set();
-  const _pushInst = (name) => {
-    const clean = String(name || '').trim();
-    if (!clean) return;
-    const low = clean.toLowerCase();
-    if (!seenInstLower.has(low)) {
-      seenInstLower.add(low);
-      selectedInstruments.push(clean);
-    }
-  };
-
-  if (!isAnySoloInstrumentMode && styleTrackIds.length > 0) {
-    styleTrackIds.forEach(id => {
-      if (SF2_ID_TO_STYLE_NAME[id]) {
-        _pushInst(SF2_ID_TO_STYLE_NAME[id]);
-      } else if (typeof FREE_CATALOG_ITEMS !== 'undefined' && FREE_CATALOG_ITEMS) {
-        const item = FREE_CATALOG_ITEMS.find(x => x.id === id);
-        if (item && item.name) {
-          const stripped = item.name.replace(/^\d+[A-Z]?\.\s*/i, '').replace(/\s*\([^)]*\)/g, '').trim();
-          _pushInst(stripped);
-        }
-      }
-    });
-  }
 
   // Sincronización Armónica de Acordes / Tablatura (separada del texto libre del usuario)
   const harmonyClauses = [];
@@ -8827,8 +8596,8 @@ function buildGenerationStylePayload(opts = {}) {
     user_prompt: userPromptText,
     rhythm_type: rhythmType,
     harmony_clauses: harmonyClauses,
-    selected_instruments: selectedInstruments,
-    selected_instrument_ids: styleTrackIds,
+    selected_instruments: [],
+    selected_instrument_ids: [],
     explicit_flags: {
       bpm: Boolean(uFlags.bpm || Boolean(activePreset) || Boolean(extractBpmFromStylePrompt(userPromptText))),
       hihat: Boolean(uFlags.hihat),
@@ -8837,7 +8606,7 @@ function buildGenerationStylePayload(opts = {}) {
       tom_grooves: Boolean(uFlags.tomGrooves),
       bass_slap: Boolean(uFlags.bassSlap),
       bass_pickup: Boolean(uFlags.bassPickup),
-      instruments: Boolean(selectedInstruments.length > 0 || Boolean(activePreset)),
+      instruments: Boolean(activePreset),
       rhythm: Boolean(rhythmType && rhythmType !== 'libre'),
       vocal_gender: Boolean(typeof gender !== 'undefined' && (gender === 'male' || gender === 'female'))
     }
@@ -8897,14 +8666,11 @@ function buildGenerationStylePayload(opts = {}) {
 
   // Baneo automático de sintetizadores de bajo SOLO cuando hay bajo real seleccionado explícitamente y NO se pidió synth bass
   const hasMinimoogSelected = (studioSelPayload.keyboards === 'minimoog');
-  const hasSf2SynthBass = styleTrackIds.includes('synth_bass');
-  const hasExplicitSynthBass = hasMinimoogSelected || hasSf2SynthBass || /\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass|electronic\s+bass|sub[\s_-]*bass\s+synth)\b/i.test(userPromptLower);
+  const hasExplicitSynthBass = hasMinimoogSelected || /\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass|electronic\s+bass|sub[\s_-]*bass\s+synth)\b/i.test(userPromptLower);
   const cleanedStyleForBassCheck = userPromptLower.replace(/\b(bass\s+drum|double\s+bass\s+drum|bassoons?)\b/g, '');
   const hasStudioElectricBass = (studioSelPayload.basses && studioSelPayload.basses !== 'auto');
-  const hasSf2RealBass = styleTrackIds.includes('bajo_finger') || styleTrackIds.includes('bajo_slap');
   const hasRealBassSelected = !isSoloGuitarMode && !hasExplicitSynthBass && (
     hasStudioElectricBass ||
-    hasSf2RealBass ||
     /\b(bass|bajo|fender|precision|jazz\s+bass|stingray|contrabajo|upright)\b/i.test(cleanedStyleForBassCheck)
   );
   if (hasRealBassSelected) {
@@ -8941,11 +8707,6 @@ function buildGenerationStylePayload(opts = {}) {
 $('genForm').addEventListener('submit', async e => {
   e.preventDefault();
   if ($('submitBtn').disabled) return;
-
-  if (typeof currentEngine !== 'undefined' && currentEngine === 'fluidsynth') {
-    await handleFluidSynthUnifiedSubmit();
-    return;
-  }
 
   const built = buildGenerationStylePayload({ forPreview: false });
   const fd = built.fd;
@@ -9647,7 +9408,7 @@ window.GlobalAudioController = (function() {
   }
 
   function pauseExternalPreviews() {
-    const playersToPause = ['ampAudioPlayer', 'voAudioPlayer', 'sf2EnrichAudioPlayer', 'unifiedAudioPlayer'];
+    const playersToPause = ['ampAudioPlayer', 'voAudioPlayer', 'sf2EnrichAudioPlayer'];
     playersToPause.forEach(id => {
       const p = document.getElementById(id);
       if (p && !p.paused) {
@@ -10240,7 +10001,7 @@ window.GlobalAudioController = (function() {
     setupScrubber(document.getElementById('gplayerExpWaveform'));
 
     // Convivencia de audio: Si otros reproductores inician, pausar el reproductor global
-    ['voAudioPlayer', 'unifiedAudioPlayer', 'ampAudioPlayer', 'sf2EnrichAudioPlayer'].forEach(id => {
+    ['voAudioPlayer', 'ampAudioPlayer', 'sf2EnrichAudioPlayer'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('play', () => {
@@ -11141,556 +10902,33 @@ loadLibrary();
 loadDictionary();
 loadUserInfo();
 
-/* ---------- SISTEMA UNIFICADO DE 20 INSTRUMENTOS GRATUITOS (FLUIDSYNTH) & PRESETS ---------- */
-let currentEngine = 'udio';
-let FREE_CATALOG_ITEMS = [];
-let ACTIVE_UNIFIED_TRACKS = {};
-
-const PRESET_INSTRUMENTS_MAP = {
-  juvenil: {
-    'piano_cola': 95,
-    'bajo_slap': 105,
-    'bateria_acustica': 105,
-    'guitarra_distorsionada': 90,
-    'guitarra_limpia': 85,
-    'synth_lead': 80
-  },
-  pentecostal: {
-    'bateria_acustica': 105,
-    'bajo_finger': 100,
-    'guitarra_acustica': 90,
-    'piano_cola': 95,
-    'organo': 100,
-    'congas': 80,
-    'maracas': 70
-  },
-  adoracion: {
-    'piano_cola': 105,
-    'piano_sintetizado': 85,
-    'bajo_finger': 95,
-    'guitarra_limpia': 85,
-    'synth_pad': 90,
-    'cuerdas': 90
-  },
-  himno: {
-    'organo': 105,
-    'cuerdas': 100,
-    'flautas': 90,
-    'campanas': 85,
-    'piano_cola': 90
-  },
-  piano_oracion: {
-    'piano_cola': 110,
-    'piano_fm_dx': 80,
-    'piano_sintetizado': 85,
-    'synth_pad': 75
-  },
-  vals_vienes: {
-    'cuerdas': 105,
-    'flautas': 95,
-    'piano_cola': 90,
-    'campanas': 80
-  }
-};
-
-const PRAYER_PIANO_INSTRUMENT_MAP = {
-  'mks20': { 'piano_sintetizado': 105, 'synth_pad': 75 },
-  'salamander': { 'piano_cola': 110, 'synth_pad': 70 },
-  'galaxydx': { 'piano_fm_dx': 105, 'synth_pad': 75 },
-  'motifxs': { 'piano_cola': 105, 'piano_sintetizado': 80, 'synth_pad': 75 }
-};
-
-function onEngineChange(engine) {
-  currentEngine = engine;
-  const cardUdio = $('engineCardUdio');
-  const cardFs = $('engineCardFluidsynth');
-  if (cardUdio && cardFs) {
-    if (engine === 'udio') {
-      cardUdio.classList.add('active');
-      cardUdio.style.borderColor = 'var(--accent)';
-      cardFs.classList.remove('active');
-      cardFs.style.borderColor = 'var(--border)';
-    } else {
-      cardFs.classList.add('active');
-      cardFs.style.borderColor = '#10B981';
-      cardUdio.classList.remove('active');
-      cardUdio.style.borderColor = 'var(--border)';
-    }
-  }
-  const infoBadge = $('engineBadgeInfo');
-  if (infoBadge) {
-    infoBadge.textContent = engine === 'udio' ? 'Voz Cantada & Banda IA (Udio)' : '100% Instrumental Gratuito (0 Créditos)';
-    infoBadge.style.color = engine === 'udio' ? '#A78BFA' : '#34D399';
-  }
-  const submitText = $('submitBtnText');
-  const submitBtn = $('submitBtn');
-  if (submitText && submitBtn) {
-    if (engine === 'fluidsynth') {
-      submitText.textContent = '🎼 Sintetizar Instrumental Gratis (FluidSynth • 0 cr)';
-      submitBtn.style.background = 'linear-gradient(135deg, #10B981, #059669)';
-      const icon = submitBtn.querySelector('i');
-      if (icon) icon.className = 'ph ph-music-notes-plus';
-    } else {
-      submitText.textContent = 'Generar canción con IA (Udio)';
-      submitBtn.style.background = '';
-      const icon = submitBtn.querySelector('i');
-      if (icon) icon.className = 'ph ph-sparkle';
-    }
-  }
-  if (engine === 'fluidsynth') {
-    if ($('instrumental')) $('instrumental').checked = true;
-    showToast('Motor FluidSynth activo: generación 100% instrumental real con 0 créditos.', 'info');
-  }
-}
-
-async function initUnifiedInstruments() {
-  try {
-    const r = await fetch('/api/free-instruments/catalog');
-    if (r.ok) {
-      const data = await r.json();
-      FREE_CATALOG_ITEMS = data.instruments || [];
-    }
-  } catch (e) {
-    console.warn('Error cargando catálogo de instrumentos gratuitos:', e);
-  }
-  const activePresetCard = document.querySelector('.preset-card.active');
-  const initialPreset = activePresetCard ? activePresetCard.dataset.preset : 'juvenil';
-  if (window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0) {
-    renderActiveInstrumentsChips();
-    renderUnifiedInstrumentsGrid();
-    return;
-  }
-  applyPresetInstruments(initialPreset, { isInitialDefault: !activePresetCard });
-}
-
-function applyPresetInstruments(presetKey, opts = {}) {
-  const isInitialDefault = Boolean(opts && opts.isInitialDefault);
-  let mapping = PRESET_INSTRUMENTS_MAP[presetKey];
-  if (presetKey === 'piano_oracion') {
-    const selectedRadio = document.querySelector('input[name="prayer_piano_type"]:checked');
-    const soundKey = selectedRadio ? selectedRadio.value : 'mks20';
-    mapping = PRAYER_PIANO_INSTRUMENT_MAP[soundKey] || PRESET_INSTRUMENTS_MAP.piano_oracion;
-  }
-  if (!mapping) mapping = PRESET_INSTRUMENTS_MAP.juvenil;
-
-  ACTIVE_UNIFIED_TRACKS = Object.assign({}, mapping);
-  if (window.userExplicitSf2Ids && typeof window.userExplicitSf2Ids.clear === 'function') {
-    window.userExplicitSf2Ids.clear();
-    if (!isInitialDefault) {
-      Object.keys(mapping).forEach(k => window.userExplicitSf2Ids.add(k));
-    }
-  }
-  if (window.userExplicitControlFlags) {
-    window.userExplicitControlFlags.instruments = !isInitialDefault;
-  }
-  renderActiveInstrumentsChips();
-  renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies({ syncSlap: !isInitialDefault });
-  if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
-}
-
-function restorePresetInstruments() {
-  const activeCard = document.querySelector('.preset-card.active');
-  const presetKey = activeCard ? activeCard.dataset.preset : 'juvenil';
-  applyPresetInstruments(presetKey, { isInitialDefault: !activeCard });
-  showToast(activeCard ? 'Instrumentos restaurados según el preset actual' : 'Instrumentos restablecidos a base neutral (sin inyección en STYLE)', 'info');
-}
-
-function renderActiveInstrumentsChips() {
-  const strip = $('activeInstrumentsChipsStrip');
-  if (!strip) return;
-  const ids = Object.keys(ACTIVE_UNIFIED_TRACKS);
-  if ($('activeInstrumentsCountBadge')) {
-    $('activeInstrumentsCountBadge').textContent = `${ids.length} activo(s)`;
-  }
-  if (!ids.length) {
-    strip.innerHTML = '<div style="font-size:11px;color:#94A3B8;padding:4px 0">Ningún instrumento seleccionado. Haz clic en "+ Ver Catálogo Completo" para agregar pistas a la mezcla.</div>';
-    return;
-  }
-
-  strip.innerHTML = ids.map(id => {
-    const item = FREE_CATALOG_ITEMS.find(i => i.id === id) || { name: id, family: 'Instrumento' };
-    const vol = ACTIVE_UNIFIED_TRACKS[id] ?? 100;
-    return `
-      <div class="active-inst-chip" style="background:#1E293B;border:1px solid rgba(16,185,129,0.5);border-radius:8px;padding:4px 8px;display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:#F8FAFC">
-        <span style="font-weight:700;display:flex;align-items:center;gap:4px">
-          <span>${esc(item.name)}</span>
-        </span>
-        <div style="display:inline-flex;align-items:center;gap:4px">
-          <span style="font-size:10px;color:#6EE7B7;min-width:32px" id="chipVolText_${esc(id)}">${vol}%</span>
-          <input type="range" min="0" max="150" step="5" value="${vol}" style="width:54px;height:4px;accent-color:#10B981" title="Volumen (0-150%)" oninput="onActiveChipVolChange('${esc(id)}', this.value)">
-        </div>
-        <button type="button" class="btn-sec" onclick="previewFreeInstrument('${esc(id)}', this)" style="padding:1px 5px;font-size:10px;border-radius:4px;color:#6EE7B7;border-color:rgba(16,185,129,0.3)" title="Preescucha individual (0 créditos)">
-          🔊
-        </button>
-        <button type="button" onclick="removeInstrumentFromMix('${esc(id)}')" style="background:none;border:none;color:#F87171;cursor:pointer;padding:0 2px;font-size:13px;line-height:1" title="Quitar de la mezcla">
-          ✕
-        </button>
-      </div>
-    `;
-  }).join('');
-}
-
-function onActiveChipVolChange(id, val) {
-  const num = parseInt(val, 10);
-  ACTIVE_UNIFIED_TRACKS[id] = num;
-  const txt = document.getElementById('chipVolText_' + id);
-  if (txt) txt.textContent = num + '%';
-  const gridSlider = document.getElementById('gridVol_' + id);
-  const gridTxt = document.getElementById('gridVolVal_' + id);
-  if (gridSlider) gridSlider.value = num;
-  if (gridTxt) gridTxt.textContent = num + '%';
-}
-
-function removeInstrumentFromMix(id) {
-  delete ACTIVE_UNIFIED_TRACKS[id];
-  if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.delete(id);
-  if (window.userExplicitControlFlags) {
-    const hasPreset = Boolean(document.querySelector('.preset-card.active'));
-    window.userExplicitControlFlags.instruments = hasPreset || Boolean(window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0);
-  }
-  renderActiveInstrumentsChips();
-  renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies({ syncSlap: id === 'bajo_slap' });
-  if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
-}
-
-function setAllInstrumentsState(enableAll) {
-  if (enableAll) {
-    (FREE_CATALOG_ITEMS || []).forEach(item => {
-      const vol = Math.round((item.default_volume || 1.0) * 100);
-      ACTIVE_UNIFIED_TRACKS[item.id] = vol;
-      if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.add(item.id);
-    });
-    if (window.userExplicitControlFlags) window.userExplicitControlFlags.instruments = true;
-  } else {
-    ACTIVE_UNIFIED_TRACKS = {};
-    if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.clear();
-    if (window.userExplicitControlFlags) window.userExplicitControlFlags.instruments = false;
-  }
-  renderActiveInstrumentsChips();
-  renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies({ syncSlap: false });
-  if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
-}
-
-function toggleInstrumentsDrawer() {
-  const container = $('instrumentsDrawerContainer');
-  const btn = $('btnToggleInstDrawer');
-  if (!container) return;
-  const isOpen = container.style.display !== 'none';
-  if (isOpen) {
-    container.style.display = 'none';
-    if (btn) btn.innerHTML = '+ Ver Catálogo Completo (20)';
-  } else {
-    container.style.display = 'block';
-    if (btn) btn.innerHTML = '▲ Ocultar Catálogo';
-  }
-}
-
-function renderUnifiedInstrumentsGrid() {
-  const grid = $('unifiedInstrumentsGrid');
-  if (!grid || !FREE_CATALOG_ITEMS.length) return;
-  grid.innerHTML = FREE_CATALOG_ITEMS.map(item => {
-    const isChecked = Object.prototype.hasOwnProperty.call(ACTIVE_UNIFIED_TRACKS, item.id);
-    const volPct = isChecked ? ACTIVE_UNIFIED_TRACKS[item.id] : Math.round((item.default_volume || 1.0) * 100);
-    return `
-      <div class="unified-inst-card" data-inst-id="${esc(item.id)}" style="padding:7px 9px;border-radius:8px;background:rgba(15,23,42,0.85);border:1px solid ${isChecked ? 'rgba(16,185,129,0.55)' : 'rgba(255,255,255,0.08)'};display:flex;flex-direction:column;gap:5px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;font-weight:700;color:#F8FAFC;min-width:0;flex:1">
-            <input type="checkbox" class="unified-inst-chk" data-id="${esc(item.id)}" ${isChecked ? 'checked' : ''} onchange="onUnifiedInstCheckboxToggle('${esc(item.id)}', this.checked)">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.name)}">${esc(item.name)}</span>
-          </label>
-          <button type="button" class="btn-sec" onclick="previewFreeInstrument('${esc(item.id)}', this)" style="padding:2px 6px;font-size:10px;border-radius:5px;color:#6EE7B7;border-color:rgba(16,185,129,0.35);flex-shrink:0" title="Escuchar muestra sintetizada en vivo con el BPM actual (0 créditos)">
-            🔊 Probar
-          </button>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:#CBD5E1">
-          <span style="color:#94A3B8;min-width:44px">Vol: <strong id="gridVolVal_${esc(item.id)}" style="color:#6EE7B7">${volPct}%</strong></span>
-          <input type="range" class="unified-inst-vol" id="gridVol_${esc(item.id)}" data-id="${esc(item.id)}" min="0" max="150" step="5" value="${volPct}" style="flex:1;accent-color:#10B981" oninput="onGridVolChange('${esc(item.id)}', this.value)">
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:9.5px;color:#64748B">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.bank_name)}">${esc(item.family)}</span>
-          <span style="color:#A7F3D0;background:rgba(16,185,129,0.12);padding:1px 5px;border-radius:4px;flex-shrink:0">${esc(item.license)}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function onUnifiedInstCheckboxToggle(id, checked) {
-  if (checked) {
-    const volEl = document.getElementById('gridVol_' + id);
-    const vol = volEl ? parseInt(volEl.value, 10) : 100;
-    ACTIVE_UNIFIED_TRACKS[id] = isNaN(vol) ? 100 : vol;
-    if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.add(id);
-  } else {
-    delete ACTIVE_UNIFIED_TRACKS[id];
-    if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.delete(id);
-  }
-  if (window.userExplicitControlFlags) {
-    const hasPreset = Boolean(document.querySelector('.preset-card.active'));
-    window.userExplicitControlFlags.instruments = hasPreset || Boolean(window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0);
-    if (id === 'bajo_slap') window.userExplicitControlFlags.bassSlap = checked;
-  }
-  renderActiveInstrumentsChips();
-  renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies({ syncSlap: id === 'bajo_slap' });
-  if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
-}
-
-function onGridVolChange(id, val) {
-  const num = parseInt(val, 10);
-  const txt = document.getElementById('gridVolVal_' + id);
-  if (txt) txt.textContent = num + '%';
-  if (Object.prototype.hasOwnProperty.call(ACTIVE_UNIFIED_TRACKS, id)) {
-    ACTIVE_UNIFIED_TRACKS[id] = num;
-    const chipTxt = document.getElementById('chipVolText_' + id);
-    if (chipTxt) chipTxt.textContent = num + '%';
-  }
-}
-
-function syncLegacyBandProxies(opts = {}) {
-  const syncSlap = Boolean(opts && opts.syncSlap);
-  const activeIds = Object.keys(ACTIVE_UNIFIED_TRACKS);
-  const hasDrums = activeIds.some(id => id.includes('bateria'));
-  const hasBass = activeIds.some(id => id.includes('bajo') || id.includes('synth_bass'));
-  const hasSlap = activeIds.includes('bajo_slap');
-  const hasGuitar = activeIds.some(id => id.includes('guitarra'));
-  const hasPiano = activeIds.some(id => id.includes('piano'));
-  const hasOrgan = activeIds.includes('organo');
-
-  if ($('chkDrums')) $('chkDrums').checked = hasDrums;
-  if ($('chkBass')) $('chkBass').checked = hasBass;
-  if (syncSlap && $('chkBassSlap')) $('chkBassSlap').checked = hasSlap;
-  if ($('chkGuitar')) $('chkGuitar').checked = hasGuitar;
-  if ($('chkPiano')) $('chkPiano').checked = hasPiano;
-  if ($('chkOrgan')) $('chkOrgan').checked = hasOrgan;
-}
-
-function getFreeRhythmFlagsFromStudio() {
-  const selectedHiHat = document.querySelector('input[name="hihat_mode"]:checked');
-  return {
-    hihat_mode: selectedHiHat ? selectedHiHat.value : '8th',
-    tom_grooves: Boolean($('chkTomGrooves') && $('chkTomGrooves').checked),
-    crash_toms: Boolean($('chkCrashToms') && $('chkCrashToms').checked),
-    bass_pickup: Boolean($('chkBassPickup') && $('chkBassPickup').checked)
-  };
-}
-
-async function previewFreeInstrument(instId, btnEl) {
-  const bpm = parseInt($('userBpmInput')?.value || '125', 10) || 125;
-  const musical_key = (typeof currentHarmonicAnalysis !== 'undefined' && currentHarmonicAnalysis && currentHarmonicAnalysis.detectedKey) ? currentHarmonicAnalysis.detectedKey : 'G';
-
-  const activePresetCard = document.querySelector('.preset-card.active');
-  const activePreset = activePresetCard ? activePresetCard.dataset.preset : 'juvenil';
-  let progression_style = 'alabanza_juvenil';
-  if (activePreset === 'adoracion') progression_style = 'adoracion_intima';
-  else if (activePreset === 'himno') progression_style = 'himno_solemne';
-  else if (activePreset === 'piano_oracion') progression_style = 'oracion_devocional';
-  else if (activePreset === 'vals_vienes') progression_style = 'himno_solemne';
-
-  const volPct = ACTIVE_UNIFIED_TRACKS[instId] || parseInt(document.getElementById('gridVol_' + instId)?.value || '100', 10) || 100;
-  const volume = Math.max(0.1, Math.min(1.5, volPct / 100.0));
-  const flags = getFreeRhythmFlagsFromStudio();
-
-  const origText = btnEl ? btnEl.innerHTML : '🔊 Probar';
-  if (btnEl) {
-    btnEl.disabled = true;
-    btnEl.innerHTML = '⏳...';
-  }
-  try {
-    const r = await fetch('/api/free-instruments/preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instrument_id: instId,
-        bpm,
-        musical_key,
-        progression_style,
-        bars: 4,
-        volume,
-        amp_configs: (typeof getActiveAmpConfigs === 'function') ? getActiveAmpConfigs() : null,
-        ...flags
-      })
-    });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.detail || 'Error al preescuchar instrumento');
-    const player = $('unifiedAudioPlayer');
-    if (player) {
-      player.style.display = 'block';
-      player.src = j.audio_url;
-      player.play().catch(() => {});
-    }
-    showToast(`Reproduciendo muestra: ${j.instrument_name} (${j.bpm} BPM • 0 créditos)`, 'success');
-  } catch (e) {
-    showToast(e.message || 'Error al sintetizar preescucha', 'err');
-  } finally {
-    if (btnEl) {
-      btnEl.disabled = false;
-      btnEl.innerHTML = origText;
-    }
-  }
-}
-
-async function handleFluidSynthUnifiedSubmit() {
-  const trackIds = Object.keys(ACTIVE_UNIFIED_TRACKS);
-  if (!trackIds.length) {
-    showToast('Selecciona al menos un instrumento en la sección de instrumentos activos para sintetizar.', 'err');
-    return;
-  }
-
-  const tracks = trackIds.map(id => ({
-    id,
-    volume: Math.max(0.0, Math.min(1.5, (ACTIVE_UNIFIED_TRACKS[id] || 100) / 100.0))
-  }));
-
-  const effCfg = getEffectiveUserMusicalConfig();
-  const prompt = ($('styleInput')?.value || '').trim();
-  const lyrics = ($('lyricsInput')?.value || '').trim();
-  const title = ($('titleInput')?.value || '').trim() || (effCfg.presetTitle ? `Composición ${effCfg.presetTitle}` : 'Composición Instrumental Gratuita');
-  const bpm = effCfg.effectiveBpm || 125;
-  const musical_key = (typeof currentHarmonicAnalysis !== 'undefined' && currentHarmonicAnalysis && currentHarmonicAnalysis.detectedKey) ? currentHarmonicAnalysis.detectedKey : 'G';
-
-  let progression_style = 'alabanza_juvenil';
-  if (effCfg.activePreset === 'adoracion') progression_style = 'adoracion_intima';
-  else if (effCfg.activePreset === 'himno') progression_style = 'himno_solemne';
-  else if (effCfg.activePreset === 'piano_oracion') progression_style = 'oracion_devocional';
-  else if (effCfg.activePreset === 'vals_vienes') progression_style = 'himno_solemne';
-
-  const userBarsSelect = $('freeInstrumentalBarsSelect');
-  const bars = userBarsSelect ? parseInt(userBarsSelect.value, 10) : 16;
-
-  const flags = {
-    hihat_mode: effCfg.hihatMode,
-    tom_grooves: effCfg.tomGrooves,
-    crash_toms: effCfg.crashToms,
-    bass_pickup: effCfg.bassPickup
-  };
-
-  const submitBtn = $('submitBtn');
-  const progressWrap = $('progressWrap');
-  const progressFill = $('progressFill');
-  const progressText = $('progressText');
-  const progressPct = $('progressPct');
-
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.style.opacity = '0.6';
-  }
-  if (progressWrap) {
-    progressWrap.style.display = 'flex';
-    progressWrap.classList.add('on');
-  }
-
-  function setProgressState(pct, text) {
-    if (progressFill) progressFill.style.width = `${pct}%`;
-    if (progressPct) progressPct.textContent = `${pct}%`;
-    if (progressText) progressText.textContent = text;
-  }
-
-  setProgressState(12, 'Interpretando prompt musical, tempo y tonalidad...');
-
-  // Simulación de etapas reales del pipeline durante la llamada
-  let synthStage = 1;
-  const synthTimer = setInterval(() => {
-    if (synthStage === 1) {
-      setProgressState(35, 'Componiendo partituras MIDI humanizadas y armonía...');
-      synthStage = 2;
-    } else if (synthStage === 2) {
-      setProgressState(65, 'Sintetizando instrumentos SoundFont2 con FluidSynth 2.6+...');
-      synthStage = 3;
-    } else if (synthStage === 3) {
-      setProgressState(85, 'Procesando DSP, ecualización y amplificadores valvulares...');
-      synthStage = 4;
-    }
-  }, 1200);
-
-  try {
-    const res = await fetch('/api/free-instruments/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        prompt,
-        lyrics,
-        bpm,
-        musical_key,
-        progression_style,
-        bars,
-        tracks,
-        save_to_library: true,
-        amp_configs: (typeof getActiveAmpConfigs === 'function') ? getActiveAmpConfigs() : null,
-        ...flags
-      })
-    });
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.detail || 'Error al generar composición instrumental');
-
-    clearInterval(synthTimer);
-    setProgressState(100, '¡Composición finalizada con éxito! (0 créditos)');
-
-    const resBox = $('unifiedSynthesisResultBox');
-    const stText = $('unifiedSynthesisStatusText');
-    const dlBox = $('unifiedExportLinksBox');
-    const metText = $('unifiedSynthesisMetricsText');
-    const player = $('unifiedAudioPlayer');
-
-    if (resBox && stText && dlBox && metText) {
-      resBox.style.display = 'block';
-      const pStatus = j.track?.persistence_status === 'PERSISTED_GDRIVE' ? '✅ Respaldado en Google Drive 5TB' : '💾 Guardado en Biblioteca';
-      stText.textContent = `🎵 "${j.track.title}" (${j.synthesis_metrics.duration_sec}s • ${j.synthesis_metrics.bpm} BPM • ${pStatus})`;
-      dlBox.innerHTML = `
-        <a href="${esc(j.download_urls.mp3)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#6EE7B7;border-color:rgba(16,185,129,0.4)">⬇ MP3</a>
-        <a href="${esc(j.download_urls.wav)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#93C5FD;border-color:rgba(59,130,246,0.4)">⬇ WAV</a>
-        <a href="${esc(j.download_urls.flac)}" class="btn-sec" style="padding:4px 9px;font-size:11px;text-decoration:none;color:#C4B5FD;border-color:rgba(139,92,246,0.4)">⬇ FLAC</a>
-      `;
-      metText.textContent = `Pistas: ${j.synthesis_metrics.tracks_count} | Síntesis: ${j.synthesis_metrics.total_synth_ms} ms | RAM: ${j.synthesis_metrics.peak_child_ram_mb} MB | Costo: 0 créditos Udio/FAL`;
-    }
-
-    if (player && j.track?.audio_url) {
-      player.style.display = 'block';
-      player.src = `${j.track.audio_url}?t=${Date.now()}`;
-    }
-
-    // CARGAR Y REPRODUCIR INMEDIATAMENTE EN EL REPRODUCTOR PRINCIPAL INFERIOR (WAVESURFER)
-    if (j.track) {
-      playTrack(j.track);
-    }
-
-    await loadLibrary();
-    showToast(`¡"${title}" generada y cargada en el reproductor (0 créditos)!`, 'success');
-  } catch (err) {
-    clearInterval(synthTimer);
-    showToast(err.message || 'Error en síntesis multipista', 'err');
-    logLine(`[ERROR FLUIDSYNTH] ${err.message}`);
-  } finally {
-    clearInterval(synthTimer);
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.style.opacity = '1';
-    }
-    setTimeout(() => {
-      if (progressWrap) {
-        progressWrap.classList.remove('on');
-        progressWrap.style.display = 'none';
-      }
-    }, 2500);
-  }
-}
-
 /* ---------- ENRIQUECIMIENTO NO DESTRUCTIVO DE CANCIONES CON SF2 ---------- */
 let SF2_ENRICH_ACTIVE_TRACK_ID = null;
 let SF2_ENRICH_ANALYSIS = null;
+let SF2_ENRICH_CATALOG_ITEMS = [];
 let SF2_ENRICH_SELECTED_INSTRUMENTS = {
   piano_cola: 80,
   cuerdas: 60,
   bajo_electrico: 75
 };
 
+async function _ensureSf2EnrichCatalogLoaded() {
+  if (SF2_ENRICH_CATALOG_ITEMS.length > 0) return;
+  try {
+    const r = await fetch('/api/free-instruments/catalog');
+    if (r.ok) {
+      const data = await r.json();
+      SF2_ENRICH_CATALOG_ITEMS = data.instruments || [];
+    }
+  } catch (e) {
+    console.warn('No se pudo cargar catálogo para enriquecimiento:', e);
+  }
+}
+
 async function openSf2EnrichmentModal(targetTrackId = null) {
   const modal = $('sf2EnrichmentModal');
   if (!modal) return;
+  await _ensureSf2EnrichCatalogLoaded();
 
   const tracks = ($('libList')._tracks || []).filter(t => t && t.id);
   const select = $('sf2EnrichTrackSelect');
@@ -11822,7 +11060,7 @@ function setSf2EnrichQuickSelection(type) {
 function renderSf2EnrichInstrumentsGrid() {
   const grid = $('sf2EnrichInstrumentsGrid');
   if (!grid) return;
-  const items = (typeof FREE_CATALOG_ITEMS !== 'undefined' && FREE_CATALOG_ITEMS.length) ? FREE_CATALOG_ITEMS : [
+  const items = (SF2_ENRICH_CATALOG_ITEMS && SF2_ENRICH_CATALOG_ITEMS.length) ? SF2_ENRICH_CATALOG_ITEMS : [
     { id: 'piano_cola', name: 'Piano de Cola', family: 'Teclados' },
     { id: 'bajo_electrico', name: 'Bajo Eléctrico', family: 'Bajos' },
     { id: 'bateria_acustica', name: 'Batería Acústica', family: 'Percusión' },
@@ -12940,7 +12178,6 @@ async function initStudioVirtualSelectors() {
 }
 
 initStudioVirtualSelectors();
-initUnifiedInstruments();
 initAmplifiersRack();
 
 

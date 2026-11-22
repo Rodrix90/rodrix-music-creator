@@ -4370,11 +4370,6 @@ async def api_engine_status(current_user: str = Depends(get_current_user)):
         "active_engine": engine_registry.get_engine().engine_id,
         "registry": engine_registry.list_engines(),
         "hardware": engine_registry.get_system_hardware_info(),
-        "zero_cost_instruments": {
-            "available": True,
-            "engine": "local_sf2",
-            "count": 20
-        }
     })
 
 @app.post("/api/preview_parameters")
@@ -7399,12 +7394,6 @@ async def api_health_check():
             "last_tasks_sync": LAST_GDRIVE_TASKS_SYNC,
             "last_library_sync": LAST_GDRIVE_LIBRARY_SYNC
         },
-        "free_instruments": {
-            "enabled": True,
-            "total_instruments": 20,
-            "total_variants": 21,
-            "zero_cost": True
-        },
         "virtual_amps": {
             "enabled": True,
             "total_amps": 5,
@@ -9342,7 +9331,8 @@ async def api_merge_continuous_album(payload: dict, current_user: str = Depends(
 
 
 # ==============================================================================
-# MOTOR DE 20 INSTRUMENTOS GRATUITOS (MIDI + FLUIDSYNTH — 0 CRÉDITOS UDIO/FAL)
+# RECURSOS COMPARTIDOS PARA ENRIQUECIMIENTO NO DESTRUCTIVO DE BIBLIOTECA (SF2)
+# (Modo Instrumental Gratuito FluidSynth y panel de 20 SF2 retirados de Crear Canción)
 # ==============================================================================
 import free_instruments_engine
 
@@ -9352,247 +9342,21 @@ os.makedirs(PREVIEWS_DIR, exist_ok=True)
 
 @app.get("/api/free-instruments/catalog")
 async def api_free_instruments_catalog():
-    """Devuelve el catálogo completo de los 20 instrumentos gratuitos (21 variantes), licencias, estilos y tonalidades."""
+    """Devuelve el catálogo de instrumentos usado de forma lazy por el enriquecimiento de Biblioteca."""
     return JSONResponse(
         content=free_instruments_engine.get_catalog_payload(),
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
     )
 
 
-@app.post("/api/free-instruments/preview")
-async def api_free_instrument_preview(request: Request):
-    """
-    Sintetiza en tiempo real con FluidSynth una preescucha musical de cualquier instrumento
-    al BPM, tonalidad, progresión, articulación y volumen indicados (0 créditos consumidos).
-    """
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
-
-    raw_id = str(data.get("instrument_id") or data.get("id") or "piano_cola").strip()
-    try:
-        inst_id = free_instruments_engine.normalize_instrument_id(raw_id)
-    except KeyError as ke:
-        raise HTTPException(status_code=400, detail=str(ke))
-
-    bpm = max(40, min(220, int(data.get("bpm") or 120)))
-    musical_key = str(data.get("musical_key") or "G").strip()
-    progression_style = str(data.get("progression_style") or "alabanza_juvenil").strip()
-    bars = max(2, min(8, int(data.get("bars") or 4)))
-    volume = max(0.05, min(1.5, float(data.get("volume", 1.0))))
-    hihat_mode = str(data.get("hihat_mode") or "8th").strip()
-    tom_grooves = bool(data.get("tom_grooves", True))
-    crash_toms = bool(data.get("crash_toms", True))
-    bass_pickup = bool(data.get("bass_pickup", True))
-    amp_configs = data.get("amp_configs") or data.get("amp_config") or None
-
-    safe_key = re.sub(r"[^a-zA-Z0-9]", "", musical_key) or "G"
-    preview_fname = f"prev_{inst_id}_{bpm}_{safe_key}_{progression_style}_{bars}b_{int(round(volume*100))}.mp3"
-    preview_path = os.path.join(PREVIEWS_DIR, preview_fname)
-
-    synth_res = await asyncio.to_thread(
-        free_instruments_engine.synthesize_multitrack_composition,
-        tracks_config=[{"id": inst_id, "volume": volume}],
-        output_mp3_path=preview_path,
-        bpm=bpm,
-        musical_key=musical_key,
-        progression_style=progression_style,
-        bars=bars,
-        hihat_mode=hihat_mode,
-        tom_grooves=tom_grooves,
-        crash_toms=crash_toms,
-        bass_pickup=bass_pickup,
-        amp_configs=amp_configs,
-    )
-
-    inst_meta = free_instruments_engine.INSTRUMENT_BY_ID[inst_id]
-    return JSONResponse(content={
-        "status": "ok",
-        "zero_cost": True,
-        "paid_api_calls": 0,
-        "instrument_id": inst_id,
-        "instrument_name": inst_meta["name"],
-        "audio_url": f"/api/free-instruments/preview-audio/{preview_fname}?t={int(time.time()*1000)}",
-        "bpm": synth_res["bpm"],
-        "musical_key": synth_res["musical_key"],
-        "progression_style": synth_res["progression_style"],
-        "duration_sec": synth_res["duration_sec"],
-        "metrics": synth_res,
-    })
-
-
 @app.get("/api/free-instruments/preview-audio/{filename}")
 async def api_serve_free_preview_audio(filename: str):
+    """Sirve audios temporales de preescucha para /api/tracks/{track_id}/enrich-preview."""
     clean_name = os.path.basename(filename)
     full_p = os.path.join(PREVIEWS_DIR, clean_name)
     if not os.path.exists(full_p):
         raise HTTPException(status_code=404, detail="Audio de preescucha no encontrado")
     return FileResponse(path=full_p, media_type="audio/mpeg", filename=clean_name)
-
-
-@app.post("/api/free-instruments/generate")
-async def api_free_instruments_generate(request: Request, current_user: str = Depends(get_current_user)):
-    """
-    Genera una composición musical multipista real mediante MIDI y FluidSynth combinando
-    los instrumentos gratuitos seleccionados, con BPM personalizado y volumen individual
-    por instrumento. Guarda y respalda la obra en la Biblioteca y Google Drive 5TB.
-    """
-    try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Payload JSON inválido.")
-
-    raw_tracks = data.get("tracks") or []
-    if not isinstance(raw_tracks, list) or len(raw_tracks) == 0:
-        raise HTTPException(status_code=400, detail="Selecciona al menos un instrumento gratuito para generar la composición.")
-
-    title = str(data.get("title") or "").strip() or "Composición Multipista (Instrumentos Gratuitos)"
-    raw_prompt = str(data.get("prompt") or data.get("style") or "").strip()
-    raw_lyrics = str(data.get("lyrics") or "").strip()
-    raw_key = str(data.get("musical_key") or "G").strip()
-    raw_bpm = max(40, min(220, int(data.get("bpm") or 125)))
-    raw_style = str(data.get("progression_style") or "alabanza_juvenil").strip()
-    raw_bars = max(4, min(32, int(data.get("bars") or 8)))
-
-    # Traducción e interpretación musical del prompt del usuario
-    parsed_prompt = free_instruments_engine.parse_musical_prompt(
-        prompt=raw_prompt,
-        title=title,
-        default_key=raw_key,
-        default_bpm=raw_bpm,
-        default_style=raw_style,
-        default_bars=raw_bars,
-    )
-    bpm = parsed_prompt["bpm"]
-    musical_key = parsed_prompt["key"]
-    progression_style = parsed_prompt["progression_style"]
-    bars = parsed_prompt["bars"]
-
-    hihat_mode = str(data.get("hihat_mode") or "8th").strip()
-    tom_grooves = bool(data.get("tom_grooves", True))
-    crash_toms = bool(data.get("crash_toms", True))
-    bass_pickup = bool(data.get("bass_pickup", True))
-    amp_configs = data.get("amp_configs") or data.get("amp_config") or None
-    save_to_library = bool(data.get("save_to_library", True))
-
-    normalized_tracks = []
-    for item in raw_tracks:
-        if isinstance(item, str):
-            inst_id = free_instruments_engine.normalize_instrument_id(item)
-            normalized_tracks.append({"id": inst_id, "volume": 1.0})
-        elif isinstance(item, dict):
-            raw_id = str(item.get("id") or item.get("instrument_id") or "").strip()
-            if not raw_id:
-                continue
-            inst_id = free_instruments_engine.normalize_instrument_id(raw_id)
-            vol = max(0.0, min(1.5, float(item.get("volume", 1.0))))
-            if vol > 0.001:
-                normalized_tracks.append({"id": inst_id, "volume": vol})
-
-    if not normalized_tracks:
-        raise HTTPException(status_code=400, detail="Todos los instrumentos seleccionados tienen volumen 0%.")
-
-    track_id = f"free_{uuid.uuid4().hex[:12]}"
-    os.makedirs(TRACKS_DIR, exist_ok=True)
-    out_mp3 = os.path.join(TRACKS_DIR, f"{track_id}.mp3")
-    out_wav = os.path.join(TRACKS_DIR, f"{track_id}.wav")
-
-    synth_res = await asyncio.to_thread(
-        free_instruments_engine.synthesize_multitrack_composition,
-        tracks_config=normalized_tracks,
-        output_mp3_path=out_mp3,
-        output_wav_path=out_wav,
-        bpm=bpm,
-        musical_key=musical_key,
-        progression_style=progression_style,
-        bars=bars,
-        hihat_mode=hihat_mode,
-        tom_grooves=tom_grooves,
-        crash_toms=crash_toms,
-        bass_pickup=bass_pickup,
-        amp_configs=amp_configs,
-        prompt=raw_prompt,
-        lyrics=raw_lyrics,
-    )
-
-    inst_names = [t["short_name"] + f" ({t['volume_pct']}%)" for t in synth_res["tracks"]]
-    lic_summary = "; ".join(f"{l['bank']} [{l['license']} - {l['attribution']}]" for l in synth_res["licenses_used"])
-    style_desc = (
-        f"Estudio Gratuito FluidSynth | {synth_res['progression_name']} | "
-        f"Tonalidad: {musical_key} | {bpm} BPM | {bars} compases | "
-        f"Pistas ({len(inst_names)}): {', '.join(inst_names)}"
-    )
-    if raw_prompt:
-        style_desc = f"{raw_prompt} • {style_desc}"
-    lyrics_notes = (
-        (f"Letra / Indicaciones:\n{raw_lyrics}\n\n" if raw_lyrics else "") +
-        f"[Composición Instrumental Multipista — 0 Créditos]\n"
-        f"Tempo: {bpm} BPM | Tonalidad: {musical_key} | Compases: {bars}\n"
-        f"{parsed_prompt['description']}\n"
-        f"Instrumentos mezclados: {', '.join(inst_names)}\n"
-        f"Licencias y Atribuciones SF2: {lic_summary}"
-    )
-
-    track_record = {
-        "id": track_id,
-        "title": title,
-        "prompt": raw_prompt,
-        "audio_url": f"/api/audio_file/{track_id}",
-        "raw_audio_url": f"/api/audio_file/{track_id}",
-        "image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23059669'/%3E%3Cpath d='M20 44V20l26-6v24' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='44' r='6' fill='%23FBBF24'/%3E%3Ccircle cx='42' cy='38' r='6' fill='%23FBBF24'/%3E%3C/svg%3E",
-        "duration": round(synth_res["duration_sec"]),
-        "status": "SUCCESS",
-        "engine": "free_instruments_fluidsynth",
-        "zero_cost": True,
-        "bpm": bpm,
-        "musical_key": musical_key,
-        "progression_style": progression_style,
-        "bars": bars,
-        "style": style_desc,
-        "lyrics": lyrics_notes,
-        "free_tracks": synth_res["tracks"],
-        "licenses_used": synth_res["licenses_used"],
-        "amp_configs": synth_res.get("amp_configs_applied") or amp_configs,
-        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "updated_at": time.time(),
-    }
-
-    if save_to_library:
-        # 1. Respaldar MP3 en Google Drive 5TB antes de confirmar estado permanente
-        gdrive_res = await gdrive_upload_track_audio(track_id, out_mp3, title)
-        if gdrive_res and gdrive_res.get("file_id"):
-            track_record["gdrive_id"] = gdrive_res["file_id"]
-            track_record["gdrive_link"] = gdrive_res.get("link") or f"https://drive.google.com/file/d/{gdrive_res['file_id']}/view"
-
-        normalize_track_persistence_state(track_record)
-        save_library_atomic([track_record])
-        await gdrive_sync_library_to_cloud(load_library())
-
-    # Registrar también en TASKS en memoria para que /api/download/{task_id}/{format} funcione aun si save_to_library=False
-    TASKS[track_id] = {
-        "id": track_id,
-        "owner_email": current_user.strip().lower(),
-        "status": "SUCCESS",
-        "title": title,
-        "logs": "Sintetizado localmente con FluidSynth (0 créditos).",
-        "tracks": [track_record],
-        "detail": "Completado",
-    }
-
-    return JSONResponse(content={
-        "status": "ok",
-        "zero_cost": True,
-        "paid_api_calls": 0,
-        "track_id": track_id,
-        "track": track_record,
-        "download_urls": {
-            "mp3": f"/api/download/{track_id}/mp3",
-            "wav": f"/api/download/{track_id}/wav",
-            "flac": f"/api/download/{track_id}/flac",
-        },
-        "synthesis_metrics": synth_res,
-    })
 
 
 # ==============================================================================

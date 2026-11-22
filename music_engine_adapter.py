@@ -7,8 +7,7 @@ tareas (TASKS), el almacenamiento Google Drive 5TB, Catbox y la biblioteca.
 
 Motores integrados:
 1. UdioProEngine: Motor activo por defecto en producción (UdioAPI Pro v2).
-2. LocalSF2Engine: Motor local autoalojado de 20 instrumentos (FluidSynth + SoundFonts, 0 créditos).
-3. SelfHostedNeuralEngine: Adaptador para modelos neuronales autoalojados (MusicGen Melody / YuE / GPU Worker),
+2. SelfHostedNeuralEngine: Adaptador para modelos neuronales autoalojados (MusicGen Melody / YuE / GPU Worker),
    con verificación estricta de hardware (CUDA, VRAM, RAM) y reporte de bloqueos de infraestructura.
 """
 
@@ -427,99 +426,6 @@ class UdioProEngine(BaseMusicEngine):
         )
 
 
-class LocalSF2Engine(BaseMusicEngine):
-    """
-    Adaptador para el motor local de 20 instrumentos virtuales con FluidSynth + SoundFonts libres.
-    Es 100% autoalojable, 0 costos de API, sin moderación externa, y compatible con los 512 MB de Render.
-    Nota técnica: Es estrictamente instrumental (no sintetiza voces ni coros con letra).
-    """
-
-    @property
-    def engine_id(self) -> str:
-        return "local_sf2"
-
-    @property
-    def name(self) -> str:
-        return "Motor Local SF2 (FluidSynth Virtual Instruments)"
-
-    def get_capabilities(self) -> Dict[str, Any]:
-        return {
-            "supports_vocals": False,  # No genera voces cantadas
-            "supports_spanish_lyrics": False,
-            "supports_instrumental": True,
-            "supports_upload_cover": True,  # Puede sobregrabar pistas o acompañar melodías
-            "requires_credits": False,
-            "self_hosted": True,
-            "cloud_provider": "local_server",
-            "moderation_active": False,
-            "render_compatible": True,  # Diseñado específicamente para <512MB RAM en Render
-            "quality_tier": "studio_instrumental_sf2",
-        }
-
-    def check_status(self) -> Dict[str, Any]:
-        try:
-            import free_instruments_engine
-            fluidsynth_bin = free_instruments_engine.get_fluidsynth_binary()
-            has_fluidsynth = bool(fluidsynth_bin)
-            return {
-                "engine_id": self.engine_id,
-                "name": self.name,
-                "status": "ready" if has_fluidsynth else "fluidsynth_not_installed",
-                "has_fluidsynth": has_fluidsynth,
-                "fluidsynth_path": fluidsynth_bin or "N/A",
-                "requires_gpu": False,
-                "render_compatible": True,
-                "message": "Operativo en CPU local" if has_fluidsynth else "FluidSynth no encontrado en el sistema.",
-            }
-        except Exception as e:
-            return {
-                "engine_id": self.engine_id,
-                "name": self.name,
-                "status": "error",
-                "error": str(e),
-                "render_compatible": True,
-            }
-
-    async def generate_and_poll(
-        self,
-        task_id: str,
-        payload: Dict[str, Any],
-        upload_url: Optional[str],
-        log_msg: Callable[[str], None],
-        is_task_cancelled: Callable[[], bool],
-        api_key: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        import free_instruments_engine
-
-        log_msg("Motor Local SF2: Sintetizando instrumentación pura con FluidSynth (0 créditos)...")
-        title = payload.get("title") or "Obra Instrumental SF2"
-        # Implementa la síntesis local mediante free_instruments_engine
-        # y devuelve la pista en el formato estandarizado
-        track_id = f"sf2_{hashlib.md5(f'{task_id}_{title}'.encode('utf-8')).hexdigest()[:12]}"
-        output_mp3 = os.path.join("tracks", f"{track_id}.mp3")
-        os.makedirs("tracks", exist_ok=True)
-
-        # Generar pista base o reproducir demo de piano/instrumentos
-        preset = payload.get("active_preset") or "piano_oracion"
-        log_msg(f"Motor Local SF2: Procesando arreglo '{preset}' en CPU...")
-
-        # Generación garantizada de audio mediante FluidSynth
-        # Si el usuario no tiene FluidSynth instalado en Windows de desarrollo, produce aviso técnico
-        fluidsynth_bin = free_instruments_engine.get_fluidsynth_binary()
-        if not fluidsynth_bin:
-            raise Exception("FluidSynth no está instalado en el servidor para ejecutar la síntesis local SF2.")
-
-        # Devuelve la pista estructurada
-        return [{
-            "id": track_id,
-            "title": title,
-            "audio_url": f"/api/track/{track_id}.mp3",
-            "image_url": "/walkman.jpg",
-            "duration": 180,
-            "status": "SUCCESS",
-        }]
-
-
 class SelfHostedNeuralEngine(BaseMusicEngine):
     """
     Adaptador para modelos neuronales abiertos autoalojados (MusicGen Melody, YuE, Stable Audio)
@@ -638,7 +544,6 @@ class MusicEngineRegistry:
     def __init__(self):
         self._engines: Dict[str, BaseMusicEngine] = {
             "udio_pro": UdioProEngine(),
-            "local_sf2": LocalSF2Engine(),
             "self_hosted_neural": SelfHostedNeuralEngine(),
         }
         # Motor activo por defecto configurado por variable de entorno sin alterar el frontend

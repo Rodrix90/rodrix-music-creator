@@ -1288,6 +1288,91 @@ class TestStudioVirtualSixSelectors(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(captured[0].get("tags", ""), prev_json["tags_preview"])
         self.assertEqual(captured[0]["prompt"], lyrics_exact)
 
+    async def test_21_fluidsynth_mode_and_sf2_instrumentation_panel_removed_cleanly(self):
+        """Verifica eliminación definitiva de Instrumental Gratuito (FluidSynth) y panel Instrumentación de la Obra (20 SF2) sin romper STYLE FINAL ni componentes compartidos."""
+        with open(os.path.join(REPO_DIR, "index.html"), "r", encoding="utf-8") as _f:
+            html = _f.read()
+
+        # 1) Elementos eliminados de Modo Instrumental Gratuito (FluidSynth)
+        for forbidden in (
+            'id="engineCardFluidsynth"',
+            'value="fluidsynth"',
+            "Instrumental Gratuito (FluidSynth)",
+            "100% Instrumental Gratuito",
+            "Sintetizado real con 20 instrumentos SF2",
+            "handleFluidSynthUnifiedSubmit",
+            "onEngineChange(",
+            'id="unifiedSynthesisResultBox"',
+            'id="unifiedAudioPlayer"',
+        ):
+            self.assertNotIn(forbidden, html, f"No debe permanecer referencia a FluidSynth en index.html: {forbidden}")
+
+        # 2) Elementos eliminados del panel Instrumentación de la Obra (20 SF2)
+        for forbidden in (
+            'id="integratedInstrumentsSection"',
+            "Instrumentación de la Obra (20 Instrumentos SF2)",
+            "Personalizar Instrumentos & Volúmenes (20 SF2)",
+            'id="activeInstrumentsCountBadge"',
+            'id="activeInstrumentsChipsStrip"',
+            'id="freeInstrumentalBarsSelect"',
+            "Duración Instrumental:",
+            'id="unifiedInstrumentsGrid"',
+            "ACTIVE_UNIFIED_TRACKS",
+            "PRESET_INSTRUMENTS_MAP",
+            "PRAYER_PIANO_INSTRUMENT_MAP",
+            "SF2_ID_TO_STYLE_NAME",
+            "userExplicitSf2Ids",
+            "initUnifiedInstruments",
+            "applyPresetInstruments",
+            "restorePresetInstruments",
+            "previewFreeInstrument",
+            'id="effSumInstruments"',
+        ):
+            self.assertNotIn(forbidden, html, f"No debe permanecer referencia al panel SF2 en index.html: {forbidden}")
+
+        # 3) Componentes compartidos preservados
+        for required in (
+            'id="engineCardUdio"',
+            "IA Musical Completa (Udio)",
+            'id="chkNoLatin"',
+            "function buildGenerationStylePayload(",
+            'id="styleFinalPreviewSection"',
+            'id="selStudioDrums"',
+            'id="selStudioMic"',
+        ):
+            self.assertIn(required, html, f"Componente compartido faltante en index.html: {required}")
+
+        # 4) Motor adapter: local_sf2 retirado, udio_pro activo
+        import music_engine_adapter
+        engines_map = music_engine_adapter.engine_registry.list_engines()["engines"]
+        self.assertNotIn("local_sf2", engines_map)
+        self.assertIn("udio_pro", engines_map)
+
+        # 5) Endpoints FastAPI: /api/health, /api/studio-profiles/catalog y retiro de endpoints exclusivos FluidSynth
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            r_health = await client.get("/api/health")
+            self.assertEqual(r_health.status_code, 200)
+            h_json = r_health.json()
+            self.assertEqual(h_json.get("status"), "ok")
+            self.assertNotIn("free_instruments", h_json)
+
+            r_cat = await client.get("/api/studio-profiles/catalog")
+            self.assertEqual(r_cat.status_code, 200)
+            cat_json = r_cat.json()
+            self.assertEqual(len(cat_json.get("categories", [])), 6)
+            self.assertEqual(sum(len(c.get("items", [])) for c in cat_json.get("categories", [])), 45)
+
+            r_gen = await client.post("/api/free-instruments/generate", json={"tracks": [{"id": "piano_cola"}]})
+            self.assertIn(r_gen.status_code, (404, 405))
+
+            r_prev = await client.post("/api/free-instruments/preview", json={"instrument_id": "piano_cola"})
+            self.assertIn(r_prev.status_code, (404, 405))
+
+            # Catálogo compartido para enriquecimiento de Biblioteca sigue operativo
+            r_shared_cat = await client.get("/api/free-instruments/catalog")
+            self.assertEqual(r_shared_cat.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
