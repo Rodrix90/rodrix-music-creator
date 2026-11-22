@@ -265,30 +265,88 @@ details.adv[open] summary{border-bottom:1px solid var(--border)}
 @keyframes pulseAudio{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.5)}50%{box-shadow:0 0 10px 3px rgba(16,185,129,0.7)}}
 .rack-summary{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
-/* ---------- 6 SELECTORES INDEPENDIENTES DEL ESTUDIO VIRTUAL ---------- */
-.studio-selectors-panel{background:linear-gradient(180deg,rgba(99,102,241,0.08),rgba(15,23,42,0.55));border:1px solid rgba(99,102,241,0.32);border-radius:12px;padding:12px 14px;margin-bottom:14px;max-width:100%;box-sizing:border-box;overflow:hidden}
-.studio-selectors-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.studio-selectors-title{font-size:12.5px;font-weight:800;color:#E0E7FF;display:flex;align-items:center;gap:7px}
+/* ---------- 6 SELECTORES COMPACTOS DEL ESTUDIO VIRTUAL ---------- */
+.studio-selectors-panel{background:linear-gradient(180deg,rgba(99,102,241,0.08),rgba(15,23,42,0.5));border:1px solid rgba(99,102,241,0.32);border-radius:11px;padding:9px 11px;margin-bottom:10px;max-width:100%;box-sizing:border-box;overflow:hidden}
+.studio-selectors-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:7px}
+.studio-selectors-title{font-size:12px;font-weight:800;color:var(--text,#E0E7FF);display:flex;align-items:center;gap:6px}
 .studio-selectors-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.studio-selectors-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%;box-sizing:border-box}
-.studio-selector-card{background:rgba(15,23,42,0.82);border:1px solid rgba(255,255,255,0.09);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:5px;min-width:0;max-width:100%;box-sizing:border-box;transition:border-color .18s,background .18s}
-.studio-selector-card.configured{border-color:rgba(99,102,241,0.65);background:rgba(99,102,241,0.12)}
-.studio-selector-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;font-weight:700;color:#C7D2FE;min-width:0}
-.studio-selector-head label{display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
-.studio-selector-select{width:100%;max-width:100%;min-width:0;min-height:38px;padding:6px 8px;border-radius:7px;border:1px solid rgba(148,163,184,0.28);background:#0F172A;color:#F8FAFC;font-size:12.5px;font-weight:600;text-overflow:ellipsis;box-sizing:border-box;cursor:pointer}
+.studio-selectors-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;box-sizing:border-box}
+.studio-selector-card{background:rgba(15,23,42,0.78);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;gap:4px;min-width:0;max-width:100%;box-sizing:border-box;transition:border-color .18s,background .18s}
+.studio-selector-card.configured{border-color:rgba(99,102,241,0.68);background:rgba(99,102,241,0.13)}
+.studio-selector-head{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:10.5px;font-weight:700;color:#C7D2FE;min-width:0}
+.studio-selector-head label{display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;flex:1;min-width:0}
+.studio-info-btn{flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid rgba(148,163,184,0.28);background:rgba(99,102,241,0.12);color:#A5B4FC;display:inline-flex;align-items:center;justify-content:center;font-size:12px;padding:0;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.studio-info-btn:hover,.studio-info-btn[aria-expanded="true"]{background:rgba(99,102,241,0.32);border-color:rgba(129,140,248,0.7);color:#fff}
+.studio-selector-select{width:100%;max-width:100%;min-width:0;min-height:34px;padding:4px 8px;border-radius:7px;border:1px solid rgba(148,163,184,0.28);background:var(--bg,#0F172A);color:var(--text,#F8FAFC);font-size:12px;font-weight:600;text-overflow:ellipsis;box-sizing:border-box;cursor:pointer}
 .studio-selector-select:focus{outline:none;border-color:var(--accent)}
-.studio-selector-desc{font-size:10.5px;line-height:1.35;color:#94A3B8;word-break:break-word}
-.studio-selector-desc.active{color:#A7F3D0}
-.studio-profile-summary{margin-top:10px;padding:9px 11px;background:rgba(2,6,23,0.55);border:1px solid rgba(148,163,184,0.2);border-radius:8px;font-size:11px;color:#CBD5E1;line-height:1.4}
-.studio-profile-summary-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px}
-.studio-honesty-note{margin-top:6px;font-size:10.5px;color:#94A3B8;display:flex;align-items:flex-start;gap:5px;line-height:1.35}
+.studio-selector-desc{font-size:10px;line-height:1.25;color:var(--muted,#94A3B8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.studio-selector-desc.active{color:#6EE7B7}
+.studio-selector-info-popover{display:none;margin-top:2px;padding:6px 8px;border-radius:6px;background:rgba(2,6,23,0.72);border:1px solid rgba(129,140,248,0.28);font-size:10.5px;line-height:1.35;color:#CBD5E1;word-break:break-word}
+.studio-selector-info-popover.open{display:block}
+.studio-selector-info-popover strong{color:#C7D2FE}
+
+/* ---------- PREVISUALIZACIÓN DESPLEGABLE STYLE FINAL (EXACTA DEL BACKEND) ---------- */
+.style-final-box{margin-top:8px;border:1px solid rgba(99,102,241,0.34);border-radius:10px;background:rgba(15,23,42,0.55);overflow:hidden;max-width:100%;box-sizing:border-box}
+.style-final-omission-banner{padding:8px 10px;background:rgba(239,68,68,0.16);border-bottom:1px solid rgba(239,68,68,0.45);color:#FECACA;font-size:11px;font-weight:600;line-height:1.38;word-break:break-word}
+.style-final-header{width:100%;background:transparent;border:none;color:var(--text,#E0E7FF);padding:8px 11px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;text-align:left;cursor:pointer;min-height:42px;transition:background .15s}
+.style-final-header:hover{background:rgba(99,102,241,0.08)}
+.style-final-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 200px}
+.style-final-icon{color:#818CF8;font-size:15px;flex-shrink:0}
+.style-final-title{font-size:11.5px;font-weight:800;letter-spacing:.03em;color:var(--text,#E0E7FF);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.style-final-header-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
+.style-final-chars{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(99,102,241,0.16);color:#C7D2FE;border:1px solid rgba(99,102,241,0.35)}
+.style-final-status{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid rgba(148,163,184,0.3);color:#CBD5E1;background:rgba(148,163,184,0.12)}
+.style-final-status.ok{color:#6EE7B7;background:rgba(16,185,129,0.14);border-color:rgba(16,185,129,0.38)}
+.style-final-status.opt{color:#93C5FD;background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.4)}
+.style-final-status.warn{color:#FDE68A;background:rgba(245,158,11,0.16);border-color:rgba(245,158,11,0.45)}
+.style-final-status.err{color:#FECACA;background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.48)}
+.style-final-status.stale{color:#DDD6FE;background:rgba(139,92,246,0.18);border-color:rgba(139,92,246,0.42)}
+.style-final-warn-dot{color:#FBBF24;font-size:14px;display:inline-flex;align-items:center}
+.style-final-warn-dot.danger{color:#F87171}
+.style-final-chevron{font-size:14px;color:var(--muted,#94A3B8);transition:transform .2s}
+.style-final-header[aria-expanded="true"] .style-final-chevron{transform:rotate(180deg)}
+.style-final-body{padding:0 11px 10px;border-top:1px solid rgba(148,163,184,0.16);display:flex;flex-direction:column;gap:7px}
+.style-final-compaction-alert{margin-top:8px;padding:7px 9px;border-radius:7px;font-size:10.5px;line-height:1.4;word-break:break-word}
+.style-final-info-banner{margin-top:8px;padding:7px 9px;border-radius:7px;font-size:11px;line-height:1.4;background:rgba(59,130,246,0.12);border:1px solid rgba(96,165,250,0.35);color:#BFDBFE;word-break:break-word}
+.style-final-info-banner.auth{background:rgba(245,158,11,0.14);border-color:rgba(245,158,11,0.45);color:#FDE68A}
+.style-final-info-banner.err{background:rgba(239,68,68,0.14);border-color:rgba(239,68,68,0.45);color:#FECACA}
+.style-final-textarea{margin-top:6px;width:100%;min-height:84px;max-height:220px;padding:8px 10px;border-radius:8px;border:1px solid rgba(148,163,184,0.24);background:rgba(2,6,23,0.68);color:#E2E8F0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.42;resize:vertical;box-sizing:border-box;transition:opacity .15s}
+.style-final-textarea[data-stale="true"]{opacity:0.52}
+.style-final-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.style-final-meta-note{font-size:10px;color:var(--muted,#94A3B8);line-height:1.3}
+.style-final-btn-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.style-final-btn{padding:4px 10px;font-size:11px;border-radius:7px;min-height:32px;display:inline-flex;align-items:center;gap:4px}
+
+@media (prefers-color-scheme: light){
+  body.light-theme .studio-selectors-panel,[data-theme="light"] .studio-selectors-panel{background:linear-gradient(180deg,rgba(99,102,241,0.06),rgba(241,245,249,0.92));border-color:rgba(99,102,241,0.28)}
+  body.light-theme .studio-selector-card,[data-theme="light"] .studio-selector-card{background:#FFFFFF;border-color:rgba(15,23,42,0.12)}
+  body.light-theme .studio-selector-head,[data-theme="light"] .studio-selector-head{color:#3730A3}
+  body.light-theme .studio-selector-select,[data-theme="light"] .studio-selector-select{background:#F8FAFC;color:#0F172A;border-color:rgba(15,23,42,0.2)}
+  body.light-theme .studio-selector-info-popover,[data-theme="light"] .studio-selector-info-popover{background:#F8FAFC;color:#334155;border-color:rgba(99,102,241,0.28)}
+  body.light-theme .studio-selector-info-popover strong,[data-theme="light"] .studio-selector-info-popover strong{color:#312E81}
+  body.light-theme .style-final-box,[data-theme="light"] .style-final-box{background:#F8FAFC;border-color:rgba(99,102,241,0.3)}
+  body.light-theme .style-final-header,[data-theme="light"] .style-final-header,body.light-theme .style-final-title,[data-theme="light"] .style-final-title{color:#1E293B}
+  body.light-theme .style-final-chars,[data-theme="light"] .style-final-chars{background:rgba(99,102,241,0.12);color:#3730A3}
+  body.light-theme .style-final-textarea,[data-theme="light"] .style-final-textarea{background:#FFFFFF;color:#0F172A;border-color:rgba(15,23,42,0.18)}
+}
+
 @media (max-width: 960px){
   .studio-selectors-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width: 600px){
-  .studio-selectors-panel{padding:10px 10px}
-  .studio-selectors-grid{grid-template-columns:minmax(0,1fr);gap:8px}
-  .studio-selector-select{font-size:13px;min-height:40px}
+  .studio-selectors-panel{padding:7px 8px;margin-bottom:8px}
+  .studio-selectors-header{margin-bottom:5px;gap:5px}
+  .studio-selectors-grid{grid-template-columns:minmax(0,1fr);gap:5px}
+  .studio-selector-card{padding:5px 7px;gap:3px}
+  .studio-selector-head{font-size:11px}
+  .studio-info-btn{width:26px;height:26px;font-size:13px}
+  .studio-selector-select{font-size:13px;min-height:40px;padding:6px 9px}
+  .studio-selector-desc{display:none}
+  .style-final-header{padding:8px 9px;gap:6px}
+  .style-final-title{font-size:11px;white-space:normal;line-height:1.25}
+  .style-final-body{padding:0 9px 9px}
+  .style-final-btn{min-height:36px;padding:6px 11px;font-size:11.5px}
+  .style-final-textarea{font-size:11px;min-height:96px}
 }
 
 /* ---------- SELECTOR DE RITMO & BANDA ---------- */
@@ -2994,16 +3052,16 @@ html, body {
             </div>
           </div>
 
-          <!-- ESTUDIO VIRTUAL: 6 SELECTORES INDEPENDIENTES DE SONIDO -->
+          <!-- ESTUDIO VIRTUAL: 6 SELECTORES COMPACTOS E INDEPENDIENTES DE SONIDO -->
           <div class="studio-selectors-panel" id="studioVirtualSelectorsPanel" data-studio-panel="six-selectors">
             <div class="studio-selectors-header">
               <div class="studio-selectors-title">
-                <i class="ph ph-sliders-horizontal" style="color:#A78BFA;font-size:17px"></i>
-                <span>Estudio Virtual — Cadena Sonora Independiente</span>
+                <i class="ph ph-sliders-horizontal" style="color:#A78BFA;font-size:15px"></i>
+                <span>Estudio Virtual — 6 Selectores Independientes</span>
               </div>
               <div class="studio-selectors-meta">
-                <span class="badge" id="studioSelectorsActiveBadge" style="font-size:10px;background:rgba(99,102,241,0.16);color:#C7D2FE;border-color:rgba(99,102,241,0.4)">0/6 activos • Original / Automático</span>
-                <button type="button" class="btn-sec" id="btnResetStudioSelectors" onclick="resetStudioVirtualSelectors()" style="padding:3px 9px;font-size:10.5px;border-radius:6px;height:auto">
+                <span class="badge" id="studioSelectorsActiveBadge" style="font-size:10px;padding:3px 9px;background:rgba(99,102,241,0.16);color:#C7D2FE;border-color:rgba(99,102,241,0.4)">0/6 activos • Original / Automático</span>
+                <button type="button" class="btn-sec" id="btnResetStudioSelectors" onclick="resetStudioVirtualSelectors()" style="padding:3px 8px;font-size:10.5px;border-radius:6px;height:auto;min-height:28px">
                   <i class="ph ph-arrow-counter-clockwise"></i> Automático
                 </button>
               </div>
@@ -3012,77 +3070,74 @@ html, body {
             <div class="studio-selectors-grid" id="studioVirtualSelectorsGrid">
               <div class="studio-selector-card" data-studio-cat="drums">
                 <div class="studio-selector-head">
-                  <label for="selStudioDrums"><i class="ph ph-drum"></i> Baterías</label>
+                  <label for="selStudioDrums"><i class="ph ph-metronome"></i> Baterías</label>
+                  <button type="button" class="studio-info-btn" data-studio-info="drums" onclick="toggleStudioSelectorInfo('drums')" aria-expanded="false" aria-controls="infoStudioDrums" aria-label="Detalle técnico de Baterías" title="Ver detalle técnico del perfil"><i class="ph ph-info"></i></button>
                 </div>
                 <select class="studio-selector-select" id="selStudioDrums" data-studio-field="drums" aria-label="Selector de Baterías">
                   <option value="auto" selected>Original / Automático</option>
                 </select>
-                <div class="studio-selector-desc" id="descStudioDrums">Sin instrucciones adicionales para esta categoría.</div>
+                <div class="studio-selector-desc" id="descStudioDrums">Original / Automático</div>
+                <div class="studio-selector-info-popover" id="infoStudioDrums">Modo Original / Automático: no impone instrucciones adicionales.</div>
               </div>
 
               <div class="studio-selector-card" data-studio-cat="guitars">
                 <div class="studio-selector-head">
                   <label for="selStudioGuitar"><i class="ph ph-guitar"></i> Guitarras eléctricas</label>
+                  <button type="button" class="studio-info-btn" data-studio-info="guitars" onclick="toggleStudioSelectorInfo('guitars')" aria-expanded="false" aria-controls="infoStudioGuitar" aria-label="Detalle técnico de Guitarras eléctricas" title="Ver detalle técnico del perfil"><i class="ph ph-info"></i></button>
                 </div>
                 <select class="studio-selector-select" id="selStudioGuitar" data-studio-field="guitars" aria-label="Selector de Guitarras eléctricas">
                   <option value="auto" selected>Original / Automático</option>
                 </select>
-                <div class="studio-selector-desc" id="descStudioGuitar">Sin instrucciones adicionales para esta categoría.</div>
+                <div class="studio-selector-desc" id="descStudioGuitar">Original / Automático</div>
+                <div class="studio-selector-info-popover" id="infoStudioGuitar">Modo Original / Automático: no impone instrucciones adicionales.</div>
               </div>
 
               <div class="studio-selector-card" data-studio-cat="basses">
                 <div class="studio-selector-head">
                   <label for="selStudioBass"><i class="ph ph-wave-sine"></i> Bajos eléctricos</label>
+                  <button type="button" class="studio-info-btn" data-studio-info="basses" onclick="toggleStudioSelectorInfo('basses')" aria-expanded="false" aria-controls="infoStudioBass" aria-label="Detalle técnico de Bajos eléctricos" title="Ver detalle técnico del perfil"><i class="ph ph-info"></i></button>
                 </div>
                 <select class="studio-selector-select" id="selStudioBass" data-studio-field="basses" aria-label="Selector de Bajos eléctricos">
                   <option value="auto" selected>Original / Automático</option>
                 </select>
-                <div class="studio-selector-desc" id="descStudioBass">Sin instrucciones adicionales para esta categoría.</div>
+                <div class="studio-selector-desc" id="descStudioBass">Original / Automático</div>
+                <div class="studio-selector-info-popover" id="infoStudioBass">Modo Original / Automático: no impone instrucciones adicionales.</div>
               </div>
 
               <div class="studio-selector-card" data-studio-cat="keyboards">
                 <div class="studio-selector-head">
                   <label for="selStudioKeyboard"><i class="ph ph-piano-keys"></i> Teclados</label>
+                  <button type="button" class="studio-info-btn" data-studio-info="keyboards" onclick="toggleStudioSelectorInfo('keyboards')" aria-expanded="false" aria-controls="infoStudioKeyboard" aria-label="Detalle técnico de Teclados" title="Ver detalle técnico del perfil"><i class="ph ph-info"></i></button>
                 </div>
                 <select class="studio-selector-select" id="selStudioKeyboard" data-studio-field="keyboards" aria-label="Selector de Teclados">
                   <option value="auto" selected>Original / Automático</option>
                 </select>
-                <div class="studio-selector-desc" id="descStudioKeyboard">Sin instrucciones adicionales para esta categoría.</div>
+                <div class="studio-selector-desc" id="descStudioKeyboard">Original / Automático</div>
+                <div class="studio-selector-info-popover" id="infoStudioKeyboard">Modo Original / Automático: no impone instrucciones adicionales.</div>
               </div>
 
               <div class="studio-selector-card" data-studio-cat="consoles">
                 <div class="studio-selector-head">
                   <label for="selStudioConsole"><i class="ph ph-equalizer"></i> Consolas de grabación</label>
+                  <button type="button" class="studio-info-btn" data-studio-info="consoles" onclick="toggleStudioSelectorInfo('consoles')" aria-expanded="false" aria-controls="infoStudioConsole" aria-label="Detalle técnico de Consolas de grabación" title="Ver detalle técnico del perfil"><i class="ph ph-info"></i></button>
                 </div>
                 <select class="studio-selector-select" id="selStudioConsole" data-studio-field="consoles" aria-label="Selector de Consolas de grabación">
                   <option value="auto" selected>Original / Automático</option>
                 </select>
-                <div class="studio-selector-desc" id="descStudioConsole">Sin instrucciones adicionales para esta categoría.</div>
+                <div class="studio-selector-desc" id="descStudioConsole">Original / Automático</div>
+                <div class="studio-selector-info-popover" id="infoStudioConsole">Modo Original / Automático: no impone instrucciones adicionales.</div>
               </div>
 
               <div class="studio-selector-card" data-studio-cat="microphones">
                 <div class="studio-selector-head">
                   <label for="selStudioMic"><i class="ph ph-microphone-stage"></i> Micrófonos para cantar</label>
+                  <button type="button" class="studio-info-btn" data-studio-info="microphones" onclick="toggleStudioSelectorInfo('microphones')" aria-expanded="false" aria-controls="infoStudioMic" aria-label="Detalle técnico de Micrófonos para cantar" title="Ver detalle técnico del perfil"><i class="ph ph-info"></i></button>
                 </div>
                 <select class="studio-selector-select" id="selStudioMic" data-studio-field="microphones" aria-label="Selector de Micrófonos para cantar">
                   <option value="auto" selected>Original / Automático</option>
                 </select>
-                <div class="studio-selector-desc" id="descStudioMic">Sin instrucciones adicionales para esta categoría.</div>
-              </div>
-            </div>
-
-            <div class="studio-profile-summary" id="studioProfileSummaryBox">
-              <div class="studio-profile-summary-head">
-                <span style="font-weight:700;color:#DDD6FE"><i class="ph ph-waveform"></i> Perfil Técnico Activo (<code style="font-size:10px;color:#93C5FD">style</code>)</span>
-                <span id="studioStyleBudgetBadge" style="font-size:10px;color:#94A3B8">0 / 1000 chars asignados al Estudio</span>
-              </div>
-              <div id="studioProfileBreakdownList" style="color:#94A3B8">
-                Todas las categorías están en <strong>Original / Automático</strong>: no se imponen restricciones sonoras adicionales.
-              </div>
-              <div id="studioCompactionWarning" role="alert" style="display:none;margin-top:7px;padding:7px 10px;border-radius:7px;font-size:10.5px;line-height:1.4"></div>
-              <div class="studio-honesty-note">
-                <i class="ph ph-info" style="color:#818CF8;flex-shrink:0;margin-top:1px"></i>
-                <span>Orientación sonora textual: estas opciones traducen características físicas, interpretación y procesamiento de estudio al parámetro <code>style</code> sin alterar tu letra (<code>prompt</code>). No emulan exactamente hardware físico ni copian grabaciones originales.</span>
+                <div class="studio-selector-desc" id="descStudioMic">Original / Automático</div>
+                <div class="studio-selector-info-popover" id="infoStudioMic">Modo Original / Automático: no impone instrucciones adicionales.</div>
               </div>
             </div>
           </div>
@@ -3797,6 +3852,39 @@ html, body {
               <button type="button" class="inspiration-chip" onclick="applyInspiration('Rock Cristiano Épico')">🤘 Rock Épico</button>
             </div>
             <textarea id="styleInput" required placeholder="Describe todo aquí: Voz como Luis Miguel, estilo pop energético mexicano, con guitarras eléctricas Stratocaster y mucho flanger..."></textarea>
+
+            <!-- STYLE FINAL — PREVISUALIZACIÓN EXACTA DEL BACKEND PARA UDIOAPI -->
+            <div class="style-final-box" id="styleFinalPreviewSection" data-preview-state="idle">
+              <div id="studioOmissionBanner" class="style-final-omission-banner" role="alert" style="display:none"></div>
+              <button type="button" class="style-final-header" id="styleFinalToggleBtn" aria-expanded="false" aria-controls="styleFinalBody" onclick="toggleStyleFinalPreview()">
+                <div class="style-final-title-wrap">
+                  <i class="ph ph-code-block style-final-icon"></i>
+                  <span class="style-final-title">STYLE FINAL — Texto enviado a UdioAPI</span>
+                </div>
+                <div class="style-final-header-meta">
+                  <span class="style-final-chars" id="styleFinalCharCount">— / 1.000</span>
+                  <span class="style-final-status" id="styleFinalStatusBadge">Listo</span>
+                  <span class="style-final-warn-dot" id="styleFinalWarnIndicator" style="display:none" title="Aviso de compactación o límite de caracteres"><i class="ph ph-warning"></i></span>
+                  <i class="ph ph-caret-down style-final-chevron" id="styleFinalChevron"></i>
+                </div>
+              </button>
+              <div class="style-final-body" id="styleFinalBody" style="display:none">
+                <div id="studioCompactionWarning" role="alert" class="style-final-compaction-alert" style="display:none"></div>
+                <div id="styleFinalMessageBanner" class="style-final-info-banner" style="display:none"></div>
+                <textarea id="styleFinalPreviewText" class="style-final-textarea" readonly aria-readonly="true" aria-label="STYLE FINAL enviado a UdioAPI (solo lectura)" placeholder="Aquí aparecerá el texto exacto que prepara el backend para UdioAPI..."></textarea>
+                <div class="style-final-actions">
+                  <span class="style-final-meta-note" id="styleFinalMetaNote">Resultado exacto de /api/preview_parameters • Solo lectura • Sin consumo de créditos</span>
+                  <div class="style-final-btn-group">
+                    <button type="button" class="btn-sec style-final-btn" id="btnRefreshFinalStyle" onclick="scheduleStyleFinalPreview(true)" title="Volver a consultar el STYLE FINAL al backend">
+                      <i class="ph ph-arrows-clockwise"></i> Actualizar
+                    </button>
+                    <button type="button" class="btn-sec style-final-btn" id="btnCopyFinalStyle" onclick="copyFinalStyleText()" disabled title="Copiar STYLE FINAL">
+                      <i class="ph ph-copy"></i> Copiar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         <!-- ASISTENTE DE ACORDES Y TABLATURA / CANCIONERO (COLAPSABLE) -->
@@ -6599,6 +6687,9 @@ function updateEffectiveConfigSummary() {
       }
     }
   }
+  if (typeof scheduleStyleFinalPreview === 'function') {
+    scheduleStyleFinalPreview();
+  }
 }
 
 if ($('userBpmInput')) {
@@ -8562,22 +8653,15 @@ function setBusy(b){
   $('cancelBtn').style.display = b ? 'block' : 'none';
 }
 
-/* ---------- Generar ---------- */
-$('genForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  if ($('submitBtn').disabled) return;
-
-  if (typeof currentEngine !== 'undefined' && currentEngine === 'fluidsynth') {
-    await handleFluidSynthUnifiedSubmit();
-    return;
-  }
-
+/* ---------- Constructor compartido de parámetros musicales (/api/preview_parameters y /api/transform) ---------- */
+function buildGenerationStylePayload(opts = {}) {
+  const forPreview = Boolean(opts && opts.forPreview);
   const fd = new FormData();
-  const instr = $('instrumental').checked;
+  const instr = Boolean($('instrumental') && $('instrumental').checked);
 
   // Resolver configuración efectiva con prioridad absoluta de usuario
   const effCfg = getEffectiveUserMusicalConfig();
-  let finalStyle = $('styleInput').value.trim();
+  let finalStyle = ($('styleInput') ? $('styleInput').value : '').trim();
   const activeRhythmPill = document.querySelector('.rhythm-pill.active');
   const rhythmType = activeRhythmPill ? activeRhythmPill.dataset.rhythm : 'libre';
   const activePreset = effCfg.activePreset;
@@ -8614,29 +8698,34 @@ $('genForm').addEventListener('submit', async e => {
     }
   }
 
-  // Banda activa (sólo si NO es un modo solista aislado)
+  const studioSelPayload = (typeof getStudioVirtualSelections === 'function')
+    ? getStudioVirtualSelections()
+    : { drums: 'auto', guitars: 'auto', basses: 'auto', keyboards: 'auto', consoles: 'auto', microphones: 'auto' };
+  const hasAnyStudioSelector = Object.values(studioSelPayload).some(v => v && v !== 'auto');
+
+  // Banda activa (sólo si NO es un modo solista aislado y sin pisar categorías ya elegidas en Estudio Virtual)
   const bandExtras = [];
   if (!isAnySoloInstrumentMode) {
-    if ($('chkDrums') && $('chkDrums').checked && !finalStyle.toLowerCase().includes('drum')) {
+    if ($('chkDrums') && $('chkDrums').checked && studioSelPayload.drums === 'auto' && !finalStyle.toLowerCase().includes('drum')) {
       bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, dynamic rhythmic pulse, articulate hi-hat, no distant drums');
     }
-    if ($('chkBass') && $('chkBass').checked && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
+    if ($('chkBass') && $('chkBass').checked && studioSelPayload.basses === 'auto' && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
       if (effCfg.bassSlap) {
         bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
       } else {
         bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
       }
     }
-    if ($('chkGuitar') && $('chkGuitar').checked && !finalStyle.toLowerCase().includes('guitar')) {
+    if ($('chkGuitar') && $('chkGuitar').checked && studioSelPayload.guitars === 'auto' && !finalStyle.toLowerCase().includes('guitar')) {
       bandExtras.push('crisp acoustic rhythm guitar strumming');
     }
-    if ($('chkPiano') && $('chkPiano').checked && !finalStyle.toLowerCase().includes('piano')) {
+    if ($('chkPiano') && $('chkPiano').checked && studioSelPayload.keyboards === 'auto' && !finalStyle.toLowerCase().includes('piano')) {
       bandExtras.push('acoustic grand piano');
     }
-    if ($('chkOrgan') && $('chkOrgan').checked && !finalStyle.toLowerCase().includes('organ')) {
+    if ($('chkOrgan') && $('chkOrgan').checked && studioSelPayload.keyboards === 'auto' && !finalStyle.toLowerCase().includes('organ')) {
       bandExtras.push('Hammond B3 organ');
     }
-    if (typeof ACTIVE_UNIFIED_TRACKS !== 'undefined' && typeof FREE_CATALOG_ITEMS !== 'undefined') {
+    if (!hasAnyStudioSelector && typeof ACTIVE_UNIFIED_TRACKS !== 'undefined' && typeof FREE_CATALOG_ITEMS !== 'undefined') {
       const selectedNames = Object.keys(ACTIVE_UNIFIED_TRACKS).map(id => {
         const item = FREE_CATALOG_ITEMS.find(x => x.id === id);
         return item ? item.name : id;
@@ -8646,13 +8735,13 @@ $('genForm').addEventListener('submit', async e => {
       }
     }
     if (bandExtras.length > 0) {
-      finalStyle = `${finalStyle}, ${bandExtras.join(', ')}`;
+      finalStyle = finalStyle ? `${finalStyle}, ${bandExtras.join(', ')}` : bandExtras.join(', ');
     }
   }
 
   // Sincronización Armónica de Acordes / Tablatura
   if ($('chkAutoApplyChords') && $('chkAutoApplyChords').checked && $('chordInput') && $('chordInput').value.trim()) {
-    if (!currentHarmonicAnalysis) runHarmonicAnalysis();
+    if (!currentHarmonicAnalysis && typeof runHarmonicAnalysis === 'function') runHarmonicAnalysis();
     if (currentHarmonicAnalysis && (currentHarmonicAnalysis.detectedKey || currentHarmonicAnalysis.progressionText)) {
       const harmPrompt = [];
       if (currentHarmonicAnalysis.detectedKey && !finalStyle.toLowerCase().includes('key of')) {
@@ -8665,14 +8754,12 @@ $('genForm').addEventListener('submit', async e => {
         harmPrompt.push(`bassline voice leading with bass notes (${currentHarmonicAnalysis.bassInversions.join(', ')})`);
       }
       harmPrompt.push('tight musical accompaniment following chord changes');
-      finalStyle = `${harmPrompt.join(', ')}, ${finalStyle}`;
-      logLine(`Armonía sincronizada: ${currentHarmonicAnalysis.spanishKey} | ${currentHarmonicAnalysis.progressionText}`);
+      finalStyle = finalStyle ? `${harmPrompt.join(', ')}, ${finalStyle}` : harmPrompt.join(', ');
+      if (!forPreview) {
+        logLine(`Armonía sincronizada: ${currentHarmonicAnalysis.spanishKey} | ${currentHarmonicAnalysis.progressionText}`);
+      }
     }
   }
-
-  const studioSelPayload = (typeof getStudioVirtualSelections === 'function')
-    ? getStudioVirtualSelections()
-    : { drums: 'auto', guitars: 'auto', basses: 'auto', keyboards: 'auto', consoles: 'auto', microphones: 'auto' };
 
   fd.append('style', finalStyle);
   fd.append('studio_drums', studioSelPayload.drums || 'auto');
@@ -8689,12 +8776,11 @@ $('genForm').addEventListener('submit', async e => {
   fd.append('art_bass_slap', effCfg.bassSlap ? 'true' : 'false');
   fd.append('art_bass_pickup', effCfg.bassPickup ? 'true' : 'false');
   fd.append('active_preset', effCfg.activePreset);
-  let userLyrics = $('lyricsInput').value.trim();
 
-  // Si el usuario no puso letra en el box principal pero la tablatura tenía letra limpia, usarla automáticamente
-  if (!userLyrics && currentHarmonicAnalysis && currentHarmonicAnalysis.cleanLyrics) {
+  let userLyrics = ($('lyricsInput') ? $('lyricsInput').value : '').trim();
+  if (!forPreview && !userLyrics && currentHarmonicAnalysis && currentHarmonicAnalysis.cleanLyrics) {
     userLyrics = currentHarmonicAnalysis.cleanLyrics;
-    $('lyricsInput').value = userLyrics;
+    if ($('lyricsInput')) $('lyricsInput').value = userLyrics;
     logLine('Usando letra limpia extraída automáticamente de la tablatura.');
   }
 
@@ -8709,20 +8795,19 @@ $('genForm').addEventListener('submit', async e => {
     lyricsToSend = userLyrics;
   }
   fd.append('lyrics', lyricsToSend);
-  fd.append('title', $('titleInput').value.trim());
+  fd.append('title', ($('titleInput') ? $('titleInput').value : '').trim());
   fd.append('include_lyrics', instr ? 'false' : 'true');
-  fd.append('bypass_copyright', $('bypass').checked);
+  fd.append('bypass_copyright', String(Boolean($('bypass') && $('bypass').checked)));
   fd.append('is_public_domain', ($('chkPublicDomain') && $('chkPublicDomain').checked) ? 'true' : 'false');
 
   // Exclusiones activas (conserva exclusiones manuales primero, evita conflictos y elimina duplicados)
-  const manualExclude = $('excludeInput').value.trim();
+  const manualExclude = ($('excludeInput') ? $('excludeInput').value : '').trim();
   const autoExcludeGroups = [];
   if (isSoloGuitarMode) {
     autoExcludeGroups.push('drums, drum kit, snare, kick drum, bass, bass guitar, electric bass, synth bass, piano, keyboards, organ, synths, strings, choir, vocals, full band, backing track, rhythm section');
   } else if (isSoloBassMode) {
     autoExcludeGroups.push('drums, drum kit, snare, kick drum, guitar, electric guitar, acoustic guitar, piano, keyboards, organ, synths, strings, choir, vocals, full band, backing track, rhythm section');
   }
-
   if ($('chkNoLatin') && $('chkNoLatin').checked) {
     autoExcludeGroups.push('ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa');
   }
@@ -8743,14 +8828,44 @@ $('genForm').addEventListener('submit', async e => {
   }
   const finalExclude = mergeUniqueExclusionTags(manualExclude, ...autoExcludeGroups);
   fd.append('exclude_styles', finalExclude);
+  fd.append('vocal_gender', typeof gender !== 'undefined' ? gender : 'random');
+  fd.append('weirdness', $('weirdness') ? $('weirdness').value : '50');
+  fd.append('style_influence', $('styleInfluence') ? $('styleInfluence').value : '50');
+  fd.append('audio_influence', $('audioInfluence') ? $('audioInfluence').value : '25');
+  fd.append('model', ($('modelInput') && $('modelInput').value) || 'chirp-v6');
+  fd.append('pronunciation', $('pronInput') ? $('pronInput').value : '');
+  fd.append('obfuscate', String(Boolean($('obfuscate') && $('obfuscate').checked)));
+
+  const signature = JSON.stringify({
+    s: finalStyle,
+    st: studioSelPayload,
+    bpm: effCfg.effectiveBpm,
+    hh: effCfg.hihatMode,
+    art: [effCfg.crashToms, effCfg.splashRide, effCfg.tomGrooves, effCfg.bassSlap, effCfg.bassPickup],
+    pr: effCfg.activePreset,
+    ins: instr,
+    g: typeof gender !== 'undefined' ? gender : 'random',
+    ex: finalExclude,
+    ly: lyricsToSend.slice(0, 300),
+  });
+
+  return { fd, finalStyle, finalExclude, studioSelPayload, effCfg, signature };
+}
+
+/* ---------- Generar ---------- */
+$('genForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if ($('submitBtn').disabled) return;
+
+  if (typeof currentEngine !== 'undefined' && currentEngine === 'fluidsynth') {
+    await handleFluidSynthUnifiedSubmit();
+    return;
+  }
+
+  const built = buildGenerationStylePayload({ forPreview: false });
+  const fd = built.fd;
+  const finalExclude = built.finalExclude;
   fd.append('preserve_original_audio', ($('chkPreserveOriginalAudio') && $('chkPreserveOriginalAudio').checked) ? 'true' : 'false');
-  fd.append('vocal_gender', gender);
-  fd.append('weirdness', $('weirdness').value);
-  fd.append('style_influence', $('styleInfluence').value);
-  fd.append('audio_influence', $('audioInfluence').value);
-  fd.append('model', $('modelInput').value);
-  fd.append('pronunciation', $('pronInput').value);
-  fd.append('obfuscate', $('obfuscate').checked);
   const clientOpId = 'op_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
   fd.append('client_operation_id', clientOpId);
   if ($('audioInput').files[0]) {
@@ -12143,7 +12258,7 @@ function setAmpABMode(mode) {
 
 /* ---------- 6 SELECTORES INDEPENDIENTES DEL ESTUDIO VIRTUAL ---------- */
 const STUDIO_SELECTORS_STORAGE_KEY = 'rodrix_studio_virtual_selectors_v1';
-const STUDIO_VIRTUAL_FALLBACK_CATALOG = {"version":"4.0-six-selectors","default_option":{"id":"auto","label":"Original / Automático"},"udio_style_max_chars":1000,"honesty_notice":"Las selecciones del Estudio Virtual traducen atributos del instrumento, la interpretación y el procesamiento de estudio en descriptores textuales para el parámetro style de UdioAPI. Orientan la estética sonora resultante sin alterar tu letra en prompt, sin clonar audios originales y sin sustituir emulaciones DSP físicas exactas ni librerías comerciales.","compaction_strategy":["1. Preservar género, métrica, BPM, tonalidad/acordes, ritmo y directivas vocales/instrumentales sin alterar la letra en prompt.","2. Mantener las 3 dimensiones musicales (sonido físico, interpretación y producción) en todas las categorías seleccionadas cuando exista presupuesto, sin relleno artificial si ya entra en <= 1000 caracteres.","3. Cuando supera 1000 caracteres: eliminar redundancias entre perfiles y comprimir progresivamente (clean -> tight -> essence) de forma equilibrada sin favorecer permanentemente a una categoría por posición.","4. Reutilizar dinámicamente cada carácter libre de categorías en Original / Automático y redistribuir el saldo sobrante para maximizar el detalle útil hasta 1000 caracteres exactos.","5. Solo bajo saturación extrema del prompt base reducir a core_tag o registrar omisión explícita con motivo claro en metadatos/log y #studioCompactionWarning, nunca silenciosa."],"categories":[{"key":"drums","field_name":"studio_drums","select_id":"selStudioDrums","title":"Baterías","short_title":"Batería","icon":"ph-drum","emoji":"🥁","solo_mode":"drums","items":[{"id":"bonham","label":"John Bonham — Rock potente y acústico.","short_label":"Rock potente acústico","reference_note":"Referencia estilística descriptiva: batería rock acústica de gran tamaño y sala amplia.","core_tag":"heavy oversized acoustic rock drums","physical_instrument":"oversized 26-inch acoustic maple kick drum, 14-inch chrome snare, deep 15-18 inch toms, big bronze cymbals","musical_performance":"heavy behind-the-beat pocket, rapid kick triplets, thunderous snare backbeats and explosive tom fills","studio_processing":"distant overhead and bright wooden room microphones with warm analog tape saturation","summary_es":{"instrumento":"Cascos acústicos profundos (bombo 26\", caja metálica 14\", toms grandes y platillos amplios).","interpretacion":"Groove pesado ligeramente detrás del pulso, tresillos de bombo y fills contundentes.","procesamiento":"Microfonía ambiental de sala grande en madera y compresión analógica cálida."}},{"id":"peart","label":"Neil Peart — Rock progresivo y precisión.","short_label":"Rock progresivo técnico","reference_note":"Referencia estilística descriptiva: batería progresiva multi-tom articulada y precisa.","core_tag":"precise progressive rock multi-tom drums","physical_instrument":"multi-tom birch and maple progressive acoustic drum kit with crisp snare and articulate bell ride","musical_performance":"razor-sharp metered precision, syncopated ride patterns and intricate progressive time-signature fills","studio_processing":"focused multi-mic close isolation, tight gating, sharp transient attack and wide stereo overheads","summary_es":{"instrumento":"Set progresivo de abedul/arce con múltiples toms afinados, caja definida y ride con campana nítida.","interpretacion":"Precisión métrica milimétrica, síncopas sobre ride y redobles complejos compuestos.","procesamiento":"Aislamiento multi-micrófono cercano, puertas dinámicas limpias y apertura estéreo definida."}},{"id":"copeland","label":"Stewart Copeland — Reggae, ska y síncopas.","short_label":"Reggae, ska y síncopas","reference_note":"Referencia estilística descriptiva: batería sincopada con caja aguda y hi-hat ágil.","core_tag":"syncopated high-cracking ska-rock drums","physical_instrument":"tight high-tuned steel 14-inch snare drum, punchy compact kick, crisp splash cymbals and bright hi-hat","musical_performance":"reggae and ska syncopated rimshots, agile bouncing hi-hat bark and energetic cross-beat accents","studio_processing":"crisp upper-mid transient snap, dry tight room focus and subtle rhythmic tape echo ambience","summary_es":{"instrumento":"Caja de acero afinada aguda, bombo compacto de respuesta rápida, hi-hat brillante y splash.","interpretacion":"Síncopas reggae/ska, rimshots en contratiempo y fraseo nervioso en hi-hat.","procesamiento":"Ataque agudo cercano, sala seca focalizada y eco de cinta sutil."}},{"id":"moon","label":"Keith Moon — Rock explosivo y fills expresivos.","short_label":"Rock explosivo y fills","reference_note":"Referencia estilística descriptiva: batería rock impetuosa guiada por toms y platillos.","core_tag":"explosive fiery rock tom-driven drums","physical_instrument":"twin bass drums, deep resonant coated rack and floor toms, wide dark crashing bronze cymbals","musical_performance":"continuous melodic sweeping tom rolls, fiery cymbal cascades and exuberant high-energy rhythmic motion","studio_processing":"open vintage studio overhead mics capturing raw live energy and natural room wash","summary_es":{"instrumento":"Doble bombo clásico, toms resonantes con parches rugosos y platillos crash expansivos.","interpretacion":"Fills melódicos casi continuos en toms y explosiones constantes de platillos.","procesamiento":"Overheads vintage abiertos y captura cruda de sala viva sin sobre-compresión."}},{"id":"watts","label":"Charlie Watts — Rock clásico con influencia de jazz.","short_label":"Rock clásico / jazz swing","reference_note":"Referencia estilística descriptiva: set compacto vintage con aire jazz y bolsillo natural.","core_tag":"vintage 4-piece swing-pocket classic rock drums","physical_instrument":"compact vintage 4-piece maple drum kit, dry dark jazz ride cymbal and crisp wooden snare","musical_performance":"relaxed understated pocket, subtle swing push-pull feel and airy micro-pauses on hi-hat backbeats","studio_processing":"warm ribbon overhead and front-kit miking with woody midrange clarity and gentle tube glue","summary_es":{"instrumento":"Set vintage compacto de 4 cuerpos en arce, ride oscuro de jazz y caja de madera cálida.","interpretacion":"Bolsillo relajado clásico con leve balanceo jazz y espacios limpios en hi-hat.","procesamiento":"Microfonía de cinta frontal y superior con calidez tubular y foco en medios."}},{"id":"portnoy","label":"Mike Portnoy — Metal progresivo y doble bombo.","short_label":"Metal prog / doble bombo","reference_note":"Referencia estilística descriptiva: doble bombo técnico y percusión progresiva pesada.","core_tag":"technical double-kick progressive metal drums","physical_instrument":"double-kick progressive acoustic kit with snappy high-cut snare, octoban accents, china and stack cymbals","musical_performance":"tight double bass drum patterns, razor-precise progressive meter transitions and staccato accent fills","studio_processing":"modern high-impact multi-mic compression, click-defined kick punch and tight controlled low-end","summary_es":{"instrumento":"Doble bombo de ataque rápido, caja cortante, toms articulados y platillos china/stack.","interpretacion":"Patrones técnicos de doble bombo, cambios de compás progresivos y fills cortantes.","procesamiento":"Compresión moderna de alto impacto, bombo definido en ataque y graves controlados."}},{"id":"smith","label":"Chad Smith — Funk-rock potente.","short_label":"Funk-rock potente","reference_note":"Referencia estilística descriptiva: batería funk-rock de pegada firme y notas fantasma.","core_tag":"hard-hitting funk-rock pocket drums","physical_instrument":"heavy maple and brass-snare funk-rock acoustic kit with deep 24-inch kick and bright crisp cymbals","musical_performance":"authoritative hard-hitting pocket, intricate snare ghost notes and tight syncopated funk-rock groove","studio_processing":"punchy analog console bus compression, forward snare snap and solid upfront chest impact","summary_es":{"instrumento":"Bombo de 24\", caja de latón con gran pegada y platillos brillantes.","interpretacion":"Groove funk-rock contundente repleto de notas fantasma y acentos sincopados.","procesamiento":"Compresión de bus con punch analógico, caja al frente y pegada en graves."}},{"id":"collins","label":"Phil Collins — Rock progresivo y sonido de batería ochentoso.","short_label":"Prog / batería ochentosa","reference_note":"Referencia estilística descriptiva: toms resonantes sin parche inferior y ambiente de los 80.","core_tag":"1980s gated-reverb progressive rock drums","physical_instrument":"concert single-headed tom drum kit, crisp snappy snare and deep resonant floor toms","musical_performance":"booming dramatic descending tom fills, commanding progressive groove and wide spacious backbeats","studio_processing":"1980s heavily compressed room listen-mic ambience and classic gated reverb snare and tom tail","summary_es":{"instrumento":"Toms de concierto abiertos de gran ataque y caja seca profunda.","interpretacion":"Descensos dramáticos de toms y groove progresivo amplio y contundente.","procesamiento":"Ambiente sobrecomprimido estilo micrófono de sala 80s con gated reverb clásico."}},{"id":"grohl","label":"Dave Grohl — Grunge y rock contundente.","short_label":"Grunge / rock pesado","reference_note":"Referencia estilística descriptiva: batería rock de golpeo enérgico y cascos profundos.","core_tag":"hard-slamming deep-shell grunge rock drums","physical_instrument":"deep heavy-shell rock drum kit with massive 24-inch kick, deep metal snare and heavy rock crashes","musical_performance":"visceral full-strength heavy strokes, relentless driving rock eighth-note feel and crashing transitions","studio_processing":"aggressive analog tape saturation, loud upfront room microphones and raw weighty low-mid punch","summary_es":{"instrumento":"Cascos profundos de rock, bombo grande de 24\", caja metálica profunda y crash pesados.","interpretacion":"Golpeo frontal muy enérgico, empuje constante y caídas de platillos intensas.","procesamiento":"Saturación de cinta analógica, sala presente y medios-graves densos y crudos."}},{"id":"baker","label":"Ginger Baker — Blues-rock, jazz y ritmos africanos.","short_label":"Blues-rock / polirritmia jazz","reference_note":"Referencia estilística descriptiva: independencia polirrítmica en toms y swing blues-rock.","core_tag":"polyrhythmic Afro-jazz blues-rock drums","physical_instrument":"vintage dual-kick jazz-rock kit with coated melodic toms, sizzle ride and warm resonant wood shells","musical_performance":"polyrhythmic Afro-jazz tom independence, swirling jazz phrasing and improvisational blues-rock drive","studio_processing":"organic 1960s three-mic stereo spread with lively room air and vintage tube console warmth","summary_es":{"instrumento":"Set vintage doble bombo con toms melódicos, parches rugosos y ride con remaches.","interpretacion":"Polirritmia independiente entre toms y bombos con impulso blues-rock y swing.","procesamiento":"Captura orgánica tipo años 60 en tres micrófonos y calidez analógica a válvulas."}}]},{"key":"guitars","field_name":"studio_guitar","select_id":"selStudioGuitar","title":"Guitarras eléctricas","short_title":"Guitarra","icon":"ph-guitar","emoji":"🎸","solo_mode":"guitar","items":[{"id":"srv_number_one","label":"Stevie Ray Vaughan — Number One Stratocaster.","short_label":"Number One Stratocaster","reference_note":"Referencia estilística descriptiva: Stratocaster vintage con ataque Texas blues.","core_tag":"heavy-gauge vintage single-coil Texas blues guitar","physical_instrument":"worn 1960s sunburst alder electric guitar with overwound single-coil pickups and heavy-gauge strings","musical_performance":"fierce percussive pick rakes, wide expressive blues bends and authoritative vocal neck-pickup vibrato","studio_processing":"cranked high-headroom clean tube combo pushed with mild green mid-hump overdrive and off-axis dynamic mic","summary_es":{"instrumento":"Cuerpo de aliso tipo Strat 60s, bobinas simples calientes y cuerdas de calibre grueso.","interpretacion":"Ataque percusivo intenso de púa, bendings amplios de blues y vibrato firme.","procesamiento":"Combo a válvulas de alto headroom empujado con overdrive cálido en medios."}},{"id":"vai_evo","label":"Steve Vai — Ibanez Evo.","short_label":"Ibanez Evo virtuosa","reference_note":"Referencia estilística descriptiva: superstrat moderna con humbuckers y palanca flotante.","core_tag":"virtuosic high-gain floating-tremolo superstrat guitar","physical_instrument":"sculpted solid-body superstrat electric guitar with hot ceramic-alnico humbuckers and floating locking vibrato","musical_performance":"liquid legato cascades, dramatic whammy pitch inflection, pinch harmonics and expressive vocal sustain","studio_processing":"multi-stage high-gain tube head through 4x12 cabinet, stereo modulated delay and studio pitch shimmer","summary_es":{"instrumento":"Superstrat ergonómica con humbuckers de alta salida y puente flotante de doble bloqueo.","interpretacion":"Legato fluido, armónicos artificiales, inflexiones de palanca y fraseo melódico veloz.","procesamiento":"Cabezal high-gain a válvulas con gabinete 4x12, delay estéreo modulado y brillo."}},{"id":"frusciante_strat62","label":"John Frusciante — Stratocaster 1962.","short_label":"Stratocaster 1962 funk/rock","reference_note":"Referencia estilística descriptiva: Stratocaster 1962 orgánica entre limpio cristalino y crunch.","core_tag":"1962 vintage single-coil edge-of-breakup electric guitar","physical_instrument":"1962 vintage alder Stratocaster-style guitar with rosewood fingerboard and low-output aged single-coils","musical_performance":"syncopated muted funk-rock chords, sparse lyrical triads and raw emotionally bent single-note leads","studio_processing":"vintage British tube plexi amp on edge of breakup with spring reverb warmth and subtle analog chorus","summary_es":{"instrumento":"Cuerpo de aliso y diapasón de palisandro estilo 1962 con micrófonos single-coil dulces.","interpretacion":"Rasgueos funk sincopados, tríadas minimalistas y solos melódicos muy expresivos.","procesamiento":"Amplificador británico al borde de la saturación con reverb de resortes y chorus suave."}},{"id":"summers_tele61","label":"Andy Summers — Telecaster 1961.","short_label":"Telecaster 1961 atmosférica","reference_note":"Referencia estilística descriptiva: Telecaster limpia modulada con acordes suspendidos.","core_tag":"1961 Telecaster modulated wide-chord electric guitar","physical_instrument":"early-1960s ash single-cut Telecaster guitar with neck humbucker warmth and bright bridge single-coil","musical_performance":"spacious add9 suspended arpeggios, crisp reggae-rock upstroke chords and clean atmospheric textures","studio_processing":"chimey clean studio amp layered with swirling analog flanger-chorus modulation and rhythmic stereo echo","summary_es":{"instrumento":"Single-cut de fresno estilo 1961 con humbucker en mástil y single-coil claro en puente.","interpretacion":"Acordes abiertos con novenas agregadas, arpegios amplios y golpes rítmicos nítidos.","procesamiento":"Canal limpio cristalino con modulación analógica flanger/chorus y eco estéreo."}},{"id":"evh_frankenstrat","label":"Eddie Van Halen — Frankenstrat.","short_label":"Frankenstrat brown sound","reference_note":"Referencia estilística descriptiva: superstrat de un humbucker con saturación orgánica clásica.","core_tag":"classic hot-rodded humbucker hard-rock electric guitar","physical_instrument":"raw ash custom superstrat guitar with direct-mounted bridge PAF-style humbucker and maple fretboard","musical_performance":"two-hand tapping arpeggios, swinging palm-muted rock boogie rhythms and energetic dive-bomb vibrato","studio_processing":"variac-driven brown-sound vintage tube stack saturation, pre-drive analog phaser and rich plate reverb","summary_es":{"instrumento":"Cuerpo de fresno con mástil de arce y un humbucker directo en puente de tono abierto.","interpretacion":"Tapping a dos manos, rítmica con swing y palm-mute, más palanca enérgica.","procesamiento":"Saturación clásica de cabezal británico a válvulas, phaser pre-distorsión y plate reverb."}},{"id":"gilmour_black_strat","label":"David Gilmour — Black Strat.","short_label":"Black Strat espacial","reference_note":"Referencia estilística descriptiva: Stratocaster negra melódica con sustain espacioso.","core_tag":"soaring lyrical single-coil ambient rock electric guitar","physical_instrument":"black alder Stratocaster guitar with maple neck, fat bridge single-coil pickup and short tremolo arm","musical_performance":"soaring vocal slow string bends, spacious sustained lyrical melodies and bell-like arpeggio motifs","studio_processing":"high-headroom clean tube stack fed with optical compression, smooth sustain fuzz, rotary speaker and stereo tape delay","summary_es":{"instrumento":"Cuerpo de aliso con mástil de arce y pastilla simple robusta de agudos redondos.","interpretacion":"Estiramientos largos cantables, notas sostenidas y fraseo pausado altamente melódico.","procesamiento":"Stack limpio potente con compresor óptico, fuzz cremoso, rotary y delay de cinta."}},{"id":"may_red_special","label":"Brian May — Red Special.","short_label":"Red Special orquestal","reference_note":"Referencia estilística descriptiva: guitarra semi-hueca en serie con armonías tipo coro.","core_tag":"harmonized orchestral Class-A chime rock guitar","physical_instrument":"semi-chambered oak-and-mahogany electric guitar with three series-wired phase-switchable single coils played with coin pick","musical_performance":"singing violin-like midrange sustain, multi-part harmonized guitar choir layers and lyrical phrasing","studio_processing":"treble booster driving cranked British Class-A EL84 combo amplifiers in warm studio room ambience","summary_es":{"instrumento":"Cuerpo semi-cámara roble/caoba con 3 bobinas simples cableadas en serie fuera de fase.","interpretacion":"Sustain vocal tipo violín, ataque rígido definido y armonización multicapa.","procesamiento":"Treble booster atacando amplis Clase A EL84 saturados en sala cálida."}},{"id":"green_greeny_lp","label":"Peter Green — Greeny Les Paul.","short_label":"Greeny Les Paul blues","reference_note":"Referencia estilística descriptiva: Les Paul 1959 con bobina invertida fuera de fase.","core_tag":"out-of-phase vintage mahogany blues electric guitar","physical_instrument":"1959 mahogany single-cut Les Paul-style guitar with reversed out-of-phase neck PAF magnet giving hollow nasal chime","musical_performance":"haunting slow minor blues bends, delicate touch sensitivity and weeping dynamic finger vibrato","studio_processing":"warm vintage tube amplifier right on sweet clean-to-grit edge with natural spring reverb bloom","summary_es":{"instrumento":"Caoba/arce estilo 1959 con imán de pastilla mástil invertido (sonido hueco fuera de fase).","interpretacion":"Blues menor lento y delicado, sensibilidad extrema a la púa o dedos y vibrato lloroso.","procesamiento":"Amplificador valvular vintage apenas saturado con reverb de resortes natural."}},{"id":"hendrix_monterey_strat","label":"Jimi Hendrix — Monterey Strat.","short_label":"Monterey Strat psicodélica","reference_note":"Referencia estilística descriptiva: Stratocaster 60s de doble-stops, fuzz y wah.","core_tag":"fiery 1960s psychedelic fuzz single-coil guitar","physical_instrument":"late-1960s reverse-strung maple-neck Stratocaster guitar with glassy bell-tone single-coil pickups","musical_performance":"expressive thumb-over rhythm embellishments, double-stop bends, octave swells and fiery improvisation","studio_processing":"roaring 100W vintage British stack pushed by warm germanium fuzz, expressive wah sweep and rotating speaker depth","summary_es":{"instrumento":"Stratocaster de arce años 60 de timbre campana, cuerdas equilibradas en tensión.","interpretacion":"Embellecimientos rítmicos con doble cuerda, ligados y fraseo psicodélico expresivo.","procesamiento":"Stack británico 100W con fuzz de germanio, filtro wah y modulación rotatoria."}},{"id":"page_number_one_lp","label":"Jimmy Page — Number One Les Paul.","short_label":"Number One Les Paul rock","reference_note":"Referencia estilística descriptiva: Les Paul 1959 de riffs pesados y capas de estudio.","core_tag":"classic slim-neck PAF humbucker hard-rock guitar","physical_instrument":"1959 slim-taper mahogany and carved maple-top Les Paul guitar with warm vintage PAF humbuckers","musical_performance":"swaggering blues-rock riffs, dynamic clean-to-heavy picking shifts and loose gritty rock phrasing","studio_processing":"layered multi-amp studio tracking blending crisp small low-watt tube room mics with big cranked arena stack","summary_es":{"instrumento":"Cuerpo caoba/arce tapa tallada con humbuckers PAF vintage de respuesta orgánica.","interpretacion":"Riffs de blues-rock con empuje, contraste limpio/agresivo y fraseo suelto clásico.","procesamiento":"Doblado en capas mezclando ampli chico en sala lejana y stack valvular potente."}}]},{"key":"basses","field_name":"studio_bass","select_id":"selStudioBass","title":"Bajos eléctricos","short_title":"Bajo","icon":"ph-wave-sine","emoji":"🔊","solo_mode":"bass","items":[{"id":"pastorius_fretless","label":"Jaco Pastorius — Fretless / Come On, Come Over.","short_label":"Fretless / Jazz fusion","reference_note":"Referencia estilística descriptiva (no audio copiado): timbre fretless melódico y síncopa ágil.","core_tag":"singing fretless electric bass guitar","physical_instrument":"real physical epoxy-coated fretless Jazz Bass guitar with bridge single-coil pickup and roundwound steel strings, zero synth bass","musical_performance":"lyrical singing fretless glissando mwah, crisp 16th-note fingerstyle funk grooves and natural harmonics","studio_processing":"dry upfront midrange cabinet focus blended with clean solid-state direct bass track","summary_es":{"instrumento":"Bajo eléctrico fretless con mástil sellado en epoxi, pastilla de puente y cuerdas entorchadas.","interpretacion":"Expresividad vocal mwah en glissandos, síncopa de semicorcheas y armónicos naturales.","procesamiento":"Mezcla seca en medios definidos entre gabinete cercano y línea directa limpia."}},{"id":"jamerson_motown","label":"James Jamerson — Motown / What's Going On.","short_label":"Soul clásico flatwound","reference_note":"Referencia estilística descriptiva (no audio copiado): P-Bass vintage cálido con cuerdas flatwound.","core_tag":"warm flatwound vintage Precision electric bass guitar","physical_instrument":"authentic early-1960s alder split-coil Precision electric bass guitar with heavy flatwound strings and bridge mute, zero synth bass","musical_performance":"melodic syncopated hook lines, soulful chromatic passing notes and deep glued rhythm-section pocket","studio_processing":"warm vacuum-tube direct console preamp blended with vintage 1x15 flip-top tube bass combo","summary_es":{"instrumento":"Bajo eléctrico tipo Precision con pastilla dividida, cuerdas lisas flatwound y sordina en puente.","interpretacion":"Líneas melódicas sincopadas con notas de paso cromáticas y peso sólido en la base.","procesamiento":"Previo valvular de consola directa combinado con combo valvular 1x15 clásico."}},{"id":"miller_jazz_funk","label":"Marcus Miller — Funk y articulación técnica / Teen Town.","short_label":"Slap & fingerstyle hi-fi","reference_note":"Referencia estilística descriptiva (no audio copiado): Jazz Bass activo brillante de articulación técnica.","core_tag":"active hi-fi slap-and-finger funk electric bass","physical_instrument":"real physical ash-body 1970s active Jazz Bass guitar with onboard 2-band boost preamp and bright steel strings, zero synth bass","musical_performance":"razor-clean thumb slap and pop articulation, double-thumb precision and melodic fast funk runs","studio_processing":"scooped midrange studio hi-fi DI clarity with crisp sparkling highs and fast FET compression","summary_es":{"instrumento":"Bajo de fresno con previo activo 2 bandas, diapasón de arce y cuerdas de acero brillantes.","interpretacion":"Slap, pop y doble pulgar ultra precisos combinados con frases rápidas de funk.","procesamiento":"Línea directa hi-fi con medios levemente ahuecados, agudos definidos y compresión FET."}},{"id":"wooten_slap","label":"Victor Wooten — Slap avanzado / Classical Thump.","short_label":"Slap avanzado / doble pulgar","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo activo ergonómico con técnica percusiva.","core_tag":"technical double-thumb slap electric bass guitar","physical_instrument":"real physical active PJ-pickup modern electric bass guitar with low action and lively steel roundwound strings, zero synth bass","musical_performance":"percussive double-thumb up-down thumping, rapid muted plucks, harmonic tapping and agile solo phrasing","studio_processing":"wide-bandwidth studio DI capture with transparent multi-band compression highlighting percussive transients","summary_es":{"instrumento":"Bajo activo ergonómico P/J de acción baja y cuerdas metálicas de alta respuesta.","interpretacion":"Doble pulgar arriba/abajo, percussión mutada rápida, tapping armónico y virtuosismo.","procesamiento":"DI cristalino de rango completo con compresión multibanda para definición percusiva."}},{"id":"flea_funk_rock","label":"Flea — Funk-rock / Give It Away.","short_label":"Funk-rock enérgico","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo funk-rock explosivo en slap y dedos.","core_tag":"energetic punk-funk slap electric bass guitar","physical_instrument":"real physical active humbucker and jazz electric bass guitar with snappy steel roundwounds, zero synth bass","musical_performance":"explosive bouncing thumb slap riffs, energetic punk-funk fingerstyle pulse and tight kick-drum lock","studio_processing":"high-headroom solid-state bass stack punch blended with gritty DI edge and tight sub control","summary_es":{"instrumento":"Bajo sólido activo de respuesta inmediata y cuerdas entorchadas con gran rebote.","interpretacion":"Riffs explosivos de slap-and-pop y líneas enérgicas a dedos amarradas al bombo.","procesamiento":"Stack sólido de alto headroom con leve rugosidad DI y graves compactos."}},{"id":"lee_prog_jazz","label":"Geddy Lee — Rock progresivo / YYZ.","short_label":"Jazz Bass prog agresivo","reference_note":"Referencia estilística descriptiva (no audio copiado): Jazz Bass agresivo con clank en medios.","core_tag":"clanky aggressive progressive electric bass guitar","physical_instrument":"authentic thin-neck 1972 ash Jazz Bass guitar with dual bright single-coils and fresh steel roundwounds, zero synth bass","musical_performance":"hard-plucked driving fingerstyle triplets, complex odd-meter progressive riffs and high-energy melodic counterlines","studio_processing":"dual parallel path blending tube overdrive growl with compressed crisp high-bite direct bass signal","summary_es":{"instrumento":"Bajo Jazz 1972 de mástil delgado con dos single-coils brillantes y entorchado metálico.","interpretacion":"Pulsación agresiva a dedos estilo púa, tresillos rápidos y métricas progresivas.","procesamiento":"Ruta paralela entre saturación valvular con mordida y señal DI comprimida."}},{"id":"burton_distorted_bass","label":"Cliff Burton — Bajo distorsionado / Anesthesia.","short_label":"Bajo distorsión / wah","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo solista con fuzz y filtro wah.","core_tag":"fuzz-wah distorted heavy electric bass guitar","physical_instrument":"real physical neck-through mahogany electric bass guitar with high-output pickups and heavy steel strings, zero synth bass","musical_performance":"aggressive fuzz-driven solo phrasing, classical counter-melody bends and roaring high-register bass lines","studio_processing":"snarling vintage fuzz overdrive and expressive wah sweep pushed through cranked bass cabinet mic","summary_es":{"instrumento":"Bajo neck-through de caoba con pastillas de alta ganancia y cuerdas gruesas.","interpretacion":"Fraseo solista agresivo con contramelodías, estiramientos y pasajes agudos.","procesamiento":"Distorsión fuzz analógica combinada con barrido wah hacia amplificador de bajo."}},{"id":"entwistle_aggressive","label":"John Entwistle — Rock agresivo / My Generation.","short_label":"Rock agresivo brillante","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo solista brillante con ataque percusivo.","core_tag":"trebly lead-aggressive rock electric bass guitar","physical_instrument":"real physical dual-pickup electric bass guitar fitted with ultra-bright Rotosound steel roundwound strings, zero synth bass","musical_performance":"forceful typewriter-attack fingerstyle and pick playing, roaring solo bass fills and counter-melodic lead lines","studio_processing":"bi-amped treble horn bite stacked over deep 15-inch speaker punch with wide upper-mid snap","summary_es":{"instrumento":"Bajo de doble pastilla con cuerdas Rotosound metálicas extremadamente brillantes.","interpretacion":"Ataque percusivo muy fuerte, fraseos solistas y contramelodías al frente.","procesamiento":"Bi-amplificación separando agudos de bocina sobre cuerpo profundo de 15 pulgadas."}},{"id":"arnedo_rock_argentino","label":"Diego Arnedo — Rock argentino / El 38.","short_label":"Rock argentino poderoso","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo rock pesado, grave y terroso.","core_tag":"earthy heavy Argentine rock electric bass guitar","physical_instrument":"real physical heavy-bodied split-pickup electric bass guitar with fat low-mid punch and sturdy steel strings, zero synth bass","musical_performance":"thunderous driving rock eighth-note grooves, hypnotic riff anchors and heavy muscular pocket feel","studio_processing":"weighty cranked tube bass head and 8x10 cabinet growl with gritty midrange rock density","summary_es":{"instrumento":"Bajo eléctrico robusto con pastilla dividida de gran peso en graves y medios-graves.","interpretacion":"Bases pesadas de rock en corcheas firmes, riffs hipnóticos y empuje terroso.","procesamiento":"Cabezal valvular exigido con caja 8x10 logrando rugido denso de rock."}},{"id":"squire_rickenbacker_prog","label":"Chris Squire — Rickenbacker progresivo / Roundabout.","short_label":"Rickenbacker prog con púa","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo brillante de arce tocado con púa.","core_tag":"bright pick-driven progressive stereo electric bass","physical_instrument":"authentic maple neck-through Rickenbacker-style stereo bass guitar with biting treble bridge pickup played with rigid pick, zero synth bass","musical_performance":"sharp articulated pick propulsion, choral counter-melodic progressive runs and energetic driving octaves","studio_processing":"stereo bi-amp split routing gritty treble attack into bright tube amp and deep low fundamental into clean sub stack","summary_es":{"instrumento":"Bajo de arce neck-through tipo Rickenbacker con salida estéreo y púa rígida.","interpretacion":"Líneas contrapuntísticas brillantes tocadas con púa, ataque nítido y propulsión prog.","procesamiento":"División estéreo bi-amp: agudos con saturación cálida + subgraves limpios."}}]},{"key":"keyboards","field_name":"studio_keyboard","select_id":"selStudioKeyboard","title":"Teclados","short_title":"Teclado","icon":"ph-piano-keys","emoji":"🎹","solo_mode":"piano","items":[{"id":"piano_acustico","label":"Piano acústico.","short_label":"Piano de cola acústico","reference_note":"Instrumento de cuerdas percutidas con caja armónica de abeto y arpa acústica.","core_tag":"acoustic concert grand piano","physical_instrument":"9-foot acoustic concert grand piano with solid spruce soundboard, cast-iron frame and felt hammers","musical_performance":"expressive touch sensitivity across delicate arpeggios and commanding resonant full-range chords","studio_processing":"matched stereo pair of small-diaphragm condensers inside open lid with natural concert hall ambience","summary_es":{"instrumento":"Piano de cola de concierto de 9 pies con tabla armónica de abeto y martillos de fieltro.","interpretacion":"Dinámica amplia desde arpegios íntimos hasta acordes orquestales resonantes.","procesamiento":"Par estéreo de condensadores de diafragma pequeño + aire natural de sala."}},{"id":"hammond_b3","label":"Hammond B3.","short_label":"Órgano Hammond B3 + Leslie","reference_note":"Órgano electromecánico de ruedas fónicas con altavoz rotatorio.","core_tag":"Hammond B3 tonewheel organ with rotary Leslie","physical_instrument":"electro-mechanical tonewheel Hammond B3 organ with harmonic drawbars, key-click and dual-speed rotating Leslie 122 speaker","musical_performance":"expressive volume pedal swells, soulful gospel and rock palm glissandos and sustained rich organ pads","studio_processing":"stereo horn and rotor miking capturing Doppler swirl and warm vacuum-tube preamp saturation","summary_es":{"instrumento":"Órgano electromecánico de 9 tiradores con key-click y gabinete rotatorio Leslie 122.","interpretacion":"Crescendos de pedal de expresión, glissandos de palma y colchones armónicos densos.","procesamiento":"Microfonía estéreo en rotor agudo y grave con saturación tubular cálida."}},{"id":"fender_rhodes","label":"Fender Rhodes.","short_label":"Piano eléctrico Fender Rhodes","reference_note":"Piano eléctrico electromecánico vintage de púas y pastillas magnéticas.","core_tag":"vintage Fender Rhodes tine electric piano","physical_instrument":"vintage 73-key electro-mechanical Fender Rhodes electric piano with steel tines, felt hammers and passive pickups","musical_performance":"warm singing bell-like chord voicings, smooth soulful sustain and gentle dynamic bark when struck hard","studio_processing":"stereo tremolo autopan into warm tube preamp DI with gentle analog stereo chorus sheen","summary_es":{"instrumento":"Piano eléctrico electromecánico de 73 teclas con varillas metálicas (tines) y pastillas.","interpretacion":"Acordes dulces tipo campana con leve gruñido cálido al atacar fuerte.","procesamiento":"Tremolo estéreo panorámico, previo analógico cálido y chorus suave."}},{"id":"wurlitzer","label":"Wurlitzer.","short_label":"Piano eléctrico Wurlitzer 200A","reference_note":"Piano eléctrico de lengüetas de acero con mordida cálida en medios.","core_tag":"vintage Wurlitzer reed electric piano","physical_instrument":"classic 200A reed-based electric piano with steel vibrating reeds and electrostatic pickup plate","musical_performance":"punchy percussive midrange bark on rhythmic accents, soulful blues-rock comping and warm vibrato","studio_processing":"intimate tube console warmth, mild optical compression and built-in smooth vibrato modulation","summary_es":{"instrumento":"Piano eléctrico clásico de lengüetas vibrantes y placa captadora electrostática.","interpretacion":"Mordida percusiva característica en medios durante acompañamientos y acentos rítmicos.","procesamiento":"Vibrato clásico suavizado, calidez de consola valvular y compresión ligera."}},{"id":"yamaha_dx7","label":"Yamaha DX7.","short_label":"Sintetizador FM Yamaha DX7","reference_note":"Sintetizador FM clásico de los 80 con campanas cristalinas.","core_tag":"1980s FM crystalline bell Yamaha DX7 keyboard","physical_instrument":"iconic 1980s 6-operator digital FM synthesizer engine generating glassy metallic tines and crisp bell transients","musical_performance":"shimmering 80s pop and worship electric-piano ballads, bright velocity-sensitive chimes and layered pads","studio_processing":"pristine stereo analog rack chorus and lush 1980s studio digital plate reverb width","summary_es":{"instrumento":"Sintetizador digital FM de 6 operadores estilo años 80 con transitorios metálicos.","interpretacion":"Baladas cristalinas con brillo de campanas FM y acordes sensibles a la velocidad.","procesamiento":"Chorus estéreo analógico de rack y reverb plate amplio estilo 80s."}},{"id":"minimoog","label":"Minimoog.","short_label":"Sintetizador analógico Minimoog","reference_note":"Sintetizador analógico sustractivo monofónico con filtro escalera de 24dB.","core_tag":"warm analog ladder-filter synthesizer lead and moog bass","physical_instrument":"monophonic discrete analog subtractive synthesizer with three rich VCO oscillators and 24dB transistor ladder filter","musical_performance":"creamy expressive pitch-glide leads, resonant filter sweeps and fat analog moog bass foundations","studio_processing":"transformer console warmth, rich analog tape saturation and subtle spatial stereo delay","is_synth_bass_capable":true,"summary_es":{"instrumento":"Sintetizador analógico monofónico de 3 osciladores discretos y filtro escalera 24dB/oct.","interpretacion":"Solos melódicos con portamento cremoso, barridos de filtro y bajos analógicos densos.","procesamiento":"Saturación de cinta/transformador y retardo espacial sutil."}}]},{"key":"consoles","field_name":"studio_console","select_id":"selStudioConsole","title":"Consolas de grabación","short_title":"Consola","icon":"ph-faders-horizontal","emoji":"🎚️","solo_mode":"console","items":[{"id":"ssl_4000","label":"SSL 4000.","short_label":"SSL 4000 E/G VCA","reference_note":"Consola analógica británica VCA enfocada en pegada, nitidez y control.","core_tag":"SSL 4000 VCA punchy studio console mix","physical_instrument":"large-format Solid State Logic VCA analog mixing console with per-channel parametric EQ and stereo bus compressor","musical_performance":"keeps dense rhythm sections, crisp snare snaps and fast instrumental transients locked forward","studio_processing":"tight glued VCA bus compression, punchy forward midrange snap and polished hi-fi studio clarity","summary_es":{"instrumento":"Consola analógica gran formato con arquitectura VCA y compresor estéreo de bus.","interpretacion":"Mantiene transitorios rápidos y mezclas densas firmemente articuladas al frente.","procesamiento":"Pegada definida, medios incisivos y cohesión clásica de mezcla profesional."}},{"id":"neve_80","label":"Neve 80 Series.","short_label":"Neve 80 Series Clase A","reference_note":"Consola británica discreta Clase A con transformadores y cuerpo cálido.","core_tag":"Neve Class-A warm transformer analog console mix","physical_instrument":"discrete Class-A British analog console (1073/80-series) built with hand-wound input and output transformers","musical_performance":"supports expressive vocal intimacy, thick bass foundations and organic acoustic instrument bloom","studio_processing":"creamy rich low-end weight, silky top-end air and musical harmonic transformer saturation","summary_es":{"instrumento":"Circuitería discreta Clase A británica acoplada con transformadores de entrada/salida.","interpretacion":"Realza profundidad orgánica en voces, bajos gruesos e instrumentos acústicos.","procesamiento":"Graves cremosos, agudos sedosos y saturación armónica cálida."}},{"id":"api_console","label":"API Console.","short_label":"API Console 2520","reference_note":"Consola estadounidense con op-amps 2520 de respuesta rápida e impacto rock.","core_tag":"API 2520 op-amp punchy American rock console mix","physical_instrument":"American discrete 2520 op-amp analog mixing console with proportional-Q EQ and transformer-coupled stages","musical_performance":"accents tight forward drum hits, energetic electric guitar bite and immediate rock ensemble impact","studio_processing":"fast punchy transient snap, muscular low-mid authority and vibrant upfront analog rock character","summary_es":{"instrumento":"Consola americana con amplificadores operacionales discretos 2520 y ecualización proporcional.","interpretacion":"Resalta impacto frontal inmediato en baterías, guitarras eléctricas y bajos de rock.","procesamiento":"Transitorios veloces, medios-graves musculosos y pegada directa sin opacidad."}},{"id":"digital_transparent","label":"Consola digital transparente.","short_label":"Consola Digital Transparente","reference_note":"Ruta digital de alta precisión sin coloración analógica añadida.","core_tag":"transparent high-headroom clean digital console mix","physical_instrument":"modern 32-bit ultra-clean transparent digital studio console with linear ultra-low-distortion preamps","musical_performance":"faithfully translates subtle playing dynamics, delicate acoustic overtones and untouched room depth","studio_processing":"noise-free pristine headroom, linear phase accuracy and uncolored modern studio definition","summary_es":{"instrumento":"Arquitectura digital moderna de ultra-baja distorsión y preamplificadores lineales.","interpretacion":"Preserva fielmente la dinámica original y los matices acústicos sin coloración extra.","procesamiento":"Transparencia cristalina, coherencia de fase y amplio rango dinámico limpio."}}]},{"key":"microphones","field_name":"studio_mic","select_id":"selStudioMic","title":"Micrófonos para cantar","short_title":"Micrófono","icon":"ph-microphone-stage","emoji":"🎙️","solo_mode":"vocals","items":[{"id":"neumann_u87","label":"Neumann U87.","short_label":"Neumann U87 condensador","reference_note":"Estándar vocal de estudio con cápsula grande FET y presencia equilibrada.","core_tag":"Neumann U87 studio condenser vocal clarity","physical_instrument":"classic dual-large-diaphragm FET condenser vocal microphone with transformer output and gentle presence rise","musical_performance":"articulates subtle vocal breath, lyrical phrasing and clear expressive diction across dynamic ranges","studio_processing":"balanced studio condenser vocal polish with gentle optical vocal leveling and airy clarity","summary_es":{"instrumento":"Condensador FET de gran diafragma doble con transformador y realce sutil de presencia.","interpretacion":"Capta respiración íntima, dicción clara y matices expresivos en todo rango vocal.","procesamiento":"Pulido clásico de estudio, compresión óptica suave y agudos aireados."}},{"id":"shure_sm7b","label":"Shure SM7B.","short_label":"Shure SM7B dinámico","reference_note":"Dinámico de bobina móvil ideal para voces cercanas, firmes y modernas.","core_tag":"warm punchy Shure SM7B dynamic intimate vocals","physical_instrument":"broadcast-grade cardioid moving-coil dynamic vocal microphone with internal shock mount and pop shield","musical_performance":"supports upfront intimate chesty delivery as well as powerful belted rock singing without harsh sibilance","studio_processing":"focused midrange vocal density pushed by clean high-gain preamp and tight FET compression","summary_es":{"instrumento":"Micrófono dinámico cardioide de estudio con suspensión neumática y filtro antipop integrado.","interpretacion":"Ideal para voz íntima cercana o proyección intensa de rock sin sibilancia agresiva.","procesamiento":"Cuerpo sólido en medios, previo limpio de alta ganancia y compresión FET firme."}},{"id":"shure_sm58","label":"Shure SM58.","short_label":"Shure SM58 directo / vivo","reference_note":"Micrófono dinámico clásico de escenario con corte en mezcla densa.","core_tag":"upfront live-stage Shure SM58 dynamic vocals","physical_instrument":"rugged cardioid dynamic vocal microphone with spherical mesh windscreen and classic 3-5 kHz presence peak","musical_performance":"energetic live-stage vocal projection cutting directly through loud guitars and acoustic drums","studio_processing":"raw punchy mid-forward live vocal energy with controlled low-end proximity warmth","summary_es":{"instrumento":"Dinámico cardioide de mano con rejilla esférica y pico natural de presencia (3–5 kHz).","interpretacion":"Proyección vocal directa y enérgica pensada para cortar sobre bandas potentes.","procesamiento":"Carácter vivo en medios frontales, calidez por proximidad y cero frialdad."}},{"id":"akg_c414","label":"AKG C414.","short_label":"AKG C414 abierto y aéreo","reference_note":"Condensador versátil de respuesta transitoria rápida y extremo agudo brillante.","core_tag":"open airy AKG C414 condenser vocal detail","physical_instrument":"dual-brass-edge large-diaphragm condenser capsule with ultra-fast transient detail and extended airy highs","musical_performance":"delivers shimmering acoustic intimacy, delicate head-voice extensions and crisp multi-voice vocal blends","studio_processing":"open transparent top-end air, pristine studio transient detail and natural stereo room shimmer","summary_es":{"instrumento":"Condensador multipatrón con cápsula de latón y respuesta rápida a transitorios.","interpretacion":"Realza voz de cabeza, coros detallados e interpretaciones acústicas delicadas.","procesamiento":"Aire transparente en agudos superiores y detalle fino sin exageración en graves."}},{"id":"telefunken_u47","label":"Telefunken U47.","short_label":"Telefunken U47 a válvulas","reference_note":"Clásico condensador de válvulas de gran cuerpo y autoridad vocal.","core_tag":"vintage tube Telefunken U47 commanding warm vocals","physical_instrument":"large-diaphragm vintage vacuum-tube condenser microphone with M7-style capsule and custom output transformer","musical_performance":"commands rich three-dimensional vocal authority, deep baritone/tenor resonance and emotive warmth","studio_processing":"lush vacuum-tube harmonic density, silky smooth upper mids and timeless vintage analog vocal depth","summary_es":{"instrumento":"Condensador clásico a válvulas con cápsula gran diafragma y transformador dedicado.","interpretacion":"Voz tridimensional de gran autoridad, cuerpo profundo en graves y calidez emotiva.","procesamiento":"Densidad armónica valvular, agudos sedosos y profundidad analógica clásica."}}]}]};
+const STUDIO_VIRTUAL_FALLBACK_CATALOG = {"version":"4.0-six-selectors","default_option":{"id":"auto","label":"Original / Automático"},"udio_style_max_chars":1000,"honesty_notice":"Las selecciones del Estudio Virtual traducen atributos del instrumento, la interpretación y el procesamiento de estudio en descriptores textuales para el parámetro style de UdioAPI. Orientan la estética sonora resultante sin alterar tu letra en prompt, sin clonar audios originales y sin sustituir emulaciones DSP físicas exactas ni librerías comerciales.","compaction_strategy":["1. Preservar género, métrica, BPM, tonalidad/acordes, ritmo y directivas vocales/instrumentales sin alterar la letra en prompt.","2. Mantener las 3 dimensiones musicales (sonido físico, interpretación y producción) en todas las categorías seleccionadas cuando exista presupuesto, sin relleno artificial si ya entra en <= 1000 caracteres.","3. Cuando supera 1000 caracteres: eliminar redundancias entre perfiles y comprimir progresivamente (clean -> tight -> essence) de forma equilibrada sin favorecer permanentemente a una categoría por posición.","4. Reutilizar dinámicamente cada carácter libre de categorías en Original / Automático y redistribuir el saldo sobrante para maximizar el detalle útil hasta 1000 caracteres exactos.","5. Solo bajo saturación extrema del prompt base reducir a core_tag o registrar omisión explícita con motivo claro en metadatos/log y #studioCompactionWarning, nunca silenciosa."],"categories":[{"key":"drums","field_name":"studio_drums","select_id":"selStudioDrums","title":"Baterías","short_title":"Batería","icon":"ph-metronome","emoji":"🥁","solo_mode":"drums","items":[{"id":"bonham","label":"John Bonham — Rock potente y acústico.","short_label":"Rock potente acústico","reference_note":"Referencia estilística descriptiva: batería rock acústica de gran tamaño y sala amplia.","core_tag":"heavy oversized acoustic rock drums","physical_instrument":"oversized 26-inch acoustic maple kick drum, 14-inch chrome snare, deep 15-18 inch toms, big bronze cymbals","musical_performance":"heavy behind-the-beat pocket, rapid kick triplets, thunderous snare backbeats and explosive tom fills","studio_processing":"distant overhead and bright wooden room microphones with warm analog tape saturation","summary_es":{"instrumento":"Cascos acústicos profundos (bombo 26\", caja metálica 14\", toms grandes y platillos amplios).","interpretacion":"Groove pesado ligeramente detrás del pulso, tresillos de bombo y fills contundentes.","procesamiento":"Microfonía ambiental de sala grande en madera y compresión analógica cálida."}},{"id":"peart","label":"Neil Peart — Rock progresivo y precisión.","short_label":"Rock progresivo técnico","reference_note":"Referencia estilística descriptiva: batería progresiva multi-tom articulada y precisa.","core_tag":"precise progressive rock multi-tom drums","physical_instrument":"multi-tom birch and maple progressive acoustic drum kit with crisp snare and articulate bell ride","musical_performance":"razor-sharp metered precision, syncopated ride patterns and intricate progressive time-signature fills","studio_processing":"focused multi-mic close isolation, tight gating, sharp transient attack and wide stereo overheads","summary_es":{"instrumento":"Set progresivo de abedul/arce con múltiples toms afinados, caja definida y ride con campana nítida.","interpretacion":"Precisión métrica milimétrica, síncopas sobre ride y redobles complejos compuestos.","procesamiento":"Aislamiento multi-micrófono cercano, puertas dinámicas limpias y apertura estéreo definida."}},{"id":"copeland","label":"Stewart Copeland — Reggae, ska y síncopas.","short_label":"Reggae, ska y síncopas","reference_note":"Referencia estilística descriptiva: batería sincopada con caja aguda y hi-hat ágil.","core_tag":"syncopated high-cracking ska-rock drums","physical_instrument":"tight high-tuned steel 14-inch snare drum, punchy compact kick, crisp splash cymbals and bright hi-hat","musical_performance":"reggae and ska syncopated rimshots, agile bouncing hi-hat bark and energetic cross-beat accents","studio_processing":"crisp upper-mid transient snap, dry tight room focus and subtle rhythmic tape echo ambience","summary_es":{"instrumento":"Caja de acero afinada aguda, bombo compacto de respuesta rápida, hi-hat brillante y splash.","interpretacion":"Síncopas reggae/ska, rimshots en contratiempo y fraseo nervioso en hi-hat.","procesamiento":"Ataque agudo cercano, sala seca focalizada y eco de cinta sutil."}},{"id":"moon","label":"Keith Moon — Rock explosivo y fills expresivos.","short_label":"Rock explosivo y fills","reference_note":"Referencia estilística descriptiva: batería rock impetuosa guiada por toms y platillos.","core_tag":"explosive fiery rock tom-driven drums","physical_instrument":"twin bass drums, deep resonant coated rack and floor toms, wide dark crashing bronze cymbals","musical_performance":"continuous melodic sweeping tom rolls, fiery cymbal cascades and exuberant high-energy rhythmic motion","studio_processing":"open vintage studio overhead mics capturing raw live energy and natural room wash","summary_es":{"instrumento":"Doble bombo clásico, toms resonantes con parches rugosos y platillos crash expansivos.","interpretacion":"Fills melódicos casi continuos en toms y explosiones constantes de platillos.","procesamiento":"Overheads vintage abiertos y captura cruda de sala viva sin sobre-compresión."}},{"id":"watts","label":"Charlie Watts — Rock clásico con influencia de jazz.","short_label":"Rock clásico / jazz swing","reference_note":"Referencia estilística descriptiva: set compacto vintage con aire jazz y bolsillo natural.","core_tag":"vintage 4-piece swing-pocket classic rock drums","physical_instrument":"compact vintage 4-piece maple drum kit, dry dark jazz ride cymbal and crisp wooden snare","musical_performance":"relaxed understated pocket, subtle swing push-pull feel and airy micro-pauses on hi-hat backbeats","studio_processing":"warm ribbon overhead and front-kit miking with woody midrange clarity and gentle tube glue","summary_es":{"instrumento":"Set vintage compacto de 4 cuerpos en arce, ride oscuro de jazz y caja de madera cálida.","interpretacion":"Bolsillo relajado clásico con leve balanceo jazz y espacios limpios en hi-hat.","procesamiento":"Microfonía de cinta frontal y superior con calidez tubular y foco en medios."}},{"id":"portnoy","label":"Mike Portnoy — Metal progresivo y doble bombo.","short_label":"Metal prog / doble bombo","reference_note":"Referencia estilística descriptiva: doble bombo técnico y percusión progresiva pesada.","core_tag":"technical double-kick progressive metal drums","physical_instrument":"double-kick progressive acoustic kit with snappy high-cut snare, octoban accents, china and stack cymbals","musical_performance":"tight double bass drum patterns, razor-precise progressive meter transitions and staccato accent fills","studio_processing":"modern high-impact multi-mic compression, click-defined kick punch and tight controlled low-end","summary_es":{"instrumento":"Doble bombo de ataque rápido, caja cortante, toms articulados y platillos china/stack.","interpretacion":"Patrones técnicos de doble bombo, cambios de compás progresivos y fills cortantes.","procesamiento":"Compresión moderna de alto impacto, bombo definido en ataque y graves controlados."}},{"id":"smith","label":"Chad Smith — Funk-rock potente.","short_label":"Funk-rock potente","reference_note":"Referencia estilística descriptiva: batería funk-rock de pegada firme y notas fantasma.","core_tag":"hard-hitting funk-rock pocket drums","physical_instrument":"heavy maple and brass-snare funk-rock acoustic kit with deep 24-inch kick and bright crisp cymbals","musical_performance":"authoritative hard-hitting pocket, intricate snare ghost notes and tight syncopated funk-rock groove","studio_processing":"punchy analog console bus compression, forward snare snap and solid upfront chest impact","summary_es":{"instrumento":"Bombo de 24\", caja de latón con gran pegada y platillos brillantes.","interpretacion":"Groove funk-rock contundente repleto de notas fantasma y acentos sincopados.","procesamiento":"Compresión de bus con punch analógico, caja al frente y pegada en graves."}},{"id":"collins","label":"Phil Collins — Rock progresivo y sonido de batería ochentoso.","short_label":"Prog / batería ochentosa","reference_note":"Referencia estilística descriptiva: toms resonantes sin parche inferior y ambiente de los 80.","core_tag":"1980s gated-reverb progressive rock drums","physical_instrument":"concert single-headed tom drum kit, crisp snappy snare and deep resonant floor toms","musical_performance":"booming dramatic descending tom fills, commanding progressive groove and wide spacious backbeats","studio_processing":"1980s heavily compressed room listen-mic ambience and classic gated reverb snare and tom tail","summary_es":{"instrumento":"Toms de concierto abiertos de gran ataque y caja seca profunda.","interpretacion":"Descensos dramáticos de toms y groove progresivo amplio y contundente.","procesamiento":"Ambiente sobrecomprimido estilo micrófono de sala 80s con gated reverb clásico."}},{"id":"grohl","label":"Dave Grohl — Grunge y rock contundente.","short_label":"Grunge / rock pesado","reference_note":"Referencia estilística descriptiva: batería rock de golpeo enérgico y cascos profundos.","core_tag":"hard-slamming deep-shell grunge rock drums","physical_instrument":"deep heavy-shell rock drum kit with massive 24-inch kick, deep metal snare and heavy rock crashes","musical_performance":"visceral full-strength heavy strokes, relentless driving rock eighth-note feel and crashing transitions","studio_processing":"aggressive analog tape saturation, loud upfront room microphones and raw weighty low-mid punch","summary_es":{"instrumento":"Cascos profundos de rock, bombo grande de 24\", caja metálica profunda y crash pesados.","interpretacion":"Golpeo frontal muy enérgico, empuje constante y caídas de platillos intensas.","procesamiento":"Saturación de cinta analógica, sala presente y medios-graves densos y crudos."}},{"id":"baker","label":"Ginger Baker — Blues-rock, jazz y ritmos africanos.","short_label":"Blues-rock / polirritmia jazz","reference_note":"Referencia estilística descriptiva: independencia polirrítmica en toms y swing blues-rock.","core_tag":"polyrhythmic Afro-jazz blues-rock drums","physical_instrument":"vintage dual-kick jazz-rock kit with coated melodic toms, sizzle ride and warm resonant wood shells","musical_performance":"polyrhythmic Afro-jazz tom independence, swirling jazz phrasing and improvisational blues-rock drive","studio_processing":"organic 1960s three-mic stereo spread with lively room air and vintage tube console warmth","summary_es":{"instrumento":"Set vintage doble bombo con toms melódicos, parches rugosos y ride con remaches.","interpretacion":"Polirritmia independiente entre toms y bombos con impulso blues-rock y swing.","procesamiento":"Captura orgánica tipo años 60 en tres micrófonos y calidez analógica a válvulas."}}]},{"key":"guitars","field_name":"studio_guitar","select_id":"selStudioGuitar","title":"Guitarras eléctricas","short_title":"Guitarra","icon":"ph-guitar","emoji":"🎸","solo_mode":"guitar","items":[{"id":"srv_number_one","label":"Stevie Ray Vaughan — Number One Stratocaster.","short_label":"Number One Stratocaster","reference_note":"Referencia estilística descriptiva: Stratocaster vintage con ataque Texas blues.","core_tag":"heavy-gauge vintage single-coil Texas blues guitar","physical_instrument":"worn 1960s sunburst alder electric guitar with overwound single-coil pickups and heavy-gauge strings","musical_performance":"fierce percussive pick rakes, wide expressive blues bends and authoritative vocal neck-pickup vibrato","studio_processing":"cranked high-headroom clean tube combo pushed with mild green mid-hump overdrive and off-axis dynamic mic","summary_es":{"instrumento":"Cuerpo de aliso tipo Strat 60s, bobinas simples calientes y cuerdas de calibre grueso.","interpretacion":"Ataque percusivo intenso de púa, bendings amplios de blues y vibrato firme.","procesamiento":"Combo a válvulas de alto headroom empujado con overdrive cálido en medios."}},{"id":"vai_evo","label":"Steve Vai — Ibanez Evo.","short_label":"Ibanez Evo virtuosa","reference_note":"Referencia estilística descriptiva: superstrat moderna con humbuckers y palanca flotante.","core_tag":"virtuosic high-gain floating-tremolo superstrat guitar","physical_instrument":"sculpted solid-body superstrat electric guitar with hot ceramic-alnico humbuckers and floating locking vibrato","musical_performance":"liquid legato cascades, dramatic whammy pitch inflection, pinch harmonics and expressive vocal sustain","studio_processing":"multi-stage high-gain tube head through 4x12 cabinet, stereo modulated delay and studio pitch shimmer","summary_es":{"instrumento":"Superstrat ergonómica con humbuckers de alta salida y puente flotante de doble bloqueo.","interpretacion":"Legato fluido, armónicos artificiales, inflexiones de palanca y fraseo melódico veloz.","procesamiento":"Cabezal high-gain a válvulas con gabinete 4x12, delay estéreo modulado y brillo."}},{"id":"frusciante_strat62","label":"John Frusciante — Stratocaster 1962.","short_label":"Stratocaster 1962 funk/rock","reference_note":"Referencia estilística descriptiva: Stratocaster 1962 orgánica entre limpio cristalino y crunch.","core_tag":"1962 vintage single-coil edge-of-breakup electric guitar","physical_instrument":"1962 vintage alder Stratocaster-style guitar with rosewood fingerboard and low-output aged single-coils","musical_performance":"syncopated muted funk-rock chords, sparse lyrical triads and raw emotionally bent single-note leads","studio_processing":"vintage British tube plexi amp on edge of breakup with spring reverb warmth and subtle analog chorus","summary_es":{"instrumento":"Cuerpo de aliso y diapasón de palisandro estilo 1962 con micrófonos single-coil dulces.","interpretacion":"Rasgueos funk sincopados, tríadas minimalistas y solos melódicos muy expresivos.","procesamiento":"Amplificador británico al borde de la saturación con reverb de resortes y chorus suave."}},{"id":"summers_tele61","label":"Andy Summers — Telecaster 1961.","short_label":"Telecaster 1961 atmosférica","reference_note":"Referencia estilística descriptiva: Telecaster limpia modulada con acordes suspendidos.","core_tag":"1961 Telecaster modulated wide-chord electric guitar","physical_instrument":"early-1960s ash single-cut Telecaster guitar with neck humbucker warmth and bright bridge single-coil","musical_performance":"spacious add9 suspended arpeggios, crisp reggae-rock upstroke chords and clean atmospheric textures","studio_processing":"chimey clean studio amp layered with swirling analog flanger-chorus modulation and rhythmic stereo echo","summary_es":{"instrumento":"Single-cut de fresno estilo 1961 con humbucker en mástil y single-coil claro en puente.","interpretacion":"Acordes abiertos con novenas agregadas, arpegios amplios y golpes rítmicos nítidos.","procesamiento":"Canal limpio cristalino con modulación analógica flanger/chorus y eco estéreo."}},{"id":"evh_frankenstrat","label":"Eddie Van Halen — Frankenstrat.","short_label":"Frankenstrat brown sound","reference_note":"Referencia estilística descriptiva: superstrat de un humbucker con saturación orgánica clásica.","core_tag":"classic hot-rodded humbucker hard-rock electric guitar","physical_instrument":"raw ash custom superstrat guitar with direct-mounted bridge PAF-style humbucker and maple fretboard","musical_performance":"two-hand tapping arpeggios, swinging palm-muted rock boogie rhythms and energetic dive-bomb vibrato","studio_processing":"variac-driven brown-sound vintage tube stack saturation, pre-drive analog phaser and rich plate reverb","summary_es":{"instrumento":"Cuerpo de fresno con mástil de arce y un humbucker directo en puente de tono abierto.","interpretacion":"Tapping a dos manos, rítmica con swing y palm-mute, más palanca enérgica.","procesamiento":"Saturación clásica de cabezal británico a válvulas, phaser pre-distorsión y plate reverb."}},{"id":"gilmour_black_strat","label":"David Gilmour — Black Strat.","short_label":"Black Strat espacial","reference_note":"Referencia estilística descriptiva: Stratocaster negra melódica con sustain espacioso.","core_tag":"soaring lyrical single-coil ambient rock electric guitar","physical_instrument":"black alder Stratocaster guitar with maple neck, fat bridge single-coil pickup and short tremolo arm","musical_performance":"soaring vocal slow string bends, spacious sustained lyrical melodies and bell-like arpeggio motifs","studio_processing":"high-headroom clean tube stack fed with optical compression, smooth sustain fuzz, rotary speaker and stereo tape delay","summary_es":{"instrumento":"Cuerpo de aliso con mástil de arce y pastilla simple robusta de agudos redondos.","interpretacion":"Estiramientos largos cantables, notas sostenidas y fraseo pausado altamente melódico.","procesamiento":"Stack limpio potente con compresor óptico, fuzz cremoso, rotary y delay de cinta."}},{"id":"may_red_special","label":"Brian May — Red Special.","short_label":"Red Special orquestal","reference_note":"Referencia estilística descriptiva: guitarra semi-hueca en serie con armonías tipo coro.","core_tag":"harmonized orchestral Class-A chime rock guitar","physical_instrument":"semi-chambered oak-and-mahogany electric guitar with three series-wired phase-switchable single coils played with coin pick","musical_performance":"singing violin-like midrange sustain, multi-part harmonized guitar choir layers and lyrical phrasing","studio_processing":"treble booster driving cranked British Class-A EL84 combo amplifiers in warm studio room ambience","summary_es":{"instrumento":"Cuerpo semi-cámara roble/caoba con 3 bobinas simples cableadas en serie fuera de fase.","interpretacion":"Sustain vocal tipo violín, ataque rígido definido y armonización multicapa.","procesamiento":"Treble booster atacando amplis Clase A EL84 saturados en sala cálida."}},{"id":"green_greeny_lp","label":"Peter Green — Greeny Les Paul.","short_label":"Greeny Les Paul blues","reference_note":"Referencia estilística descriptiva: Les Paul 1959 con bobina invertida fuera de fase.","core_tag":"out-of-phase vintage mahogany blues electric guitar","physical_instrument":"1959 mahogany single-cut Les Paul-style guitar with reversed out-of-phase neck PAF magnet giving hollow nasal chime","musical_performance":"haunting slow minor blues bends, delicate touch sensitivity and weeping dynamic finger vibrato","studio_processing":"warm vintage tube amplifier right on sweet clean-to-grit edge with natural spring reverb bloom","summary_es":{"instrumento":"Caoba/arce estilo 1959 con imán de pastilla mástil invertido (sonido hueco fuera de fase).","interpretacion":"Blues menor lento y delicado, sensibilidad extrema a la púa o dedos y vibrato lloroso.","procesamiento":"Amplificador valvular vintage apenas saturado con reverb de resortes natural."}},{"id":"hendrix_monterey_strat","label":"Jimi Hendrix — Monterey Strat.","short_label":"Monterey Strat psicodélica","reference_note":"Referencia estilística descriptiva: Stratocaster 60s de doble-stops, fuzz y wah.","core_tag":"fiery 1960s psychedelic fuzz single-coil guitar","physical_instrument":"late-1960s reverse-strung maple-neck Stratocaster guitar with glassy bell-tone single-coil pickups","musical_performance":"expressive thumb-over rhythm embellishments, double-stop bends, octave swells and fiery improvisation","studio_processing":"roaring 100W vintage British stack pushed by warm germanium fuzz, expressive wah sweep and rotating speaker depth","summary_es":{"instrumento":"Stratocaster de arce años 60 de timbre campana, cuerdas equilibradas en tensión.","interpretacion":"Embellecimientos rítmicos con doble cuerda, ligados y fraseo psicodélico expresivo.","procesamiento":"Stack británico 100W con fuzz de germanio, filtro wah y modulación rotatoria."}},{"id":"page_number_one_lp","label":"Jimmy Page — Number One Les Paul.","short_label":"Number One Les Paul rock","reference_note":"Referencia estilística descriptiva: Les Paul 1959 de riffs pesados y capas de estudio.","core_tag":"classic slim-neck PAF humbucker hard-rock guitar","physical_instrument":"1959 slim-taper mahogany and carved maple-top Les Paul guitar with warm vintage PAF humbuckers","musical_performance":"swaggering blues-rock riffs, dynamic clean-to-heavy picking shifts and loose gritty rock phrasing","studio_processing":"layered multi-amp studio tracking blending crisp small low-watt tube room mics with big cranked arena stack","summary_es":{"instrumento":"Cuerpo caoba/arce tapa tallada con humbuckers PAF vintage de respuesta orgánica.","interpretacion":"Riffs de blues-rock con empuje, contraste limpio/agresivo y fraseo suelto clásico.","procesamiento":"Doblado en capas mezclando ampli chico en sala lejana y stack valvular potente."}}]},{"key":"basses","field_name":"studio_bass","select_id":"selStudioBass","title":"Bajos eléctricos","short_title":"Bajo","icon":"ph-wave-sine","emoji":"🔊","solo_mode":"bass","items":[{"id":"pastorius_fretless","label":"Jaco Pastorius — Fretless / Come On, Come Over.","short_label":"Fretless / Jazz fusion","reference_note":"Referencia estilística descriptiva (no audio copiado): timbre fretless melódico y síncopa ágil.","core_tag":"singing fretless electric bass guitar","physical_instrument":"real physical epoxy-coated fretless Jazz Bass guitar with bridge single-coil pickup and roundwound steel strings, zero synth bass","musical_performance":"lyrical singing fretless glissando mwah, crisp 16th-note fingerstyle funk grooves and natural harmonics","studio_processing":"dry upfront midrange cabinet focus blended with clean solid-state direct bass track","summary_es":{"instrumento":"Bajo eléctrico fretless con mástil sellado en epoxi, pastilla de puente y cuerdas entorchadas.","interpretacion":"Expresividad vocal mwah en glissandos, síncopa de semicorcheas y armónicos naturales.","procesamiento":"Mezcla seca en medios definidos entre gabinete cercano y línea directa limpia."}},{"id":"jamerson_motown","label":"James Jamerson — Motown / What's Going On.","short_label":"Soul clásico flatwound","reference_note":"Referencia estilística descriptiva (no audio copiado): P-Bass vintage cálido con cuerdas flatwound.","core_tag":"warm flatwound vintage Precision electric bass guitar","physical_instrument":"authentic early-1960s alder split-coil Precision electric bass guitar with heavy flatwound strings and bridge mute, zero synth bass","musical_performance":"melodic syncopated hook lines, soulful chromatic passing notes and deep glued rhythm-section pocket","studio_processing":"warm vacuum-tube direct console preamp blended with vintage 1x15 flip-top tube bass combo","summary_es":{"instrumento":"Bajo eléctrico tipo Precision con pastilla dividida, cuerdas lisas flatwound y sordina en puente.","interpretacion":"Líneas melódicas sincopadas con notas de paso cromáticas y peso sólido en la base.","procesamiento":"Previo valvular de consola directa combinado con combo valvular 1x15 clásico."}},{"id":"miller_jazz_funk","label":"Marcus Miller — Funk y articulación técnica / Teen Town.","short_label":"Slap & fingerstyle hi-fi","reference_note":"Referencia estilística descriptiva (no audio copiado): Jazz Bass activo brillante de articulación técnica.","core_tag":"active hi-fi slap-and-finger funk electric bass","physical_instrument":"real physical ash-body 1970s active Jazz Bass guitar with onboard 2-band boost preamp and bright steel strings, zero synth bass","musical_performance":"razor-clean thumb slap and pop articulation, double-thumb precision and melodic fast funk runs","studio_processing":"scooped midrange studio hi-fi DI clarity with crisp sparkling highs and fast FET compression","summary_es":{"instrumento":"Bajo de fresno con previo activo 2 bandas, diapasón de arce y cuerdas de acero brillantes.","interpretacion":"Slap, pop y doble pulgar ultra precisos combinados con frases rápidas de funk.","procesamiento":"Línea directa hi-fi con medios levemente ahuecados, agudos definidos y compresión FET."}},{"id":"wooten_slap","label":"Victor Wooten — Slap avanzado / Classical Thump.","short_label":"Slap avanzado / doble pulgar","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo activo ergonómico con técnica percusiva.","core_tag":"technical double-thumb slap electric bass guitar","physical_instrument":"real physical active PJ-pickup modern electric bass guitar with low action and lively steel roundwound strings, zero synth bass","musical_performance":"percussive double-thumb up-down thumping, rapid muted plucks, harmonic tapping and agile solo phrasing","studio_processing":"wide-bandwidth studio DI capture with transparent multi-band compression highlighting percussive transients","summary_es":{"instrumento":"Bajo activo ergonómico P/J de acción baja y cuerdas metálicas de alta respuesta.","interpretacion":"Doble pulgar arriba/abajo, percussión mutada rápida, tapping armónico y virtuosismo.","procesamiento":"DI cristalino de rango completo con compresión multibanda para definición percusiva."}},{"id":"flea_funk_rock","label":"Flea — Funk-rock / Give It Away.","short_label":"Funk-rock enérgico","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo funk-rock explosivo en slap y dedos.","core_tag":"energetic punk-funk slap electric bass guitar","physical_instrument":"real physical active humbucker and jazz electric bass guitar with snappy steel roundwounds, zero synth bass","musical_performance":"explosive bouncing thumb slap riffs, energetic punk-funk fingerstyle pulse and tight kick-drum lock","studio_processing":"high-headroom solid-state bass stack punch blended with gritty DI edge and tight sub control","summary_es":{"instrumento":"Bajo sólido activo de respuesta inmediata y cuerdas entorchadas con gran rebote.","interpretacion":"Riffs explosivos de slap-and-pop y líneas enérgicas a dedos amarradas al bombo.","procesamiento":"Stack sólido de alto headroom con leve rugosidad DI y graves compactos."}},{"id":"lee_prog_jazz","label":"Geddy Lee — Rock progresivo / YYZ.","short_label":"Jazz Bass prog agresivo","reference_note":"Referencia estilística descriptiva (no audio copiado): Jazz Bass agresivo con clank en medios.","core_tag":"clanky aggressive progressive electric bass guitar","physical_instrument":"authentic thin-neck 1972 ash Jazz Bass guitar with dual bright single-coils and fresh steel roundwounds, zero synth bass","musical_performance":"hard-plucked driving fingerstyle triplets, complex odd-meter progressive riffs and high-energy melodic counterlines","studio_processing":"dual parallel path blending tube overdrive growl with compressed crisp high-bite direct bass signal","summary_es":{"instrumento":"Bajo Jazz 1972 de mástil delgado con dos single-coils brillantes y entorchado metálico.","interpretacion":"Pulsación agresiva a dedos estilo púa, tresillos rápidos y métricas progresivas.","procesamiento":"Ruta paralela entre saturación valvular con mordida y señal DI comprimida."}},{"id":"burton_distorted_bass","label":"Cliff Burton — Bajo distorsionado / Anesthesia.","short_label":"Bajo distorsión / wah","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo solista con fuzz y filtro wah.","core_tag":"fuzz-wah distorted heavy electric bass guitar","physical_instrument":"real physical neck-through mahogany electric bass guitar with high-output pickups and heavy steel strings, zero synth bass","musical_performance":"aggressive fuzz-driven solo phrasing, classical counter-melody bends and roaring high-register bass lines","studio_processing":"snarling vintage fuzz overdrive and expressive wah sweep pushed through cranked bass cabinet mic","summary_es":{"instrumento":"Bajo neck-through de caoba con pastillas de alta ganancia y cuerdas gruesas.","interpretacion":"Fraseo solista agresivo con contramelodías, estiramientos y pasajes agudos.","procesamiento":"Distorsión fuzz analógica combinada con barrido wah hacia amplificador de bajo."}},{"id":"entwistle_aggressive","label":"John Entwistle — Rock agresivo / My Generation.","short_label":"Rock agresivo brillante","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo solista brillante con ataque percusivo.","core_tag":"trebly lead-aggressive rock electric bass guitar","physical_instrument":"real physical dual-pickup electric bass guitar fitted with ultra-bright Rotosound steel roundwound strings, zero synth bass","musical_performance":"forceful typewriter-attack fingerstyle and pick playing, roaring solo bass fills and counter-melodic lead lines","studio_processing":"bi-amped treble horn bite stacked over deep 15-inch speaker punch with wide upper-mid snap","summary_es":{"instrumento":"Bajo de doble pastilla con cuerdas Rotosound metálicas extremadamente brillantes.","interpretacion":"Ataque percusivo muy fuerte, fraseos solistas y contramelodías al frente.","procesamiento":"Bi-amplificación separando agudos de bocina sobre cuerpo profundo de 15 pulgadas."}},{"id":"arnedo_rock_argentino","label":"Diego Arnedo — Rock argentino / El 38.","short_label":"Rock argentino poderoso","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo rock pesado, grave y terroso.","core_tag":"earthy heavy Argentine rock electric bass guitar","physical_instrument":"real physical heavy-bodied split-pickup electric bass guitar with fat low-mid punch and sturdy steel strings, zero synth bass","musical_performance":"thunderous driving rock eighth-note grooves, hypnotic riff anchors and heavy muscular pocket feel","studio_processing":"weighty cranked tube bass head and 8x10 cabinet growl with gritty midrange rock density","summary_es":{"instrumento":"Bajo eléctrico robusto con pastilla dividida de gran peso en graves y medios-graves.","interpretacion":"Bases pesadas de rock en corcheas firmes, riffs hipnóticos y empuje terroso.","procesamiento":"Cabezal valvular exigido con caja 8x10 logrando rugido denso de rock."}},{"id":"squire_rickenbacker_prog","label":"Chris Squire — Rickenbacker progresivo / Roundabout.","short_label":"Rickenbacker prog con púa","reference_note":"Referencia estilística descriptiva (no audio copiado): bajo brillante de arce tocado con púa.","core_tag":"bright pick-driven progressive stereo electric bass","physical_instrument":"authentic maple neck-through Rickenbacker-style stereo bass guitar with biting treble bridge pickup played with rigid pick, zero synth bass","musical_performance":"sharp articulated pick propulsion, choral counter-melodic progressive runs and energetic driving octaves","studio_processing":"stereo bi-amp split routing gritty treble attack into bright tube amp and deep low fundamental into clean sub stack","summary_es":{"instrumento":"Bajo de arce neck-through tipo Rickenbacker con salida estéreo y púa rígida.","interpretacion":"Líneas contrapuntísticas brillantes tocadas con púa, ataque nítido y propulsión prog.","procesamiento":"División estéreo bi-amp: agudos con saturación cálida + subgraves limpios."}}]},{"key":"keyboards","field_name":"studio_keyboard","select_id":"selStudioKeyboard","title":"Teclados","short_title":"Teclado","icon":"ph-piano-keys","emoji":"🎹","solo_mode":"piano","items":[{"id":"piano_acustico","label":"Piano acústico.","short_label":"Piano de cola acústico","reference_note":"Instrumento de cuerdas percutidas con caja armónica de abeto y arpa acústica.","core_tag":"acoustic concert grand piano","physical_instrument":"9-foot acoustic concert grand piano with solid spruce soundboard, cast-iron frame and felt hammers","musical_performance":"expressive touch sensitivity across delicate arpeggios and commanding resonant full-range chords","studio_processing":"matched stereo pair of small-diaphragm condensers inside open lid with natural concert hall ambience","summary_es":{"instrumento":"Piano de cola de concierto de 9 pies con tabla armónica de abeto y martillos de fieltro.","interpretacion":"Dinámica amplia desde arpegios íntimos hasta acordes orquestales resonantes.","procesamiento":"Par estéreo de condensadores de diafragma pequeño + aire natural de sala."}},{"id":"hammond_b3","label":"Hammond B3.","short_label":"Órgano Hammond B3 + Leslie","reference_note":"Órgano electromecánico de ruedas fónicas con altavoz rotatorio.","core_tag":"Hammond B3 tonewheel organ with rotary Leslie","physical_instrument":"electro-mechanical tonewheel Hammond B3 organ with harmonic drawbars, key-click and dual-speed rotating Leslie 122 speaker","musical_performance":"expressive volume pedal swells, soulful gospel and rock palm glissandos and sustained rich organ pads","studio_processing":"stereo horn and rotor miking capturing Doppler swirl and warm vacuum-tube preamp saturation","summary_es":{"instrumento":"Órgano electromecánico de 9 tiradores con key-click y gabinete rotatorio Leslie 122.","interpretacion":"Crescendos de pedal de expresión, glissandos de palma y colchones armónicos densos.","procesamiento":"Microfonía estéreo en rotor agudo y grave con saturación tubular cálida."}},{"id":"fender_rhodes","label":"Fender Rhodes.","short_label":"Piano eléctrico Fender Rhodes","reference_note":"Piano eléctrico electromecánico vintage de púas y pastillas magnéticas.","core_tag":"vintage Fender Rhodes tine electric piano","physical_instrument":"vintage 73-key electro-mechanical Fender Rhodes electric piano with steel tines, felt hammers and passive pickups","musical_performance":"warm singing bell-like chord voicings, smooth soulful sustain and gentle dynamic bark when struck hard","studio_processing":"stereo tremolo autopan into warm tube preamp DI with gentle analog stereo chorus sheen","summary_es":{"instrumento":"Piano eléctrico electromecánico de 73 teclas con varillas metálicas (tines) y pastillas.","interpretacion":"Acordes dulces tipo campana con leve gruñido cálido al atacar fuerte.","procesamiento":"Tremolo estéreo panorámico, previo analógico cálido y chorus suave."}},{"id":"wurlitzer","label":"Wurlitzer.","short_label":"Piano eléctrico Wurlitzer 200A","reference_note":"Piano eléctrico de lengüetas de acero con mordida cálida en medios.","core_tag":"vintage Wurlitzer reed electric piano","physical_instrument":"classic 200A reed-based electric piano with steel vibrating reeds and electrostatic pickup plate","musical_performance":"punchy percussive midrange bark on rhythmic accents, soulful blues-rock comping and warm vibrato","studio_processing":"intimate tube console warmth, mild optical compression and built-in smooth vibrato modulation","summary_es":{"instrumento":"Piano eléctrico clásico de lengüetas vibrantes y placa captadora electrostática.","interpretacion":"Mordida percusiva característica en medios durante acompañamientos y acentos rítmicos.","procesamiento":"Vibrato clásico suavizado, calidez de consola valvular y compresión ligera."}},{"id":"yamaha_dx7","label":"Yamaha DX7.","short_label":"Sintetizador FM Yamaha DX7","reference_note":"Sintetizador FM clásico de los 80 con campanas cristalinas.","core_tag":"1980s FM crystalline bell Yamaha DX7 keyboard","physical_instrument":"iconic 1980s 6-operator digital FM synthesizer engine generating glassy metallic tines and crisp bell transients","musical_performance":"shimmering 80s pop and worship electric-piano ballads, bright velocity-sensitive chimes and layered pads","studio_processing":"pristine stereo analog rack chorus and lush 1980s studio digital plate reverb width","summary_es":{"instrumento":"Sintetizador digital FM de 6 operadores estilo años 80 con transitorios metálicos.","interpretacion":"Baladas cristalinas con brillo de campanas FM y acordes sensibles a la velocidad.","procesamiento":"Chorus estéreo analógico de rack y reverb plate amplio estilo 80s."}},{"id":"minimoog","label":"Minimoog.","short_label":"Sintetizador analógico Minimoog","reference_note":"Sintetizador analógico sustractivo monofónico con filtro escalera de 24dB.","core_tag":"warm analog ladder-filter synthesizer lead and moog bass","physical_instrument":"monophonic discrete analog subtractive synthesizer with three rich VCO oscillators and 24dB transistor ladder filter","musical_performance":"creamy expressive pitch-glide leads, resonant filter sweeps and fat analog moog bass foundations","studio_processing":"transformer console warmth, rich analog tape saturation and subtle spatial stereo delay","is_synth_bass_capable":true,"summary_es":{"instrumento":"Sintetizador analógico monofónico de 3 osciladores discretos y filtro escalera 24dB/oct.","interpretacion":"Solos melódicos con portamento cremoso, barridos de filtro y bajos analógicos densos.","procesamiento":"Saturación de cinta/transformador y retardo espacial sutil."}}]},{"key":"consoles","field_name":"studio_console","select_id":"selStudioConsole","title":"Consolas de grabación","short_title":"Consola","icon":"ph-faders-horizontal","emoji":"🎚️","solo_mode":"console","items":[{"id":"ssl_4000","label":"SSL 4000.","short_label":"SSL 4000 E/G VCA","reference_note":"Consola analógica británica VCA enfocada en pegada, nitidez y control.","core_tag":"SSL 4000 VCA punchy studio console mix","physical_instrument":"large-format Solid State Logic VCA analog mixing console with per-channel parametric EQ and stereo bus compressor","musical_performance":"keeps dense rhythm sections, crisp snare snaps and fast instrumental transients locked forward","studio_processing":"tight glued VCA bus compression, punchy forward midrange snap and polished hi-fi studio clarity","summary_es":{"instrumento":"Consola analógica gran formato con arquitectura VCA y compresor estéreo de bus.","interpretacion":"Mantiene transitorios rápidos y mezclas densas firmemente articuladas al frente.","procesamiento":"Pegada definida, medios incisivos y cohesión clásica de mezcla profesional."}},{"id":"neve_80","label":"Neve 80 Series.","short_label":"Neve 80 Series Clase A","reference_note":"Consola británica discreta Clase A con transformadores y cuerpo cálido.","core_tag":"Neve Class-A warm transformer analog console mix","physical_instrument":"discrete Class-A British analog console (1073/80-series) built with hand-wound input and output transformers","musical_performance":"supports expressive vocal intimacy, thick bass foundations and organic acoustic instrument bloom","studio_processing":"creamy rich low-end weight, silky top-end air and musical harmonic transformer saturation","summary_es":{"instrumento":"Circuitería discreta Clase A británica acoplada con transformadores de entrada/salida.","interpretacion":"Realza profundidad orgánica en voces, bajos gruesos e instrumentos acústicos.","procesamiento":"Graves cremosos, agudos sedosos y saturación armónica cálida."}},{"id":"api_console","label":"API Console.","short_label":"API Console 2520","reference_note":"Consola estadounidense con op-amps 2520 de respuesta rápida e impacto rock.","core_tag":"API 2520 op-amp punchy American rock console mix","physical_instrument":"American discrete 2520 op-amp analog mixing console with proportional-Q EQ and transformer-coupled stages","musical_performance":"accents tight forward drum hits, energetic electric guitar bite and immediate rock ensemble impact","studio_processing":"fast punchy transient snap, muscular low-mid authority and vibrant upfront analog rock character","summary_es":{"instrumento":"Consola americana con amplificadores operacionales discretos 2520 y ecualización proporcional.","interpretacion":"Resalta impacto frontal inmediato en baterías, guitarras eléctricas y bajos de rock.","procesamiento":"Transitorios veloces, medios-graves musculosos y pegada directa sin opacidad."}},{"id":"digital_transparent","label":"Consola digital transparente.","short_label":"Consola Digital Transparente","reference_note":"Ruta digital de alta precisión sin coloración analógica añadida.","core_tag":"transparent high-headroom clean digital console mix","physical_instrument":"modern 32-bit ultra-clean transparent digital studio console with linear ultra-low-distortion preamps","musical_performance":"faithfully translates subtle playing dynamics, delicate acoustic overtones and untouched room depth","studio_processing":"noise-free pristine headroom, linear phase accuracy and uncolored modern studio definition","summary_es":{"instrumento":"Arquitectura digital moderna de ultra-baja distorsión y preamplificadores lineales.","interpretacion":"Preserva fielmente la dinámica original y los matices acústicos sin coloración extra.","procesamiento":"Transparencia cristalina, coherencia de fase y amplio rango dinámico limpio."}}]},{"key":"microphones","field_name":"studio_mic","select_id":"selStudioMic","title":"Micrófonos para cantar","short_title":"Micrófono","icon":"ph-microphone-stage","emoji":"🎙️","solo_mode":"vocals","items":[{"id":"neumann_u87","label":"Neumann U87.","short_label":"Neumann U87 condensador","reference_note":"Estándar vocal de estudio con cápsula grande FET y presencia equilibrada.","core_tag":"Neumann U87 studio condenser vocal clarity","physical_instrument":"classic dual-large-diaphragm FET condenser vocal microphone with transformer output and gentle presence rise","musical_performance":"articulates subtle vocal breath, lyrical phrasing and clear expressive diction across dynamic ranges","studio_processing":"balanced studio condenser vocal polish with gentle optical vocal leveling and airy clarity","summary_es":{"instrumento":"Condensador FET de gran diafragma doble con transformador y realce sutil de presencia.","interpretacion":"Capta respiración íntima, dicción clara y matices expresivos en todo rango vocal.","procesamiento":"Pulido clásico de estudio, compresión óptica suave y agudos aireados."}},{"id":"shure_sm7b","label":"Shure SM7B.","short_label":"Shure SM7B dinámico","reference_note":"Dinámico de bobina móvil ideal para voces cercanas, firmes y modernas.","core_tag":"warm punchy Shure SM7B dynamic intimate vocals","physical_instrument":"broadcast-grade cardioid moving-coil dynamic vocal microphone with internal shock mount and pop shield","musical_performance":"supports upfront intimate chesty delivery as well as powerful belted rock singing without harsh sibilance","studio_processing":"focused midrange vocal density pushed by clean high-gain preamp and tight FET compression","summary_es":{"instrumento":"Micrófono dinámico cardioide de estudio con suspensión neumática y filtro antipop integrado.","interpretacion":"Ideal para voz íntima cercana o proyección intensa de rock sin sibilancia agresiva.","procesamiento":"Cuerpo sólido en medios, previo limpio de alta ganancia y compresión FET firme."}},{"id":"shure_sm58","label":"Shure SM58.","short_label":"Shure SM58 directo / vivo","reference_note":"Micrófono dinámico clásico de escenario con corte en mezcla densa.","core_tag":"upfront live-stage Shure SM58 dynamic vocals","physical_instrument":"rugged cardioid dynamic vocal microphone with spherical mesh windscreen and classic 3-5 kHz presence peak","musical_performance":"energetic live-stage vocal projection cutting directly through loud guitars and acoustic drums","studio_processing":"raw punchy mid-forward live vocal energy with controlled low-end proximity warmth","summary_es":{"instrumento":"Dinámico cardioide de mano con rejilla esférica y pico natural de presencia (3–5 kHz).","interpretacion":"Proyección vocal directa y enérgica pensada para cortar sobre bandas potentes.","procesamiento":"Carácter vivo en medios frontales, calidez por proximidad y cero frialdad."}},{"id":"akg_c414","label":"AKG C414.","short_label":"AKG C414 abierto y aéreo","reference_note":"Condensador versátil de respuesta transitoria rápida y extremo agudo brillante.","core_tag":"open airy AKG C414 condenser vocal detail","physical_instrument":"dual-brass-edge large-diaphragm condenser capsule with ultra-fast transient detail and extended airy highs","musical_performance":"delivers shimmering acoustic intimacy, delicate head-voice extensions and crisp multi-voice vocal blends","studio_processing":"open transparent top-end air, pristine studio transient detail and natural stereo room shimmer","summary_es":{"instrumento":"Condensador multipatrón con cápsula de latón y respuesta rápida a transitorios.","interpretacion":"Realza voz de cabeza, coros detallados e interpretaciones acústicas delicadas.","procesamiento":"Aire transparente en agudos superiores y detalle fino sin exageración en graves."}},{"id":"telefunken_u47","label":"Telefunken U47.","short_label":"Telefunken U47 a válvulas","reference_note":"Clásico condensador de válvulas de gran cuerpo y autoridad vocal.","core_tag":"vintage tube Telefunken U47 commanding warm vocals","physical_instrument":"large-diaphragm vintage vacuum-tube condenser microphone with M7-style capsule and custom output transformer","musical_performance":"commands rich three-dimensional vocal authority, deep baritone/tenor resonance and emotive warmth","studio_processing":"lush vacuum-tube harmonic density, silky smooth upper mids and timeless vintage analog vocal depth","summary_es":{"instrumento":"Condensador clásico a válvulas con cápsula gran diafragma y transformador dedicado.","interpretacion":"Voz tridimensional de gran autoridad, cuerpo profundo en graves y calidez emotiva.","procesamiento":"Densidad armónica valvular, agudos sedosos y profundidad analógica clásica."}}]}]};
 
 let studioVirtualCatalog = STUDIO_VIRTUAL_FALLBACK_CATALOG;
 let studioVirtualSelections = { drums: 'auto', guitars: 'auto', basses: 'auto', keyboards: 'auto', consoles: 'auto', microphones: 'auto' };
@@ -12207,390 +12322,201 @@ function _descElementIdForCat(catKey) {
   return map[catKey] || '';
 }
 
-function updateStudioSelectorsUI() {
-  studioVirtualSelections = getStudioVirtualSelections();
-  saveStudioSelectorsToStorage();
+function _infoElementIdForCat(catKey) {
+  const map = {
+    drums: 'infoStudioDrums',
+    guitars: 'infoStudioGuitar',
+    basses: 'infoStudioBass',
+    keyboards: 'infoStudioKeyboard',
+    consoles: 'infoStudioConsole',
+    microphones: 'infoStudioMic'
+  };
+  return map[catKey] || '';
+}
 
-  let activeCount = 0;
-  const activeDetails = [];
-  const instrChecked = Boolean($('instrumental') && $('instrumental').checked);
-  const priorityOrder = instrChecked
-    ? ['drums', 'basses', 'guitars', 'keyboards', 'consoles', 'microphones']
-    : ['drums', 'basses', 'guitars', 'keyboards', 'microphones', 'consoles'];
+const _STUDIO_CAT_FRIENDLY_ES = {
+  drums: 'batería',
+  guitars: 'guitarra eléctrica',
+  basses: 'bajo eléctrico',
+  keyboards: 'teclado',
+  consoles: 'consola de grabación',
+  microphones: 'micrófono'
+};
 
-  if (studioVirtualCatalog && Array.isArray(studioVirtualCatalog.categories)) {
-    studioVirtualCatalog.categories.forEach(cat => {
-      const val = studioVirtualSelections[cat.key] || 'auto';
-      const item = _getStudioItemById(cat.key, val);
-      const card = document.querySelector(`.studio-selector-card[data-studio-cat="${cat.key}"]`);
-      const descEl = $(_descElementIdForCat(cat.key));
-      if (card) card.classList.toggle('configured', Boolean(item));
-      if (descEl) {
-        if (item && item.summary_es) {
-          descEl.classList.add('active');
-          descEl.textContent = `${item.summary_es.instrumento} • ${item.summary_es.procesamiento}`;
-        } else {
-          descEl.classList.remove('active');
-          descEl.textContent = 'Sin instrucciones adicionales para esta categoría.';
-        }
-      }
-      if (item) activeCount += 1;
-    });
-  }
-
-  priorityOrder.forEach(k => {
-    const val = studioVirtualSelections[k] || 'auto';
-    const item = _getStudioItemById(k, val);
-    const cat = studioVirtualCatalog.categories.find(c => c.key === k);
-    if (item && cat) activeDetails.push({ cat, item });
+function toggleStudioSelectorInfo(catKey) {
+  const popId = _infoElementIdForCat(catKey);
+  const pop = $(popId);
+  const btn = document.querySelector(`.studio-info-btn[data-studio-info="${catKey}"]`);
+  if (!pop || !btn) return;
+  const willOpen = !pop.classList.contains('open');
+  // Cerrar otros popovers abiertos para conservar diseño ultra compacto en Android y escritorio
+  document.querySelectorAll('.studio-selector-info-popover.open').forEach(el => {
+    if (el !== pop) el.classList.remove('open');
   });
-
-  if ($('studioSelectorsActiveBadge')) {
-    $('studioSelectorsActiveBadge').textContent = activeCount > 0
-      ? `${activeCount}/6 activos`
-      : '0/6 activos • Original / Automático';
-  }
-
-  const styleLen = ($('styleInput') && $('styleInput').value ? $('styleInput').value.trim().length : 0);
-  if ($('styleInput')) {
-    $('styleInput').required = (activeCount === 0);
-  }
-
-  const maxChars = (studioVirtualCatalog && studioVirtualCatalog.udio_style_max_chars) || 1000;
-  const avail = Math.max(0, maxChars - styleLen - (styleLen > 0 ? 2 : 0));
-
-  const _stripNegStudio = (txt) => String(txt || '').split(',')
-    .map(p => p.replace(/\s+/g, ' ').trim().replace(/^[ ,;-]+|[ ,;-]+$/g, ''))
-    .filter(p => p && !/^(?:no|zero|sin|without)(?:\s+|$)/i.test(p))
-    .join(', ');
-
-  const _cleanPunctStudio = (s) => String(s || '')
-    .replace(/\s*,\s*,\s*/g, ', ')
-    .replace(/\s*,\s*&\s*/g, ' & ')
-    .replace(/\s*,\s*\+\s*/g, ' + ')
-    .replace(/\s+/g, ' ')
-    .replace(/^[ ,;&+]+|[ ,;&+]+$/g, '');
-
-  const _atomicLeftStudio = new Set([
-    'w/','with','in','on','of','for','from','to','via','+','by','input','birch','horn','snare',
-    'kick','slap','gospel','clean','open','upper','low','baritone','overhead','oh','head','cabinet',
-    'rack','china','treble','bass','eq','m7','capsule','transformer','soundboard','tines','reeds',
-    'vcos','attack','highs','mids','maple','mahogany','humbucker','pop','drawbars','electric'
-  ]);
-
-  const _splitUnitsStudio = (txt) => {
-    const out = [];
-    String(txt || '').split(',').forEach(segRaw => {
-      const seg = _cleanPunctStudio(segRaw);
-      if (!seg) return;
-      const m = seg.match(/\s+&\s+/);
-      if (m) {
-        const left = seg.slice(0, m.index).replace(/^[ ,;]+|[ ,;]+$/g, '');
-        const right = seg.slice(m.index + m[0].length).replace(/^[ ,;]+|[ ,;]+$/g, '');
-        const lw = left.split(/\s+/).filter(Boolean);
-        const rw = right.split(/\s+/).filter(Boolean);
-        const lastL = lw.length ? lw[lw.length - 1].toLowerCase() : '';
-        if (((lw.length >= 3 && rw.length >= 2) || (lw.length >= 2 && rw.length >= 3)) && !_atomicLeftStudio.has(lastL)) {
-          out.push(left);
-          _splitUnitsStudio(right).forEach(r => out.push(r));
-          return;
-        }
-      }
-      out.push(seg);
-    });
-    return out;
-  };
-
-  const _studioConceptPats = [
-    ['tape_sat', /\btape\s+(?:sat|saturation)\b/i],
-    ['tube_sat', /\b(?:tube|vacuum-tube)\s+(?:preamp\s+)?(?:sat|saturation|warmth|harmonic|glue)\b/i],
-    ['transformer_sat', /\btransformer\s+(?:sat|saturation|warmth)\b/i],
-    ['room_amb', /\b(?:room\s+(?:mics?|ambience|air|wash)|concert\s+hall\s+ambience)\b/i],
-    ['spring_rev', /\bspring\s+(?:rev|reverb)\b/i],
-    ['plate_rev', /\bplate\s+(?:rev|reverb)\b/i],
-    ['stereo_delay', /\b(?:tape\s+delay|stereo\s+delay|modulated\s+delay|stereo\s+echo|tape\s+echo)\b/i],
-    ['optical_comp', /\boptical\s+(?:comp|compression|vocal\s+leveling)\b/i],
-    ['fet_comp', /\bfet\s+(?:comp|compression)\b/i],
-    ['bus_comp', /\bbus\s+(?:comp|compression|compressor)\b/i],
-    ['rotary', /\b(?:rotary\s+speaker|rotating\s+speaker|leslie\s+122|doppler)\b/i],
-    ['chorus', /\b(?:analog\s+chorus|stereo\s+chorus|rack\s+chorus|flanger-chorus)\b/i]
-  ];
-
-  const _renderStudioLayerJS = (rawTxt, catKey, layer, tier, claimed) => {
-    if (!tier) return [];
-    const base = _stripNegStudio(rawTxt);
-    if (!base) return [];
-    if (tier === 'full') return [base];
-    let s = base
-      .replace(/\bkeeps\s+dense\s+rhythm\s+sections,\s+crisp\s+snare\s+snaps\s+and\s+fast\s+instrumental\s+transients\s+locked\s+forward\b/gi, 'locked-forward dense rhythm sections, crisp snare snaps & fast attack')
-      .replace(/\bdistant\s+overhead\s+and\s+bright\s+wooden\s+room\s+microphones\s+with\s+warm\s+analog\s+tape\s+saturation\b/gi, 'distant OH & wooden room mics, warm analog tape sat')
-      .replace(/\bwarm\s+ribbon\s+overhead\s+and\s+front-kit\s+miking\s+with\s+woody\s+midrange\s+clarity\s+and\s+gentle\s+tube\s+glue\b/gi, 'warm ribbon OH & front-kit mics, woody mids clarity, tube glue')
-      .replace(/\belectro-mechanical\s+tonewheel\s+Hammond\s+B3\s+organ\s+with\s+harmonic\s+drawbars,\s+key-click\s+and\s+dual-speed\s+rotating\s+Leslie\s+122\s+speaker\b/gi, 'tonewheel Hammond B3 organ w/ drawbars & dual-speed Leslie 122, key-click')
-      .replace(/\bstereo\s+horn\s+and\s+rotor\s+miking\s+capturing\s+Doppler\s+swirl\s+and\s+warm\s+vacuum-tube\s+preamp\s+saturation\b/gi, 'stereo horn/rotor Doppler swirl, warm tube preamp sat')
-      .replace(/\b1980s\s+heavily\s+compressed\s+room\s+listen-mic\s+ambience\s+and\s+classic\s+gated\s+reverb\s+snare\s+and\s+tom\s+tail\b/gi, '80s crushed listen-mic room, gated rev snare & tom tail')
-      .replace(/\bweighty\s+cranked\s+tube\s+bass\s+head\s+and\s+8x10\s+cabinet\s+growl\s+with\s+gritty\s+midrange\s+rock\s+density\b/gi, 'cranked tube bass head & 8x10 cab growl, gritty rock mids')
-      .replace(/\bdual\s+parallel\s+path\s+blending\s+tube\s+overdrive\s+growl\s+with\s+compressed\s+crisp\s+high-bite\s+direct\s+bass\s+signal\b/gi, 'parallel tube OD growl + compressed high-bite DI bass')
-      .replace(/\bstereo\s+bi-amp\s+split\s+routing\s+gritty\s+treble\s+attack\s+into\s+bright\s+tube\s+amp\s+and\s+deep\s+low\s+fundamental\s+into\s+clean\s+sub\s+stack\b/gi, 'stereo bi-amp gritty treble tube + clean sub stack')
-      .replace(/\blayered\s+multi-amp\s+studio\s+tracking\s+blending\s+crisp\s+small\s+low-watt\s+tube\s+room\s+mics\s+with\s+big\s+cranked\s+arena\s+stack\b/gi, 'multi-amp small tube room mics + cranked arena stack')
-      .replace(/\breal physical\s+/gi, '')
-      .replace(/\bauthentic\s+/gi, '')
-      .replace(/\b(?:delivers|commands|supports|articulates|keeps|accents|faithfully translates)\s+/gi, '')
-      .replace(/\b(?:built|fitted|played)\s+with\s+/gi, ', ')
-      .replace(/\b(?:pushed|driven|fed)\s+(?:by|with)\s+/gi, '+ ')
-      .replace(/\b(?:blended|stacked|layered)\s+(?:with|over)\s+/gi, '+ ')
-      .replace(/\b(?:generating|capturing|giving|providing)\s+/gi, ', ')
-      .replace(/\bas well as\b/gi, '&')
-      .replace(/\bthree-dimensional\b/gi, '3D')
-      .replace(/\bSolid State Logic\b/gi, 'SSL')
-      .replace(/\belectro-mechanical\s+tonewheel\b/gi, 'tonewheel')
-      .replace(/\belectro-mechanical\b/gi, 'electromechanical')
-      .replace(/\bvacuum-tube\b/gi, 'tube')
-      .replace(/\bPrecision electric bass guitar\b/gi, 'Precision electric bass')
-      .replace(/\bJazz Bass guitar\b/gi, 'Jazz electric bass')
-      .replace(/\bRickenbacker-style stereo bass guitar\b/gi, 'Rickenbacker stereo electric bass')
-      .replace(/\belectric bass guitar\b/gi, 'electric bass')
-      .replace(/\bStratocaster-style guitar\b/gi, 'Stratocaster guitar')
-      .replace(/\bLes Paul-style guitar\b/gi, 'Les Paul guitar')
-      .replace(/\bsingle-coil pickups\b/gi, 'single-coils')
-      .replace(/\bsingle-coil pickup\b/gi, 'single-coil')
-      .replace(/\bPAF-style humbucker\b/gi, 'PAF humbucker')
-      .replace(/\bamplifiers\b/gi, 'amps')
-      .replace(/\bamplifier\b/gi, 'amp')
-      .replace(/\bcabinet\b/gi, 'cab')
-      .replace(/\bcompression\b/gi, 'comp')
-      .replace(/\bsaturation\b/gi, 'sat')
-      .replace(/\bmidrange\b/gi, 'mids')
-      .replace(/\bupper-?mids?\b/gi, 'upper-mids')
-      .replace(/\blow-end\b/gi, 'lows')
-      .replace(/\btop-end\b/gi, 'highs')
-      .replace(/\beighth-note\b/gi, '8th-note')
-      .replace(/\bsixteenth-note\b/gi, '16th-note')
-      .replace(/\bearly-1960s\b/gi, 'early-60s')
-      .replace(/\blate-1960s\b/gi, 'late-60s')
-      .replace(/\b1960s\b/gi, '60s')
-      .replace(/\b1970s\b/gi, '70s')
-      .replace(/\b1980s\b/gi, '80s')
-      .replace(/\btime-signature\b/gi, 'odd-meter')
-      .replace(/(^|[^-])\band\b(?!-)/gi, '$1&')
-      .replace(/(^|[^-])\bwith\b(?!-)/gi, '$1,');
-    if (catKey !== 'microphones') {
-      s = s.replace(/\bmicrophones\b/gi, 'mics').replace(/\bmicrophone\b/gi, 'mic');
-    } else {
-      s = s.replace(/\bdual-large-diaphragm\b/gi, 'dual-LDC').replace(/\blarge-diaphragm\b/gi, 'LDC');
-    }
-    s = _cleanPunctStudio(s);
-    if (tier === 'clean') return _splitUnitsStudio(s);
-
-    s = _cleanPunctStudio(s
-      .replace(/\boverdrive\b/gi, 'OD')
-      .replace(/\breverb\b/gi, 'rev')
-      .replace(/\boverheads?\b/gi, 'OH')
-      .replace(/\btransients?\b/gi, 'attack')
-      .replace(/\banalog mixing console\b/gi, 'analog console')
-      .replace(/\bmixing console\b/gi, 'console')
-      .replace(/\bmonophonic discrete analog subtractive synthesizer\b/gi, 'mono analog synth')
-      .replace(/\b6-operator digital FM synthesizer engine\b/gi, '6-op FM synth')
-      .replace(/\bdual-speed rotating Leslie 122 speaker\b/gi, 'dual-speed Leslie 122')
-      .replace(/\b(?:roundwound steel|steel roundwound) strings\b/gi, 'steel roundwounds')
-      .replace(/\bheavy flatwound strings\b/gi, 'flatwounds')
-      .replace(/\b(?:fingerboard|fretboard)\b/gi, 'neck')
-      .replace(/\bper-channel parametric EQ & stereo bus compressor\b/gi, 'parametric EQ & stereo bus comp')
-      .replace(/\bhand-wound input & output transformers\b/gi, 'hand-wound transformers')
-      .replace(/\bproportional-Q EQ & transformer-coupled stages\b/gi, 'proportional-Q EQ & transformers')
-      .replace(/\blinear ultra-low-distortion preamps\b/gi, 'linear ultra-clean preamps')
-      .replace(/\bM7-style capsule & custom output transformer\b/gi, 'M7 capsule & transformer')
-      .replace(/\b(?:iconic|timeless|pristine|gentle|mild|sturdy|sculpted|worn|custom|built-in|onboard|oversized)\s+/gi, ''));
-    const units = _splitUnitsStudio(s);
-    if (!units.length) return [];
-    if (tier === 'tight') return layer === 'physical' ? units.slice(0, 3) : units.slice(0, 2);
-    if (layer === 'physical') return (units[0].length < 28 && units.length > 1) ? units.slice(0, 2) : [units[0]];
-    if (layer === 'performance') {
-      const moogU = units.find(u => /moog bass/i.test(u));
-      if (moogU) return [moogU];
-      return (units[0].length < 24 && units.length > 1) ? units.slice(0, 2) : [units[0]];
-    }
-    if (units.length === 1) return units;
-    let bestU = units[0];
-    let bestScore = -1e9;
-    units.forEach(u => {
-      const uConcepts = _studioConceptPats.filter(([, p]) => p.test(u)).map(([n]) => n);
-      const isNovel = (!uConcepts.length || !claimed || uConcepts.some(n => !claimed.has(n))) ? 1 : 0;
-      const sc = isNovel * 100 - u.length;
-      if (sc > bestScore) { bestScore = sc; bestU = u; }
-    });
-    return [bestU];
-  };
-
-  const layerState = {};
-  activeDetails.forEach(d => { layerState[d.cat.key] = { phys: 'full', perf: 'full', stud: 'full' }; });
-
-  const assembleStudioPreview = (stMap, dedupOn) => {
-    const seen = new Set();
-    const claimed = new Set();
-    if (dedupOn) {
-      activeDetails.forEach(d => {
-        const pt = stMap[d.cat.key].phys;
-        if (pt && pt !== 'core_tag') {
-          _renderStudioLayerJS(d.item.physical_instrument, d.cat.key, 'physical', pt).forEach(u => {
-            _studioConceptPats.forEach(([n, p]) => { if (p.test(u)) claimed.add(n); });
-          });
-        }
-      });
-    }
-    const allClauses = [];
-    const perCat = {};
-    activeDetails.forEach(d => {
-      const k = d.cat.key;
-      const st = stMap[k];
-      const catCl = [];
-      const pUnits = (st.phys === 'core_tag')
-        ? [_stripNegStudio(d.item.core_tag)]
-        : _renderStudioLayerJS(d.item.physical_instrument, k, 'physical', st.phys);
-      pUnits.forEach(u => {
-        const ul = u.toLowerCase();
-        if (ul && !seen.has(ul)) { seen.add(ul); catCl.push(u); }
-      });
-      if (st.phys && st.phys !== 'core_tag') {
-        _renderStudioLayerJS(d.item.musical_performance, k, 'performance', st.perf).forEach(u => {
-          const ul = u.toLowerCase();
-          if (ul && !seen.has(ul)) { seen.add(ul); catCl.push(u); }
-        });
-        const sUnits = _renderStudioLayerJS(d.item.studio_processing, k, 'studio', st.stud, dedupOn ? claimed : null);
-        const keptS = [];
-        sUnits.forEach((u, idx) => {
-          const ul = u.toLowerCase();
-          if (!ul || seen.has(ul)) return;
-          if (dedupOn) {
-            const uC = _studioConceptPats.filter(([, p]) => p.test(u)).map(([n]) => n);
-            const rem = keptS.length + (sUnits.length - idx - 1);
-            if (uC.length && uC.every(n => claimed.has(n)) && rem >= 1) return;
-            uC.forEach(n => claimed.add(n));
-          }
-          seen.add(ul);
-          keptS.push(u);
-        });
-        keptS.forEach(u => catCl.push(u));
-      }
-      perCat[k] = catCl.join(', ').length;
-      catCl.forEach(u => allClauses.push(u));
-    });
-    const text = allClauses.join(', ');
-    return { text, len: text.length, perCat };
-  };
-
-  let curPack = assembleStudioPreview(layerState, false);
-  let stageLabel = 'Detalle completo (3 capas)';
-  if (curPack.len > avail) {
-    curPack = assembleStudioPreview(layerState, true);
-    const schedule = [
-      ['Optimización musical (3 dimensiones compactadas)', 'stud', 'full', 'clean'],
-      ['Optimización musical (3 dimensiones compactadas)', 'perf', 'full', 'clean'],
-      ['Optimización musical (3 dimensiones compactadas)', 'phys', 'full', 'clean'],
-      ['Optimización musical (producción compactada, 3 dimensiones)', 'stud', 'clean', 'tight'],
-      ['Optimización musical (producción compactada, 3 dimensiones)', 'stud', 'tight', 'essence'],
-      ['Optimización musical inteligente (3 dimensiones conservadas)', 'perf', 'clean', 'tight'],
-      ['Optimización musical inteligente (3 dimensiones conservadas)', 'phys', 'clean', 'tight'],
-      ['Optimización musical inteligente (3 dimensiones conservadas)', 'perf', 'tight', 'essence'],
-      ['Optimización musical inteligente (3 dimensiones conservadas)', 'phys', 'tight', 'essence'],
-      ['Compactación dinámica (identidad + interpretación)', 'stud', 'essence', null],
-      ['Compactación dinámica (identidad sonora)', 'perf', 'essence', null],
-      ['Compactación extrema (core_tag para conservar todas)', 'phys', 'essence', 'core_tag'],
-      ['Omisión explícita por límite de 1000 chars en prompt base', 'phys', 'core_tag', null]
-    ];
-    for (const [lbl, lyr, frm, to] of schedule) {
-      if (curPack.len <= avail) break;
-      stageLabel = lbl;
-      while (curPack.len > avail) {
-        const cands = activeDetails.map(d => d.cat.key).filter(k => layerState[k][lyr] === frm);
-        if (!cands.length) break;
-        let pick = cands[cands.length - 1];
-        if (to !== null || lyr !== 'phys') {
-          pick = cands.reduce((best, k) => (curPack.perCat[k] > curPack.perCat[best] ? k : best), cands[0]);
-        }
-        layerState[pick][lyr] = to;
-        if (to === 'core_tag' || (lyr === 'phys' && to === null)) {
-          layerState[pick].perf = null;
-          layerState[pick].stud = null;
-        }
-        curPack = assembleStudioPreview(layerState, true);
-      }
-    }
-    const upTiers = {
-      phys: ['core_tag', 'essence', 'tight', 'clean', 'full'],
-      perf: [null, 'essence', 'tight', 'clean', 'full'],
-      stud: [null, 'essence', 'tight', 'clean', 'full']
-    };
-    const upPhases = [
-      ['perf', [null]],
-      ['stud', [null]],
-      ['phys', ['core_tag', 'essence', 'tight', 'clean']],
-      ['perf', ['essence', 'tight', 'clean']],
-      ['stud', ['essence', 'tight', 'clean']]
-    ];
-    let improved = true;
-    while (improved && curPack.len < avail) {
-      improved = false;
-      for (const [lyr, allowed] of upPhases) {
-        let bestMove = null;
-        for (const d of activeDetails) {
-          const k = d.cat.key;
-          if (layerState[k].phys === null) continue;
-          if (lyr !== 'phys' && layerState[k].phys === 'core_tag') continue;
-          const ct = layerState[k][lyr];
-          if (!allowed.includes(ct)) continue;
-          const idx = upTiers[lyr].indexOf(ct);
-          if (idx + 1 >= upTiers[lyr].length) continue;
-          const nt = upTiers[lyr][idx + 1];
-          const prev = layerState[k][lyr];
-          layerState[k][lyr] = nt;
-          const candPack = assembleStudioPreview(layerState, true);
-          layerState[k][lyr] = prev;
-          if (candPack.len <= avail && candPack.len > curPack.len) {
-            const sc = (-idx * 10000) - (curPack.perCat[k] * 10) + (candPack.len - curPack.len);
-            if (!bestMove || sc > bestMove.sc) bestMove = { sc, k, lyr, nt };
-          }
-        }
-        if (bestMove) {
-          layerState[bestMove.k][bestMove.lyr] = bestMove.nt;
-          curPack = assembleStudioPreview(layerState, true);
-          improved = true;
-          break;
-        }
-      }
-    }
-  }
-
-  const levels = {};
-  let allThreeDims = 0;
-  activeDetails.forEach(d => {
-    const k = d.cat.key;
-    const st = layerState[k];
-    if (st.phys && st.perf && st.stud) allThreeDims += 1;
-    if (st.phys === null) levels[k] = -1;
-    else if (st.phys === 'core_tag') levels[k] = 0;
-    else if (st.phys === 'full' && st.perf === 'full' && st.stud === 'full') levels[k] = 3;
-    else if (st.perf !== null) levels[k] = 2;
-    else levels[k] = 1;
+  document.querySelectorAll('.studio-info-btn[aria-expanded="true"]').forEach(b => {
+    if (b !== btn) b.setAttribute('aria-expanded', 'false');
   });
+  pop.classList.toggle('open', willOpen);
+  btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+}
 
-  const usedStudioLen = Math.min(avail, curPack.len);
-  const reducedLabels = activeDetails
-    .filter(d => levels[d.cat.key] >= 0 && levels[d.cat.key] < 3)
-    .map(d => d.cat.short_title || d.cat.key);
-  const omittedLabels = activeDetails
-    .filter(d => levels[d.cat.key] === -1)
-    .map(d => d.cat.short_title || d.cat.key);
-
-  if ($('studioStyleBudgetBadge')) {
-    $('studioStyleBudgetBadge').textContent = activeCount > 0
-      ? `~${Math.min(maxChars, styleLen + (styleLen > 0 && usedStudioLen > 0 ? 2 : 0) + usedStudioLen)} / ${maxChars} chars totales • ${stageLabel}`
-      : `0 / ${maxChars} chars asignados al Estudio`;
+function toggleStyleFinalPreview() {
+  const btn = $('styleFinalToggleBtn');
+  const body = $('styleFinalBody');
+  if (!btn || !body) return;
+  const isOpen = btn.getAttribute('aria-expanded') === 'true';
+  const nextOpen = !isOpen;
+  btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  body.style.display = nextOpen ? 'flex' : 'none';
+  if (nextOpen && !styleFinalLastData && !styleFinalIsFetching) {
+    scheduleStyleFinalPreview(true);
   }
+}
+
+async function copyFinalStyleText() {
+  const ta = $('styleFinalPreviewText');
+  const btn = $('btnCopyFinalStyle');
+  if (!ta || !ta.value || ta.dataset.stale === 'true') return;
+  const txt = ta.value;
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(txt);
+      copied = true;
+    }
+  } catch (e) {}
+  if (!copied) {
+    try {
+      ta.focus();
+      ta.select();
+      copied = document.execCommand('copy');
+      window.getSelection && window.getSelection().removeAllRanges && window.getSelection().removeAllRanges();
+    } catch (e) {}
+  }
+  if (copied) {
+    if (btn) {
+      const prevHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="ph ph-check"></i> Copiado';
+      setTimeout(() => { btn.innerHTML = prevHtml; }, 1600);
+    }
+    if (typeof showToast === 'function') {
+      showToast('STYLE FINAL copiado al portapapeles', 'ok');
+    }
+  }
+}
+
+let styleFinalDebounceTimer = null;
+let styleFinalAbortCtrl = null;
+let styleFinalRequestSeq = 0;
+let styleFinalLastSignature = '';
+let styleFinalLastData = null;
+let styleFinalIsFetching = false;
+
+function _setStyleFinalBadge(text, cls) {
+  const el = $('styleFinalStatusBadge');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'style-final-status' + (cls ? (' ' + cls) : '');
+}
+
+function _formatOmissionWarningClient(omittedKeys, backendWarning) {
+  if (backendWarning && String(backendWarning).trim()) {
+    return backendWarning;
+  }
+  const names = (omittedKeys || []).map(k => _STUDIO_CAT_FRIENDLY_ES[k] || k);
+  if (!names.length) return '';
+  if (names.length === 1) {
+    return `Atención: la selección de ${names[0]} fue omitida por el límite de 1.000 caracteres.`;
+  }
+  return `Atención: las selecciones de ${names.slice(0, -1).join(', ')} y ${names[names.length - 1]} fueron omitidas por el límite de 1.000 caracteres.`;
+}
+
+function markStyleFinalPreviewStale() {
+  const sec = $('styleFinalPreviewSection');
+  const ta = $('styleFinalPreviewText');
+  const copyBtn = $('btnCopyFinalStyle');
+  if (sec) sec.dataset.previewState = 'stale';
+  if (ta) ta.dataset.stale = 'true';
+  if (copyBtn) copyBtn.disabled = true;
+  _setStyleFinalBadge('Actualizando...', 'stale');
+}
+
+function _renderStyleFinalAuthOrError(kind, titleBadge, message) {
+  const sec = $('styleFinalPreviewSection');
+  const ta = $('styleFinalPreviewText');
+  const msgEl = $('styleFinalMessageBanner');
+  const warnEl = $('studioCompactionWarning');
+  const omitBanner = $('studioOmissionBanner');
+  const warnDot = $('styleFinalWarnIndicator');
+  const charEl = $('styleFinalCharCount');
+  const copyBtn = $('btnCopyFinalStyle');
+
+  styleFinalLastData = null;
+  window.lastStudioCompactionWarning = '';
+  if (sec) sec.dataset.previewState = kind;
+  if (charEl) charEl.textContent = '— / 1.000';
+  _setStyleFinalBadge(titleBadge, kind === 'unauthenticated' ? 'warn' : 'err');
+  if (ta) {
+    ta.value = '';
+    ta.dataset.stale = 'false';
+  }
+  if (copyBtn) copyBtn.disabled = true;
+  if (omitBanner) { omitBanner.style.display = 'none'; omitBanner.textContent = ''; }
+  if (warnEl) { warnEl.style.display = 'none'; warnEl.textContent = ''; }
+  if (warnDot) {
+    warnDot.style.display = 'inline-flex';
+    warnDot.classList.toggle('danger', kind !== 'unauthenticated');
+  }
+  if (msgEl) {
+    msgEl.style.display = 'block';
+    msgEl.className = 'style-final-info-banner ' + (kind === 'unauthenticated' ? 'auth' : 'err');
+    msgEl.textContent = message;
+  }
+}
+
+function _renderStyleFinalFromBackend(data) {
+  const sec = $('styleFinalPreviewSection');
+  const ta = $('styleFinalPreviewText');
+  const msgEl = $('styleFinalMessageBanner');
+  const warnEl = $('studioCompactionWarning');
+  const omitBanner = $('studioOmissionBanner');
+  const warnDot = $('styleFinalWarnIndicator');
+  const charEl = $('styleFinalCharCount');
+  const copyBtn = $('btnCopyFinalStyle');
+  const metaNote = $('styleFinalMetaNote');
+
+  styleFinalLastData = data;
+  const finalText = String(data.style_full_preview || '');
+  const finalLen = typeof data.style_length === 'number' ? data.style_length : finalText.length;
+  const maxChars = data.style_max_chars || 1000;
+  const rawLen = typeof data.style_raw_length === 'number' ? data.style_raw_length : finalLen;
+  const sp = data.studio_profiles || null;
+  const opt = data.style_optimization || null;
+  const omitted = (sp && Array.isArray(sp.omitted_categories)) ? sp.omitted_categories : [];
+  const reduced = (sp && Array.isArray(sp.reduced_categories)) ? sp.reduced_categories : [];
+  const preservedDims = (sp && sp.preserved_dimensions) ? sp.preserved_dimensions : {};
+  const activeCount = (sp && typeof sp.active_count === 'number') ? sp.active_count : 0;
+  const allThreeDims = activeCount > 0 && Object.values(preservedDims).filter(arr => Array.isArray(arr) && arr.length === 3).length === activeCount;
+
+  if (sec) sec.dataset.previewState = 'ready';
+  if (charEl) charEl.textContent = `${finalLen} / ${maxChars.toLocaleString('es-AR')}`;
+  if (ta) {
+    ta.value = finalText;
+    ta.dataset.stale = 'false';
+  }
+  if (copyBtn) copyBtn.disabled = !finalText.length;
+  if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; }
 
   let warningMsg = '';
-  const warnEl = $('studioCompactionWarning');
-  if (omittedLabels.length > 0) {
-    warningMsg = `⚠️ Advertencia por límite de ${maxChars} caracteres: tu prompt base ocupa casi todo el cupo y se omitieron: ${omittedLabels.join(', ')}.${reducedLabels.length ? ' También se redujo detalle en: ' + reducedLabels.join(', ') + '.' : ''} Acorta el texto en Prompt Libre para conservarlas.`;
+  if (omitted.length > 0) {
+    const esWarn = _formatOmissionWarningClient(omitted, data.omitted_warning_es);
+    warningMsg = `⚠️ Advertencia por límite de ${maxChars} caracteres: ${esWarn} [Omitida por límite de 1000 chars]`;
+    _setStyleFinalBadge(`Omisión (${omitted.length})`, 'err');
+    if (warnDot) { warnDot.style.display = 'inline-flex'; warnDot.classList.add('danger'); }
+    if (omitBanner) {
+      omitBanner.style.display = 'block';
+      omitBanner.textContent = `⚠️ ${esWarn}`;
+    }
     if (warnEl) {
       warnEl.style.display = 'block';
       warnEl.style.background = 'rgba(239,68,68,0.14)';
@@ -12598,40 +12524,163 @@ function updateStudioSelectorsUI() {
       warnEl.style.color = '#FECACA';
       warnEl.textContent = warningMsg;
     }
-  } else if (reducedLabels.length > 0) {
-    warningMsg = (allThreeDims === activeCount)
-      ? `⚠️ Aviso por límite de ${maxChars} caracteres: optimización musical activa en ${reducedLabels.join(', ')} conservando las 3 dimensiones (sonido físico, interpretación y producción) de tus ${activeCount} selecciones dentro del tope de UdioAPI.`
-      : `⚠️ Aviso por límite de ${maxChars} caracteres: se redujo detalle secundario en ${reducedLabels.join(', ')} para conservar tus ${activeCount} selecciones activas dentro del tope de UdioAPI.`;
+  } else if (reduced.length > 0 || (opt && opt.compacted && rawLen > finalLen)) {
+    warningMsg = data.compaction_notice || `⚠️ Aviso por límite de ${maxChars} caracteres: el backend optimizó el texto (${rawLen} → ${finalLen} chars) conservando todas las selecciones activas.`;
+    _setStyleFinalBadge(allThreeDims ? 'Optimizado (3 dim.)' : 'Compactado', allThreeDims ? 'opt' : 'warn');
+    if (warnDot) { warnDot.style.display = 'inline-flex'; warnDot.classList.remove('danger'); }
+    if (omitBanner) { omitBanner.style.display = 'none'; omitBanner.textContent = ''; }
     if (warnEl) {
       warnEl.style.display = 'block';
       warnEl.style.background = 'rgba(245,158,11,0.14)';
       warnEl.style.border = '1px solid rgba(245,158,11,0.45)';
       warnEl.style.color = '#FDE68A';
-      warnEl.textContent = warningMsg;
+      warnEl.textContent = `⚠️ ${warningMsg}`;
     }
-  } else if (warnEl) {
-    warnEl.style.display = 'none';
-    warnEl.textContent = '';
+  } else {
+    _setStyleFinalBadge(finalLen > 0 ? 'Óptimo' : 'Vacío', finalLen > 0 ? 'ok' : '');
+    if (warnDot) { warnDot.style.display = 'none'; warnDot.classList.remove('danger'); }
+    if (omitBanner) { omitBanner.style.display = 'none'; omitBanner.textContent = ''; }
+    if (warnEl) { warnEl.style.display = 'none'; warnEl.textContent = ''; }
   }
   window.lastStudioCompactionWarning = warningMsg;
 
-  if ($('studioProfileBreakdownList')) {
-    if (activeDetails.length === 0) {
-      $('studioProfileBreakdownList').innerHTML = 'Todas las categorías están en <strong>Original / Automático</strong>: no se imponen restricciones sonoras adicionales.';
-    } else {
-      $('studioProfileBreakdownList').innerHTML = activeDetails.map(({ cat, item }) => {
-        const s = item.summary_es || {};
-        const lvl = levels[cat.key];
-        const statusTag = (lvl === -1)
-          ? ' <span style="color:#FCA5A5;font-weight:700">[Omitida por límite de 1000 chars]</span>'
-          : ((lvl < 3) ? ' <span style="color:#FCD34D;font-weight:700">[Detalle compactado]</span>' : '');
-        return `<div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
-          <strong style="color:#E0E7FF">${esc(cat.short_title)}:</strong> <span style="color:#6EE7B7">${esc(item.label)}</span>${statusTag}
-          <div style="font-size:10px;color:#94A3B8;margin-top:1px"><strong>Físico:</strong> ${esc(s.instrumento || '')} | <strong>Interpretación:</strong> ${esc(s.interpretacion || '')} | <strong>Estudio:</strong> ${esc(s.procesamiento || '')}</div>
-        </div>`;
-      }).join('');
+  if (metaNote) {
+    const rawPart = rawLen > finalLen ? ` (optimizado desde ${rawLen} chars)` : '';
+    metaNote.textContent = `Exacto del backend (/api/preview_parameters)${rawPart} • Solo lectura • 0 créditos`;
+  }
+}
+
+async function fetchStyleFinalPreviewFromBackend(expectedSeq, expectedSig) {
+  if (styleFinalAbortCtrl) {
+    try { styleFinalAbortCtrl.abort(); } catch (e) {}
+  }
+  const ctrl = new AbortController();
+  styleFinalAbortCtrl = ctrl;
+  styleFinalIsFetching = true;
+
+  try {
+    const built = buildGenerationStylePayload({ forPreview: true });
+    if (expectedSeq !== styleFinalRequestSeq) return;
+    const res = await fetch('/api/preview_parameters', {
+      method: 'POST',
+      body: built.fd,
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: ctrl.signal
+    });
+    if (expectedSeq !== styleFinalRequestSeq) return;
+
+    if (res.status === 401 || res.status === 403 || (res.redirected && String(res.url || '').includes('/login'))) {
+      _renderStyleFinalAuthOrError(
+        'unauthenticated',
+        'Sesión requerida',
+        'Inicia sesión con Google para consultar el STYLE FINAL exacto del backend. No se muestra una estimación local como resultado definitivo.'
+      );
+      return;
+    }
+    const contentType = String(res.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      _renderStyleFinalAuthOrError(
+        'unauthenticated',
+        'Sesión requerida',
+        'La sesión no está activa para consultar /api/preview_parameters. Inicia sesión con Google para ver el STYLE FINAL exacto.'
+      );
+      return;
+    }
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.detail || (`HTTP ${res.status}`));
+    }
+    const data = await res.json();
+    if (expectedSeq !== styleFinalRequestSeq) return;
+    styleFinalLastSignature = expectedSig || built.signature;
+    _renderStyleFinalFromBackend(data);
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    if (expectedSeq !== styleFinalRequestSeq) return;
+    _renderStyleFinalAuthOrError(
+      'error',
+      'Error preview',
+      `No se pudo obtener el STYLE FINAL exacto del backend (${err && err.message ? err.message : 'error de conexión'}). Reintenta con Actualizar.`
+    );
+  } finally {
+    if (styleFinalAbortCtrl === ctrl) {
+      styleFinalIsFetching = false;
     }
   }
+}
+
+function scheduleStyleFinalPreview(forceImmediate = false) {
+  if (typeof buildGenerationStylePayload !== 'function') return;
+  const built = buildGenerationStylePayload({ forPreview: true });
+  if (!forceImmediate && built.signature === styleFinalLastSignature && styleFinalLastData) {
+    return;
+  }
+  // Invalidar de inmediato cualquier vista previa anterior para nunca mostrar datos desactualizados como vigentes
+  markStyleFinalPreviewStale();
+  if (styleFinalDebounceTimer) {
+    clearTimeout(styleFinalDebounceTimer);
+    styleFinalDebounceTimer = null;
+  }
+  if (styleFinalAbortCtrl) {
+    try { styleFinalAbortCtrl.abort(); } catch (e) {}
+  }
+  styleFinalRequestSeq += 1;
+  const mySeq = styleFinalRequestSeq;
+  const mySig = built.signature;
+  const delayMs = forceImmediate ? 0 : 280;
+  styleFinalDebounceTimer = setTimeout(() => {
+    styleFinalDebounceTimer = null;
+    fetchStyleFinalPreviewFromBackend(mySeq, mySig);
+  }, delayMs);
+}
+
+function updateStudioSelectorsUI() {
+  studioVirtualSelections = getStudioVirtualSelections();
+  saveStudioSelectorsToStorage();
+
+  let activeCount = 0;
+  if (studioVirtualCatalog && Array.isArray(studioVirtualCatalog.categories)) {
+    studioVirtualCatalog.categories.forEach(cat => {
+      const val = studioVirtualSelections[cat.key] || 'auto';
+      const item = _getStudioItemById(cat.key, val);
+      const card = document.querySelector(`.studio-selector-card[data-studio-cat="${cat.key}"]`);
+      const descEl = $(_descElementIdForCat(cat.key));
+      const infoEl = $(_infoElementIdForCat(cat.key));
+      if (card) card.classList.toggle('configured', Boolean(item));
+      if (descEl) {
+        if (item) {
+          descEl.classList.add('active');
+          descEl.textContent = item.short_label || (item.summary_es && item.summary_es.instrumento) || item.label;
+          descEl.title = (item.summary_es && item.summary_es.instrumento) ? `${item.summary_es.instrumento} — ${item.summary_es.procesamiento}` : item.label;
+        } else {
+          descEl.classList.remove('active');
+          descEl.textContent = 'Original / Automático';
+          descEl.title = 'Sin instrucciones adicionales para esta categoría.';
+        }
+      }
+      if (infoEl) {
+        if (item && item.summary_es) {
+          infoEl.innerHTML = `<div><strong>Físico:</strong> ${esc(item.summary_es.instrumento || '')}</div><div><strong>Interpretación:</strong> ${esc(item.summary_es.interpretacion || '')}</div><div><strong>Estudio:</strong> ${esc(item.summary_es.procesamiento || '')}</div>`;
+        } else {
+          infoEl.textContent = 'Modo Original / Automático: no impone instrucciones adicionales para esta categoría.';
+        }
+      }
+      if (item) activeCount += 1;
+    });
+  }
+
+  if ($('studioSelectorsActiveBadge')) {
+    $('studioSelectorsActiveBadge').textContent = activeCount > 0
+      ? `${activeCount}/6 activos`
+      : '0/6 activos • Original / Automático';
+  }
+
+  if ($('styleInput')) {
+    $('styleInput').required = (activeCount === 0);
+  }
+
+  scheduleStyleFinalPreview(false);
 }
 
 function renderStudioSelectorsFromCatalog(catalog) {
@@ -12683,13 +12732,23 @@ async function initStudioVirtualSelectors() {
       }
     });
   }
-  if ($('styleInput') && !$('styleInput').dataset.studioBudgetBound) {
-    $('styleInput').dataset.studioBudgetBound = '1';
-    $('styleInput').addEventListener('input', () => updateStudioSelectorsUI());
-  }
-  if ($('instrumental') && !$('instrumental').dataset.studioBudgetBound) {
-    $('instrumental').dataset.studioBudgetBound = '1';
-    $('instrumental').addEventListener('change', () => updateStudioSelectorsUI());
+  const genFormEl = $('genForm');
+  if (genFormEl && !genFormEl.dataset.stylePreviewBound) {
+    genFormEl.dataset.stylePreviewBound = '1';
+    const onFormControlChange = (ev) => {
+      const t = ev && ev.target;
+      if (t && (t.id === 'styleFinalPreviewText' || t.closest('#styleFinalPreviewSection'))) return;
+      scheduleStyleFinalPreview(false);
+    };
+    genFormEl.addEventListener('input', onFormControlChange);
+    genFormEl.addEventListener('change', onFormControlChange);
+    genFormEl.addEventListener('click', (ev) => {
+      const t = ev && ev.target;
+      if (!t || t.closest('#styleFinalPreviewSection') || t.closest('.studio-info-btn')) return;
+      if (t.closest('.rhythm-pill, .preset-card, .btn-preset-use, .seg button, .inspiration-chip, .gear-card, #btnInjectChordsStyle, #btnProcessChords, #btnTransDown, #btnTransUp')) {
+        setTimeout(() => scheduleStyleFinalPreview(false), 30);
+      }
+    });
   }
   try {
     const res = await fetch('/api/studio-profiles/catalog', { cache: 'no-store' });
@@ -12700,6 +12759,7 @@ async function initStudioVirtualSelectors() {
       }
     }
   } catch (e) {}
+  scheduleStyleFinalPreview(true);
 }
 
 initStudioVirtualSelectors();
@@ -12886,6 +12946,7 @@ function onTimeSignatureSelect(sig) {
       styleInput.value = styleInput.value.replace(/Time signature:\s*[\d\/]+/i, `Time signature: ${sig}`);
     }
   }
+  if (typeof scheduleStyleFinalPreview === 'function') scheduleStyleFinalPreview();
 }
 
 function updateRhythmPulseDisplay(sig) {
@@ -12975,6 +13036,7 @@ function onBpmSliderChange(val) {
 
   // Restart pulse speed
   startPulseSequencer();
+  if (typeof scheduleStyleFinalPreview === 'function') scheduleStyleFinalPreview();
 }
 
 function updateMusicalKey() {
@@ -12990,6 +13052,7 @@ function updateMusicalKey() {
       styleInput.value = styleInput.value.trim() + ` [Key: ${fullKey}]`;
     }
   }
+  if (typeof scheduleStyleFinalPreview === 'function') scheduleStyleFinalPreview();
 }
 
 // --- 5. PIANO ROLL PREVIEW CANVAS & CURATED HYMNS ---

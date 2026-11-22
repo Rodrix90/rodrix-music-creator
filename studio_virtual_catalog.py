@@ -45,7 +45,7 @@ STUDIO_VIRTUAL_CATEGORIES = [
         "select_id": "selStudioDrums",
         "title": "Baterías",
         "short_title": "Batería",
-        "icon": "ph-drum",
+        "icon": "ph-metronome",
         "emoji": "🥁",
         "solo_mode": "drums",
         "items": [

@@ -3068,6 +3068,609 @@ def build_prioritized_style(
         },
     }
 
+
+_STUDIO_CAT_FRIENDLY_ES = {
+    "drums": "batería",
+    "guitars": "guitarra eléctrica",
+    "basses": "bajo eléctrico",
+    "keyboards": "teclado",
+    "consoles": "consola de grabación",
+    "microphones": "micrófono",
+}
+
+
+def _format_omitted_categories_warning_es(omitted_keys: list[str]) -> Optional[str]:
+    """Construye un aviso breve y explícito en español cuando el límite de 1.000 caracteres omite alguna categoría."""
+    if not omitted_keys:
+        return None
+    names = [_STUDIO_CAT_FRIENDLY_ES.get(k, k) for k in omitted_keys]
+    if len(names) == 1:
+        return f"Atención: la selección de {names[0]} fue omitida por el límite de 1.000 caracteres."
+    joined = ", ".join(names[:-1]) + f" y {names[-1]}"
+    return f"Atención: las selecciones de {joined} fueron omitidas por el límite de 1.000 caracteres."
+
+
+def _enrich_style_keywords(style_str: str) -> str:
+    """Add detailed descriptors for common instrument/effect keywords."""
+    mapping = {
+        "stratocaster": "Fender Stratocaster electric guitar",
+        "dw": "DW premium drum kit",
+        "tama": "TAMA metal progressive kit, metallic power, precise tuning, energetic",
+        "ludwig": "Ludwig classic rock kit, deep warm powerful tone",
+        "flanger": "flanger effect",
+        "chorus": "chorus effect",
+        "stereo wide": "stereo wide professional studio mix",
+        "fender telecaster": "Fender Telecaster electric guitar, bright crisp, country‑rock tone",
+        "gibson les paul": "Gibson Les Paul solid‑body guitar, thick warm sustain",
+        "marcos witt piano": "bright acoustic piano, Rhodes‑style electric piano, reverb ambience",
+        "yamaha keyboard": "Yamaha synth/keyboard, rich pads, clean piano patches",
+        "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
+        "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
+        "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
+        "coro pentecostal": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
+        "coros pentecostales": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
+        "pentecostal": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat on beats 2 and 4, punchy rimshots, heavy kick drum on 1 and 3, bright hi-hat cymbals, crash cymbals, dynamic acoustic drum fills, loud upfront drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, 118 bpm, authentic physical electric bass guitar, zero synth bass, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
+        "avivamiento": "revival worship, passionate communal praise, uplifting sacred delivery",
+        "coros de avivamiento": "revival church choruses, uplifting congregational praise, vibrant communal singing",
+        "coro pentecostal de avivamiento": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
+        "alabanza rapida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
+        "alabanza rápida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
+        "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
+        "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
+        "piano de oracion": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+        "piano de oración": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+        "piano devocional": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
+        "vals vienes": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
+        "vals vienés": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
+        "himno vals vienes": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
+        "himno vals vienés": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
+        "himno solemne tradicional": "traditional sacred hymn, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo, classical sacred Christian hymn",
+        "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, punchy acoustic rock drum kit with solid backbeat, tempo 4/4, snare 2-4, kick 1-3, hi-hat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, rhythmic delay lead electric guitar, modern synth arpeggio, inspiring youth worship leader and anthemic praise",
+        "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat",
+        "guitarra bajo batería": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat",
+        # Hardware de Estudio y Consolas
+        "neve 8048": "Neve 8048 vintage console, Neve 1073 preamp warm analog saturation, rich low-end and silky smooth high frequencies",
+        "neve 1073": "Neve 1073 vintage preamp, warm British analog console saturation, thick lows and silky highs",
+        "ssl 4000": "Solid State Logic SSL 4000 console mix, crisp transients, punchy drum compression, ultra-clean studio fidelity",
+        "ssl 4000 e/g": "Solid State Logic SSL 4000 console mix, crisp transients, punchy drum compression, ultra-clean studio fidelity",
+        "api 1608": "API 1608 console, discrete op-amp 312 punchy midrange, aggressive transient punch, American rock studio sound",
+        "abbey road tg12345": "Abbey Road TG12345 console, vintage EMI tape saturation, warm tube harmonic distortion",
+        # Baterías Pro
+        "dw collector's": "DW Collector's Series maple drum kit, dynamic acoustic drum performance, punchy kick drum, resonant snare with crack, articulate hi-hat and warm balanced toms",
+        "dw collector's maple": "DW Collector's Series maple drum kit, dynamic acoustic drum performance, punchy kick drum, resonant snare with crack, articulate hi-hat and warm balanced toms",
+        "ludwig classic 70s": "vintage 1970s Ludwig Classic drum kit, deep warm wooden tone, dynamic acoustic rock performance, articulate hi-hat, fat vintage snare with ring",
+        "yamaha recording custom": "Yamaha Recording Custom birch drum kit, clean punchy attack, dynamic studio drum performance, articulate hi-hat, perfectly controlled resonance",
+        "century 1994": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+        "century 1994 rock kit": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+        "century wood shell": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
+        # Bajos
+        "fender jazz bass deluxe": "Fender American Deluxe Jazz Bass, active 18V preamp with 3-band EQ, dual 4th generation Noiseless single-coil pickups, modern Hi-Fi electric bass tone, bright punchy slap attack, growling articulate low-mids, deep tight low end, real roundwound nickel strings on rosewood fretboard, played fingerstyle with organic string dynamics and natural fret buzz, plugged into classic Ampeg SVT tube amplifier and 8x10 speaker cabinet, warm analog direct-box bass tone, authentic physical wooden electric bass guitar, zero synth bass",
+        "fender jazz bass 1975": "vintage 1975 Fender Jazz Bass with ash body and maple fingerboard with black block inlays, bridge pickup single-coil growl, bright biting treble, scooped mid punch, Jaco Pastorius style lyrical fingerstyle tone, real roundwound nickel strings, mic'd vintage Ampeg SVT tube amplifier and 8x10 cabinet, authentic physical wooden electric bass guitar, zero synth bass",
+        "fender jazz bass": "authentic Fender Jazz Bass electric guitar, dual single-coil pickups, growling articulate midrange, punchy low end, real roundwound strings plucked with fingers, organic fret buzz, mic'd Ampeg SVT tube bass amp, real physical wooden electric bass guitar, zero synth bass",
+        "fender precision 1962": "legendary 1962 Fender Precision Bass with alder body and split-coil pickup, warm thumping Motown James Jamerson vintage tone, flatwound strings, muted fleshy thumb and finger pluck, thick punchy fundamental low-end warmth that sits glued in the mix, vintage Flip-Top Ampeg B-15 Portaflex tube amp, real physical electric bass guitar, zero synth bass",
+        "fender precision bass": "classic Fender Precision Bass with split-coil pickup, warm thumping fundamental, flatwound strings, vintage Ampeg B-15 tube amp, real physical wooden electric bass guitar, zero synth bass",
+        "fender precision": "classic Fender Precision Bass with split-coil pickup, warm thumping fundamental, flatwound strings, vintage Ampeg B-15 tube amp, real physical wooden electric bass guitar, zero synth bass",
+        "music man stingray": "iconic Ernie Ball Music Man StingRay bass guitar, massive alnico active humbucker pickup with 3-band active preamp, aggressive punchy slap and pop sound, massive growling low-mid bite, high-voltage definition, real steel roundwound strings, Gallien-Krueger 800RB amplifier punch, real physical electric bass guitar, zero synth bass",
+        "contrabajo acustico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
+        "contrabajo acústico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
+        # Teclados y Pianos
+        "yamaha cfx grand": "Yamaha CFX 9-foot concert grand piano, crystal clear brilliant highs, majestic resonant bass, acoustic concert hall reverb",
+        "fender rhodes mark i": "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo, lush devotional worship ambience",
+        "rhodes": "vintage Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo",
+        "hammond b3": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
+        "hammond b3 + leslie": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
+        "roland juno-106": "Roland Juno-106 analog polyphonic synthesizer, lush stereo chorus pad, warm atmospheric worship soundscape",
+        "roland mks-20": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+        "roland mks-20 e-piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+        "roland mks-20 preset elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+        "keyscape": "Spectrasonics Keyscape pristine multi-sampled keyboard library, authentic vintage keyboards",
+        "keyscape mks-20": "Spectrasonics Keyscape Roland MKS-20 preset Elec Piano 2 (E.Piano 2), pristine multi-sampled digital piano, authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like tine attack, warm resonant low-end, deep sacred worship hall reverb, classic Christian worship and prayer atmosphere",
+        "keyscape elec piano 2": "Spectrasonics Keyscape Roland MKS-20 preset Elec Piano 2 (E.Piano 2), pristine multi-sampled digital piano, authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like tine attack, warm resonant low-end, deep sacred worship hall reverb, classic Christian worship and prayer atmosphere",
+        "mks-20": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+        "mks-20 elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+        "elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
+        "galaxy dx": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
+        "galaxy dx piano": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
+        "galaxy dx worship piano": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
+        "yamaha motif xs": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
+        "motif xs": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
+        "motif power grand": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
+        # Guitarras
+        "martin d-28": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
+        "martin d-28 acustica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
+        "martin d-28 acústica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
+        # Articulación de Batería, Platillos y Bajo
+        "hi-hat en corcheas": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hihat en corcheas": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "dos golpes por tempo": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "2 golpes por tempo": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hihat 8th": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hi-hat en negras": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hihat en negras": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "un golpe por tempo": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "1 golpe por tempo": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hihat 4th": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hi-hat en semicorcheas": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hihat en semicorcheas": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "cuatro golpes por tempo": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "4 golpes por tempo": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "hihat 16th": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
+        "crashes y redobles": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
+        "crashes y toms": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
+        "crashes and fills": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
+        "platillos splash": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+        "platillo splash": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+        "splash y ride": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+        "splash y ride bell": "crisp splash cymbal accents, articulate ride cymbal bell pings",
+        "grooves en toms": "driving rhythmic floor tom groove and articulate rack tom patterns",
+        "groove en toms": "driving rhythmic floor tom groove and articulate rack tom patterns",
+        "tom grooves": "driving rhythmic floor tom groove and articulate rack tom patterns",
+        "bajo slap": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+        "adorno slap": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+        "slap bass": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+        "slap y pop": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
+        "bajo pick-up": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+        "pick-up": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+        "pickup bass": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+        "notas de paso": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
+    }
+    parts = [p.strip() for p in (style_str or "").split(",") if p.strip()]
+    return ", ".join(mapping.get(p.lower(), p) for p in parts)
+
+
+def _enrich_voice_keywords(style_str: str) -> str:
+    """Add tags for known vocal artists and replace real names so Udio doesn't reject them."""
+    voice_map = {
+        "luis miguel": "smooth latin romantic male tenor",
+        "cristian castro": "bright soaring latin pop male tenor",
+        "phil collings": "1980s pop rock, gated reverb drums, emotive adult contemporary male vocals",
+        "phil collins": "1980s pop rock, gated reverb drums, emotive adult contemporary male vocals",
+        "freddie mercury": "operatic theatrical rock male tenor",
+        "omar farías": "latin christian male tenor",
+        "elías álvarez": "latin christian male tenor",
+        "steve green": "inspirational classical Christian tenor, lyrical light flexible A2-B4 range",
+        "david phelps": "powerful soaring gospel tenor",
+        "cuarteto de voz masculina": "male choir classic",
+        "filarmónica": "SATB choir",
+        "orquesta": "SATB choir",
+        "laura pausini": "passionate Italian pop female lyrical",
+        "christina aguilera": "powerhouse pop soul female vocals",
+        "mariah carey": "virtuosic pop female high-range",
+        "celine dion": "dramatic operatic pop female belting",
+        "coro pentecostal": "congregational choir, multi-voice church choir, joyful unison vocals",
+        "coros pentecostales": "congregational choir, multi-voice church choir, joyful unison vocals",
+        "coro": "congregational choir, multi-voice vocal ensemble",
+    }
+    parts = [p.strip() for p in (style_str or "").split(",") if p.strip()]
+    return ", ".join(voice_map.get(p.lower(), p) for p in parts)
+
+
+def _sanitize_artist_names_for_udio(style_str: str, log_fn=None) -> str:
+    """Translates banned artist/band names into allowed sonic/production descriptors to comply with Udio policy."""
+    artist_translations = {
+        r"\bphil\s+collin[s|g]s?\b": "1980s pop rock, gated reverb drums, dramatic dynamic tom fills, emotive adult contemporary",
+        r"\bluis\s+miguel\b": "smooth latin romantic pop, big band brass, emotive male tenor, polished studio production",
+        r"\bcristian\s+castro\b": "dramatic latin pop ballad, bright soaring male tenor vocals, orchestral pop",
+        r"\bfreddie\s+mercury\b": "operatic theatrical rock, powerhouse male tenor, dramatic dynamic range",
+        r"\bmarcos\s+witt\b": "contemporary Christian worship, bright acoustic grand piano, warm devotional praise vocals",
+        r"\bsteve\s+green\b": "inspirational classical Christian tenor, lyrical vocal tone, orchestral hymn",
+        r"\bdavid\s+phelps\b": "powerful gospel tenor, soaring operatic vocal range, dramatic gospel praise",
+        r"\blaura\s+pausini\b": "passionate Italian pop ballad, emotional lyrical female vocals",
+        r"\bchristina\s+aguilera\b": "powerhouse pop soul female vocals, wide vocal range, expressive melisma",
+        r"\bmariah\s+carey\b": "virtuosic pop R&B female vocals, whistle register, lush vocal harmonies",
+        r"\bceline\s+dion\b": "dramatic operatic pop ballad, powerhouse belting female vocals",
+        r"\bhillsong(\s+worship|\s+united)?\b": "modern congregational anthemic worship, ambient delay electric guitars, driving drums",
+        r"\belevation(\s+worship)?\b": "contemporary arena worship, big drum swells, driving bass, anthemic chorus",
+        r"\bbethel(\s+music)?\b": "atmospheric Christian worship, intimate acoustic build, lush ambient synth pads",
+        r"\bbeatles\b": "1960s British invasion pop rock, vintage vocal harmonies, classic jangle guitar",
+        r"\bqueen\b": "operatic stadium rock, layered vocal harmonies, Brian May style guitar harmonies",
+        r"\bcoldplay\b": "anthemic post-Britpop, echoing grand piano, soaring stadium rock vocals",
+        r"\bu2\b": "post-punk stadium rock, dotted-eighth rhythmic delay guitar, soaring vocal delivery",
+        r"\bmichael\s+jackson\b": "80s dance pop funk, crisp rhythmic drums, percussive vocal accents",
+        r"\bwhitney\s+houston\b": "gospel-infused pop powerhouse female vocals, soaring resonant belt",
+        r"\bstevie\s+wonder\b": "70s classic soul funk, clavinet, soulful expressive male vocals",
+        r"\belton\s+john\b": "70s piano pop rock, driving acoustic grand piano, theatrical vocal delivery",
+        r"\bmarcelo\s+patrono\b": "acoustic Christian worship, warm intimate guitar, devotional vocals",
+        r"\bcoalo\s+zamorano\b": "upbeat latin Christian gospel pop, energetic brass, joyful worship",
+        r"\bjesus\s+adrian\s+romero\b": "intimate acoustic Christian worship, nylon guitar, warm devotional baritone",
+        r"\bdanilo\s+montero\b": "congregational Christian praise, uplifting pop worship, bright electric guitars",
+        r"\bjuan\s+luis\s+guerra\b": "bachata and merengue latin fusion, rich horn arrangements, poetic vocals",
+        r"\bbronco\b": "grupero band, regional mexican romantic cumbia ballad",
+        r"\blos\s+bukis\b": "grupero ballad, 80s synthesizer grupero ballad",
+    }
+    cleaned = style_str or ""
+    for pattern, replacement in artist_translations.items():
+        match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+        if match:
+            if log_fn:
+                log_fn(f"Filtro de artista Udio: Reemplazando '{match.group(0)}' por descriptores sónicos permitidos para evitar rechazo de la API.")
+            cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+
+def resolve_final_udio_style_pipeline(
+    *,
+    style: str,
+    final_lyrics: str,
+    title: str = "",
+    is_instrumental: bool = False,
+    is_auto_lyrics: bool = False,
+    norm_lyrics_mode: str = "custom",
+    exclude_styles: str = "",
+    vocal_gender: str = "random",
+    target_bpm: int = 0,
+    hihat_mode: str = "",
+    art_crash_toms: Optional[bool] = None,
+    art_splash_ride: Optional[bool] = None,
+    art_tom_grooves: Optional[bool] = None,
+    art_bass_slap: Optional[bool] = None,
+    art_bass_pickup: Optional[bool] = None,
+    active_preset: str = "",
+    studio_selections: Optional[dict] = None,
+    wants_solo_vocal: bool = False,
+    wants_choir: bool = False,
+    log_fn=None,
+) -> dict:
+    """
+    Pipeline determinístico y compartido entre `/api/preview_parameters` y `run_transform_task`
+    para garantizar coincidencia 100% exacta entre la vista previa de `style` y el payload enviado a UdioAPI.
+    No realiza llamadas de red ni consume créditos.
+    """
+    raw_style_before_enrich = style or ""
+    work_style = raw_style_before_enrich
+    work_lyrics = final_lyrics or ""
+
+    if is_instrumental:
+        is_drum_solo = any(w in raw_style_before_enrich.lower() for w in [
+            "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
+            "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
+            "pure drums", "drum test", "drum sound test"
+        ])
+        is_guitar_solo = not is_drum_solo and (
+            active_preset == "guitar_solo"
+            or any(w in raw_style_before_enrich.lower() for w in [
+                "guitar solo", "solo guitar", "solo electric guitar", "solo de guitarra", "guitarra sola",
+                "isolated guitar", "pure guitar", "unaccompanied guitar", "solo acoustic guitar", "guitar showcase"
+            ])
+        )
+        is_bass_solo = not is_drum_solo and not is_guitar_solo and (
+            active_preset == "bass_solo"
+            or any(w in raw_style_before_enrich.lower() for w in [
+                "bass solo", "solo bass", "solo electric bass", "solo de bajo", "bajo solo",
+                "isolated bass", "pure bass", "unaccompanied bass", "bass showcase"
+            ])
+        )
+        is_solo_piano_prayer = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
+            active_preset == "piano_oracion"
+            or any(w in raw_style_before_enrich.lower() for w in [
+                "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración",
+                "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
+                "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
+            ]) or ("piano" in raw_style_before_enrich.lower() and any(w in raw_style_before_enrich.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
+        )
+        if is_guitar_solo:
+            wants_solo_vocal = False
+            wants_choir = False
+            work_lyrics = "[Instrumental - Solo Guitar]"
+        elif is_bass_solo:
+            wants_solo_vocal = False
+            wants_choir = False
+            work_lyrics = "[Instrumental - Solo Bass]"
+        elif is_solo_piano_prayer:
+            wants_solo_vocal = False
+            wants_choir = False
+            work_lyrics = "[Instrumental - Solo Piano]"
+        elif is_drum_solo:
+            wants_solo_vocal = False
+            wants_choir = False
+            work_lyrics = "[Instrumental - Solo Drums]"
+    else:
+        is_drum_solo = False
+        is_guitar_solo = False
+        is_bass_solo = False
+        is_solo_piano_prayer = False
+
+    is_vals_vienes = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
+        active_preset == "vals_vienes"
+        or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
+    )
+
+    eff_cfg = resolve_effective_musical_config(
+        style=raw_style_before_enrich,
+        lyrics=work_lyrics,
+        exclude_styles=exclude_styles,
+        target_bpm=target_bpm,
+        hihat_mode=hihat_mode,
+        art_crash_toms=art_crash_toms,
+        art_splash_ride=art_splash_ride,
+        art_tom_grooves=art_tom_grooves,
+        art_bass_slap=art_bass_slap,
+        art_bass_pickup=art_bass_pickup,
+        active_preset=active_preset,
+        is_solo_piano_prayer=is_solo_piano_prayer,
+        is_drum_solo=is_drum_solo,
+        is_vals_vienes=is_vals_vienes,
+        is_guitar_solo=is_guitar_solo,
+        is_bass_solo=is_bass_solo,
+    )
+    bpm_tag = eff_cfg["bpm_tag"]
+    if eff_cfg["effective_bpm"] and log_fn:
+        log_fn(f"Tempo autoritativo del usuario aplicado: {bpm_tag}")
+
+    work_style = _enrich_style_keywords(work_style)
+    work_style = _enrich_voice_keywords(work_style)
+    work_style = _sanitize_artist_names_for_udio(work_style, log_fn=log_fn)
+    sanitized_title = _sanitize_artist_names_for_udio(title, log_fn=log_fn)[:100].strip()
+
+    # Clean structural tags from style string (they belong in lyrics, not style)
+    work_style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', work_style, flags=re.IGNORECASE)
+    work_style = sanitize_and_prioritize_style_with_config(work_style, eff_cfg)
+
+    is_pentecostal = not is_drum_solo and (
+        eff_cfg["preset_key"] == "pentecostal"
+        or any(w in work_style.lower() for w in ["pentecostal", "coro pentecostal", "coros pentecostales", "himno pentecostal"])
+    )
+    is_explicit_modern = any(w in work_style.lower() for w in [
+        "musica moderna", "música moderna", "estilo moderno", "produccion moderna", "producción moderna",
+        "contemporaneo", "contemporáneo", "contemporary", "pop rock", "pop contemporaneo", "pop contemporáneo",
+        "indie rock", "indie pop", "balada moderna", "balada contemporanea", "balada contemporánea",
+        "rock moderno", "modern worship", "alabanza contemporanea", "alabanza contemporánea"
+    ])
+    is_explicit_traditional_hymn = any(w in work_style.lower() for w in [
+        "himno tradicional", "traditional hymn", "himno clasico", "himno clásico",
+        "himnario tradicional", "himnario clásico", "himnario clasico", "sacred hymn",
+        "himno liturgico", "himno litúrgico", "himno solemne"
+    ])
+    is_explicit_congregational = any(w in work_style.lower() for w in [
+        "coro congregacional", "coros congregacionales", "coro de alabanza", "coros de alabanza",
+        "alabanza congregacional", "canto congregacional", "coro de iglesia", "coro de avivamiento",
+        "coros de avivamiento", "avivamiento", "congregational praise", "congregational worship"
+    ])
+    is_traditional_hymn = (
+        not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal
+        and (is_explicit_traditional_hymn or (re.search(r'\bhimno\b', work_style.lower()) and not is_explicit_modern and not is_explicit_congregational))
+    )
+    is_congregational = (
+        not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal and not is_traditional_hymn
+        and is_explicit_congregational
+    )
+    is_modern_composition = (
+        not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_traditional_hymn and not is_congregational
+        and is_explicit_modern
+    )
+
+    if is_drum_solo:
+        genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 BPM unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
+    elif is_guitar_solo:
+        g_model = "Fender Stratocaster electric guitar, clean chime, articulate string attack and warm singing sustain" if "stratocaster" in work_style.lower() else (
+            "Gibson Les Paul electric guitar, rich humbucker warmth and singing sustain" if "les paul" in work_style.lower() else
+            "Martin D-28 acoustic guitar, natural woody resonance and balanced fingerstyle" if "martin" in work_style.lower() or "acustica" in work_style.lower() else
+            "electric guitar, expressive tone, natural string dynamics and singing sustain"
+        )
+        genre_anchor = f"100% pure solo guitar, {g_model}, unaccompanied solo guitar performance, single isolated instrument, zero other instruments, no drums, no percussion, no bass, no piano, no keyboards, no synths, no strings, no choir, no vocals, no backing track"
+    elif is_bass_solo:
+        b_model = "Fender Jazz Bass, articulate midrange growl and roundwound string dynamics" if "jazz bass" in work_style.lower() else (
+            "Fender Precision Bass, thick vintage fundamental warmth" if "precision" in work_style.lower() else
+            "Music Man StingRay, punchy active preamp attack" if "stingray" in work_style.lower() else
+            "electric bass guitar, expressive melodic solo bass performance"
+        )
+        genre_anchor = f"100% pure solo electric bass, {b_model}, unaccompanied solo bass performance, single isolated instrument, zero other instruments, no drums, no percussion, no guitars, no piano, no keyboards, no synths, no strings, no choir, no vocals, no backing track"
+    elif is_solo_piano_prayer:
+        if any(w in work_style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "e-piano 2"]):
+            genre_anchor = f"pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, {bpm_tag or '60 BPM'}, reverent devotional worship, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+        elif any(w in work_style.lower() for w in ["galaxy dx", "galaxydx"]):
+            genre_anchor = f"pure solo hybrid worship piano, acoustic concert grand piano layered with Yamaha DX7 FM electric piano tines, crystalline bell tone, {bpm_tag or '60 BPM'}, deep church hall reverb, pure solo piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+        elif any(w in work_style.lower() for w in ["motif xs", "motif", "motif power grand"]):
+            genre_anchor = f"pure solo Yamaha Motif XS Power Grand piano, crisp modern worship concert grand piano, crystal clear attack, expansive cathedral hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+        elif "rhodes" in work_style.lower():
+            genre_anchor = f"pure solo Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus, {bpm_tag or '60 BPM'}, pure solo electric piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+        else:
+            genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
+    elif is_vals_vienes:
+        tempo_str = f", {bpm_tag}" if bpm_tag else ""
+        genre_anchor = f"sacred Viennese waltz hymn in 3/4 time{tempo_str}, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing"
+    elif is_pentecostal:
+        target_bpm_str = bpm_tag or "118 BPM"
+        hihat_desc = eff_cfg["hihat_clause"] or "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
+        bass_anchor = eff_cfg["bass_clause"] or "root-fifth alternating acoustic bassline"
+        genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, traditional two-step praise straight 4/4 rhythm, {target_bpm_str}, {bass_anchor}, church choir singing in unison, natural Spanish vocals"
+    elif is_traditional_hymn:
+        tempo_str = f", {bpm_tag}" if bpm_tag else ""
+        genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
+    elif is_congregational:
+        tempo_str = f", {bpm_tag}" if bpm_tag else ""
+        genre_anchor = f"congregational Christian praise{tempo_str}, dynamic and uplifting atmosphere, church acoustic resonance, passionate communal delivery"
+    elif is_modern_composition:
+        tempo_str = f", {bpm_tag}" if bpm_tag else ""
+        meter_str = f", {eff_cfg['meter_clause']}" if eff_cfg.get("meter_clause") else ""
+        genre_anchor = f"contemporary studio production{meter_str}{tempo_str}, modern live room acoustics, clear studio definition, expressive natural delivery"
+    else:
+        anchors = []
+        if eff_cfg.get("meter_clause"):
+            anchors.append(eff_cfg["meter_clause"])
+        if bpm_tag:
+            anchors.append(bpm_tag)
+        genre_anchor = ", ".join(anchors)
+
+    if not is_instrumental and not is_auto_lyrics and norm_lyrics_mode != "custom" and work_lyrics and work_lyrics.strip().lower() != "[instrumental]":
+        work_lyrics = inject_arrangement_cues_into_lyrics(
+            work_lyrics,
+            eff_cfg,
+            is_instrumental=is_instrumental,
+            is_solo_piano_prayer=is_solo_piano_prayer,
+            is_drum_solo=is_drum_solo,
+            is_guitar_solo=is_guitar_solo,
+            is_bass_solo=is_bass_solo,
+        )
+
+    vocal_tag = ""
+    if is_instrumental:
+        if "instrumental" not in work_style.lower():
+            work_style = work_style + ", instrumental, no vocals"
+    else:
+        gender_kw = "male " if vocal_gender == "male" else ("female " if vocal_gender == "female" else "")
+        if wants_solo_vocal:
+            if "argentin" in work_style.lower():
+                vocal_tag = f"natural {gender_kw}Argentine Spanish solo vocals, clean expressive singing, no autotune, no choir"
+            elif "mexican" in work_style.lower() or "mexicano" in work_style.lower():
+                vocal_tag = f"natural {gender_kw}Mexican Spanish solo vocals, clean tone, no autotune, no choir"
+            else:
+                vocal_tag = f"clear natural {gender_kw}solo Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent, no choir"
+        elif wants_choir:
+            if "argentin" in work_style.lower() or is_pentecostal:
+                vocal_tag = "Argentine church choir, natural Argentine Spanish accent, passionate congregational singing in unison, no caribbean accent, no central american accent"
+            elif "mexican" in work_style.lower() or "mexicano" in work_style.lower():
+                vocal_tag = "mexican spanish church choir"
+            else:
+                vocal_tag = "congregational church choir, passionate singing in unison"
+        else:
+            if "argentin" in work_style.lower():
+                vocal_tag = f"natural {gender_kw}Argentine Spanish vocals, clean expressive singing, no autotune"
+            elif "mexican" in work_style.lower() or "mexicano" in work_style.lower():
+                vocal_tag = f"natural {gender_kw}Mexican Spanish vocals, no autotune"
+            else:
+                vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
+
+    active_studio_solo = (
+        "drums" if is_drum_solo else (
+            "guitar" if is_guitar_solo else (
+                "bass" if is_bass_solo else ("piano" if is_solo_piano_prayer else None)
+            )
+        )
+    )
+    norm_studio_selections = (
+        studio_virtual_catalog.normalize_studio_selections(studio_selections)
+        if (studio_virtual_catalog and studio_selections)
+        else None
+    )
+    studio_core_preview = (
+        studio_virtual_catalog.get_studio_core_tags_preview(norm_studio_selections, solo_mode=active_studio_solo)
+        if (studio_virtual_catalog and norm_studio_selections)
+        else []
+    )
+    pos_for_exclusions = ", ".join([p for p in ([work_style] + studio_core_preview) if p and str(p).strip()])
+
+    neg_final_str, provider_tags_str, active_critical = resolve_negative_exclusions(
+        exclude_styles=exclude_styles,
+        positive_style=pos_for_exclusions,
+        is_solo_piano_prayer=is_solo_piano_prayer,
+        is_guitar_solo=is_guitar_solo,
+        is_bass_solo=is_bass_solo,
+        is_vals_vienes=is_vals_vienes,
+        is_pentecostal=is_pentecostal,
+        is_drum_solo=is_drum_solo,
+    )
+    if neg_final_str and log_fn:
+        log_fn(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
+
+    if is_drum_solo:
+        clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', work_style, flags=re.IGNORECASE)
+        clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+        solo_anchor = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, unaccompanied percussion"
+        style_build = build_prioritized_style(
+            genre_anchor=solo_anchor,
+            bpm_tag=bpm_tag,
+            user_and_enriched_style="",
+            priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+            vocal_tag="",
+            is_instrumental=True,
+            is_solo_mode=True,
+            max_chars=1000,
+            studio_selections=norm_studio_selections,
+            studio_solo_mode="drums",
+        )
+    elif is_guitar_solo:
+        clean_style = re.sub(
+            r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+            '', work_style, flags=re.IGNORECASE
+        )
+        clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+        solo_anchor = f"{genre_anchor}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument"
+        style_build = build_prioritized_style(
+            genre_anchor=solo_anchor,
+            bpm_tag=bpm_tag,
+            user_and_enriched_style=clean_style,
+            priority_rhythm_clauses=[],
+            vocal_tag="",
+            is_instrumental=True,
+            is_solo_mode=True,
+            max_chars=1000,
+            studio_selections=norm_studio_selections,
+            studio_solo_mode="guitar",
+        )
+    elif is_bass_solo:
+        clean_style = re.sub(
+            r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+            '', work_style, flags=re.IGNORECASE
+        )
+        clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+        solo_anchor = f"{genre_anchor}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument"
+        style_build = build_prioritized_style(
+            genre_anchor=solo_anchor,
+            bpm_tag=bpm_tag,
+            user_and_enriched_style=clean_style,
+            priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+            vocal_tag="",
+            is_instrumental=True,
+            is_solo_mode=True,
+            max_chars=1000,
+            studio_selections=norm_studio_selections,
+            studio_solo_mode="bass",
+        )
+    elif is_solo_piano_prayer:
+        clean_style = re.sub(
+            r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
+            '', work_style, flags=re.IGNORECASE
+        )
+        clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
+        solo_anchor = f"{genre_anchor}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance"
+        style_build = build_prioritized_style(
+            genre_anchor=solo_anchor,
+            bpm_tag=bpm_tag,
+            user_and_enriched_style=clean_style,
+            priority_rhythm_clauses=[],
+            vocal_tag="",
+            is_instrumental=True,
+            is_solo_mode=True,
+            max_chars=1000,
+            studio_selections=norm_studio_selections,
+            studio_solo_mode="piano",
+        )
+    else:
+        active_vocal_tag = "" if is_instrumental else vocal_tag
+        style_build = build_prioritized_style(
+            genre_anchor=genre_anchor,
+            bpm_tag=bpm_tag,
+            user_and_enriched_style=work_style,
+            priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+            vocal_tag=active_vocal_tag,
+            is_instrumental=is_instrumental,
+            is_solo_mode=False,
+            max_chars=1000,
+            raw_user_style=raw_style_before_enrich,
+            studio_selections=norm_studio_selections,
+            studio_solo_mode=None,
+        )
+
+    omitted_keys = (style_build.get("studio_profiles") or {}).get("omitted_categories", [])
+    return {
+        "style_build": style_build,
+        "clean_positive_style": style_build["style"],
+        "eff_cfg": eff_cfg,
+        "final_lyrics": work_lyrics,
+        "sanitized_title": sanitized_title,
+        "neg_final_str": neg_final_str,
+        "provider_tags_str": provider_tags_str,
+        "active_critical": active_critical,
+        "is_drum_solo": is_drum_solo,
+        "is_guitar_solo": is_guitar_solo,
+        "is_bass_solo": is_bass_solo,
+        "is_solo_piano_prayer": is_solo_piano_prayer,
+        "is_vals_vienes": is_vals_vienes,
+        "is_pentecostal": is_pentecostal,
+        "omitted_warning_es": _format_omitted_categories_warning_es(omitted_keys),
+    }
+
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
     ffmpeg_bin = "ffmpeg"
     if os.path.exists("ffmpeg.exe"):
@@ -3246,53 +3849,6 @@ async def preview_parameters(
     is_instrumental = (norm_lyrics_mode == "instrumental") or (not eff_inc_lyrics) or (eff_lyrics.strip().lower() == "[instrumental]")
     is_auto_lyrics = (norm_lyrics_mode == "auto") and not is_instrumental
 
-    eff_cfg = resolve_effective_musical_config(
-        style=eff_style,
-        active_preset=eff_preset,
-        target_bpm=eff_bpm,
-        hihat_mode=eff_hihat,
-        art_crash_toms=art_crash_toms,
-        art_splash_ride=art_splash_ride,
-        art_tom_grooves=art_tom_grooves,
-        art_bass_slap=art_bass_slap,
-        art_bass_pickup=art_bass_pickup
-    )
-
-    solo_mode_preview = None
-    if is_instrumental:
-        if eff_preset == "guitar_solo":
-            solo_mode_preview = "guitar"
-        elif eff_preset == "bass_solo":
-            solo_mode_preview = "bass"
-        elif eff_preset == "piano_oracion":
-            solo_mode_preview = "piano"
-
-    preview_vocal_tag = ""
-    if not is_instrumental:
-        low_style = eff_style.lower()
-        gender_kw = "male " if eff_gender == "male" else ("female " if eff_gender == "female" else "")
-        if "argentin" in low_style:
-            preview_vocal_tag = f"natural {gender_kw}Argentine Spanish vocals, clean expressive singing"
-        elif "mexican" in low_style or "mexicano" in low_style:
-            preview_vocal_tag = f"natural {gender_kw}Mexican Spanish vocals"
-        else:
-            preview_vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery"
-
-    style_build = build_prioritized_style(
-        genre_anchor=eff_cfg.get("meter_clause") or "",
-        bpm_tag=eff_cfg.get("bpm_tag") or "",
-        user_and_enriched_style=eff_style,
-        priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
-        vocal_tag=preview_vocal_tag,
-        is_instrumental=is_instrumental,
-        is_solo_mode=bool(solo_mode_preview),
-        max_chars=1000,
-        raw_user_style=eff_style,
-        studio_selections=studio_selections,
-        studio_solo_mode=solo_mode_preview,
-    )
-    computed_style = style_build["style"]
-
     if is_instrumental:
         final_lyrics = "[Instrumental]"
         prompt_preview = "[Instrumental] (Sin texto vocal)"
@@ -3305,6 +3861,61 @@ async def preview_parameters(
         final_lyrics = eff_lyrics.strip()
         prompt_preview = final_lyrics[:200] + ("..." if len(final_lyrics) > 200 else "")
         custom_mode = True
+
+    wants_solo_vocal = False
+    wants_choir = False
+    work_style = eff_style
+    if not is_instrumental:
+        wants_solo_vocal = any(w in work_style.lower() for w in [
+            "voz solista", "solo vocal", "solo voice", "solo vocals", "lead vocal", "lead vocals",
+            "vocalista solista", "sin coro", "no choir", "solo singer"
+        ])
+        wants_choir = not wants_solo_vocal and (
+            any(w in work_style.lower() for w in [
+                "pentecostal", "coro congregacional", "coros congregacionales", "coro de alabanza",
+                "coros de alabanza", "canto congregacional", "coro de iglesia", "church choir",
+                "coro de avivamiento", "coros de avivamiento"
+            ])
+            or bool(re.search(r'\b(coro|coros|choir)\b', work_style.lower()))
+        )
+        if final_lyrics:
+            chord_token_pattern = re.compile(r'^[A-G][b#]?(?:maj7|maj|min|m7|m|sus4|sus|dim|aug|7|9)?(?:\/[A-G][b#]?)?$', re.IGNORECASE)
+            extracted_chords = []
+            for line in final_lyrics.split("\n"):
+                stripped = line.strip()
+                if stripped.startswith("[") and stripped.endswith("]"):
+                    continue
+                words = stripped.split()
+                if words and all(chord_token_pattern.match(w) for w in words) and 1 <= len(words) <= 8:
+                    extracted_chords.extend(words)
+            if extracted_chords and "chord progression" not in work_style.lower():
+                work_style = f"chord progression: {' - '.join(extracted_chords[:12])}, {work_style}"
+
+    resolved = resolve_final_udio_style_pipeline(
+        style=work_style,
+        final_lyrics=final_lyrics,
+        title=eff_title,
+        is_instrumental=is_instrumental,
+        is_auto_lyrics=is_auto_lyrics,
+        norm_lyrics_mode=norm_lyrics_mode,
+        exclude_styles=eff_excl,
+        vocal_gender=eff_gender,
+        target_bpm=eff_bpm,
+        hihat_mode=eff_hihat,
+        art_crash_toms=_val(art_crash_toms, None),
+        art_splash_ride=_val(art_splash_ride, None),
+        art_tom_grooves=_val(art_tom_grooves, None),
+        art_bass_slap=_val(art_bass_slap, None),
+        art_bass_pickup=_val(art_bass_pickup, None),
+        active_preset=eff_preset,
+        studio_selections=studio_selections,
+        wants_solo_vocal=wants_solo_vocal,
+        wants_choir=wants_choir,
+        log_fn=None,
+    )
+    style_build = resolved["style_build"]
+    eff_cfg = resolved["eff_cfg"]
+    computed_style = resolved["clean_positive_style"]
 
     has_ref_audio = bool(eff_skel)
     ref_name = os.path.basename(eff_skel) if eff_skel else "Ninguno (Generación pura)"
@@ -3324,6 +3935,8 @@ async def preview_parameters(
         "style_optimization": style_build.get("style_optimization"),
         "studio_profiles": style_build.get("studio_profiles"),
         "compaction_notice": style_build.get("compaction_notice"),
+        "omitted_warning_es": resolved.get("omitted_warning_es"),
+        "tags_preview": resolved.get("provider_tags_str") or "",
         "honesty_notice": studio_virtual_catalog.STUDIO_PROFILE_HONESTY_NOTICE if studio_virtual_catalog else "",
         "exclude_preview": eff_excl[:150] + ("..." if len(eff_excl) > 150 else "") if eff_excl else "Ninguna",
         "model": eff_model,
@@ -5084,6 +5697,8 @@ async def run_transform_task(
             if word and sound:
                 final_lyrics = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", sound, final_lyrics, flags=re.IGNORECASE)
                 log_msg(f"Pronunciación: '{word}' -> '{sound}'")
+    wants_solo_vocal = False
+    wants_choir = False
     if not is_instrumental:
         # Determine vocal format requested by user
         gender_desc = "masculina " if vocal_gender == "male" else ("femenina " if vocal_gender == "female" else "")
@@ -5242,290 +5857,15 @@ async def run_transform_task(
                 save_local_log()
                 raise Exception(err_msg)
 
-        # ----------
-        # Helper: expand known instrument/effect keywords into richer descriptions
-        # ----------
-        def enrich_style(style_str: str) -> str:
-            """Add detailed descriptors for common instrument/effect keywords."""
-            mapping = {
-                "stratocaster": "Fender Stratocaster electric guitar",
-                "dw": "DW premium drum kit",
-                "tama": "TAMA metal progressive kit, metallic power, precise tuning, energetic",
-                "ludwig": "Ludwig classic rock kit, deep warm powerful tone",
-                "flanger": "flanger effect",
-                "chorus": "chorus effect",
-                "stereo wide": "stereo wide professional studio mix",
-                "fender telecaster": "Fender Telecaster electric guitar, bright crisp, country‑rock tone",
-                "gibson les paul": "Gibson Les Paul solid‑body guitar, thick warm sustain",
-                "marcos witt piano": "bright acoustic piano, Rhodes‑style electric piano, reverb ambience",
-                "yamaha keyboard": "Yamaha synth/keyboard, rich pads, clean piano patches",
-                "fender jazz bass": "Fender Jazz Bass, articulate mid‑range, smooth low end",
-                "yamaha bass": "Yamaha electric bass, solid low‑end, punchy attack",
-                "fender precision bass": "Fender Precision Bass, thick fundamental, vintage rock tone",
-                "coro pentecostal": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
-                "coros pentecostales": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
-                "pentecostal": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat on beats 2 and 4, punchy rimshots, heavy kick drum on 1 and 3, bright hi-hat cymbals, crash cymbals, dynamic acoustic drum fills, loud upfront drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, 118 bpm, authentic physical electric bass guitar, zero synth bass, alternating bass, acoustic guitar, church choir in unison, passionate Argentine vocals, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no latin rhythm, no syncopation, no cumbia, no tambourine",
-                "avivamiento": "revival worship, passionate communal praise, uplifting sacred delivery",
-                "coros de avivamiento": "revival church choruses, uplifting congregational praise, vibrant communal singing",
-                "coro pentecostal de avivamiento": "full live acoustic praise drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, loud cutting snare drum backbeat cracking hard on beats 2 and 4, punchy snare rimshots on every 2 and 4, heavy 22-inch kick drum on beats 1 and 3, bright metallic hi-hat cymbals, crash cymbal accents, dynamic acoustic tom rolls and drum fills, upfront loud drums in the front of the mix, traditional two-step praise straight 4/4 rhythm, steady 118 bpm, authentic physical electric bass guitar, real roundwound strings on Ampeg SVT, root-fifth alternating bass, acoustic rhythm guitar, church choir singing in unison, passionate Argentine church vocals, zero synth bass, zero 808 sub, no distant drums, no missing snare, no quiet snare, no missing cymbals, no kick drum only, no black gospel, no afro gospel, no soul, no melisma, no vocal runs, no murga, no comparsa, no carnaval, no batucada, no latin rhythm, no syncopation, no cumbia, no caribbean accent, no tambourine solo, no handclaps solo",
-                "alabanza rapida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
-                "alabanza rápida": "full live acoustic drum kit, tempo 4/4, snare 2-4, kick 1-3, hi-hat, bateria acustica completa bien al frente con redoblante potente en 2 y 4, golpe de caja rimshot en 2 y 4, bombo pesado en 1 y 3, platillos hi-hat y crash bien audibles, redobles dinamicos de toms, ritmo tradicional dos pasos 4/4, 118 bpm, bajo electrico real de madera, bajo alternado raiz-quinta, rasgueo acustico, coro al unisono, voces argentinas, cero bajo sintetizado, sin bateria al fondo, sin redoblante mudo, sin falta de platillos, sin solo de bombo, sin afro gospel, sin black gospel, sin soul, sin melismas, sin murga, sin comparsa, sin pandereta, sin ritmo latino",
-                "adoracion intima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
-                "adoración íntima": "deep intimate worship and prayer, gentle 68 bpm slow tempo, warm Fender Rhodes Mark I electric piano, soft atmospheric ambient electric guitar with shimmer reverb and rhythmic delay, warm synth pad cushion, tender acoustic grand piano, delicate string quartet, emotive heartfelt devotional vocal",
-                "piano de oracion": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
-                "piano de oración": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
-                "piano devocional": "deep lush prayer hall reverb, gentle emotive touch, peaceful intimate worship, slow 60 bpm, reverent, pure piano instrumental",
-                "vals vienes": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
-                "vals vienés": "grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra, first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant rubato, Vienna Philharmonic hall acoustic",
-                "himno vals vienes": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
-                "himno vals vienés": "sacred Christian hymn as a grand Viennese waltz in 3/4 time, Johann Strauss II style, full classical symphony orchestra with first and second violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, orchestral timpani, concert snare drum, crash cymbals, concert bass drum, authentic Viennese oom-pah-pah 3/4 waltz lilt, elegant orchestral rubato, majestic Vienna hall acoustic",
-                "himno solemne tradicional": "traditional sacred hymn, majestic church pipe organ, solemn Hammond B3 swell, subtle symphonic orchestra strings and woodwinds, 4-part SATB choral harmonies, reverent cathedral acoustic ambience, andante 78 bpm tempo, classical sacred Christian hymn",
-                "alabanza juvenil pop/rock": "modern Christian youth praise and pop rock, punchy acoustic rock drum kit with solid backbeat, tempo 4/4, snare 2-4, kick 1-3, hi-hat, energetic Fender Jazz Bass, crunchy overdrive rhythm electric guitars, rhythmic delay lead electric guitar, modern synth arpeggio, inspiring youth worship leader and anthemic praise",
-                "guitarra bajo bateria": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat",
-                "guitarra bajo batería": "straight 4/4 rhythm electric guitar and strummed acoustic guitar, driving electric bass guitar, live acoustic rock drums with snare backbeat, tempo 4/4, snare 2-4, kick 1-3, hit-hat, hi-hat",
-                # Hardware de Estudio y Consolas
-                "neve 8048": "Neve 8048 vintage console, Neve 1073 preamp warm analog saturation, rich low-end and silky smooth high frequencies",
-                "neve 1073": "Neve 1073 vintage preamp, warm British analog console saturation, thick lows and silky highs",
-                "ssl 4000": "Solid State Logic SSL 4000 console mix, crisp transients, punchy drum compression, ultra-clean studio fidelity",
-                "ssl 4000 e/g": "Solid State Logic SSL 4000 console mix, crisp transients, punchy drum compression, ultra-clean studio fidelity",
-                "api 1608": "API 1608 console, discrete op-amp 312 punchy midrange, aggressive transient punch, American rock studio sound",
-                "abbey road tg12345": "Abbey Road TG12345 console, vintage EMI tape saturation, warm tube harmonic distortion",
-                # Baterías Pro
-                "dw collector's": "DW Collector's Series maple drum kit, dynamic acoustic drum performance, punchy kick drum, resonant snare with crack, articulate hi-hat and warm balanced toms",
-                "dw collector's maple": "DW Collector's Series maple drum kit, dynamic acoustic drum performance, punchy kick drum, resonant snare with crack, articulate hi-hat and warm balanced toms",
-                "ludwig classic 70s": "vintage 1970s Ludwig Classic drum kit, deep warm wooden tone, dynamic acoustic rock performance, articulate hi-hat, fat vintage snare with ring",
-                "yamaha recording custom": "Yamaha Recording Custom birch drum kit, clean punchy attack, dynamic studio drum performance, articulate hi-hat, perfectly controlled resonance",
-                "century 1994": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
-                "century 1994 rock kit": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
-                "century wood shell": "1994 Century acoustic wood shell drum kit, dynamic live acoustic drum performance, 10 12 14 rack toms and 16 floor tom with Remo Hydraulic Ebony heavy low-end thud and zero high-frequency ring, warm tape saturation and gated sustain, 14 snare tuned medium-high for sharp dry cutting rimshot crack with crisp wire response and short plate reverb, 14 Meinl Raker Heavy cutting hi-hat, 16 Meinl Raker Heavy and Paiste 302 explosive fast decay crashes, 20 Meinl Raker Heavy ride with glass-like ping and heavy bell, upfront punchy room mic ambience, acoustic drum kit sound",
-                # Bajos
-                "fender jazz bass deluxe": "Fender American Deluxe Jazz Bass, active 18V preamp with 3-band EQ, dual 4th generation Noiseless single-coil pickups, modern Hi-Fi electric bass tone, bright punchy slap attack, growling articulate low-mids, deep tight low end, real roundwound nickel strings on rosewood fretboard, played fingerstyle with organic string dynamics and natural fret buzz, plugged into classic Ampeg SVT tube amplifier and 8x10 speaker cabinet, warm analog direct-box bass tone, authentic physical wooden electric bass guitar, zero synth bass",
-                "fender jazz bass 1975": "vintage 1975 Fender Jazz Bass with ash body and maple fingerboard with black block inlays, bridge pickup single-coil growl, bright biting treble, scooped mid punch, Jaco Pastorius style lyrical fingerstyle tone, real roundwound nickel strings, mic'd vintage Ampeg SVT tube amplifier and 8x10 cabinet, authentic physical wooden electric bass guitar, zero synth bass",
-                "fender jazz bass": "authentic Fender Jazz Bass electric guitar, dual single-coil pickups, growling articulate midrange, punchy low end, real roundwound strings plucked with fingers, organic fret buzz, mic'd Ampeg SVT tube bass amp, real physical wooden electric bass guitar, zero synth bass",
-                "fender precision 1962": "legendary 1962 Fender Precision Bass with alder body and split-coil pickup, warm thumping Motown James Jamerson vintage tone, flatwound strings, muted fleshy thumb and finger pluck, thick punchy fundamental low-end warmth that sits glued in the mix, vintage Flip-Top Ampeg B-15 Portaflex tube amp, real physical electric bass guitar, zero synth bass",
-                "fender precision bass": "classic Fender Precision Bass with split-coil pickup, warm thumping fundamental, flatwound strings, vintage Ampeg B-15 tube amp, real physical wooden electric bass guitar, zero synth bass",
-                "fender precision": "classic Fender Precision Bass with split-coil pickup, warm thumping fundamental, flatwound strings, vintage Ampeg B-15 tube amp, real physical wooden electric bass guitar, zero synth bass",
-                "music man stingray": "iconic Ernie Ball Music Man StingRay bass guitar, massive alnico active humbucker pickup with 3-band active preamp, aggressive punchy slap and pop sound, massive growling low-mid bite, high-voltage definition, real steel roundwound strings, Gallien-Krueger 800RB amplifier punch, real physical electric bass guitar, zero synth bass",
-                "contrabajo acustico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
-                "contrabajo acústico": "authentic acoustic orchestral wooden upright double bass, acoustic carved spruce and maple body, pizzicato finger plucked gut and steel strings, deep resonant wooden acoustic chamber, full acoustic warmth, Neumann U47 tube microphone placed 1 foot from F-hole, 100% natural wooden acoustic upright bass, zero electric bass, zero synth bass",
-                # Teclados y Pianos
-                "yamaha cfx grand": "Yamaha CFX 9-foot concert grand piano, crystal clear brilliant highs, majestic resonant bass, acoustic concert hall reverb",
-                "fender rhodes mark i": "vintage 1973 Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo, lush devotional worship ambience",
-                "rhodes": "vintage Fender Rhodes Mark I electric piano, warm bell-like tines, gentle tremolo",
-                "hammond b3": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
-                "hammond b3 + leslie": "authentic Hammond B3 tonewheel organ through rotating Leslie 122 speaker horn, warm church organ tube saturation",
-                "roland juno-106": "Roland Juno-106 analog polyphonic synthesizer, lush stereo chorus pad, warm atmospheric worship soundscape",
-                "roland mks-20": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
-                "roland mks-20 e-piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
-                "roland mks-20 preset elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
-                "keyscape": "Spectrasonics Keyscape pristine multi-sampled keyboard library, authentic vintage keyboards",
-                "keyscape mks-20": "Spectrasonics Keyscape Roland MKS-20 preset Elec Piano 2 (E.Piano 2), pristine multi-sampled digital piano, authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like tine attack, warm resonant low-end, deep sacred worship hall reverb, classic Christian worship and prayer atmosphere",
-                "keyscape elec piano 2": "Spectrasonics Keyscape Roland MKS-20 preset Elec Piano 2 (E.Piano 2), pristine multi-sampled digital piano, authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like tine attack, warm resonant low-end, deep sacred worship hall reverb, classic Christian worship and prayer atmosphere",
-                "mks-20": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
-                "mks-20 elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
-                "elec piano 2": "legendary Roland MKS-20 digital piano module preset 3 Elec Piano 2 (E.Piano 2) (Keyscape library), authentic SAS synthesis, lush built-in analog chorus, sparkling crystalline bell-like electric piano attack, warm resonant low-end, deep sacred worship hall reverb, classic 1980s and 1990s Christian worship and prayer atmosphere, pure devotional piano instrumental",
-                "galaxy dx": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
-                "galaxy dx piano": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
-                "galaxy dx worship piano": "Galaxy DX epic worship piano, hybrid acoustic concert grand piano layered with sparkling DX7 crystal bells, warm celestial pad cushion and lush ethereal hall reverb, deep sacred prayer room ambience, pure emotive devotional piano sound",
-                "yamaha motif xs": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
-                "motif xs": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
-                "motif power grand": "Yamaha Motif XS iconic worship piano, legendary Motif Power Grand acoustic piano layered with warm analog choir pad and lush ethereal hall reverb, expansive stereo width, epic sacred church atmosphere, emotive prayer background",
-                # Guitarras
-                "martin d-28": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
-                "martin d-28 acustica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
-                "martin d-28 acústica": "Martin D-28 acoustic dreadnought guitar, sitka spruce top and rosewood body, rich balanced acoustic strumming",
-                # Articulación de Batería, Platillos y Bajo
-                "hi-hat en corcheas": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hihat en corcheas": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "dos golpes por tempo": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "2 golpes por tempo": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hihat 8th": "steady closed hi-hat keeping straight eighth notes (two strokes per beat, 1-and 2-and 3-and 4-and), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hi-hat en negras": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hihat en negras": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "un golpe por tempo": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "1 golpe por tempo": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hihat 4th": "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hi-hat en semicorcheas": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hihat en semicorcheas": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "cuatro golpes por tempo": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "4 golpes por tempo": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "hihat 16th": "fast driving 16th-note hi-hat pattern (four strokes per beat), tempo 4/4, snare 2-4, kick 1-3, hit-hat",
-                "crashes y redobles": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
-                "crashes y toms": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
-                "crashes and fills": "explosive crash cymbals on transitions and downbeats, dynamic acoustic tom rolls and drum fills",
-                "platillos splash": "crisp splash cymbal accents, articulate ride cymbal bell pings",
-                "platillo splash": "crisp splash cymbal accents, articulate ride cymbal bell pings",
-                "splash y ride": "crisp splash cymbal accents, articulate ride cymbal bell pings",
-                "splash y ride bell": "crisp splash cymbal accents, articulate ride cymbal bell pings",
-                "grooves en toms": "driving rhythmic floor tom groove and articulate rack tom patterns",
-                "groove en toms": "driving rhythmic floor tom groove and articulate rack tom patterns",
-                "tom grooves": "driving rhythmic floor tom groove and articulate rack tom patterns",
-                "bajo slap": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
-                "adorno slap": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
-                "slap bass": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
-                "slap y pop": "funky punchy slap and pop electric bass accents on fills and chord transitions, thumb slap and finger pop embellishments",
-                "bajo pick-up": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
-                "pick-up": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
-                "pickup bass": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
-                "notas de paso": "expressive chromatic pick-up notes and walking bass passing tones into downbeats",
-            }
-            parts = [p.strip() for p in style_str.split(",") if p.strip()]
-            enriched_parts = []
-            for p in parts:
-                key = p.lower()
-                if key in mapping:
-                    enriched_parts.append(mapping[key])
-                else:
-                    enriched_parts.append(p)
-            return ", ".join(enriched_parts)
-
-        # ----------
-        # Helper: expand known vocal artist keywords into richer descriptions (REPLACING the artist name)
-        # ----------
-        def enrich_voice(style_str: str) -> str:
-            """Add tags for known vocal artists and replace real names so Udio doesn't reject them."""
-            voice_map = {
-                "luis miguel": "smooth latin romantic male tenor",
-                "cristian castro": "bright soaring latin pop male tenor",
-                "phil collings": "1980s pop rock, gated reverb drums, emotive adult contemporary male vocals",
-                "phil collins": "1980s pop rock, gated reverb drums, emotive adult contemporary male vocals",
-                "freddie mercury": "operatic theatrical rock male tenor",
-                "omar farías": "latin christian male tenor",
-                "elías álvarez": "latin christian male tenor",
-                "steve green": "inspirational classical Christian tenor, lyrical light flexible A2-B4 range",
-                "david phelps": "powerful soaring gospel tenor",
-                "cuarteto de voz masculina": "male choir classic",
-                "filarmónica": "SATB choir",
-                "orquesta": "SATB choir",
-                "laura pausini": "passionate Italian pop female lyrical",
-                "christina aguilera": "powerhouse pop soul female vocals",
-                "mariah carey": "virtuosic pop female high-range",
-                "celine dion": "dramatic operatic pop female belting",
-                "coro pentecostal": "congregational choir, multi-voice church choir, joyful unison vocals",
-                "coros pentecostales": "congregational choir, multi-voice church choir, joyful unison vocals",
-                "coro": "congregational choir, multi-voice vocal ensemble",
-            }
-            parts = [p.strip() for p in style_str.split(",") if p.strip()]
-            enriched_parts = []
-            for p in parts:
-                key = p.lower()
-                if key in voice_map:
-                    enriched_parts.append(voice_map[key])
-                else:
-                    enriched_parts.append(p)
-            return ", ".join(enriched_parts)
-
-        def sanitize_artist_names(style_str: str) -> str:
-            """Translates banned artist/band names into allowed sonic/production descriptors to comply with Udio policy."""
-            artist_translations = {
-                r"\bphil\s+collin[s|g]s?\b": "1980s pop rock, gated reverb drums, dramatic dynamic tom fills, emotive adult contemporary",
-                r"\bluis\s+miguel\b": "smooth latin romantic pop, big band brass, emotive male tenor, polished studio production",
-                r"\bcristian\s+castro\b": "dramatic latin pop ballad, bright soaring male tenor vocals, orchestral pop",
-                r"\bfreddie\s+mercury\b": "operatic theatrical rock, powerhouse male tenor, dramatic dynamic range",
-                r"\bmarcos\s+witt\b": "contemporary Christian worship, bright acoustic grand piano, warm devotional praise vocals",
-                r"\bsteve\s+green\b": "inspirational classical Christian tenor, lyrical vocal tone, orchestral hymn",
-                r"\bdavid\s+phelps\b": "powerful gospel tenor, soaring operatic vocal range, dramatic gospel praise",
-                r"\blaura\s+pausini\b": "passionate Italian pop ballad, emotional lyrical female vocals",
-                r"\bchristina\s+aguilera\b": "powerhouse pop soul female vocals, wide vocal range, expressive melisma",
-                r"\bmariah\s+carey\b": "virtuosic pop R&B female vocals, whistle register, lush vocal harmonies",
-                r"\bceline\s+dion\b": "dramatic operatic pop ballad, powerhouse belting female vocals",
-                r"\bhillsong(\s+worship|\s+united)?\b": "modern congregational anthemic worship, ambient delay electric guitars, driving drums",
-                r"\belevation(\s+worship)?\b": "contemporary arena worship, big drum swells, driving bass, anthemic chorus",
-                r"\bbethel(\s+music)?\b": "atmospheric Christian worship, intimate acoustic build, lush ambient synth pads",
-                r"\bbeatles\b": "1960s British invasion pop rock, vintage vocal harmonies, classic jangle guitar",
-                r"\bqueen\b": "operatic stadium rock, layered vocal harmonies, Brian May style guitar harmonies",
-                r"\bcoldplay\b": "anthemic post-Britpop, echoing grand piano, soaring stadium rock vocals",
-                r"\bu2\b": "post-punk stadium rock, dotted-eighth rhythmic delay guitar, soaring vocal delivery",
-                r"\bmichael\s+jackson\b": "80s dance pop funk, crisp rhythmic drums, percussive vocal accents",
-                r"\bwhitney\s+houston\b": "gospel-infused pop powerhouse female vocals, soaring resonant belt",
-                r"\bstevie\s+wonder\b": "70s classic soul funk, clavinet, soulful expressive male vocals",
-                r"\belton\s+john\b": "70s piano pop rock, driving acoustic grand piano, theatrical vocal delivery",
-                r"\bmarcelo\s+patrono\b": "acoustic Christian worship, warm intimate guitar, devotional vocals",
-                r"\bcoalo\s+zamorano\b": "upbeat latin Christian gospel pop, energetic brass, joyful worship",
-                r"\bjesus\s+adrian\s+romero\b": "intimate acoustic Christian worship, nylon guitar, warm devotional baritone",
-                r"\bdanilo\s+montero\b": "congregational Christian praise, uplifting pop worship, bright electric guitars",
-                r"\bjuan\s+luis\s+guerra\b": "bachata and merengue latin fusion, rich horn arrangements, poetic vocals",
-                r"\bbronco\b": "grupero band, regional mexican romantic cumbia ballad",
-                r"\blos\s+bukis\b": "grupero ballad, 80s synthesizer grupero ballad",
-            }
-            cleaned = style_str
-            for pattern, replacement in artist_translations.items():
-                match = re.search(pattern, cleaned, flags=re.IGNORECASE)
-                if match:
-                    found_name = match.group(0)
-                    log_msg(f"Filtro de artista Udio: Reemplazando '{found_name}' por descriptores sónicos permitidos para evitar rechazo de la API.")
-                    cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
-            return cleaned
-
-        # Presets especiales preexistentes (evaluados sobre el estilo original antes de expandir)
-        raw_style_before_enrich = style
-        raw_excl_before = (exclude_styles or "").lower()
-
-        # REGLA DE ORO: Solo es instrumental SI Y SOLO SI el usuario activo la casilla instrumental
-        # (include_lyrics=False o lyrics == '[instrumental]'). Si include_lyrics es True y hay letra,
-        # NUNCA se fuerza is_instrumental = True, NUNCA se borra la letra del usuario,
-        # y los modos solistas aislados se desactivan para preservar la banda completa y las voces/coros.
-        if is_instrumental:
-            is_drum_solo = any(w in raw_style_before_enrich.lower() for w in [
-                "drum solo", "solo drums", "solo acoustic drums", "solo de bateria", "solo de batería",
-                "isolated drum", "isolated drums", "drum showcase", "drum demo", "bateria sola", "batería sola",
-                "pure drums", "drum test", "drum sound test"
-            ])
-
-            is_guitar_solo = not is_drum_solo and (
-                active_preset == "guitar_solo"
-                or any(w in raw_style_before_enrich.lower() for w in [
-                    "guitar solo", "solo guitar", "solo electric guitar", "solo de guitarra", "guitarra sola",
-                    "isolated guitar", "pure guitar", "unaccompanied guitar", "solo acoustic guitar", "guitar showcase"
-                ])
-            )
-
-            is_bass_solo = not is_drum_solo and not is_guitar_solo and (
-                active_preset == "bass_solo"
-                or any(w in raw_style_before_enrich.lower() for w in [
-                    "bass solo", "solo bass", "solo electric bass", "solo de bajo", "bajo solo",
-                    "isolated bass", "pure bass", "unaccompanied bass", "bass showcase"
-                ])
-            )
-
-            is_solo_piano_prayer = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
-                active_preset == "piano_oracion"
-                or any(w in raw_style_before_enrich.lower() for w in [
-                    "solo piano", "solo acoustic grand piano", "piano de oracion", "piano de oración", 
-                    "prayer piano", "pure piano", "solo piano instrumental", "solo electric piano",
-                    "mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "galaxy dx", "motif xs", "motif power grand"
-                ]) or ("piano" in raw_style_before_enrich.lower() and any(w in raw_style_before_enrich.lower() for w in ["oracion", "oración", "prayer", "meditacion", "meditación", "devocional", "fondo para orar"]))
-            )
-
-            if is_guitar_solo:
-                wants_solo_vocal = False
-                wants_choir = False
-                final_lyrics = "[Instrumental - Solo Guitar]"
-            elif is_bass_solo:
-                wants_solo_vocal = False
-                wants_choir = False
-                final_lyrics = "[Instrumental - Solo Bass]"
-            elif is_solo_piano_prayer:
-                wants_solo_vocal = False
-                wants_choir = False
-                final_lyrics = "[Instrumental - Solo Piano]"
-            elif is_drum_solo:
-                wants_solo_vocal = False
-                wants_choir = False
-                final_lyrics = "[Instrumental - Solo Drums]"
-        else:
-            is_drum_solo = False
-            is_guitar_solo = False
-            is_bass_solo = False
-            is_solo_piano_prayer = False
-
-        is_vals_vienes = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (active_preset == "vals_vienes" or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"]))
-
-        # Resolver configuración efectiva del usuario con prioridad absoluta ANTES de expandir presets
-        eff_cfg = resolve_effective_musical_config(
-            style=raw_style_before_enrich,
-            lyrics=final_lyrics,
+        resolved_pipeline = resolve_final_udio_style_pipeline(
+            style=style,
+            final_lyrics=final_lyrics,
+            title=title,
+            is_instrumental=is_instrumental,
+            is_auto_lyrics=is_auto_lyrics,
+            norm_lyrics_mode=norm_lyrics_mode,
             exclude_styles=exclude_styles,
+            vocal_gender=vocal_gender,
             target_bpm=target_bpm,
             hihat_mode=hihat_mode,
             art_crash_toms=art_crash_toms,
@@ -5534,288 +5874,25 @@ async def run_transform_task(
             art_bass_slap=art_bass_slap,
             art_bass_pickup=art_bass_pickup,
             active_preset=active_preset,
-            is_solo_piano_prayer=is_solo_piano_prayer,
-            is_drum_solo=is_drum_solo,
-            is_vals_vienes=is_vals_vienes,
-            is_guitar_solo=is_guitar_solo,
-            is_bass_solo=is_bass_solo,
+            studio_selections=studio_selections,
+            wants_solo_vocal=wants_solo_vocal,
+            wants_choir=wants_choir,
+            log_fn=log_msg,
         )
-        bpm_tag = eff_cfg["bpm_tag"]
-        if eff_cfg["effective_bpm"]:
-            log_msg(f"Tempo autoritativo del usuario aplicado: {bpm_tag}")
-
-        style = enrich_style(style)
-        style = enrich_voice(style)
-        style = sanitize_artist_names(style)
-        title = sanitize_artist_names(title)[:100].strip()
-
-        # Clean structural tags from style string (they belong in lyrics, not style)
-        style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', style, flags=re.IGNORECASE)
-
-        # Purgar BPMs conflictivos, subdivisiones de hi-hat contradictorias y técnicas de bajo incompatibles (fingerstyle vs slap)
-        style = sanitize_and_prioritize_style_with_config(style, eff_cfg)
-
-        is_pentecostal = not is_drum_solo and (eff_cfg["preset_key"] == "pentecostal" or any(w in style.lower() for w in ["pentecostal", "coro pentecostal", "coros pentecostales", "himno pentecostal"]))
-
-        # Comprobación rigurosa de marcadores contemporáneos / género moderno
-        is_explicit_modern = any(w in style.lower() for w in [
-            "musica moderna", "música moderna", "estilo moderno", "produccion moderna", "producción moderna",
-            "contemporaneo", "contemporáneo", "contemporary", "pop rock", "pop contemporaneo", "pop contemporáneo",
-            "indie rock", "indie pop", "balada moderna", "balada contemporanea", "balada contemporánea",
-            "rock moderno", "modern worship", "alabanza contemporanea", "alabanza contemporánea"
-        ])
-
-        # Comprobación inequívoca de himno sacro tradicional
-        is_explicit_traditional_hymn = any(w in style.lower() for w in [
-            "himno tradicional", "traditional hymn", "himno clasico", "himno clásico",
-            "himnario tradicional", "himnario clásico", "himnario clasico", "sacred hymn",
-            "himno liturgico", "himno litúrgico", "himno solemne"
-        ])
-
-        # Comprobación de coro congregacional / avivamiento
-        is_explicit_congregational = any(w in style.lower() for w in [
-            "coro congregacional", "coros congregacionales", "coro de alabanza", "coros de alabanza",
-            "alabanza congregacional", "canto congregacional", "coro de iglesia", "coro de avivamiento",
-            "coros de avivamiento", "avivamiento", "congregational praise", "congregational worship"
-        ])
-
-        is_traditional_hymn = (
-            not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal
-            and (is_explicit_traditional_hymn or (re.search(r'\bhimno\b', style.lower()) and not is_explicit_modern and not is_explicit_congregational))
-        )
-
-        is_congregational = (
-            not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_pentecostal and not is_traditional_hymn
-            and is_explicit_congregational
-        )
-
-        is_modern_composition = (
-            not is_drum_solo and not is_solo_piano_prayer and not is_vals_vienes and not is_traditional_hymn and not is_congregational
-            and is_explicit_modern
-        )
-
-        if is_drum_solo:
-            genre_anchor = f"pure acoustic drum solo, isolated drum kit sound showcase, {bpm_tag or 'steady 90 BPM unhurried groove'}, clean spacious drum test, dynamic hi-hat accents, crisp 14 snare rimshots, gradual progressive tom descent, distinct ride bell pings, balanced crashes, no melody, no chords, no harmonic instruments, no guitars, no bass, no piano, no keyboards, no synths, no vocals"
-        elif is_guitar_solo:
-            g_model = "Fender Stratocaster electric guitar, clean chime, articulate string attack and warm singing sustain" if "stratocaster" in style.lower() else (
-                "Gibson Les Paul electric guitar, rich humbucker warmth and singing sustain" if "les paul" in style.lower() else
-                "Martin D-28 acoustic guitar, natural woody resonance and balanced fingerstyle" if "martin" in style.lower() or "acustica" in style.lower() else
-                "electric guitar, expressive tone, natural string dynamics and singing sustain"
-            )
-            genre_anchor = f"100% pure solo guitar, {g_model}, unaccompanied solo guitar performance, single isolated instrument, zero other instruments, no drums, no percussion, no bass, no piano, no keyboards, no synths, no strings, no choir, no vocals, no backing track"
-        elif is_bass_solo:
-            b_model = "Fender Jazz Bass, articulate midrange growl and roundwound string dynamics" if "jazz bass" in style.lower() else (
-                "Fender Precision Bass, thick vintage fundamental warmth" if "precision" in style.lower() else
-                "Music Man StingRay, punchy active preamp attack" if "stingray" in style.lower() else
-                "electric bass guitar, expressive melodic solo bass performance"
-            )
-            genre_anchor = f"100% pure solo electric bass, {b_model}, unaccompanied solo bass performance, single isolated instrument, zero other instruments, no drums, no percussion, no guitars, no piano, no keyboards, no synths, no strings, no choir, no vocals, no backing track"
-        elif is_solo_piano_prayer:
-            if any(w in style.lower() for w in ["mks-20", "mks20", "elec piano 2", "electric piano 2", "keyscape", "e-piano 2"]):
-                genre_anchor = f"pure solo electric piano, vintage Roland MKS-20 preset 3 Elec Piano 2 (Keyscape library), authentic SAS digital synthesis, built-in lush analog stereo chorus, crystalline glassy bell tine attack, pure solo electric piano instrumental, solo piano only, {bpm_tag or '60 BPM'}, reverent devotional worship, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
-            elif any(w in style.lower() for w in ["galaxy dx", "galaxydx"]):
-                genre_anchor = f"pure solo hybrid worship piano, acoustic concert grand piano layered with Yamaha DX7 FM electric piano tines, crystalline bell tone, {bpm_tag or '60 BPM'}, deep church hall reverb, pure solo piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
-            elif any(w in style.lower() for w in ["motif xs", "motif", "motif power grand"]):
-                genre_anchor = f"pure solo Yamaha Motif XS Power Grand piano, crisp modern worship concert grand piano, crystal clear attack, expansive cathedral hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
-            elif "rhodes" in style.lower():
-                genre_anchor = f"pure solo Fender Rhodes Mark I electric piano, warm bell-like tines, gentle chorus, {bpm_tag or '60 BPM'}, pure solo electric piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
-            else:
-                genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
-        elif is_vals_vienes:
-            tempo_str = f", {bpm_tag}" if bpm_tag else ""
-            genre_anchor = f"sacred Viennese waltz hymn in 3/4 time{tempo_str}, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing"
-        elif is_pentecostal:
-            target_bpm_str = bpm_tag or "118 BPM"
-            hihat_desc = eff_cfg["hihat_clause"] or "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
-            bass_anchor = eff_cfg["bass_clause"] or "root-fifth alternating acoustic bassline"
-            genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, traditional two-step praise straight 4/4 rhythm, {target_bpm_str}, {bass_anchor}, church choir singing in unison, natural Spanish vocals"
-        elif is_traditional_hymn:
-            tempo_str = f", {bpm_tag}" if bpm_tag else ""
-            genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
-        elif is_congregational:
-            tempo_str = f", {bpm_tag}" if bpm_tag else ""
-            genre_anchor = f"congregational Christian praise{tempo_str}, dynamic and uplifting atmosphere, church acoustic resonance, passionate communal delivery"
-        elif is_modern_composition:
-            tempo_str = f", {bpm_tag}" if bpm_tag else ""
-            meter_str = f", {eff_cfg['meter_clause']}" if eff_cfg.get("meter_clause") else ""
-            genre_anchor = f"contemporary studio production{meter_str}{tempo_str}, modern live room acoustics, clear studio definition, expressive natural delivery"
-        else:
-            anchors = []
-            if eff_cfg.get("meter_clause"):
-                anchors.append(eff_cfg["meter_clause"])
-            if bpm_tag:
-                anchors.append(bpm_tag)
-            genre_anchor = ", ".join(anchors)
-
-        # Inyectar indicaciones estructurales de arreglo y transiciones en final_lyrics únicamente en modo vocal con letra
-        # En modo personalizado (custom), preservar la letra y etiquetas estructurales exactamente como las definió el usuario
-        if not is_instrumental and not is_auto_lyrics and norm_lyrics_mode != "custom" and final_lyrics and final_lyrics.strip().lower() != "[instrumental]":
-            final_lyrics = inject_arrangement_cues_into_lyrics(
-                final_lyrics,
-                eff_cfg,
-                is_instrumental=is_instrumental,
-                is_solo_piano_prayer=is_solo_piano_prayer,
-                is_drum_solo=is_drum_solo,
-                is_guitar_solo=is_guitar_solo,
-                is_bass_solo=is_bass_solo,
-            )
-
-        # Vocal styling (respetando selecciones de voz solista vs coro; ensamblado limpiamente en Tier 5):
-        vocal_tag = ""
-        if is_instrumental:
-            if "instrumental" not in style.lower():
-                style = style + ", instrumental, no vocals"
-        else:
-            gender_kw = "male " if vocal_gender == "male" else ("female " if vocal_gender == "female" else "")
-            if wants_solo_vocal:
-                if "argentin" in style.lower():
-                    vocal_tag = f"natural {gender_kw}Argentine Spanish solo vocals, clean expressive singing, no autotune, no choir"
-                elif "mexican" in style.lower() or "mexicano" in style.lower():
-                    vocal_tag = f"natural {gender_kw}Mexican Spanish solo vocals, clean tone, no autotune, no choir"
-                else:
-                    vocal_tag = f"clear natural {gender_kw}solo Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent, no choir"
-            elif wants_choir:
-                if "argentin" in style.lower() or is_pentecostal:
-                    vocal_tag = "Argentine church choir, natural Argentine Spanish accent, passionate congregational singing in unison, no caribbean accent, no central american accent"
-                elif "mexican" in style.lower() or "mexicano" in style.lower():
-                    vocal_tag = "mexican spanish church choir"
-                else:
-                    vocal_tag = "congregational church choir, passionate singing in unison"
-            else:
-                # Voz solista por defecto cuando no se pide coro expresamente
-                if "argentin" in style.lower():
-                    vocal_tag = f"natural {gender_kw}Argentine Spanish vocals, clean expressive singing, no autotune"
-                elif "mexican" in style.lower() or "mexicano" in style.lower():
-                    vocal_tag = f"natural {gender_kw}Mexican Spanish vocals, no autotune"
-                else:
-                    vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
-
-        # ----------
-        # Rigorous Style Exclusion (Negative Prompting) & Priority Style Assembly
-        # ----------
-        active_studio_solo = (
-            "drums" if is_drum_solo else (
-                "guitar" if is_guitar_solo else (
-                    "bass" if is_bass_solo else ("piano" if is_solo_piano_prayer else None)
-                )
-            )
-        )
-        norm_studio_selections = (
-            studio_virtual_catalog.normalize_studio_selections(studio_selections)
-            if (studio_virtual_catalog and studio_selections)
-            else None
-        )
-        studio_core_preview = (
-            studio_virtual_catalog.get_studio_core_tags_preview(norm_studio_selections, solo_mode=active_studio_solo)
-            if (studio_virtual_catalog and norm_studio_selections)
-            else []
-        )
-        pos_for_exclusions = ", ".join([p for p in ([style] + studio_core_preview) if p and str(p).strip()])
-
-        neg_final_str, provider_tags_str, active_critical = resolve_negative_exclusions(
-            exclude_styles=exclude_styles,
-            positive_style=pos_for_exclusions,
-            is_solo_piano_prayer=is_solo_piano_prayer,
-            is_guitar_solo=is_guitar_solo,
-            is_bass_solo=is_bass_solo,
-            is_vals_vienes=is_vals_vienes,
-            is_pentecostal=is_pentecostal,
-            is_drum_solo=is_drum_solo,
-        )
-        if neg_final_str:
-            log_msg(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
-
-        is_any_solo_mode = is_drum_solo or is_guitar_solo or is_bass_solo or is_solo_piano_prayer
-        if is_drum_solo:
-            clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', style, flags=re.IGNORECASE)
-            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-            solo_anchor = f"percussion only, pure acoustic drum solo, isolated drum kit sound demonstration, {clean_style}, live room studio acoustics, unaccompanied percussion"
-            style_build = build_prioritized_style(
-                genre_anchor=solo_anchor,
-                bpm_tag=bpm_tag,
-                user_and_enriched_style="",
-                priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
-                vocal_tag="",
-                is_instrumental=True,
-                is_solo_mode=True,
-                max_chars=1000,
-                studio_selections=norm_studio_selections,
-                studio_solo_mode="drums",
-            )
-        elif is_guitar_solo:
-            clean_style = re.sub(
-                r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|fender\s+bass|precision|jazz\s+bass|stingray|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                '', style, flags=re.IGNORECASE
-            )
-            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-            solo_anchor = f"{genre_anchor}, 100% pure solo guitar, unaccompanied solo guitar performance, single isolated instrument"
-            style_build = build_prioritized_style(
-                genre_anchor=solo_anchor,
-                bpm_tag=bpm_tag,
-                user_and_enriched_style=clean_style,
-                priority_rhythm_clauses=[],
-                vocal_tag="",
-                is_instrumental=True,
-                is_solo_mode=True,
-                max_chars=1000,
-                studio_selections=norm_studio_selections,
-                studio_solo_mode="guitar",
-            )
-        elif is_bass_solo:
-            clean_style = re.sub(
-                r'\b(rock\s+band|full\s+band|backing\s+band|backing\s+track|drums?|drum\s+kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|guitars?|guitarras?|piano\w*|teclado\w*|keyboard\w*|organ\w*|synths?|sintetizador\w*|pads?|strings?|cuerdas?|violin\w*|cello\w*|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                '', style, flags=re.IGNORECASE
-            )
-            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-            solo_anchor = f"{genre_anchor}, 100% pure solo electric bass, unaccompanied solo bass performance, single isolated instrument"
-            style_build = build_prioritized_style(
-                genre_anchor=solo_anchor,
-                bpm_tag=bpm_tag,
-                user_and_enriched_style=clean_style,
-                priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
-                vocal_tag="",
-                is_instrumental=True,
-                is_solo_mode=True,
-                max_chars=1000,
-                studio_selections=norm_studio_selections,
-                studio_solo_mode="bass",
-            )
-        elif is_solo_piano_prayer:
-            clean_style = re.sub(
-                r'\b(rock|band|full band|backing band|drums?|drum kit|percussion|snare|kick|bombo|caja|hi-?hat|cymbal\w*|platillo\w*|toms?|bass|bajo|guitars?|guitarras?|strings?|cuerdas?|violin\w*|cello\w*|synths?|sintetizador\w*|pads?|orchestra|orquesta|choir|coro|vocals?|voces?|singing|voice\w*|cumbia|brass|horns?)\b',
-                '', style, flags=re.IGNORECASE
-            )
-            clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
-            solo_anchor = f"{genre_anchor}, 100% pure solo piano instrumental, solo keyboard only, unaccompanied solo performance"
-            style_build = build_prioritized_style(
-                genre_anchor=solo_anchor,
-                bpm_tag=bpm_tag,
-                user_and_enriched_style=clean_style,
-                priority_rhythm_clauses=[],
-                vocal_tag="",
-                is_instrumental=True,
-                is_solo_mode=True,
-                max_chars=1000,
-                studio_selections=norm_studio_selections,
-                studio_solo_mode="piano",
-            )
-        else:
-            active_vocal_tag = "" if is_instrumental else vocal_tag
-            style_build = build_prioritized_style(
-                genre_anchor=genre_anchor,
-                bpm_tag=bpm_tag,
-                user_and_enriched_style=style,
-                priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
-                vocal_tag=active_vocal_tag,
-                is_instrumental=is_instrumental,
-                is_solo_mode=False,
-                max_chars=1000,
-                raw_user_style=raw_style_before_enrich,
-                studio_selections=norm_studio_selections,
-                studio_solo_mode=None,
-            )
-
-        clean_positive_style = style_build["style"]
+        style_build = resolved_pipeline["style_build"]
+        eff_cfg = resolved_pipeline["eff_cfg"]
+        final_lyrics = resolved_pipeline["final_lyrics"]
+        title = resolved_pipeline["sanitized_title"]
+        neg_final_str = resolved_pipeline["neg_final_str"]
+        provider_tags_str = resolved_pipeline["provider_tags_str"]
+        active_critical = resolved_pipeline["active_critical"]
+        is_drum_solo = resolved_pipeline["is_drum_solo"]
+        is_guitar_solo = resolved_pipeline["is_guitar_solo"]
+        is_bass_solo = resolved_pipeline["is_bass_solo"]
+        is_solo_piano_prayer = resolved_pipeline["is_solo_piano_prayer"]
+        is_vals_vienes = resolved_pipeline["is_vals_vienes"]
+        is_pentecostal = resolved_pipeline["is_pentecostal"]
+        clean_positive_style = resolved_pipeline["clean_positive_style"]
         style = clean_positive_style
 
         if style_build.get("compaction_notice"):

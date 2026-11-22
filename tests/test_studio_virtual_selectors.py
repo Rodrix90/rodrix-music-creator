@@ -656,6 +656,174 @@ class TestStudioVirtualSixSelectors(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(len(sent_payload["style"]), 940)
         self.assertGreater(prev_json["style_raw_length"], 1800)
 
+    def test_12_compact_virtual_studio_ui_and_style_final_collapsible_structure(self):
+        """Verifica eliminación del panel inferior viejo, selectores compactos con info táctil y sección STYLE FINAL desplegable."""
+        with open(os.path.join(REPO_DIR, "index.html"), "r", encoding="utf-8") as _f:
+            html = _f.read()
+
+        # 1) Panel extenso antiguo eliminado visualmente
+        self.assertNotIn('id="studioProfileSummaryBox"', html)
+        self.assertNotIn('id="studioProfileBreakdownList"', html)
+        self.assertNotIn("Perfil Técnico Activo", html)
+
+        # 2) Controles de información táctiles en los 6 selectores y ocultamiento inicial de descripciones en Android
+        for cat_key, info_id in (
+            ("drums", "infoStudioDrums"),
+            ("guitars", "infoStudioGuitar"),
+            ("basses", "infoStudioBass"),
+            ("keyboards", "infoStudioKeyboard"),
+            ("consoles", "infoStudioConsole"),
+            ("microphones", "infoStudioMic"),
+        ):
+            self.assertIn(f'data-studio-info="{cat_key}"', html)
+            self.assertIn(f'id="{info_id}"', html)
+        self.assertIn("function toggleStudioSelectorInfo(", html)
+        self.assertIn(".studio-selector-desc{display:none}", html)
+
+        # 3) Nueva sección STYLE FINAL ubicada debajo de #styleInput, contraída inicialmente y de solo lectura
+        idx_style_input = html.index('id="styleInput"')
+        idx_style_final = html.index('id="styleFinalPreviewSection"')
+        self.assertGreater(idx_style_final, idx_style_input, "STYLE FINAL debe ir debajo de Prompt libre de estilo")
+        self.assertIn("STYLE FINAL — Texto enviado a UdioAPI", html)
+        self.assertIn('id="styleFinalToggleBtn" aria-expanded="false"', html)
+        self.assertIn('id="styleFinalBody" style="display:none"', html)
+        self.assertIn('id="styleFinalPreviewText" class="style-final-textarea" readonly aria-readonly="true"', html)
+        self.assertIn('id="btnCopyFinalStyle"', html)
+        self.assertIn('id="studioOmissionBanner"', html)
+        self.assertIn('id="studioCompactionWarning"', html)
+
+        # 4) Lógica exacta contra backend con AbortController, debounce, invalidación stale y manejo de sesión
+        self.assertIn("function buildGenerationStylePayload(", html)
+        self.assertIn("fetch('/api/preview_parameters'", html)
+        self.assertIn("new AbortController()", html)
+        self.assertIn("function markStyleFinalPreviewStale()", html)
+        self.assertIn("Inicia sesión con Google para consultar el STYLE FINAL exacto del backend", html)
+
+    async def test_13_exact_preview_parameters_backend_parity_across_presets_vocals_and_omission(self):
+        """Comprueba coincidencia exacta preview vs backend en presets complejos/voces/solos y aviso de omisión en español."""
+        transport = httpx.ASGITransport(app=app.app)
+
+        # Caso A: Artista traducido + coro + 6 selectores + BPM -> paridad exacta preview vs run_transform_task
+        captured = []
+
+        async def fake_post(url, json=None, headers=None, **kw):
+            captured.append(json)
+            mock_r = MagicMock()
+            mock_r.status_code = 200
+            mock_r.text = '{"code": 200, "data": {"workId": "gen_mock_parity_13", "task_id": "gen_mock_parity_13"}}'
+            mock_r.json.return_value = {"code": 200, "data": {"workId": "gen_mock_parity_13", "task_id": "gen_mock_parity_13"}}
+            return mock_r
+
+        status_mock = MagicMock()
+        status_mock.status_code = 200
+        status_mock.json.return_value = {"code": 200, "data": {"status": "SUCCESS", "response_data": []}}
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = fake_post
+        mock_client.get.return_value = status_mock
+
+        sel_six = {
+            "drums": "bonham",
+            "guitars": "gilmour_black_strat",
+            "basses": "arnedo_rock_argentino",
+            "keyboards": "hammond_b3",
+            "consoles": "neve_80",
+            "microphones": "telefunken_u47",
+        }
+        user_style = "Rock moderno argentino, coro de alabanza, Luis Miguel"
+        user_lyrics = "[Verse 1]\nLetra intacta para prueba de paridad exacta"
+
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            prev_r = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Paridad Total",
+                    "style": user_style,
+                    "lyrics": user_lyrics,
+                    "include_lyrics": "true",
+                    "lyrics_mode": "custom",
+                    "vocal_gender": "male",
+                    "target_bpm": "92",
+                    "hihat_mode": "8th",
+                    "studio_drums": sel_six["drums"],
+                    "studio_guitar": sel_six["guitars"],
+                    "studio_bass": sel_six["basses"],
+                    "studio_keyboard": sel_six["keyboards"],
+                    "studio_console": sel_six["consoles"],
+                    "studio_mic": sel_six["microphones"],
+                },
+            )
+        self.assertEqual(prev_r.status_code, 200)
+        prev_data = prev_r.json()
+        self.assertNotIn("Luis Miguel", prev_data["style_full_preview"])
+        self.assertEqual(prev_data["prompt_preview"], user_lyrics)
+
+        task_id = "test-exact-parity-13"
+        app.TASKS[task_id] = {"id": task_id, "owner_email": "rodryandy@gmail.com", "logs": "", "status": "IN_PROGRESS"}
+        with patch("httpx.AsyncClient") as client_cls, \
+             patch.object(app, "gdrive_sync_generation_tasks_to_cloud", AsyncMock(return_value={"file_id": "drv_ok"})):
+            client_cls.return_value.__aenter__.return_value = mock_client
+            await app.run_transform_task(
+                task_id=task_id,
+                style=user_style,
+                lyrics=user_lyrics,
+                title="Paridad Total",
+                audio_content=None,
+                audio_filename=None,
+                ignore_audio=True,
+                include_lyrics=True,
+                bypass_copyright=False,
+                exclude_styles="",
+                vocal_gender="male",
+                weirdness=50,
+                style_influence=50,
+                audio_influence=25,
+                model="chirp-v6",
+                target_bpm=92,
+                hihat_mode="8th",
+                lyrics_mode="custom",
+                studio_selections=sel_six,
+            )
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["style"], prev_data["style_full_preview"])
+        self.assertEqual(captured[0]["tags"], prev_data["tags_preview"])
+        self.assertEqual(captured[0]["prompt"], user_lyrics)
+        self.assertLessEqual(len(captured[0]["style"]), 1000)
+
+        # Caso B: Saturación extrema -> aviso de omisión explícito en español
+        huge_style = ", ".join(f"symphonic rock motif {i:02d} in E minor" for i in range(28))
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            ov_r = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Saturación Extrema",
+                    "style": huge_style,
+                    "lyrics": user_lyrics,
+                    "include_lyrics": "true",
+                    "studio_drums": sel_six["drums"],
+                    "studio_guitar": sel_six["guitars"],
+                    "studio_bass": sel_six["basses"],
+                    "studio_keyboard": sel_six["keyboards"],
+                    "studio_console": sel_six["consoles"],
+                    "studio_mic": sel_six["microphones"],
+                },
+            )
+        self.assertEqual(ov_r.status_code, 200)
+        ov_data = ov_r.json()
+        self.assertLessEqual(ov_data["style_length"], 1000)
+        self.assertTrue(ov_data["studio_profiles"]["omitted_categories"])
+        self.assertIsNotNone(ov_data["omitted_warning_es"])
+        self.assertIn("Atención:", ov_data["omitted_warning_es"])
+        self.assertIn("1.000 caracteres", ov_data["omitted_warning_es"])
+
+    async def test_14_preview_parameters_enforces_authentication_when_unauthenticated(self):
+        """Comprueba que /api/preview_parameters respeta la autenticación y rechaza solicitudes sin sesión."""
+        app.app.dependency_overrides.clear()
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            resp = await client.post("/api/preview_parameters", data={"style": "Rock moderno"})
+        self.assertEqual(resp.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()
