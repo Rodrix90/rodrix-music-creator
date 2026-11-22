@@ -824,6 +824,470 @@ class TestStudioVirtualSixSelectors(unittest.IsolatedAsyncioTestCase):
             resp = await client.post("/api/preview_parameters", data={"style": "Rock moderno"})
         self.assertEqual(resp.status_code, 401)
 
+    async def test_15_empty_prompt_starts_at_zero_and_only_explicit_selections_consume_chars(self):
+        """En apertura limpia (Modo Libre, sin selecciones explícitas), STYLE FINAL debe iniciar en 0/1.000 (1.000 disponibles)."""
+        transport = httpx.ASGITransport(app=app.app)
+        neutral_flags = {
+            "bpm": False, "hihat": False, "crash_toms": False, "splash_ride": False,
+            "tom_grooves": False, "bass_slap": False, "bass_pickup": False,
+            "instruments": False, "rhythm": False, "vocal_gender": False,
+        }
+        ctx_clean = {
+            "user_prompt": "",
+            "rhythm_type": "libre",
+            "harmony_clauses": [],
+            "selected_instruments": [],
+            "explicit_flags": neutral_flags,
+        }
+        ctx_one_inst = {
+            "user_prompt": "",
+            "rhythm_type": "libre",
+            "harmony_clauses": [],
+            "selected_instruments": ["orchestral strings"],
+            "explicit_flags": {**neutral_flags, "instruments": True},
+        }
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            # 1) Primera apertura limpia (incluso con defaults internos BPM=125/hihat=8th/art_crash_toms/art_bass_pickup enviados por motor)
+            r0 = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Apertura Limpia Neutral",
+                    "style": "",
+                    "style_context_json": json.dumps(ctx_clean),
+                    "lyrics": "[Verse]\nLetra intacta",
+                    "include_lyrics": "true",
+                    "target_bpm": "125",
+                    "hihat_mode": "8th",
+                    "art_crash_toms": "true",
+                    "art_bass_slap": "false",
+                    "art_bass_pickup": "true",
+                },
+            )
+            # 2) Un único instrumento SF2 seleccionado explícitamente -> SOLO ese instrumento, sin BPM/voces/articulaciones automáticas
+            r_inst = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Un Instrumento",
+                    "style": "",
+                    "style_context_json": json.dumps(ctx_one_inst),
+                    "lyrics": "[Verse]\nLetra intacta",
+                    "include_lyrics": "true",
+                    "target_bpm": "125",
+                    "hihat_mode": "8th",
+                    "art_crash_toms": "true",
+                    "art_bass_slap": "false",
+                    "art_bass_pickup": "true",
+                },
+            )
+            # 3) Un único perfil del Estudio Virtual (Bonham) -> SOLO sus características musicales
+            r1 = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Un Perfil Estudio",
+                    "style": "",
+                    "style_context_json": json.dumps(ctx_clean),
+                    "lyrics": "[Verse]\nLetra intacta",
+                    "include_lyrics": "true",
+                    "target_bpm": "125",
+                    "hihat_mode": "8th",
+                    "art_crash_toms": "true",
+                    "art_bass_slap": "false",
+                    "art_bass_pickup": "true",
+                    "studio_drums": "bonham",
+                },
+            )
+        self.assertEqual(r0.status_code, 200)
+        d0 = r0.json()
+        self.assertEqual(d0["style_full_preview"], "", f"Apertura limpia debe dar style vacío, obtuvo: {d0['style_full_preview']!r}")
+        self.assertEqual(d0["style_length"], 0)
+        self.assertEqual(d0["style_available_chars"], 1000)
+        self.assertEqual(d0["style_raw_length"], 0)
+        self.assertFalse(d0["style_optimization"]["compacted"])
+        self.assertEqual(d0["style_breakdown"]["user_prompt_chars"], 0)
+        self.assertEqual(d0["style_breakdown"]["explicit_config_chars"], 0)
+        self.assertEqual(d0["style_breakdown"]["studio_virtual_chars"], 0)
+        self.assertEqual(d0["style_breakdown"]["auto_default_chars"], 0)
+        self.assertEqual(d0["prompt_preview"], "[Verse]\nLetra intacta")
+        self.assertEqual(d0["tags_preview"], "")
+
+        self.assertEqual(r_inst.status_code, 200)
+        d_inst = r_inst.json()
+        self.assertEqual(d_inst["style_full_preview"], "orchestral strings")
+        self.assertEqual(d_inst["style_length"], len("orchestral strings"))
+        self.assertEqual(d_inst["style_available_chars"], 1000 - len("orchestral strings"))
+        self.assertNotIn("BPM", d_inst["style_full_preview"])
+        self.assertNotIn("vocals", d_inst["style_full_preview"].lower())
+        self.assertFalse(d_inst["style_optimization"]["compacted"])
+
+        self.assertEqual(r1.status_code, 200)
+        d1 = r1.json()
+        self.assertGreater(d1["style_length"], 100)
+        self.assertLess(d1["style_length"], 400, "1 perfil de Estudio no debe arrastrar defaults automáticos")
+        self.assertEqual(d1["style_available_chars"], 1000 - d1["style_length"])
+        self.assertFalse(d1["style_optimization"]["compacted"])
+        self.assertIn("26-inch acoustic maple kick drum", d1["style_full_preview"])
+        self.assertNotIn("125 BPM", d1["style_full_preview"])
+        self.assertNotIn("Spanish vocals", d1["style_full_preview"])
+        self.assertEqual(d1["style_breakdown"]["auto_default_chars"], 0)
+
+    async def test_16_mandatory_prompt_lengths_0_100_300_600_preserve_user_text_and_respect_limit(self):
+        """Comprueba 0, 100, 300 y 600 chars de prompt libre con estado neutral (exactitud 1:1), instrumentos extra y 6/6 perfiles de Estudio."""
+        p0 = ""
+        p100 = "Rock melódico argentino de autor con guitarras atmosféricas luminosas, clima cálido y estribillo ép."
+        p300 = (
+            "Rock melódico argentino de autor con guitarras atmosféricas luminosas y arpegios limpios con chorus suave, "
+            "progresión armónica emotiva en Mi menor, crescendo progresivo hacia un estribillo amplio y memorable, "
+            "dinámica orgánica de banda en vivo en sala de madera con muy alta claridad y calidez vocal."
+        )
+        p600 = (
+            "Rock progresivo melódico argentino de autor con introducción íntima en arpegios cristalinos y armonías abiertas, "
+            "transición gradual hacia un verso con pulso firme y línea melódica cantabile muy expresiva, "
+            "estribillo épico de gran amplitud dinámica con guitarras abiertas en estéreo y contra-melodías sutiles, "
+            "puente instrumental emotivo con modulación armónica cuidada y tensión creciente antes del clímax final, "
+            "resolución cálida y serena con respiración natural de banda en vivo grabada en estudio analógico de madera, "
+            "equilibrio claro entre voz protagonista, textura armónica y gran precisión musical"
+        )[:600]
+        self.assertEqual((len(p0), len(p100), len(p300), len(p600)), (0, 100, 300, 600))
+
+        extra_insts = [
+            "acoustic grand piano", "electric bass", "acoustic drums",
+            "overdriven electric guitar", "clean electric guitar", "synth lead",
+            "acoustic guitar", "orchestral strings", "warm synth pad",
+        ]
+        six_studio = {
+            "drums": "bonham",
+            "guitars": "gilmour_black_strat",
+            "basses": "pastorius_fretless",
+            "keyboards": "hammond_b3",
+            "consoles": "neve_80",
+            "microphones": "telefunken_u47",
+        }
+        lyrics_orig = "[Verse 1]\nEsta letra permanece intacta\n[Chorus]\nSin ninguna alteración"
+
+        for prompt_txt in (p0, p100, p300, p600):
+            # A) Estado neutral 0/6 Estudio, sin controles explícitos -> STYLE debe ser EXACTAMENTE el prompt libre (0, 100, 300, 600)
+            ctx_def = {
+                "user_prompt": prompt_txt,
+                "rhythm_type": "libre",
+                "harmony_clauses": [],
+                "selected_instruments": [],
+                "explicit_flags": {
+                    "bpm": False, "hihat": False, "crash_toms": False, "splash_ride": False,
+                    "tom_grooves": False, "bass_slap": False, "bass_pickup": False,
+                    "instruments": False, "rhythm": False, "vocal_gender": False,
+                },
+            }
+            res_def = app.resolve_final_udio_style_pipeline(
+                style=prompt_txt, final_lyrics=lyrics_orig, target_bpm=125, hihat_mode="8th",
+                art_crash_toms=True, art_bass_slap=False, art_bass_pickup=True,
+                studio_selections=None, style_context=ctx_def,
+            )
+            self.assertEqual(res_def["clean_positive_style"], prompt_txt)
+            self.assertEqual(res_def["style_build"]["final_length"], len(prompt_txt))
+            self.assertEqual(1000 - res_def["style_build"]["final_length"], 1000 - len(prompt_txt))
+            self.assertEqual(res_def["final_lyrics"], lyrics_orig)
+            if prompt_txt:
+                self.assertTrue(res_def["style_breakdown"]["user_prompt_preserved"])
+
+            # B) 6/6 Estudio + instrumentos adicionales explícitos
+            ctx_full = {
+                "user_prompt": prompt_txt,
+                "rhythm_type": "libre",
+                "harmony_clauses": [],
+                "selected_instruments": extra_insts,
+                "explicit_flags": {
+                    "bpm": True, "hihat": False, "crash_toms": True, "splash_ride": False,
+                    "tom_grooves": False, "bass_slap": False, "bass_pickup": True,
+                    "instruments": True, "rhythm": False, "vocal_gender": True,
+                },
+            }
+            res_full = app.resolve_final_udio_style_pipeline(
+                style=prompt_txt, final_lyrics=lyrics_orig, target_bpm=92, hihat_mode="8th", vocal_gender="male",
+                art_crash_toms=True, art_bass_slap=False, art_bass_pickup=True,
+                studio_selections=six_studio, style_context=ctx_full,
+            )
+            self.assertLessEqual(res_full["style_build"]["final_length"], 1000)
+            self.assertEqual(res_full["final_lyrics"], lyrics_orig)
+            self.assertIn("92 BPM", res_full["clean_positive_style"])
+            self.assertIn("orchestral strings", res_full["clean_positive_style"])
+            self.assertIn("synth bass", res_full["provider_tags_str"].lower())
+            # Verificar deduplicación de instrumentos cubiertos por Estudio Virtual
+            dedup_list = res_full["style_breakdown"]["deduplicated_instruments"]
+            self.assertTrue(any("acoustic drums" in d for d in dedup_list))
+            self.assertTrue(any("electric bass" in d for d in dedup_list))
+            if prompt_txt:
+                self.assertIn(prompt_txt, res_full["clean_positive_style"])
+                self.assertTrue(res_full["style_breakdown"]["user_prompt_preserved"])
+            else:
+                self.assertEqual(res_full["style_build"]["studio_profiles"]["omitted_categories"], [])
+            if res_full["style_build"]["studio_profiles"]["omitted_categories"]:
+                self.assertIsNotNone(res_full["omitted_warning_es"])
+
+    async def test_17_user_prompt_exceeding_1000_chars_shows_explicit_warning_not_silent_truncation(self):
+        """Si el prompt libre supera 1.000 chars por sí solo, debe informar al usuario explícitamente."""
+        over_prompt = ", ".join(f"textura sinfónica melódica original número {i:02d} con armonía abierta" for i in range(18))
+        self.assertGreater(len(over_prompt), 1000)
+        ctx = {
+            "user_prompt": over_prompt,
+            "rhythm_type": "libre",
+            "harmony_clauses": [],
+            "selected_instruments": ["acoustic drums", "electric bass"],
+            "explicit_flags": {
+                "bpm": False, "hihat": False, "crash_toms": False, "splash_ride": False,
+                "tom_grooves": False, "bass_slap": False, "bass_pickup": False,
+                "instruments": False, "rhythm": False, "vocal_gender": False,
+            },
+        }
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            resp = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Prompt Excede 1000",
+                    "style": over_prompt,
+                    "style_context_json": json.dumps(ctx),
+                    "lyrics": "[Verse]\nLetra",
+                    "include_lyrics": "true",
+                    "studio_drums": "bonham",
+                },
+            )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertLessEqual(data["style_length"], 1000)
+        self.assertTrue(data["style_breakdown"]["user_prompt_exceeds_limit"])
+        self.assertIsNotNone(data["user_prompt_warning_es"])
+        self.assertIn("1.000 caracteres", data["user_prompt_warning_es"])
+        self.assertIn("Prompt libre de estilo", data["user_prompt_warning_es"])
+
+    def test_18_musical_conflicts_are_explicitly_reported_never_silently_hidden(self):
+        """Los conflictos entre controles explícitos, prompt, Estudio Virtual y exclusiones deben informarse."""
+        ctx_conf = {
+            "user_prompt": "Balada lenta 75 BPM en 7/8 con voz femenina emotiva",
+            "rhythm_type": "waltz_34",
+            "harmony_clauses": [],
+            "selected_instruments": ["electric bass"],
+            "explicit_flags": {
+                "bpm": True, "hihat": False, "crash_toms": False, "splash_ride": False,
+                "tom_grooves": False, "bass_slap": True, "bass_pickup": False,
+                "instruments": True, "rhythm": True, "vocal_gender": False,
+            },
+        }
+        res = app.resolve_final_udio_style_pipeline(
+            style=ctx_conf["user_prompt"],
+            final_lyrics="[Instrumental]",
+            is_instrumental=True,
+            target_bpm=140,
+            hihat_mode="8th",
+            art_bass_slap=True,
+            exclude_styles="drums",
+            studio_selections={"drums": "bonham", "basses": "pastorius_fretless", "microphones": "telefunken_u47"},
+            style_context=ctx_conf,
+        )
+        conflicts_joined = " | ".join(res["conflicts"]).lower()
+        self.assertIn("conflicto de tempo", conflicts_joined)
+        self.assertIn("conflicto de compás", conflicts_joined)
+        self.assertIn("slap & pop", conflicts_joined)
+        self.assertIn("instrumental", conflicts_joined)
+        self.assertIn("exclusiones", conflicts_joined)
+
+    async def test_19_structured_style_context_exact_preview_vs_run_transform_task_parity(self):
+        """Verifica paridad exacta bit a bit entre /api/preview_parameters y run_transform_task usando style_context_json."""
+        captured = []
+
+        async def fake_post(url, json=None, headers=None, **kw):
+            captured.append(json)
+            mock_r = MagicMock()
+            mock_r.status_code = 200
+            mock_r.text = '{"code": 200, "data": {"workId": "gen_ctx_parity_19", "task_id": "gen_ctx_parity_19"}}'
+            mock_r.json.return_value = {"code": 200, "data": {"workId": "gen_ctx_parity_19", "task_id": "gen_ctx_parity_19"}}
+            return mock_r
+
+        status_mock = MagicMock()
+        status_mock.status_code = 200
+        status_mock.json.return_value = {"code": 200, "data": {"status": "SUCCESS", "response_data": []}}
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = fake_post
+        mock_client.get.return_value = status_mock
+
+        user_prompt = "Rock melódico argentino con guitarras limpias con chorus suave y dinámica progresiva"
+        lyrics_exact = "[Verse 1]\nLetra original sin modificar\n[Chorus]\nExactamente como la escribí"
+        sel_six = {
+            "drums": "copeland",
+            "guitars": "gilmour_black_strat",
+            "basses": "arnedo_rock_argentino",
+            "keyboards": "hammond_b3",
+            "consoles": "neve_80",
+            "microphones": "neumann_u87",
+        }
+        ctx = {
+            "user_prompt": user_prompt,
+            "rhythm_type": "libre",
+            "harmony_clauses": ["key of E minor"],
+            "selected_instruments": ["acoustic drums", "electric bass", "acoustic guitar", "orchestral strings"],
+            "explicit_flags": {
+                "bpm": True, "hihat": False, "crash_toms": True, "splash_ride": False,
+                "tom_grooves": False, "bass_slap": False, "bass_pickup": True,
+                "instruments": True, "rhythm": False, "vocal_gender": True,
+            },
+        }
+
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            prev_r = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Paridad Estructurada",
+                    "style": user_prompt,
+                    "style_context_json": json.dumps(ctx),
+                    "lyrics": lyrics_exact,
+                    "include_lyrics": "true",
+                    "lyrics_mode": "custom",
+                    "vocal_gender": "male",
+                    "target_bpm": "96",
+                    "hihat_mode": "8th",
+                    "art_crash_toms": "true",
+                    "art_bass_pickup": "true",
+                    "exclude_styles": "cumbia",
+                    "studio_drums": sel_six["drums"],
+                    "studio_guitar": sel_six["guitars"],
+                    "studio_bass": sel_six["basses"],
+                    "studio_keyboard": sel_six["keyboards"],
+                    "studio_console": sel_six["consoles"],
+                    "studio_mic": sel_six["microphones"],
+                },
+            )
+        self.assertEqual(prev_r.status_code, 200)
+        prev_json = prev_r.json()
+
+        task_id = "test-ctx-parity-19"
+        app.TASKS[task_id] = {"id": task_id, "owner_email": "rodryandy@gmail.com", "logs": "", "status": "IN_PROGRESS"}
+        with patch("httpx.AsyncClient") as client_cls, \
+             patch.object(app, "gdrive_sync_generation_tasks_to_cloud", AsyncMock(return_value={"file_id": "drv_ok"})):
+            client_cls.return_value.__aenter__.return_value = mock_client
+            await app.run_transform_task(
+                task_id=task_id,
+                style=user_prompt,
+                lyrics=lyrics_exact,
+                title="Paridad Estructurada",
+                audio_content=None,
+                audio_filename=None,
+                ignore_audio=True,
+                include_lyrics=True,
+                bypass_copyright=False,
+                exclude_styles="cumbia",
+                vocal_gender="male",
+                weirdness=50,
+                style_influence=50,
+                audio_influence=25,
+                model="chirp-v6",
+                target_bpm=96,
+                hihat_mode="8th",
+                art_crash_toms=True,
+                art_bass_pickup=True,
+                lyrics_mode="custom",
+                studio_selections=sel_six,
+                style_context=ctx,
+            )
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["style"], prev_json["style_full_preview"])
+        self.assertEqual(captured[0]["tags"], prev_json["tags_preview"])
+        self.assertEqual(captured[0]["prompt"], lyrics_exact)
+        self.assertIn(user_prompt, captured[0]["style"])
+        self.assertIn("cumbia", captured[0]["tags"].lower())
+        self.assertLessEqual(len(captured[0]["style"]), 1000)
+
+    async def test_20_empty_style_neutral_preview_vs_run_transform_task_parity(self):
+        """Sin selecciones ni prompt libre, /api/preview_parameters y run_transform_task coinciden en enviar style='' (0/1.000) sin consumir créditos."""
+        captured = []
+
+        async def fake_post(url, json=None, headers=None, **kw):
+            captured.append(json)
+            mock_r = MagicMock()
+            mock_r.status_code = 200
+            mock_r.text = '{"code": 200, "data": {"workId": "gen_empty_parity_20", "task_id": "gen_empty_parity_20"}}'
+            mock_r.json.return_value = {"code": 200, "data": {"workId": "gen_empty_parity_20", "task_id": "gen_empty_parity_20"}}
+            return mock_r
+
+        status_mock = MagicMock()
+        status_mock.status_code = 200
+        status_mock.json.return_value = {"code": 200, "data": {"status": "SUCCESS", "response_data": []}}
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = fake_post
+        mock_client.get.return_value = status_mock
+
+        lyrics_exact = "[Verse 1]\nLetra libre sin estilo forzado"
+        ctx_neutral = {
+            "user_prompt": "",
+            "rhythm_type": "libre",
+            "harmony_clauses": [],
+            "selected_instruments": [],
+            "explicit_flags": {
+                "bpm": False, "hihat": False, "crash_toms": False, "splash_ride": False,
+                "tom_grooves": False, "bass_slap": False, "bass_pickup": False,
+                "instruments": False, "rhythm": False, "vocal_gender": False,
+            },
+        }
+        transport = httpx.ASGITransport(app=app.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://rodrix.example") as client:
+            prev_r = await client.post(
+                "/api/preview_parameters",
+                data={
+                    "title": "Prueba Neutral Vacía",
+                    "style": "",
+                    "style_context_json": json.dumps(ctx_neutral),
+                    "lyrics": lyrics_exact,
+                    "include_lyrics": "true",
+                    "lyrics_mode": "custom",
+                    "vocal_gender": "random",
+                    "target_bpm": "125",
+                    "hihat_mode": "8th",
+                    "art_crash_toms": "true",
+                    "art_bass_pickup": "true",
+                },
+            )
+        self.assertEqual(prev_r.status_code, 200)
+        prev_json = prev_r.json()
+        self.assertEqual(prev_json["style_full_preview"], "")
+        self.assertEqual(prev_json["style_length"], 0)
+        self.assertEqual(prev_json["style_available_chars"], 1000)
+
+        task_id = "test-empty-parity-20"
+        app.TASKS[task_id] = {"id": task_id, "owner_email": "rodryandy@gmail.com", "logs": "", "status": "IN_PROGRESS"}
+        with patch("httpx.AsyncClient") as client_cls, \
+             patch.object(app, "gdrive_sync_generation_tasks_to_cloud", AsyncMock(return_value={"file_id": "drv_ok"})):
+            client_cls.return_value.__aenter__.return_value = mock_client
+            await app.run_transform_task(
+                task_id=task_id,
+                style="",
+                lyrics=lyrics_exact,
+                title="Prueba Neutral Vacía",
+                audio_content=None,
+                audio_filename=None,
+                ignore_audio=True,
+                include_lyrics=True,
+                bypass_copyright=False,
+                exclude_styles="",
+                vocal_gender="random",
+                weirdness=50,
+                style_influence=50,
+                audio_influence=25,
+                model="chirp-v6",
+                target_bpm=125,
+                hihat_mode="8th",
+                art_crash_toms=True,
+                art_bass_pickup=True,
+                lyrics_mode="custom",
+                studio_selections=None,
+                style_context=ctx_neutral,
+            )
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["style"], "")
+        self.assertEqual(captured[0]["style"], prev_json["style_full_preview"])
+        self.assertEqual(captured[0].get("tags", ""), prev_json["tags_preview"])
+        self.assertEqual(captured[0]["prompt"], lyrics_exact)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2804,23 +2804,243 @@ def sanitize_positive_style(style_text: str, max_chars: int = 1000) -> str:
     return truncated.strip(" ,")
 
 _GEAR_PRIMARY_INSTRUMENT_MAP = [
-    (re.compile(r'\b(ludwig|dw\s+collector|yamaha\s+recording|century\s+1994|drum\s+kit|drums?)\b', re.I), "live acoustic drum kit"),
-    (re.compile(r'\b(jazz\s+bass|precision\s+bass|fender\s+precision|music\s+man\s+stingray|stingray|yamaha\s+bass|electric\s+bass|bass\s+guitar)\b', re.I), "authentic electric bass guitar"),
-    (re.compile(r'\b(contrabajo|upright\s+(?:double\s+)?bass)\b', re.I), "acoustic upright double bass"),
-    (re.compile(r'\b(synth[\s_-]*bass|808\s+bass|moog\s+bass)\b', re.I), "synth bass"),
-    (re.compile(r'\b(stratocaster|telecaster|les\s+paul|electric\s+guitar)\b', re.I), "electric guitar"),
-    (re.compile(r'\b(martin\s+d-28|acoustic\s+(?:rhythm\s+|dreadnought\s+)?guitar)\b', re.I), "acoustic guitar"),
-    (re.compile(r'\b(cfx|motif\s+xs|motif\s+power|galaxy\s+dx|concert\s+grand\s+piano|acoustic\s+grand\s+piano|piano)\b', re.I), "acoustic grand piano"),
-    (re.compile(r'\b(rhodes|mks-?20|elec\s+piano\s+2|e\.piano\s+2|electric\s+piano)\b', re.I), "electric piano"),
-    (re.compile(r'\b(hammond\s+b3|pipe\s+organ|organ)\b', re.I), "Hammond B3 organ"),
-    (re.compile(r'\b(juno-?106|synthesizer|synth\s+pad|synth\s+lead)\b', re.I), "analog synthesizer"),
-    (re.compile(r'\b(orchestral\s+strings|string\s+quartet|string\s+ensemble|cuerdas|violins?|cellos?|violas?)\b', re.I), "orchestral strings"),
+    (re.compile(r'\b(ludwig|dw\s+collector|yamaha\s+recording|century\s+1994)\b', re.I), "live acoustic drum kit", "drums"),
+    (re.compile(r'\b(fender\s+(?:american\s+deluxe\s+)?jazz\s+bass|fender\s+precision|music\s+man\s+stingray|yamaha\s+bass)\b', re.I), "authentic electric bass guitar", "basses"),
+    (re.compile(r'\b(contrabajo|upright\s+(?:double\s+)?bass)\b', re.I), "acoustic upright double bass", "basses"),
+    (re.compile(r'\b(synth[\s_-]*bass|808\s+bass|moog\s+bass)\b', re.I), "synth bass", "synth_bass"),
+    (re.compile(r'\b(fender\s+stratocaster|fender\s+telecaster|gibson\s+les\s+paul)\b', re.I), "electric guitar", "guitars"),
+    (re.compile(r'\b(martin\s+d-28)\b', re.I), "acoustic guitar", "acoustic_guitar"),
+    (re.compile(r'\b(yamaha\s+cfx|motif\s+xs|motif\s+power|galaxy\s+dx)\b', re.I), "acoustic grand piano", "piano"),
+    (re.compile(r'\b(fender\s+rhodes|roland\s+mks-?20|mks-?20)\b', re.I), "electric piano", "epiano"),
+    (re.compile(r'\b(hammond\s+b3)\b', re.I), "Hammond B3 organ", "organ"),
+    (re.compile(r'\b(roland\s+juno-?106)\b', re.I), "analog synthesizer", "synth"),
 ]
 
 _SECONDARY_DETAIL_RE = re.compile(
     r'\b(preamp|eq|pickups?|single-?coil|humbucker|fretboard|roundwound|flatwound|fret\s+buzz|ampeg|svt|b-15|twin\s+reverb|marshall|mesa|markbass|cabinet|8x10|4x10|2x12|speaker|jensen|celestion|eminence|beta\s+52a|sm57|u47|neve|ssl\s+4000|api\s+1608|tg12345|yamaha\s+tf5|console|op-amp|sas\s+synthesis|tape\s+saturation|gated\s+sustain|hydraulic\s+ebony|meinl|paiste|rack\s+toms?|floor\s+tom|keyscape|room\s+mic|1 foot from|direct-box|portaflex|alder\s+body|sitka\s+spruce|maple\s+drum|birch\s+drum|vintage\s+19\d\d|modern\s+hi-fi|slap\s+attack|low-mids|deep\s+tight\s+low\s+end|warm\s+tube\s+harmonic|analog\s+character|fingerstyle|thumb\s+and\s+finger|plugged\s+into)\b',
     re.IGNORECASE
 )
+
+_INST_CONCEPT_PATTERNS = {
+    "drums": re.compile(r'\b(drums?|drum\s+kit|bater[ií]a|snare|kick\s+drum|percussion)\b', re.I),
+    "basses": re.compile(r'\b(electric\s+bass|bass\s+guitar|jazz\s+bass|precision\s+bass|stingray|bajo\s+el[eé]ctrico|bajo\b(?!\s+sexto))\b', re.I),
+    "upright_bass": re.compile(r'\b(upright\s+(?:double\s+)?bass|double\s+bass|contrabajo)\b', re.I),
+    "synth_bass": re.compile(r'\b(synth[\s_-]*bass|synthesizer\s+bass|moog\s+bass|808\s*(?:bass|sub))\b', re.I),
+    "guitars": re.compile(r'\b(electric\s+guitar|overdriven\s+electric\s+guitar|clean\s+electric\s+guitar|stratocaster|telecaster|les\s+paul|guitarra\s+el[eé]ctrica|guitarra\s+distorsionada)\b', re.I),
+    "acoustic_guitar": re.compile(r'\b(acoustic\s+(?:rhythm\s+)?guitar|nylon\s+guitar|martin\s+d-28|guitarra\s+ac[uú]stica|guitarra\s+criolla)\b', re.I),
+    "piano": re.compile(r'\b((?:acoustic\s+)?(?:concert\s+)?grand\s+piano|piano\s+de\s+cola|piano\s+ac[uú]stico)\b', re.I),
+    "epiano": re.compile(r'\b(electric\s+(?:grand\s+)?piano|rhodes|wurlitzer|mks-?20|piano\s+el[eé]ctrico)\b', re.I),
+    "fm_piano": re.compile(r'\b(fm\s+electric\s+piano|dx7|piano\s+fm)\b', re.I),
+    "organ": re.compile(r'\b(hammond|b3|pipe\s+organ|organ|[oó]rgano)\b', re.I),
+    "synth_lead": re.compile(r'\b(synth\s+lead|lead\s+synth|minimoog|analog\s+synth(?:esizer)?)\b', re.I),
+    "synth_pad": re.compile(r'\b(synth\s+pad|ambient\s+pad|warm\s+pad|juno-?106)\b', re.I),
+    "strings": re.compile(r'\b(orchestral\s+strings|string\s+(?:quartet|ensemble)|cuerdas|violins?|cellos?|violas?)\b', re.I),
+    "flute": re.compile(r'\b(flute|flautas?)\b', re.I),
+    "bells": re.compile(r'\b(tubular\s+bells|campanas)\b', re.I),
+    "congas": re.compile(r'\b(congas?)\b', re.I),
+    "bongos": re.compile(r'\b(bongos?|bong[oó]s?)\b', re.I),
+    "cajon": re.compile(r'\b(caj[oó]n)\b', re.I),
+    "maracas": re.compile(r'\b(maracas?)\b', re.I),
+    "electronic_drums": re.compile(r'\b(electronic\s+drums|808\s+drums|drum\s+machine|bater[ií]a\s+electr[oó]nica)\b', re.I),
+}
+
+_STUDIO_KEYBOARD_COVERED_CONCEPTS = {
+    "piano_acustico": {"piano"},
+    "hammond_b3": {"organ"},
+    "fender_rhodes": {"epiano"},
+    "wurlitzer": {"epiano"},
+    "yamaha_dx7": {"fm_piano", "epiano"},
+    "minimoog": {"synth_lead", "synth_bass"},
+}
+
+
+def _parse_style_context_json(raw_json: Optional[str]) -> Optional[dict]:
+    """Parsea de forma segura el contexto estructurado enviado por el frontend para separar prioridades."""
+    if not raw_json or not isinstance(raw_json, str):
+        return None
+    raw_clean = raw_json.strip()
+    if not raw_clean:
+        return None
+    try:
+        parsed = json.loads(raw_clean)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+    return None
+
+
+def _format_user_prompt_overflow_warning_es(user_chars: int, max_chars: int = 1000) -> str:
+    overflow = max(1, user_chars - max_chars)
+    max_fmt = f"{max_chars:,}".replace(",", ".")
+    return (
+        f"Atención: tu texto en «Prompt libre de estilo» ocupa {user_chars} caracteres y supera por sí solo "
+        f"el límite de {max_fmt} caracteres de UdioAPI (+{overflow} de exceso). "
+        f"Acorta el texto personalizado para evitar recortes al enviar."
+    )
+
+
+def _classify_instrument_concept(inst_name: str) -> Optional[str]:
+    low = (inst_name or "").strip().lower()
+    if not low:
+        return None
+    for concept in (
+        "electronic_drums", "drums", "synth_bass", "upright_bass", "basses",
+        "acoustic_guitar", "guitars", "fm_piano", "epiano", "piano", "organ",
+        "synth_lead", "synth_pad", "strings", "flute", "bells", "congas", "bongos", "cajon", "maracas",
+    ):
+        if _INST_CONCEPT_PATTERNS[concept].search(low):
+            return concept
+    return None
+
+
+def _deduplicate_instruments_against_context(
+    instruments: list[str],
+    user_prompt_lower: str,
+    studio_selections: Optional[dict] = None,
+) -> tuple[list[str], list[str]]:
+    """
+    Elimina repeticiones entre la lista de instrumentos adicionales, el texto escrito por el usuario
+    y las categorías activas del Estudio Virtual (sin borrar instrumentos realmente distintos).
+    Retorna: (kept_instruments, deduplicated_instruments)
+    """
+    studio_norm = studio_selections or {}
+    covered_by_studio: set[str] = set()
+    if studio_norm.get("drums") and studio_norm.get("drums") != "auto":
+        covered_by_studio.add("drums")
+    if studio_norm.get("basses") and studio_norm.get("basses") != "auto":
+        covered_by_studio.add("basses")
+    if studio_norm.get("guitars") and studio_norm.get("guitars") != "auto":
+        covered_by_studio.add("guitars")
+    kb_sel = studio_norm.get("keyboards")
+    if kb_sel and kb_sel != "auto":
+        covered_by_studio.update(_STUDIO_KEYBOARD_COVERED_CONCEPTS.get(kb_sel, set()))
+
+    kept: list[str] = []
+    deduped: list[str] = []
+    seen_exact: set[str] = set()
+    seen_concepts: set[str] = set()
+
+    for raw_inst in (instruments or []):
+        inst = re.sub(r'\s+', ' ', str(raw_inst or "")).strip(" ,;-")
+        if not inst:
+            continue
+        low = inst.lower()
+        if low in seen_exact:
+            continue
+        concept = _classify_instrument_concept(inst)
+
+        # 1. Ya cubierto por una categoría explícita del Estudio Virtual
+        if concept and concept in covered_by_studio:
+            deduped.append(f"{inst} (cubierto por Estudio Virtual)")
+            continue
+        # 2. Ya mencionado explícitamente en el texto escrito por el usuario
+        if user_prompt_lower:
+            if low in user_prompt_lower:
+                deduped.append(f"{inst} (ya presente en tu prompt)")
+                continue
+            if concept and _INST_CONCEPT_PATTERNS[concept].search(user_prompt_lower):
+                deduped.append(f"{inst} (ya presente en tu prompt)")
+                continue
+        # 3. Evitar repetir el mismo concepto base dos veces (salvo clean vs overdriven electric guitar)
+        if concept and concept in seen_concepts and concept != "guitars":
+            deduped.append(f"{inst} (duplicado)")
+            continue
+
+        seen_exact.add(low)
+        if concept:
+            seen_concepts.add(concept)
+        kept.append(inst)
+
+    return kept, deduped
+
+
+def _detect_musical_conflicts(
+    *,
+    user_prompt: str,
+    eff_cfg: dict,
+    target_bpm: int,
+    rhythm_type: str,
+    studio_selections: Optional[dict],
+    selected_instruments: list[str],
+    is_instrumental: bool,
+    exclude_styles: str,
+    explicit_flags: Optional[dict] = None,
+) -> list[str]:
+    """
+    Detecta conflictos reales entre configuraciones explícitas, prompt escrito por el usuario,
+    Estudio Virtual y exclusiones, informándolos en español claro en lugar de resolverlos silenciosamente.
+    """
+    conflicts: list[str] = []
+    flags = explicit_flags or {}
+    prompt_low = (user_prompt or "").lower()
+    studio_norm = studio_selections or {}
+
+    # 1. Conflicto de BPM entre prompt escrito y control explícito de Tempo
+    prompt_bpms = [float(x) for x in re.findall(r'\b(\d+(?:\.\d+)?)\s*bpm\b', user_prompt or "", flags=re.I)]
+    if prompt_bpms and target_bpm and float(target_bpm) > 0:
+        last_prompt_bpm = prompt_bpms[-1]
+        if abs(last_prompt_bpm - float(target_bpm)) >= 1.0 and flags.get("bpm"):
+            eff_bpm_str = eff_cfg.get("bpm_tag") or f"{int(last_prompt_bpm)} BPM"
+            conflicts.append(
+                f"Conflicto de tempo: tu prompt indica {int(last_prompt_bpm)} BPM y el control de Tempo marca {int(target_bpm)} BPM; se aplicó {eff_bpm_str}."
+            )
+
+    # 2. Conflicto de compás entre ritmo base seleccionado y métrica escrita en el prompt
+    eff_meter = eff_cfg.get("effective_meter")
+    if rhythm_type == "waltz_34" and eff_meter and eff_meter != "3/4":
+        conflicts.append(
+            f"Conflicto de compás: elegiste ritmo base Vals 3/4 pero tu prompt especifica {eff_meter}; se priorizó {eff_meter}."
+        )
+    elif rhythm_type in ("dos_pasos", "gospel_2step", "worship_ballad") and eff_meter and eff_meter != "4/4":
+        conflicts.append(
+            f"Conflicto de compás: el ritmo base elegido es 4/4 pero tu prompt especifica {eff_meter}; se priorizó {eff_meter}."
+        )
+
+    # 3. Conflicto de subdivisión de Hi-Hat entre prompt escrito y radio explícitamente elegido
+    if flags.get("hihat"):
+        eff_hh = eff_cfg.get("effective_hihat")
+        if eff_hh != "16th" and any(k in prompt_low for k in ("16th-note hi-hat", "16th note hi-hat", "hi-hat en semicorcheas", "semicorcheas")):
+            conflicts.append(
+                f"Conflicto de Hi-Hat: tu prompt menciona semicorcheas pero el selector está en {eff_hh}; se priorizó la selección activa ({eff_hh})."
+            )
+        elif eff_hh != "4th" and any(k in prompt_low for k in ("quarter-note hi-hat", "quarter note hi-hat", "hi-hat en negras")):
+            conflicts.append(
+                f"Conflicto de Hi-Hat: tu prompt menciona hi-hat en negras pero el selector está en {eff_hh}; se priorizó la selección activa ({eff_hh})."
+            )
+
+    # 4. Conflicto Bajo Slap & Pop vs perfil de bajo flatwound/fretless en Estudio Virtual
+    bass_profile_id = studio_norm.get("basses", "auto")
+    if eff_cfg.get("bass_slap") and bass_profile_id in ("jamerson_motown", "pastorius_fretless"):
+        b_label = "James Jamerson (flatwound)" if bass_profile_id == "jamerson_motown" else "Jaco Pastorius (fretless)"
+        conflicts.append(
+            f"Conflicto de técnica en bajo: «Slap & Pop» está activo junto al perfil {b_label}; se conservaron ambas selecciones aplicando prioridad de usuario."
+        )
+
+    # 5. Conflicto Modo Instrumental vs instrucciones vocales explícitas o micrófono vocal en Estudio Virtual
+    if is_instrumental:
+        if any(k in prompt_low for k in ("voz ", "voces", "vocal", "cantante", "tenor", "soprano", "baritono", "barítono", "coro ", "choir")):
+            conflicts.append(
+                "Conflicto Instrumental vs Voz: marcaste «Instrumental» pero tu prompt menciona voz/coro; se aplica la regla Instrumental (sin voces)."
+            )
+        mic_id = studio_norm.get("microphones", "auto")
+        if mic_id and mic_id != "auto":
+            conflicts.append(
+                "Aviso Instrumental + Micrófono vocal: «Instrumental» está activo junto a un perfil de micrófono para cantar; se mantiene el carácter de estudio sin agregar voces."
+            )
+
+    # 6. Conflicto exclusiones manuales vs categorías activas del Estudio Virtual
+    excl_low = (exclude_styles or "").lower()
+    if excl_low:
+        if studio_norm.get("drums") not in (None, "", "auto") and re.search(r'\b(drums?|drum\s+kit|bater[ií]a)\b', excl_low):
+            conflicts.append("Conflicto con exclusiones: excluiste batería en «Excluir estilos» mientras tienes un perfil de Batería activo en Estudio Virtual.")
+        if studio_norm.get("guitars") not in (None, "", "auto") and re.search(r'\b(guitars?|electric\s+guitar|guitarras?)\b', excl_low):
+            conflicts.append("Conflicto con exclusiones: excluiste guitarra en «Excluir estilos» mientras tienes un perfil de Guitarra activo en Estudio Virtual.")
+        if studio_norm.get("basses") not in (None, "", "auto") and re.search(r'\b(electric\s+bass|bass\s+guitar|bajo)\b', excl_low):
+            conflicts.append("Conflicto con exclusiones: excluiste bajo en «Excluir estilos» mientras tienes un perfil de Bajo activo en Estudio Virtual.")
+
+    return conflicts
+
 
 def build_prioritized_style(
     genre_anchor: str,
@@ -2834,172 +3054,347 @@ def build_prioritized_style(
     raw_user_style: str = "",
     studio_selections: Optional[dict] = None,
     studio_solo_mode: Optional[str] = None,
+    explicit_instruments: Optional[list[str]] = None,
+    explicit_rhythm_clauses: Optional[list[str]] = None,
+    auto_default_instruments: Optional[list[str]] = None,
+    auto_default_rhythm_clauses: Optional[list[str]] = None,
+    vocal_is_explicit: bool = False,
+    bpm_is_explicit: bool = False,
+    structured_user_prompt: Optional[str] = None,
+    conflicts: Optional[list[str]] = None,
 ) -> dict:
     """
-    Ensambla el campo 'style' respetando estrictamente la prioridad de 6 niveles dentro de 1.000 caracteres:
-    1. Género musical y métrica seleccionados
-    2. Tempo BPM
-    3. Instrumentación principal (+ tonalidad/acordes)
-    4. Características rítmicas fundamentales
-    5. Instrucciones vocales (ej. voz femenina natural en español)
-    6. Detalles secundarios de amplificadores, marcas y técnicas instrumentales
+    Ensambla el campo 'style' respetando estrictamente la jerarquía de 4 prioridades dentro de 1.000 caracteres
+    (donde 1.000 es un MÁXIMO, no una cuota a llenar artificialmente):
+      1. Máxima prioridad: instrucciones musicales escritas por el usuario (nunca degradadas ni recortadas en silencio).
+      2. Segunda prioridad: configuraciones seleccionadas expresamente (métrica, BPM, armonía, instrumentos explícitos,
+         articulaciones explícitas, directivas vocales/instrumentales y ancla de modo solo/preset).
+      3. Tercera prioridad: características esenciales de los perfiles seleccionados del Estudio Virtual.
+      4. Última prioridad: descripciones automáticas complementarias, valores predeterminados y expansión secundaria.
     """
-    tier1_genre: list[str] = []
-    tier2_bpm: list[str] = []
-    tier3_instruments: list[str] = []
-    tier4_rhythm: list[str] = []
-    tier5_vocals: list[str] = []
-    tier6_secondary: list[str] = []
-
-    def _split_clean(txt: str) -> list[str]:
-        return [re.sub(r'\s+', ' ', p).strip(" ,-") for p in (txt or "").split(",") if p.strip()]
-
-    # Tier 1: género/métrica desde genre_anchor (extrayendo bpm_tag para ubicarlo exactamente en Tier 2)
-    bpm_norm = (bpm_tag or "").strip().lower()
-    for seg in _split_clean(genre_anchor):
-        if bpm_norm and seg.lower() == bpm_norm:
-            continue
-        tier1_genre.append(seg)
-
-    # Tier 2: Tempo BPM
-    if bpm_tag and bpm_tag.strip():
-        tier2_bpm.append(bpm_tag.strip())
-
-    # Separar cláusulas del usuario / enriquecimiento entre género, instrumento principal, armonía y detalle secundario
-    vocal_lower = (vocal_tag or "").lower()
-    inferred_core_insts: list[str] = []
-
-    if not is_solo_mode:
-        positive_for_inst_scan = sanitize_positive_style(user_and_enriched_style or "", max_chars=50000)
-        for pat, core_name in _GEAR_PRIMARY_INSTRUMENT_MAP:
-            if pat.search(positive_for_inst_scan):
-                inferred_core_insts.append(core_name)
-
-    # Cláusulas ya procesadas en Tier 4 para evitar duplicados
-    rhythm_lower_set = {c.lower().strip() for c in (priority_rhythm_clauses or [])}
-    raw_lower_tokens = {s.lower() for s in _split_clean(raw_user_style)} if raw_user_style else set()
-
-    for seg in _split_clean(user_and_enriched_style):
-        sl = seg.lower()
-        if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sl):
-            continue
-        if bpm_norm and sl == bpm_norm:
-            continue
-        if sl in rhythm_lower_set:
-            continue
-        if vocal_lower and sl in vocal_lower:
-            continue
-        if is_solo_mode:
-            tier6_secondary.append(seg)
-            continue
-
-        # Acordes y tonalidad van en Tier 3 junto con la instrumentación principal
-        if sl.startswith("key of ") or sl.startswith("key:") or sl.startswith("chord progression:") or "featured instruments:" in sl:
-            tier3_instruments.append(seg)
-        elif _SECONDARY_DETAIL_RE.search(sl) or len(seg) > 65:
-            tier6_secondary.append(seg)
-        elif any(k in sl for k in ["drum", "bass", "guitar", "piano", "organ", "synth", "keyboard", "rhodes", "cajon", "cajón", "strings", "violin", "cello"]):
-            if raw_lower_tokens and sl not in raw_lower_tokens:
-                tier6_secondary.append(seg)
-            else:
-                tier3_instruments.append(seg)
-        elif "vocal" in sl or "choir" in sl or "tenor" in sl or "soprano" in sl or "baritone" in sl:
-            tier5_vocals.append(seg)
-        elif raw_lower_tokens and sl not in raw_lower_tokens:
-            # Sub-cláusulas derivadas de expansión de hardware/equipo (ej. "deep warm wooden tone") van en Tier 6
-            tier6_secondary.append(seg)
-        else:
-            tier1_genre.append(seg)
-
-    if not is_solo_mode:
-        tier3_instruments = inferred_core_insts + tier3_instruments
-
-    # Tier 4: Ritmo fundamental (sin repetir BPM)
-    for clause in (priority_rhythm_clauses or []):
-        for sub in _split_clean(clause):
-            if bpm_norm and sub.lower() == bpm_norm:
-                continue
-            tier4_rhythm.append(sub)
-
-    # Tier 5: Instrucciones vocales (o marca instrumental)
-    if is_instrumental:
-        tier5_vocals.append("instrumental")
-    elif vocal_tag:
-        for sub in _split_clean(vocal_tag):
-            if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sub.lower()):
-                continue
-            tier5_vocals.append(sub)
-
-    # Deduplicación global conservando orden prioritario Tiers 1 -> 6
-    seen_all = set()
-    def _dedup_tier(items: list[str]) -> list[str]:
-        out = []
-        for it in items:
-            cleaned_it = sanitize_positive_style(it, max_chars=max_chars)
-            for sub in _split_clean(cleaned_it):
-                k = sub.lower()
-                if k and k not in seen_all:
-                    seen_all.add(k)
-                    out.append(sub)
-        return out
-
-    core_tiers = (
-        _dedup_tier(tier1_genre)
-        + _dedup_tier(tier2_bpm)
-        + _dedup_tier(tier3_instruments)
-        + _dedup_tier(tier4_rhythm)
-        + _dedup_tier(tier5_vocals)
-    )
-    secondary_tier = _dedup_tier(tier6_secondary)
-
     _measure_len = (
         studio_virtual_catalog.measure_udio_style_length
         if (studio_virtual_catalog and hasattr(studio_virtual_catalog, "measure_udio_style_length"))
         else len
     )
 
-    all_tokens = core_tiers + secondary_tier
-    raw_combined = ", ".join(all_tokens)
-    raw_len = _measure_len(raw_combined)
+    def _split_clean(txt: str) -> list[str]:
+        return [re.sub(r'\s+', ' ', p).strip(" ,-") for p in (txt or "").split(",") if p.strip()]
 
+    def _clean_positive_tokens(items: list[str], seen_set: set[str]) -> list[str]:
+        out: list[str] = []
+        for it in (items or []):
+            cleaned_it = sanitize_positive_style(it, max_chars=max(max_chars * 4, 4000))
+            for sub in _split_clean(cleaned_it):
+                k = sub.lower()
+                if k and k not in seen_set:
+                    seen_set.add(k)
+                    out.append(sub)
+        return out
+
+    use_structured_tiers = structured_user_prompt is not None
+    bpm_norm = (bpm_tag or "").strip().lower()
+    vocal_lower = (vocal_tag or "").lower()
     has_active_studio = bool(
         studio_virtual_catalog
         and studio_selections
         and studio_virtual_catalog.has_active_studio_selections(studio_selections)
     )
 
-    if not has_active_studio and raw_len <= max_chars:
+    tier1_user_raw: list[str] = []
+    tier2_explicit_raw: list[str] = []
+    tier2_spine_raw: list[str] = []
+    tier4_auto_raw: list[str] = []
+    tier4_secondary_raw: list[str] = []
+
+    if use_structured_tiers:
+        # --- MODO ESTRUCTURADO (4 PRIORIDADES ESTRICTAS) ---
+        # En modo solo, el ancla de aislamiento del sistema protege la regla obligatoria de solo
+        if is_solo_mode and genre_anchor:
+            for seg in _split_clean(genre_anchor):
+                if bpm_norm and seg.lower() == bpm_norm:
+                    continue
+                tier2_explicit_raw.append(seg)
+
+        # Prioridad 1: TODA cláusula escrita por el usuario (sin degradar frases > 65 chars ni vocabulario técnico)
+        for seg in _split_clean(structured_user_prompt or ""):
+            sl = seg.lower()
+            if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sl):
+                continue
+            tier1_user_raw.append(seg)
+
+        # Cláusulas adicionales producidas por enriquecimiento/sanitización sobre el texto del usuario:
+        # - Si coinciden con el prompt del usuario, ya están en Tier 1.
+        # - Si provienen de expansiones largas de hardware (_enrich_style_keywords), van a Tier 4 secundario.
+        user_tokens_low = {s.lower() for s in tier1_user_raw}
+        for seg in _split_clean(user_and_enriched_style or ""):
+            sl = seg.lower()
+            if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sl):
+                continue
+            if bpm_norm and sl == bpm_norm:
+                continue
+            if sl in user_tokens_low:
+                continue
+            if sl.startswith("key of ") or sl.startswith("key:") or sl.startswith("chord progression:"):
+                tier2_explicit_raw.append(seg)
+            else:
+                tier4_secondary_raw.append(seg)
+
+        # Prioridad 2: Configuraciones seleccionadas expresamente (ancla de preset/métrica, BPM, instrumentos, articulaciones, voz explícita)
+        if not is_solo_mode and genre_anchor:
+            for seg in _split_clean(genre_anchor):
+                if bpm_norm and seg.lower() == bpm_norm:
+                    continue
+                tier2_explicit_raw.append(seg)
+
+        if bpm_tag and bpm_tag.strip():
+            # Evitar duplicar BPM si ya aparece exactamente dentro del prompt del usuario
+            prompt_joined_low = ", ".join(tier1_user_raw).lower()
+            if bpm_norm not in prompt_joined_low:
+                if bpm_is_explicit:
+                    tier2_explicit_raw.append(bpm_tag.strip())
+                else:
+                    tier2_spine_raw.append(bpm_tag.strip())
+
+        for inst in (explicit_instruments or []):
+            if inst and inst.strip():
+                tier2_explicit_raw.append(inst.strip())
+
+        for clause in (explicit_rhythm_clauses or []):
+            for sub in _split_clean(clause):
+                if bpm_norm and sub.lower() == bpm_norm:
+                    continue
+                tier2_explicit_raw.append(sub)
+
+        if is_instrumental:
+            tier2_explicit_raw.append("instrumental")
+        elif vocal_tag:
+            v_subs = [
+                sub for sub in _split_clean(vocal_tag)
+                if not re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sub.lower())
+            ]
+            if vocal_is_explicit:
+                tier2_explicit_raw.extend(v_subs)
+            else:
+                tier2_spine_raw.extend(v_subs)
+
+        # Prioridad 4: Instrumentos y articulaciones predeterminados no modificados por el usuario
+        for inst in (auto_default_instruments or []):
+            if inst and inst.strip():
+                tier4_auto_raw.append(inst.strip())
+
+        for clause in (auto_default_rhythm_clauses or []):
+            for sub in _split_clean(clause):
+                if bpm_norm and sub.lower() == bpm_norm:
+                    continue
+                tier4_auto_raw.append(sub)
+
+    else:
+        # --- MODO COMPATIBLE CON LLAMADORES DIRECTOS / LEGACY ---
+        tier1_genre: list[str] = []
+        tier2_bpm: list[str] = []
+        tier3_instruments: list[str] = []
+        tier4_rhythm: list[str] = []
+        tier5_vocals: list[str] = []
+        tier6_secondary: list[str] = []
+
+        for seg in _split_clean(genre_anchor):
+            if bpm_norm and seg.lower() == bpm_norm:
+                continue
+            tier1_genre.append(seg)
+
+        if bpm_tag and bpm_tag.strip():
+            tier2_bpm.append(bpm_tag.strip())
+
+        rhythm_lower_set = {c.lower().strip() for c in (priority_rhythm_clauses or [])}
+        raw_lower_tokens = {s.lower() for s in _split_clean(raw_user_style)} if raw_user_style else set()
+
+        for seg in _split_clean(user_and_enriched_style):
+            sl = seg.lower()
+            if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sl):
+                continue
+            if bpm_norm and sl == bpm_norm:
+                continue
+            if sl in rhythm_lower_set:
+                continue
+            if vocal_lower and sl in vocal_lower:
+                continue
+            if is_solo_mode:
+                tier6_secondary.append(seg)
+                continue
+
+            if sl.startswith("key of ") or sl.startswith("key:") or sl.startswith("chord progression:") or "featured instruments:" in sl:
+                tier3_instruments.append(seg)
+            elif _SECONDARY_DETAIL_RE.search(sl):
+                tier6_secondary.append(seg)
+            elif len(seg) > 65 and not (raw_lower_tokens and sl in raw_lower_tokens):
+                tier6_secondary.append(seg)
+            elif any(k in sl for k in ["drum", "bass", "guitar", "piano", "organ", "synth", "keyboard", "rhodes", "cajon", "cajón", "strings", "violin", "cello"]):
+                if raw_lower_tokens and sl not in raw_lower_tokens:
+                    tier6_secondary.append(seg)
+                else:
+                    tier3_instruments.append(seg)
+            elif "vocal" in sl or "choir" in sl or "tenor" in sl or "soprano" in sl or "baritone" in sl:
+                tier5_vocals.append(seg)
+            elif raw_lower_tokens and sl not in raw_lower_tokens:
+                tier6_secondary.append(seg)
+            else:
+                tier1_genre.append(seg)
+
+        # Inferir instrumento troncal SOLO si una expansión de hardware lo requiere y no está duplicado ni en Estudio Virtual
+        if not is_solo_mode and tier6_secondary:
+            existing_core_low = ", ".join(tier1_user_raw + tier1_genre + tier3_instruments).lower()
+            sec_scan = ", ".join(tier6_secondary)
+            studio_norm_l = studio_selections or {}
+            inferred_core: list[str] = []
+            for pat, core_name, concept_k in _GEAR_PRIMARY_INSTRUMENT_MAP:
+                if not pat.search(sec_scan):
+                    continue
+                if concept_k in ("drums", "basses", "guitars") and studio_norm_l.get(concept_k) not in (None, "", "auto"):
+                    continue
+                if concept_k in _INST_CONCEPT_PATTERNS and _INST_CONCEPT_PATTERNS[concept_k].search(existing_core_low):
+                    continue
+                if core_name.lower() not in existing_core_low:
+                    inferred_core.append(core_name)
+            tier3_instruments = inferred_core + tier3_instruments
+
+        for clause in (priority_rhythm_clauses or []):
+            for sub in _split_clean(clause):
+                if bpm_norm and sub.lower() == bpm_norm:
+                    continue
+                tier4_rhythm.append(sub)
+
+        if is_instrumental:
+            tier5_vocals.append("instrumental")
+        elif vocal_tag:
+            for sub in _split_clean(vocal_tag):
+                if re.match(r'^(?:no|zero|sin|without)(?:\s+|$)', sub.lower()):
+                    continue
+                tier5_vocals.append(sub)
+
+        tier2_explicit_raw = tier1_genre + tier2_bpm + tier3_instruments + tier4_rhythm + tier5_vocals
+        tier4_secondary_raw = tier6_secondary
+
+    # --- DEDUPLICACIÓN GLOBAL POR PRIORIDAD (1 -> 2 -> Spine -> 4) ---
+    seen_all: set[str] = set()
+    tier1_user = _clean_positive_tokens(tier1_user_raw, seen_all)
+    tier2_explicit = _clean_positive_tokens(tier2_explicit_raw, seen_all)
+    tier2_spine = _clean_positive_tokens(tier2_spine_raw, seen_all)
+    tier4_auto = _clean_positive_tokens(tier4_auto_raw, seen_all)
+    tier4_secondary = _clean_positive_tokens(tier4_secondary_raw, seen_all)
+
+    user_prompt_full_str = ", ".join(tier1_user)
+    user_prompt_chars = _measure_len(user_prompt_full_str) if user_prompt_full_str else 0
+    user_prompt_exceeds_limit = user_prompt_chars > max_chars
+    user_prompt_overflow_chars = max(0, user_prompt_chars - max_chars)
+    user_prompt_warning_es = (
+        _format_user_prompt_overflow_warning_es(user_prompt_chars, max_chars=max_chars)
+        if user_prompt_exceeds_limit
+        else None
+    )
+
+    all_non_studio_tokens = tier1_user + tier2_explicit + tier2_spine + tier4_auto + tier4_secondary
+    raw_non_studio = ", ".join(all_non_studio_tokens)
+    raw_non_studio_len = _measure_len(raw_non_studio)
+
+    # Si NO hay Estudio Virtual activo y TODO entra sobradamente en <= max_chars -> devolver limpio sin relleno ni compactación
+    if not has_active_studio and raw_non_studio_len <= max_chars and not user_prompt_exceeds_limit:
+        explicit_chars = _measure_len(", ".join(tier2_explicit)) if tier2_explicit else 0
+        auto_all = tier2_spine + tier4_auto + tier4_secondary
+        auto_chars = _measure_len(", ".join(auto_all)) if auto_all else 0
         return {
-            "style": raw_combined,
-            "raw_length": raw_len,
-            "final_length": raw_len,
+            "style": raw_non_studio,
+            "raw_length": raw_non_studio_len,
+            "final_length": raw_non_studio_len,
             "truncated": False,
             "core_preserved": True,
+            "user_prompt_preserved": True,
+            "user_prompt_exceeds_limit": False,
+            "user_prompt_warning_es": None,
             "dropped_secondary_count": 0,
             "studio_profiles": None,
             "compaction_notice": None,
+            "conflicts": list(conflicts or []),
+            "style_breakdown": {
+                "user_prompt_text": user_prompt_full_str,
+                "user_prompt_chars": user_prompt_chars,
+                "user_prompt_preserved": True,
+                "user_prompt_truncated": False,
+                "user_prompt_exceeds_limit": False,
+                "user_prompt_overflow_chars": 0,
+                "explicit_config_clauses": tier2_explicit,
+                "explicit_config_chars": explicit_chars,
+                "studio_virtual_clauses": [],
+                "studio_virtual_chars": 0,
+                "auto_default_clauses": auto_all,
+                "auto_default_chars": auto_chars,
+                "dropped_auto_count": 0,
+                "dropped_explicit_clauses": [],
+            },
             "style_optimization": {
-                "raw_total_chars": raw_len,
-                "final_chars": raw_len,
+                "raw_total_chars": raw_non_studio_len,
+                "final_chars": raw_non_studio_len,
                 "max_chars": max_chars,
-                "utilization_pct": round((raw_len / max_chars) * 100.0, 1) if max_chars > 0 else 0.0,
+                "utilization_pct": round((raw_non_studio_len / max_chars) * 100.0, 1) if max_chars > 0 else 0.0,
                 "compacted": False,
                 "stage": "no_studio_active",
             },
         }
 
-    # Construir respetando Tiers 1-5 íntegramente y optimizando Estudio Virtual + Tier 6 hasta max_chars exactos
+    # --- ENSAMBLAJE POR PRIORIDAD ESTRICTA DENTRO DE max_chars ---
     selected: list[str] = []
     curr_len = 0
-    for tok in core_tiers:
+    kept_user: list[str] = []
+    kept_explicit: list[str] = []
+    dropped_explicit: list[str] = []
+    kept_auto: list[str] = []
+    dropped_auto = 0
+    user_prompt_truncated = False
+
+    # 1) PRIORIDAD 1: Instrucciones escritas por el usuario
+    if user_prompt_exceeds_limit:
+        # Nunca truncar silenciosamente: recorte seguro de API + advertencia explícita user_prompt_warning_es
+        clamped_user = sanitize_positive_style(user_prompt_full_str, max_chars=max_chars)
+        if clamped_user:
+            selected.append(clamped_user)
+            kept_user.append(clamped_user)
+            curr_len = _measure_len(clamped_user)
+        user_prompt_truncated = True
+    else:
+        for tok in tier1_user:
+            extra = _measure_len(tok) if not selected else _measure_len(tok) + 2
+            if curr_len + extra <= max_chars:
+                selected.append(tok)
+                kept_user.append(tok)
+                curr_len += extra
+            else:
+                user_prompt_truncated = True
+
+    user_prompt_preserved = (not user_prompt_truncated) and (not user_prompt_exceeds_limit)
+
+    # 2) PRIORIDAD 2: Configuraciones seleccionadas expresamente + espina mínima (BPM + voz)
+    for tok in tier2_explicit:
         extra = _measure_len(tok) if not selected else _measure_len(tok) + 2
         if curr_len + extra <= max_chars:
             selected.append(tok)
+            kept_explicit.append(tok)
             curr_len += extra
+        else:
+            dropped_explicit.append(tok)
 
-    core_preserved = (len(selected) == len(core_tiers))
+    for tok in tier2_spine:
+        extra = _measure_len(tok) if not selected else _measure_len(tok) + 2
+        if curr_len + extra <= max_chars:
+            selected.append(tok)
+            kept_auto.append(tok)
+            curr_len += extra
+        else:
+            dropped_auto += 1
+
+    core_preserved = user_prompt_preserved and (len(dropped_explicit) == 0)
+
+    # 3) PRIORIDAD 3: Perfiles activos del Estudio Virtual (antes de los valores predeterminados automáticos)
     remaining_budget = max(0, max_chars - curr_len - (2 if selected else 0))
-
     studio_pack = None
     studio_clauses_clean: list[str] = []
     if has_active_studio:
@@ -3010,7 +3405,6 @@ def build_prioritized_style(
             solo_mode=studio_solo_mode,
             existing_context_clauses=selected,
         )
-        # Ingerir cláusulas optimizadas preservando su coherencia exacta (sin recortes a mitad de frase)
         for clause in studio_pack.get("clauses", []):
             cleaned_cl = sanitize_positive_style(clause, max_chars=max_chars)
             if not cleaned_cl:
@@ -3024,43 +3418,95 @@ def build_prioritized_style(
                     studio_clauses_clean.append(cleaned_cl)
                     curr_len += extra
 
-    dropped_secondary = 0
-    for tok in secondary_tier:
+    # 4) PRIORIDAD 4: Descripciones automáticas y detalles secundarios (solo si queda espacio real, ceden primero)
+    # Si el Estudio Virtual ya fue compactado por falta de espacio, no agregar relleno automático secundario
+    studio_was_tight = bool(studio_pack and (studio_pack.get("reduced_categories") or studio_pack.get("omitted_categories")))
+    for tok in (tier4_auto + tier4_secondary):
+        if studio_was_tight:
+            dropped_auto += 1
+            continue
         extra = _measure_len(tok) if not selected else _measure_len(tok) + 2
         if curr_len + extra <= max_chars:
             selected.append(tok)
+            kept_auto.append(tok)
             curr_len += extra
         else:
-            dropped_secondary += 1
+            dropped_auto += 1
 
     final_style = sanitize_positive_style(", ".join(selected), max_chars=max_chars)
     final_len = _measure_len(final_style)
     raw_studio_len = studio_pack.get("raw_length", 0) if studio_pack else 0
-    raw_with_studio_len = raw_len + (
-        (raw_studio_len + (2 if raw_len > 0 else 0)) if raw_studio_len > 0 else 0
+    raw_with_studio_len = raw_non_studio_len + (
+        (raw_studio_len + (2 if raw_non_studio_len > 0 else 0)) if raw_studio_len > 0 else 0
     )
     was_compacted = bool(
-        dropped_secondary > 0
+        user_prompt_exceeds_limit
+        or user_prompt_truncated
+        or len(dropped_explicit) > 0
+        or dropped_auto > 0
         or (studio_pack and studio_pack.get("reduced_categories"))
         or (studio_pack and studio_pack.get("omitted_categories"))
         or final_len < raw_with_studio_len
     )
+
+    compaction_notice = studio_pack.get("notice") if studio_pack else None
+    if user_prompt_warning_es:
+        compaction_notice = user_prompt_warning_es if not compaction_notice else f"{user_prompt_warning_es} {compaction_notice}"
+    elif dropped_explicit:
+        drop_note = (
+            f"Tu prompt personalizado ocupa {user_prompt_chars} chars; por el límite de {max_chars} caracteres "
+            f"se omitió configuración adicional ({', '.join(dropped_explicit[:3])})."
+        )
+        compaction_notice = drop_note if not compaction_notice else f"{drop_note} {compaction_notice}"
+    elif dropped_auto > 0 and not compaction_notice:
+        compaction_notice = (
+            f"Se priorizó tu texto y configuración explícita; se redujeron {dropped_auto} detalle(s) automático(s) "
+            f"secundario(s) para respetar el máximo de {max_chars} caracteres."
+        )
+
+    studio_final_chars = _measure_len(", ".join(studio_clauses_clean)) if studio_clauses_clean else 0
+    explicit_final_chars = _measure_len(", ".join(kept_explicit)) if kept_explicit else 0
+    auto_final_chars = _measure_len(", ".join(kept_auto)) if kept_auto else 0
+
     return {
         "style": final_style,
         "raw_length": raw_with_studio_len,
         "final_length": final_len,
         "truncated": was_compacted,
         "core_preserved": core_preserved,
-        "dropped_secondary_count": dropped_secondary,
+        "user_prompt_preserved": user_prompt_preserved,
+        "user_prompt_exceeds_limit": user_prompt_exceeds_limit,
+        "user_prompt_warning_es": user_prompt_warning_es,
+        "dropped_secondary_count": dropped_auto,
         "studio_profiles": studio_pack,
-        "compaction_notice": studio_pack.get("notice") if studio_pack else None,
+        "compaction_notice": compaction_notice,
+        "conflicts": list(conflicts or []),
+        "style_breakdown": {
+            "user_prompt_text": ", ".join(kept_user),
+            "user_prompt_chars": user_prompt_chars,
+            "user_prompt_preserved": user_prompt_preserved,
+            "user_prompt_truncated": user_prompt_truncated,
+            "user_prompt_exceeds_limit": user_prompt_exceeds_limit,
+            "user_prompt_overflow_chars": user_prompt_overflow_chars,
+            "explicit_config_clauses": kept_explicit,
+            "explicit_config_chars": explicit_final_chars,
+            "studio_virtual_clauses": studio_clauses_clean,
+            "studio_virtual_chars": studio_final_chars,
+            "auto_default_clauses": kept_auto,
+            "auto_default_chars": auto_final_chars,
+            "dropped_auto_count": dropped_auto,
+            "dropped_explicit_clauses": dropped_explicit,
+        },
         "style_optimization": {
             "raw_total_chars": raw_with_studio_len,
             "final_chars": final_len,
             "max_chars": max_chars,
             "utilization_pct": round((final_len / max_chars) * 100.0, 1) if max_chars > 0 else 0.0,
             "compacted": was_compacted,
-            "stage": studio_pack.get("compaction_stage") if studio_pack else "no_studio_active",
+            "stage": (
+                "user_prompt_overflow" if user_prompt_exceeds_limit
+                else (studio_pack.get("compaction_stage") if studio_pack else ("auto_trimmed" if dropped_auto > 0 else "no_studio_active"))
+            ),
             "preserved_dimensions": studio_pack.get("preserved_dimensions", {}) if studio_pack else {},
             "per_category_chars": studio_pack.get("per_category_chars", {}) if studio_pack else {},
             "deduplicated_concepts": studio_pack.get("deduplicated_concepts", []) if studio_pack else [],
@@ -3309,14 +3755,24 @@ def resolve_final_udio_style_pipeline(
     studio_selections: Optional[dict] = None,
     wants_solo_vocal: bool = False,
     wants_choir: bool = False,
+    style_context: Optional[dict] = None,
     log_fn=None,
 ) -> dict:
     """
     Pipeline determinístico y compartido entre `/api/preview_parameters` y `run_transform_task`
     para garantizar coincidencia 100% exacta entre la vista previa de `style` y el payload enviado a UdioAPI.
-    No realiza llamadas de red ni consume créditos.
+    Diferencia explícitamente instrucciones del usuario, configuración explícita, Estudio Virtual y
+    valores predeterminados automáticos. No realiza llamadas de red ni consume créditos.
     """
-    raw_style_before_enrich = style or ""
+    ctx = style_context if isinstance(style_context, dict) else None
+    has_ctx = ctx is not None
+    explicit_flags = (ctx.get("explicit_flags") or {}) if has_ctx else {}
+    rhythm_type = str(ctx.get("rhythm_type") or "libre").strip().lower() if has_ctx else "libre"
+    harmony_clauses = [str(c).strip() for c in (ctx.get("harmony_clauses") or []) if str(c).strip()] if has_ctx else []
+    ctx_instruments = [str(c).strip() for c in (ctx.get("selected_instruments") or []) if str(c).strip()] if has_ctx else []
+    raw_user_prompt = str(ctx.get("user_prompt") if has_ctx and ctx.get("user_prompt") is not None else (style or "")).strip()
+
+    raw_style_before_enrich = raw_user_prompt if has_ctx else (style or "")
     work_style = raw_style_before_enrich
     work_lyrics = final_lyrics or ""
 
@@ -3372,6 +3828,7 @@ def resolve_final_udio_style_pipeline(
 
     is_vals_vienes = not is_drum_solo and not is_guitar_solo and not is_bass_solo and (
         active_preset == "vals_vienes"
+        or rhythm_type == "waltz_34"
         or any(w in raw_style_before_enrich.lower() for w in ["vals vienes", "vals vienés", "viennese waltz", "waltz in 3/4", "vals 3/4", "vals"])
     )
 
@@ -3392,10 +3849,22 @@ def resolve_final_udio_style_pipeline(
         is_vals_vienes=is_vals_vienes,
         is_guitar_solo=is_guitar_solo,
         is_bass_solo=is_bass_solo,
+        hihat_user_explicit=(bool(explicit_flags.get("hihat")) if has_ctx else None),
+        bpm_user_explicit=(bool(explicit_flags.get("bpm")) if has_ctx else None),
     )
     bpm_tag = eff_cfg["bpm_tag"]
     if eff_cfg["effective_bpm"] and log_fn:
         log_fn(f"Tempo autoritativo del usuario aplicado: {bpm_tag}")
+
+    # Sanitizar nombres de artistas prohibidos sobre el texto escrito por el usuario (Prioridad 1 preservada)
+    # Solo eliminar etiquetas estructurales entre corchetes ([Verse], [Chorus], etc.), sin borrar términos musicales como "chorus suave" o "bridge pickup".
+    sanitized_user_prompt = _sanitize_artist_names_for_udio(raw_style_before_enrich, log_fn=log_fn)
+    sanitized_user_prompt = re.sub(r'\[(?:verse|chorus|bridge|outro|intro|pre-chorus)[^\]]*\]', '', sanitized_user_prompt, flags=re.IGNORECASE)
+    sanitized_user_prompt = sanitize_and_prioritize_style_with_config(
+        sanitized_user_prompt,
+        eff_cfg,
+        preserve_user_words=has_ctx,
+    )
 
     work_style = _enrich_style_keywords(work_style)
     work_style = _enrich_voice_keywords(work_style)
@@ -3403,8 +3872,15 @@ def resolve_final_udio_style_pipeline(
     sanitized_title = _sanitize_artist_names_for_udio(title, log_fn=log_fn)[:100].strip()
 
     # Clean structural tags from style string (they belong in lyrics, not style)
-    work_style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', work_style, flags=re.IGNORECASE)
-    work_style = sanitize_and_prioritize_style_with_config(work_style, eff_cfg)
+    if has_ctx:
+        work_style = re.sub(r'\[(?:verse|chorus|bridge|outro|intro|pre-chorus)[^\]]*\]', '', work_style, flags=re.IGNORECASE)
+    else:
+        work_style = re.sub(r'\b(verse|chorus|bridge|outro|intro|pre-chorus)\b', '', work_style, flags=re.IGNORECASE)
+    work_style = sanitize_and_prioritize_style_with_config(
+        work_style,
+        eff_cfg,
+        preserve_user_words=has_ctx,
+    )
 
     is_pentecostal = not is_drum_solo and (
         eff_cfg["preset_key"] == "pentecostal"
@@ -3467,29 +3943,32 @@ def resolve_final_udio_style_pipeline(
         else:
             genre_anchor = f"100% pure solo acoustic concert grand piano (Yamaha CFX / Steinway Model D), natural wooden soundboard resonance, pristine acoustic piano touch, lush hall reverb, {bpm_tag or '60 BPM'}, pure solo acoustic piano instrumental, solo piano only, unaccompanied solo performance, zero other instruments, no electric piano, no drums, no percussion, no bass, no guitars, no synths, no pads, no strings, no choir, no vocals"
     elif is_vals_vienes:
-        tempo_str = f", {bpm_tag}" if bpm_tag else ""
+        anchor_bpm_tag = bpm_tag if (not has_ctx or bool(explicit_flags.get("bpm") or active_preset)) else ""
+        tempo_str = f", {anchor_bpm_tag}" if anchor_bpm_tag else ""
         genre_anchor = f"sacred Viennese waltz hymn in 3/4 time{tempo_str}, authentic Viennese lilt, Johann Strauss II style, full classical symphony orchestra (violins, violas, cellos, double basses, flutes, piccolo, oboes, clarinets, bassoons, French horns, trumpets, trombones, timpani, crash cymbals, concert bass drum), oom-pah-pah 3/4 swing"
     elif is_pentecostal:
-        target_bpm_str = bpm_tag or "118 BPM"
+        anchor_bpm_tag = bpm_tag if (not has_ctx or bool(explicit_flags.get("bpm") or active_preset)) else ""
+        target_bpm_str = anchor_bpm_tag or "118 BPM"
         hihat_desc = eff_cfg["hihat_clause"] or "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
         bass_anchor = eff_cfg["bass_clause"] or "root-fifth alternating acoustic bassline"
         genre_anchor = f"full live acoustic praise drum kit, tempo 4/4, solid snare backbeat cracking on beats 2 and 4, heavy kick drum on 1 and 3, {hihat_desc}, crash downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar with real strings, traditional two-step praise straight 4/4 rhythm, {target_bpm_str}, {bass_anchor}, church choir singing in unison, natural Spanish vocals"
-    elif is_traditional_hymn:
+    elif is_traditional_hymn and (not has_ctx or bool(active_preset)):
         tempo_str = f", {bpm_tag}" if bpm_tag else ""
         genre_anchor = f"sacred traditional Christian hymn{tempo_str}, reverent and solemn atmosphere, natural hall acoustics, devotional delivery, organic production"
-    elif is_congregational:
+    elif is_congregational and (not has_ctx or bool(active_preset)):
         tempo_str = f", {bpm_tag}" if bpm_tag else ""
         genre_anchor = f"congregational Christian praise{tempo_str}, dynamic and uplifting atmosphere, church acoustic resonance, passionate communal delivery"
-    elif is_modern_composition:
+    elif is_modern_composition and (not has_ctx or bool(active_preset)):
         tempo_str = f", {bpm_tag}" if bpm_tag else ""
         meter_str = f", {eff_cfg['meter_clause']}" if eff_cfg.get("meter_clause") else ""
         genre_anchor = f"contemporary studio production{meter_str}{tempo_str}, modern live room acoustics, clear studio definition, expressive natural delivery"
     else:
+        anchor_bpm_tag = bpm_tag if (not has_ctx or bool(explicit_flags.get("bpm") or active_preset)) else ""
         anchors = []
         if eff_cfg.get("meter_clause"):
             anchors.append(eff_cfg["meter_clause"])
-        if bpm_tag:
-            anchors.append(bpm_tag)
+        if anchor_bpm_tag:
+            anchors.append(anchor_bpm_tag)
         genre_anchor = ", ".join(anchors)
 
     if not is_instrumental and not is_auto_lyrics and norm_lyrics_mode != "custom" and work_lyrics and work_lyrics.strip().lower() != "[instrumental]":
@@ -3506,7 +3985,7 @@ def resolve_final_udio_style_pipeline(
     vocal_tag = ""
     if is_instrumental:
         if "instrumental" not in work_style.lower():
-            work_style = work_style + ", instrumental, no vocals"
+            work_style = f"{work_style}, instrumental, no vocals" if work_style.strip() else "instrumental, no vocals"
     else:
         gender_kw = "male " if vocal_gender == "male" else ("female " if vocal_gender == "female" else "")
         if wants_solo_vocal:
@@ -3515,7 +3994,7 @@ def resolve_final_udio_style_pipeline(
             elif "mexican" in work_style.lower() or "mexicano" in work_style.lower():
                 vocal_tag = f"natural {gender_kw}Mexican Spanish solo vocals, clean tone, no autotune, no choir"
             else:
-                vocal_tag = f"clear natural {gender_kw}solo Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent, no choir"
+                vocal_tag = f"clear natural {gender_kw}solo Spanish vocals, authentic delivery, no autotune, no castilian lisp, no caribbean accent, no choir"
         elif wants_choir:
             if "argentin" in work_style.lower() or is_pentecostal:
                 vocal_tag = "Argentine church choir, natural Argentine Spanish accent, passionate congregational singing in unison, no caribbean accent, no central american accent"
@@ -3529,7 +4008,7 @@ def resolve_final_udio_style_pipeline(
             elif "mexican" in work_style.lower() or "mexicano" in work_style.lower():
                 vocal_tag = f"natural {gender_kw}Mexican Spanish vocals, no autotune"
             else:
-                vocal_tag = f"clear natural {gender_kw}Spanish vocals, neutral tone, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
+                vocal_tag = f"clear natural {gender_kw}Spanish vocals, authentic delivery, no autotune, no castilian lisp, no caribbean accent"
 
     active_studio_solo = (
         "drums" if is_drum_solo else (
@@ -3548,7 +4027,21 @@ def resolve_final_udio_style_pipeline(
         if (studio_virtual_catalog and norm_studio_selections)
         else []
     )
-    pos_for_exclusions = ", ".join([p for p in ([work_style] + studio_core_preview) if p and str(p).strip()])
+
+    is_any_solo = is_drum_solo or is_guitar_solo or is_bass_solo or is_solo_piano_prayer
+    insts_are_explicit = bool(explicit_flags.get("instruments") or active_preset) if has_ctx else False
+    deduped_instruments: list[str] = []
+    kept_ctx_instruments: list[str] = []
+    if has_ctx and not is_any_solo and insts_are_explicit and ctx_instruments:
+        kept_ctx_instruments, deduped_instruments = _deduplicate_instruments_against_context(
+            ctx_instruments,
+            user_prompt_lower=(sanitized_user_prompt or "").lower(),
+            studio_selections=norm_studio_selections,
+        )
+
+    pos_for_exclusions = ", ".join(
+        [p for p in ([work_style] + kept_ctx_instruments + studio_core_preview) if p and str(p).strip()]
+    )
 
     neg_final_str, provider_tags_str, active_critical = resolve_negative_exclusions(
         exclude_styles=exclude_styles,
@@ -3563,6 +4056,18 @@ def resolve_final_udio_style_pipeline(
     if neg_final_str and log_fn:
         log_fn(f"Exclusión estricta aplicada con éxito: {neg_final_str}")
 
+    conflicts = _detect_musical_conflicts(
+        user_prompt=raw_style_before_enrich,
+        eff_cfg=eff_cfg,
+        target_bpm=target_bpm,
+        rhythm_type=rhythm_type,
+        studio_selections=norm_studio_selections,
+        selected_instruments=ctx_instruments,
+        is_instrumental=is_instrumental,
+        exclude_styles=exclude_styles,
+        explicit_flags=explicit_flags,
+    )
+
     if is_drum_solo:
         clean_style = re.sub(r'\b(rock|band|song|full band|no\s+\w+|guitar\w*|bass\w*|piano\w*|synth\w*|vocal\w*|singing)\b', '', work_style, flags=re.IGNORECASE)
         clean_style = re.sub(r',\s*,+', ',', clean_style).strip(' ,')
@@ -3571,13 +4076,14 @@ def resolve_final_udio_style_pipeline(
             genre_anchor=solo_anchor,
             bpm_tag=bpm_tag,
             user_and_enriched_style="",
-            priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+            priority_rhythm_clauses=eff_cfg.get("concise_rhythm_clauses") if has_ctx else eff_cfg.get("priority_clauses", []),
             vocal_tag="",
             is_instrumental=True,
             is_solo_mode=True,
             max_chars=1000,
             studio_selections=norm_studio_selections,
             studio_solo_mode="drums",
+            conflicts=conflicts,
         )
     elif is_guitar_solo:
         clean_style = re.sub(
@@ -3597,6 +4103,7 @@ def resolve_final_udio_style_pipeline(
             max_chars=1000,
             studio_selections=norm_studio_selections,
             studio_solo_mode="guitar",
+            conflicts=conflicts,
         )
     elif is_bass_solo:
         clean_style = re.sub(
@@ -3609,13 +4116,14 @@ def resolve_final_udio_style_pipeline(
             genre_anchor=solo_anchor,
             bpm_tag=bpm_tag,
             user_and_enriched_style=clean_style,
-            priority_rhythm_clauses=eff_cfg.get("priority_clauses", []),
+            priority_rhythm_clauses=eff_cfg.get("concise_rhythm_clauses") if has_ctx else eff_cfg.get("priority_clauses", []),
             vocal_tag="",
             is_instrumental=True,
             is_solo_mode=True,
             max_chars=1000,
             studio_selections=norm_studio_selections,
             studio_solo_mode="bass",
+            conflicts=conflicts,
         )
     elif is_solo_piano_prayer:
         clean_style = re.sub(
@@ -3635,7 +4143,95 @@ def resolve_final_udio_style_pipeline(
             max_chars=1000,
             studio_selections=norm_studio_selections,
             studio_solo_mode="piano",
+            conflicts=conflicts,
         )
+    elif has_ctx:
+        # Construcción estructurada estricta (0/1.000 inicial sin inyección automática de valores por defecto):
+        # Prioridad 1: Prompt del usuario | Prioridad 2: Config explícita | Prioridad 3: Estudio Virtual | Prioridad 4: Secundario
+        extra_anchor_parts = [genre_anchor] if genre_anchor else []
+        prompt_low = (sanitized_user_prompt or "").lower()
+        if active_preset != "juvenil":
+            if rhythm_type in ("dos_pasos", "gospel_2step") and "dos pasos" not in prompt_low and "two-step" not in prompt_low:
+                extra_anchor_parts.append(
+                    "two-step praise straight 4/4, loud acoustic snare backbeat on 2 & 4, kick on 1 & 3, upfront live drums"
+                )
+            elif rhythm_type == "worship_ballad" and "ballad" not in prompt_low:
+                extra_anchor_parts.append(
+                    "Christian worship ballad, straight 4/4 rock drum beat with snare backbeat on 2 & 4"
+                )
+        for hc in harmony_clauses:
+            if hc and hc.lower() not in prompt_low:
+                extra_anchor_parts.append(hc)
+        effective_anchor = ", ".join(p for p in extra_anchor_parts if p and p.strip())
+
+        # Instrumentos: SOLO si fueron seleccionados expresamente por el usuario o mediante un preset
+        explicit_insts = kept_ctx_instruments if insts_are_explicit else []
+        auto_insts: list[str] = []
+
+        # Articulaciones rítmicas: SOLO las elegidas expresamente por el usuario (los defaults internos del motor no se inyectan en `style`)
+        explicit_rhythm: list[str] = []
+        auto_rhythm: list[str] = []
+
+        # Hi-Hat: solo si el usuario modificó el selector explícitamente
+        concise_hh = eff_cfg.get("concise_hihat_clause") or ""
+        if concise_hh and explicit_flags.get("hihat") and "hi-hat" not in prompt_low and "hihat" not in prompt_low:
+            explicit_rhythm.append(concise_hh)
+
+        # Articulaciones de batería: solo las marcadas/modificadas expresamente por el usuario
+        if eff_cfg.get("tom_grooves") and explicit_flags.get("tom_grooves"):
+            explicit_rhythm.append(eff_cfg.get("concise_tom_clause") or "driving floor & rack tom grooves")
+        if eff_cfg.get("crash_toms") and explicit_flags.get("crash_toms"):
+            explicit_rhythm.append(eff_cfg.get("concise_crash_clause") or "crash cymbals & dynamic tom fills")
+        if eff_cfg.get("splash_ride") and explicit_flags.get("splash_ride"):
+            explicit_rhythm.append(eff_cfg.get("concise_splash_clause") or "splash cymbal & ride bell accents")
+
+        # Articulaciones de bajo: evaluar Slap y Pick-up de forma independiente según selección explícita
+        eff_explicit_slap = bool(eff_cfg.get("bass_slap") and explicit_flags.get("bass_slap"))
+        eff_explicit_pickup = bool(eff_cfg.get("bass_pickup") and explicit_flags.get("bass_pickup"))
+        if eff_explicit_slap and eff_explicit_pickup:
+            explicit_rhythm.append("funky slap & pop electric bass with chromatic pick-up passing notes")
+        elif eff_explicit_slap:
+            explicit_rhythm.append("funky slap & pop electric bass")
+        elif eff_explicit_pickup:
+            explicit_rhythm.append("chromatic pick-up & walking bass passing notes")
+
+        # Voz: solo si el usuario seleccionó género vocal, modo instrumental, voz solista, coro o preset vocal
+        vocal_is_explicit = bool(
+            is_instrumental
+            or wants_solo_vocal
+            or wants_choir
+            or is_pentecostal
+            or explicit_flags.get("vocal_gender")
+            or vocal_gender in ("male", "female")
+        )
+        # BPM: solo si el usuario modificó el tempo, seleccionó un preset o escribió un BPM en el prompt
+        bpm_is_explicit = bool(explicit_flags.get("bpm") or active_preset)
+        active_bpm_tag = bpm_tag if bpm_is_explicit else ""
+        active_vocal_tag = "" if (is_instrumental or not vocal_is_explicit) else vocal_tag
+
+        style_build = build_prioritized_style(
+            genre_anchor=effective_anchor,
+            bpm_tag=active_bpm_tag,
+            user_and_enriched_style=work_style,
+            priority_rhythm_clauses=[],
+            vocal_tag=active_vocal_tag,
+            is_instrumental=is_instrumental,
+            is_solo_mode=False,
+            max_chars=1000,
+            raw_user_style=raw_style_before_enrich,
+            studio_selections=norm_studio_selections,
+            studio_solo_mode=None,
+            explicit_instruments=explicit_insts,
+            explicit_rhythm_clauses=explicit_rhythm,
+            auto_default_instruments=auto_insts,
+            auto_default_rhythm_clauses=auto_rhythm,
+            vocal_is_explicit=vocal_is_explicit,
+            bpm_is_explicit=bpm_is_explicit,
+            structured_user_prompt=sanitized_user_prompt,
+            conflicts=conflicts,
+        )
+        if style_build.get("style_breakdown") is not None:
+            style_build["style_breakdown"]["deduplicated_instruments"] = deduped_instruments
     else:
         active_vocal_tag = "" if is_instrumental else vocal_tag
         style_build = build_prioritized_style(
@@ -3650,6 +4246,7 @@ def resolve_final_udio_style_pipeline(
             raw_user_style=raw_style_before_enrich,
             studio_selections=norm_studio_selections,
             studio_solo_mode=None,
+            conflicts=conflicts,
         )
 
     omitted_keys = (style_build.get("studio_profiles") or {}).get("omitted_categories", [])
@@ -3669,6 +4266,9 @@ def resolve_final_udio_style_pipeline(
         "is_vals_vienes": is_vals_vienes,
         "is_pentecostal": is_pentecostal,
         "omitted_warning_es": _format_omitted_categories_warning_es(omitted_keys),
+        "user_prompt_warning_es": style_build.get("user_prompt_warning_es"),
+        "conflicts": style_build.get("conflicts", []),
+        "style_breakdown": style_build.get("style_breakdown"),
     }
 
 def bypass_audio_fingerprint(input_path: str, output_path: str) -> str:
@@ -3811,6 +4411,7 @@ async def preview_parameters(
     studio_keyboard: str = Form("auto"),
     studio_console: str = Form("auto"),
     studio_mic: str = Form("auto"),
+    style_context_json: str = Form(""),
     current_user: str = Depends(get_current_user)
 ):
     """
@@ -3834,6 +4435,7 @@ async def preview_parameters(
     eff_excl = str(_val(exclude_styles, "") or "")
     eff_skel = str(_val(skeleton_file, "") or "")
     eff_gender = str(_val(vocal_gender, "random") or "random")
+    parsed_style_context = _parse_style_context_json(str(_val(style_context_json, "") or ""))
 
     studio_selections = None
     if studio_virtual_catalog:
@@ -3889,7 +4491,15 @@ async def preview_parameters(
                 if words and all(chord_token_pattern.match(w) for w in words) and 1 <= len(words) <= 8:
                     extracted_chords.extend(words)
             if extracted_chords and "chord progression" not in work_style.lower():
-                work_style = f"chord progression: {' - '.join(extracted_chords[:12])}, {work_style}"
+                prog_clause = f"chord progression: {' - '.join(extracted_chords[:12])}"
+                if parsed_style_context is not None:
+                    hc_list = list(parsed_style_context.get("harmony_clauses") or [])
+                    if not any("chord progression" in str(c).lower() for c in hc_list):
+                        hc_list.append(prog_clause)
+                        parsed_style_context = dict(parsed_style_context)
+                        parsed_style_context["harmony_clauses"] = hc_list
+                else:
+                    work_style = f"{prog_clause}, {work_style}"
 
     resolved = resolve_final_udio_style_pipeline(
         style=work_style,
@@ -3911,6 +4521,7 @@ async def preview_parameters(
         studio_selections=studio_selections,
         wants_solo_vocal=wants_solo_vocal,
         wants_choir=wants_choir,
+        style_context=parsed_style_context,
         log_fn=None,
     )
     style_build = resolved["style_build"]
@@ -3930,12 +4541,16 @@ async def preview_parameters(
         "style_preview": computed_style[:200] + ("..." if len(computed_style) > 200 else ""),
         "style_full_preview": computed_style,
         "style_length": style_build.get("final_length", len(computed_style)),
+        "style_available_chars": max(0, 1000 - int(style_build.get("final_length", len(computed_style)))),
         "style_raw_length": style_build.get("raw_length", len(computed_style)),
         "style_max_chars": 1000,
         "style_optimization": style_build.get("style_optimization"),
+        "style_breakdown": resolved.get("style_breakdown"),
         "studio_profiles": style_build.get("studio_profiles"),
         "compaction_notice": style_build.get("compaction_notice"),
         "omitted_warning_es": resolved.get("omitted_warning_es"),
+        "user_prompt_warning_es": resolved.get("user_prompt_warning_es"),
+        "conflicts": resolved.get("conflicts", []),
         "tags_preview": resolved.get("provider_tags_str") or "",
         "honesty_notice": studio_virtual_catalog.STUDIO_PROFILE_HONESTY_NOTICE if studio_virtual_catalog else "",
         "exclude_preview": eff_excl[:150] + ("..." if len(eff_excl) > 150 else "") if eff_excl else "Ninguna",
@@ -4046,6 +4661,7 @@ async def transform_audio(
     studio_keyboard: str = Form("auto"),
     studio_console: str = Form("auto"),
     studio_mic: str = Form("auto"),
+    style_context_json: str = Form(""),
     current_user: str = Depends(get_current_user)
 ):
     try:
@@ -4195,6 +4811,8 @@ async def transform_audio(
             else None
         )
         studio_sig = json.dumps(studio_selections, sort_keys=True) if studio_selections else ""
+        parsed_style_context = _parse_style_context_json(style_context_json)
+        ctx_sig = json.dumps(parsed_style_context, sort_keys=True) if parsed_style_context else ""
 
         # Prevención de solicitudes duplicadas concurrentes por cliente / operación
         if client_operation_id:
@@ -4206,7 +4824,7 @@ async def transform_audio(
                 content_hash = hashlib.sha256(audio_sample).hexdigest()
             else:
                 content_hash = "no_audio"
-            payload_str = f"{current_user}:{title}:{style}:{lyrics_mode}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}:{studio_sig}"
+            payload_str = f"{current_user}:{title}:{style}:{lyrics_mode}:{model}:{audio_influence}:{style_influence}:{weirdness}:{content_hash}:{studio_sig}:{ctx_sig}"
             op_key = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
         now_ts = time.time()
@@ -4246,7 +4864,7 @@ async def transform_audio(
             style_influence, audio_influence, model, pronunciation, obfuscate, is_public_domain,
             target_bpm, hihat_mode, art_crash_toms, art_splash_ride, art_tom_grooves,
             art_bass_slap, art_bass_pickup, active_preset, lyrics_mode, preserve_original_audio,
-            studio_selections
+            studio_selections, parsed_style_context
         )
 
         return {"status": "started", "task_id": task_id}
@@ -5212,6 +5830,8 @@ def resolve_effective_musical_config(
     is_vals_vienes: bool = False,
     is_guitar_solo: bool = False,
     is_bass_solo: bool = False,
+    hihat_user_explicit: Optional[bool] = None,
+    bpm_user_explicit: Optional[bool] = None,
 ) -> dict:
     """
     Única fuente de verdad (Single Source of Truth) para resolver la configuración
@@ -5320,10 +5940,12 @@ def resolve_effective_musical_config(
     explicit_target = float(target_bpm) if (target_bpm and float(target_bpm) > 0) else None
 
     if explicit_target is not None:
-        # Si el usuario editó directamente el BPM en el texto de estilo y difiere del default del preset
-        # mientras target_bpm seguía en el default, priorizar el editado por el usuario.
+        # Si el usuario escribió un BPM en su prompt y el control de BPM NO fue tocado (o seguía en el default),
+        # priorizar siempre el BPM escrito por el usuario.
         user_edited_in_text = next((b for b in reversed(raw_bpm_matches) if default_bpm is None or b != default_bpm), None)
-        if default_bpm is not None and explicit_target == default_bpm and user_edited_in_text is not None:
+        if bpm_user_explicit is False and raw_bpm_matches:
+            effective_bpm = raw_bpm_matches[-1]
+        elif default_bpm is not None and explicit_target == default_bpm and user_edited_in_text is not None:
             effective_bpm = user_edited_in_text
         else:
             effective_bpm = explicit_target
@@ -5341,11 +5963,15 @@ def resolve_effective_musical_config(
 
     # 2. Resolver subdivisión de Hi-Hat autoritativa del usuario (sin contradicciones)
     hm_clean = (hihat_mode or "").strip().lower()
-    if hm_clean in ("4th", "8th", "16th"):
+    prompt_wants_16th = any(k in raw_lower for k in ("16th-note", "16th note", "sixteenth-note", "semicorchea", "four strokes per beat", "4 golpes", "hihat 16th"))
+    prompt_wants_4th = any(k in raw_lower for k in ("quarter-note", "quarter note", "hi-hat en negras", "hihat en negras", "one stroke per beat", "1 golpe", "hihat 4th"))
+    if hihat_user_explicit is False and (prompt_wants_16th or prompt_wants_4th):
+        effective_hihat = "16th" if prompt_wants_16th else "4th"
+    elif hm_clean in ("4th", "8th", "16th"):
         effective_hihat = hm_clean
-    elif any(k in raw_lower for k in ("16th-note", "16th note", "sixteenth-note", "semicorchea", "four strokes per beat", "4 golpes", "hihat 16th")):
+    elif prompt_wants_16th:
         effective_hihat = "16th"
-    elif any(k in raw_lower for k in ("quarter-note", "quarter note", "negras", "one stroke per beat", "1 golpe", "hihat 4th")):
+    elif prompt_wants_4th or "negras" in raw_lower:
         effective_hihat = "4th"
     else:
         effective_hihat = "8th"
@@ -5384,24 +6010,30 @@ def resolve_effective_musical_config(
             k in raw_lower for k in ("pick-up", "pickup bass", "passing tones", "notas de paso")
         )
 
-    # 4. Construir cláusulas prioritarias sin contradicciones
+    # 4. Construir cláusulas prioritarias sin contradicciones (y equivalentes concisos para evitar saturación)
     priority_clauses = []
+    concise_rhythm_clauses = []
     if not is_solo_piano_prayer and not is_vals_vienes and not is_guitar_solo and not is_bass_solo:
         if effective_hihat == "16th":
             hihat_clause = "fast driving 16th-note hi-hat subdivision pattern (four strokes per beat, rapid sixteenth-note hi-hats)"
+            concise_hihat_clause = "driving 16th-note hi-hat"
         elif effective_hihat == "4th":
             if effective_meter and effective_meter != "4/4":
                 hihat_clause = "heavy steady quarter-note hi-hat pulse on every beat"
             else:
                 hihat_clause = "heavy steady quarter-note hi-hat pulse on every beat (one stroke per beat, 1-2-3-4)"
+            concise_hihat_clause = "steady quarter-note hi-hat"
         else:
             if effective_meter and effective_meter != "4/4":
                 hihat_clause = "steady closed eighth-note hi-hat pattern with natural subdivision"
             else:
                 hihat_clause = "steady closed eighth-note hi-hat pattern (two strokes per beat, 1-and 2-and 3-and 4-and)"
+            concise_hihat_clause = "closed 8th-note hi-hat"
         priority_clauses.append(hihat_clause)
+        concise_rhythm_clauses.append(concise_hihat_clause)
     else:
         hihat_clause = ""
+        concise_hihat_clause = ""
 
     if not is_solo_piano_prayer and not is_drum_solo and not is_guitar_solo:
         if eff_bass_slap and eff_bass_pickup:
@@ -5409,35 +6041,52 @@ def resolve_effective_musical_config(
                 "prominent funky slap and pop electric bass (percussive thumb slaps on main beats and crisp octave pops on accents) "
                 "combined with expressive chromatic pick-up approach notes and melodic bass passing tones leading into chord transitions and downbeats"
             )
+            concise_bass_clause = "funky slap & pop electric bass with chromatic pick-up passing notes"
             priority_clauses.append(bass_clause)
+            concise_rhythm_clauses.append(concise_bass_clause)
         elif eff_bass_slap:
             bass_clause = (
                 "prominent funky slap and pop electric bass lead groove "
                 "(percussive thumb slap and crisp octave finger pop technique, roundwound steel strings)"
             )
+            concise_bass_clause = "funky slap & pop electric bass"
             priority_clauses.append(bass_clause)
+            concise_rhythm_clauses.append(concise_bass_clause)
         elif eff_bass_pickup:
             bass_clause = "expressive chromatic pick-up bass notes and walking bass passing tones leading into chord transitions and downbeats"
+            concise_bass_clause = "chromatic pick-up & walking bass passing notes"
             priority_clauses.append(bass_clause)
+            concise_rhythm_clauses.append(concise_bass_clause)
         else:
             bass_clause = ""
+            concise_bass_clause = ""
     else:
         bass_clause = ""
+        concise_bass_clause = ""
 
     drum_clauses = []
+    concise_tom_clause = ""
+    concise_crash_clause = ""
+    concise_splash_clause = ""
     if not is_solo_piano_prayer:
         if eff_tom_grooves:
             tom_clause = "explicit arrangement with driving rhythmic floor tom groove and articulate rack tom patterns"
+            concise_tom_clause = "driving floor & rack tom grooves"
             drum_clauses.append(tom_clause)
             priority_clauses.append(tom_clause)
+            concise_rhythm_clauses.append(concise_tom_clause)
         if eff_crash_toms:
             crash_clause = "explosive crash cymbals on musical transitions and section downbeats, dynamic acoustic tom rolls and drum fills between sections"
+            concise_crash_clause = "crash cymbals & dynamic tom fills"
             drum_clauses.append(crash_clause)
             priority_clauses.append(crash_clause)
+            concise_rhythm_clauses.append(concise_crash_clause)
         if eff_splash_ride:
             splash_clause = "crisp splash cymbal accents and articulate ride cymbal bell pings"
+            concise_splash_clause = "splash cymbal & ride bell accents"
             drum_clauses.append(splash_clause)
             priority_clauses.append(splash_clause)
+            concise_rhythm_clauses.append(concise_splash_clause)
 
     return {
         "preset_key": preset_key,
@@ -5448,36 +6097,44 @@ def resolve_effective_musical_config(
         "meter_clause": meter_clause,
         "effective_hihat": effective_hihat,
         "hihat_clause": hihat_clause,
+        "concise_hihat_clause": concise_hihat_clause,
         "crash_toms": eff_crash_toms,
         "splash_ride": eff_splash_ride,
         "tom_grooves": eff_tom_grooves,
         "bass_slap": eff_bass_slap,
         "bass_pickup": eff_bass_pickup,
         "bass_clause": bass_clause,
+        "concise_bass_clause": concise_bass_clause,
+        "concise_tom_clause": concise_tom_clause,
+        "concise_crash_clause": concise_crash_clause,
+        "concise_splash_clause": concise_splash_clause,
         "drum_clauses": drum_clauses,
         "priority_clauses": priority_clauses,
+        "concise_rhythm_clauses": concise_rhythm_clauses,
     }
 
 
-def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
+def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict, preserve_user_words: bool = False) -> str:
     """
-    Purga todas las referencias contradictorias de BPM, subdivisiones de hi-hat opuestas
-    y técnicas de bajo incompatibles (como fingerstyle cuando se activa Slap & Pop),
-    garantizando que las elecciones del usuario sean inequívocas.
+    Purga referencias contradictorias de BPM, subdivisiones de hi-hat opuestas
+    y técnicas de bajo incompatibles, garantizando que las elecciones del usuario sean inequívocas.
+    Cuando `preserve_user_words=True`, evita eliminar vocabulario libre del usuario en español/inglés
+    que no constituye una cláusula automática contradictoria.
     """
     cleaned = style_str or ""
 
-    # 1. Purgar TODOS los BPM residuales y adjetivos huérfanos de tempo
-    cleaned = re.sub(
-        r'\b(?:driving|steady|gentle|andante|slow|fast)?\s*\d+(?:\.\d+)?\s*bpm(?:\s+tempo|\s+slow\s+tempo|\s+slow\s+devotional\s+worship\s+tempo)?\b',
-        '',
-        cleaned,
-        flags=re.IGNORECASE,
-    )
-    cleaned = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', cleaned, flags=re.IGNORECASE)
-    # Limpiar etiquetas huérfanas de Tempo o BPM que quedaron vacías (ej: "Tempo: .")
-    cleaned = re.sub(r'\b(?:tempo|bpm)\s*[:=]?\s*(?=[.,;]|\s+|$)', '', cleaned, flags=re.IGNORECASE)
+    # 1. Purgar BPM residuales y adjetivos huérfanos de tempo (solo si hay un bpm_tag consolidado o en modo legacy)
+    if not preserve_user_words:
+        cleaned = re.sub(
+            r'\b(?:driving|steady|gentle|andante|slow|fast)?\s*\d+(?:\.\d+)?\s*bpm(?:\s+tempo|\s+slow\s+tempo|\s+slow\s+devotional\s+worship\s+tempo)?\b',
+            '',
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(r'\b\d+(?:\.\d+)?\s*bpm\b', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\b(high tempo|fast tempo|uptempo|slow tempo)\b', '', cleaned, flags=re.IGNORECASE)
+        # Limpiar etiquetas huérfanas de Tempo o BPM que quedaron vacías (ej: "Tempo: .")
+        cleaned = re.sub(r'\b(?:tempo|bpm)\s*[:=]?\s*(?=[.,;]|\s+|$)', '', cleaned, flags=re.IGNORECASE)
 
     # 1b. Si se especificó una métrica distinta de 4/4 (ej. 7/4, 5/4, 6/8, 12/8, 3/4), purgar 4/4 contradictorio
     eff_meter = cfg.get("effective_meter")
@@ -5497,21 +6154,26 @@ def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
         r'\((?:two|one|four)\s+strokes\s+per\s+beat[^\)]*\)',
         r'\b1-and\s+2-and\s+3-and\s+4-and\)*',
         r'\b1-2-3-4\)*',
-        r'\b(?:eighth-note|eighth\s+notes?|quarter-note|quarter\s+notes?|16th-note|16th\s+notes?|sixteenth-note|sixteenth\s+notes?|corcheas?|negras?|semicorcheas?)\s+hi-?hat\w*\b',
-        r'\bhi-?hat\s+en\s+(?:corcheas?|negras?|semicorcheas?)\b',
-        r'\b(?:1|2|4|un|dos|cuatro)\s+golpes?\s+(?:por|x)\s+tempo\b',
     ]
+    if not preserve_user_words:
+        hihat_purge_patterns.extend([
+            r'\b(?:eighth-note|eighth\s+notes?|quarter-note|quarter\s+notes?|16th-note|16th\s+notes?|sixteenth-note|sixteenth\s+notes?|corcheas?|negras?|semicorcheas?)\s+hi-?hat\w*\b',
+            r'\bhi-?hat\s+en\s+(?:corcheas?|negras?|semicorcheas?)\b',
+            r'\b(?:1|2|4|un|dos|cuatro)\s+golpes?\s+(?:por|x)\s+tempo\b',
+        ])
     for pat in hihat_purge_patterns:
         cleaned = re.sub(pat, '', cleaned, flags=re.IGNORECASE)
 
-    # Si el modo elegido NO es 8th, eliminar cualquier mención residual de eighth/corchea; etc.
-    eff_hh = cfg.get("effective_hihat", "8th")
-    if eff_hh == "16th":
-        cleaned = re.sub(r'\b(?:eighth-note|eighth\s+notes?|eighth|corcheas?|quarter-note|quarter\s+notes?|quarter|negras?)\b', '', cleaned, flags=re.IGNORECASE)
-    elif eff_hh == "4th":
-        cleaned = re.sub(r'\b(?:eighth-note|eighth\s+notes?|eighth|corcheas?|16th-note|16th\s+notes?|16th|sixteenth-note|sixteenth\s+notes?|sixteenth|semicorcheas?)\b', '', cleaned, flags=re.IGNORECASE)
-    elif eff_hh == "8th":
-        cleaned = re.sub(r'\b(?:quarter-note|quarter\s+notes?|quarter|negras?|16th-note|16th\s+notes?|16th|sixteenth-note|sixteenth\s+notes?|sixteenth|semicorcheas?)\b', '', cleaned, flags=re.IGNORECASE)
+    # Solo purgar términos genéricos sueltos de figura musical en modo legacy (en modo usuario estructurado
+    # jamás borrar palabras como "negras" o "corcheas" del texto libre del usuario)
+    if not preserve_user_words:
+        eff_hh = cfg.get("effective_hihat", "8th")
+        if eff_hh == "16th":
+            cleaned = re.sub(r'\b(?:eighth-note|eighth\s+notes?|eighth|corcheas?|quarter-note|quarter\s+notes?|quarter|negras?)\b', '', cleaned, flags=re.IGNORECASE)
+        elif eff_hh == "4th":
+            cleaned = re.sub(r'\b(?:eighth-note|eighth\s+notes?|eighth|corcheas?|16th-note|16th\s+notes?|16th|sixteenth-note|sixteenth\s+notes?|sixteenth|semicorcheas?)\b', '', cleaned, flags=re.IGNORECASE)
+        elif eff_hh == "8th":
+            cleaned = re.sub(r'\b(?:quarter-note|quarter\s+notes?|quarter|negras?|16th-note|16th\s+notes?|16th|sixteenth-note|sixteenth\s+notes?|sixteenth|semicorcheas?)\b', '', cleaned, flags=re.IGNORECASE)
 
     # 3. Purgar frases crudas previas de articulación para reinsertarlas con prioridad única al frente
     raw_art_patterns = [
@@ -5524,8 +6186,8 @@ def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
     for pat in raw_art_patterns:
         cleaned = re.sub(pat, '', cleaned, flags=re.IGNORECASE)
 
-    # 4. Si Slap & Pop está activo, eliminar cualquier instrucción incompatible como fingerstyle o flatwound
-    if cfg.get("bass_slap"):
+    # 4. Si Slap & Pop está activo, eliminar frases automáticas incompatibles (sin borrar texto libre del usuario)
+    if cfg.get("bass_slap") and not preserve_user_words:
         incompatible_bass_patterns = [
             r'played fingerstyle with organic string dynamics(?: and natural fret buzz)?',
             r'real human fingerstyle bass plucking',
@@ -5547,7 +6209,10 @@ def sanitize_and_prioritize_style_with_config(style_str: str, cfg: dict) -> str:
 
     # Limpiar comas múltiples y espacios residuales
     parts = [re.sub(r'\s+', ' ', p).strip(' ,-') for p in cleaned.split(',')]
-    parts = [p for p in parts if p and p.lower() not in ('driving', 'steady', 'gentle', 'andante', 'slow', 'fast')]
+    if preserve_user_words:
+        parts = [p for p in parts if p]
+    else:
+        parts = [p for p in parts if p and p.lower() not in ('driving', 'steady', 'gentle', 'andante', 'slow', 'fast')]
     return ", ".join(parts)
 
 
@@ -5627,7 +6292,7 @@ async def run_transform_task(
     is_public_domain=False, target_bpm=0, hihat_mode="", art_crash_toms=None,
     art_splash_ride=None, art_tom_grooves=None, art_bass_slap=None,
     art_bass_pickup=None, active_preset="", lyrics_mode="custom",
-    preserve_original_audio=False, studio_selections=None
+    preserve_original_audio=False, studio_selections=None, style_context=None
 ):
     def log_msg(msg):
         import datetime
@@ -5736,7 +6401,15 @@ async def run_transform_task(
                     cleaned_lines.append(inline_cleaned)
             if extracted_chords and "chord progression" not in style.lower():
                 prog_str = " - ".join(extracted_chords[:12])
-                style = f"chord progression: {prog_str}, {style}"
+                prog_clause = f"chord progression: {prog_str}"
+                if isinstance(style_context, dict):
+                    hc_list = list(style_context.get("harmony_clauses") or [])
+                    if not any("chord progression" in str(c).lower() for c in hc_list):
+                        hc_list.append(prog_clause)
+                        style_context = dict(style_context)
+                        style_context["harmony_clauses"] = hc_list
+                else:
+                    style = f"{prog_clause}, {style}"
                 log_msg(f"Acordes detectados y sincronizados en la mezcla: {prog_str}")
             final_lyrics = "\n".join(cleaned_lines)
 
@@ -5877,6 +6550,7 @@ async def run_transform_task(
             studio_selections=studio_selections,
             wants_solo_vocal=wants_solo_vocal,
             wants_choir=wants_choir,
+            style_context=style_context,
             log_fn=log_msg,
         )
         style_build = resolved_pipeline["style_build"]
@@ -5894,6 +6568,9 @@ async def run_transform_task(
         is_pentecostal = resolved_pipeline["is_pentecostal"]
         clean_positive_style = resolved_pipeline["clean_positive_style"]
         style = clean_positive_style
+
+        for conf_msg in (resolved_pipeline.get("conflicts") or []):
+            log_msg(f"Aviso de conflicto musical: {conf_msg}")
 
         if style_build.get("compaction_notice"):
             log_msg(style_build["compaction_notice"])
@@ -5919,7 +6596,7 @@ async def run_transform_task(
                 cover_prompt = "[Instrumental]"
             elif is_auto_lyrics:
                 cover_custom_mode = False
-                cover_prompt = clean_positive_style
+                cover_prompt = clean_positive_style or title
             else:
                 cover_custom_mode = True
                 cover_prompt = final_lyrics
@@ -5950,7 +6627,7 @@ async def run_transform_task(
                 gen_prompt = "[Instrumental]"
             elif is_auto_lyrics:
                 gen_custom_mode = False
-                gen_prompt = clean_positive_style
+                gen_prompt = clean_positive_style or title
             else:
                 gen_custom_mode = True
                 gen_prompt = final_lyrics

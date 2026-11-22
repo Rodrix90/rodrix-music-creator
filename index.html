@@ -3851,7 +3851,7 @@ html, body {
               <button type="button" class="inspiration-chip" onclick="applyInspiration('Vals Vienés Imperial')">👑 Vals 3/4</button>
               <button type="button" class="inspiration-chip" onclick="applyInspiration('Rock Cristiano Épico')">🤘 Rock Épico</button>
             </div>
-            <textarea id="styleInput" required placeholder="Describe todo aquí: Voz como Luis Miguel, estilo pop energético mexicano, con guitarras eléctricas Stratocaster y mucho flanger..."></textarea>
+            <textarea id="styleInput" placeholder="Describe todo aquí: Voz como Luis Miguel, estilo pop energético mexicano, con guitarras eléctricas Stratocaster y mucho flanger..."></textarea>
 
             <!-- STYLE FINAL — PREVISUALIZACIÓN EXACTA DEL BACKEND PARA UDIOAPI -->
             <div class="style-final-box" id="styleFinalPreviewSection" data-preview-state="idle">
@@ -6136,24 +6136,36 @@ function clearActivePreset() {
     if (b) b.innerHTML = '<i class="ph ph-lightning"></i> Cargar';
   });
   if ($('btnClearPreset')) $('btnClearPreset').style.display = 'none';
-  // Restaurar rítmica a Libre/Personalizado
+  // Restaurar rítmica a Libre/Personalizado y flags explícitos al estado neutral (0/1.000 si no hay prompt/Estudio)
   const librePill = document.querySelector('.rhythm-pill[data-rhythm="libre"]');
   if (librePill) {
     document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
     librePill.classList.add('active');
   }
-  if (typeof applyPresetInstruments === 'function') applyPresetInstruments('juvenil');
+  if (window.userExplicitControlFlags) {
+    Object.keys(window.userExplicitControlFlags).forEach(k => { window.userExplicitControlFlags[k] = false; });
+  }
+  if (window.userExplicitSf2Ids && typeof window.userExplicitSf2Ids.clear === 'function') {
+    window.userExplicitSf2Ids.clear();
+  }
+  if ($('chkCrashToms')) $('chkCrashToms').checked = false;
+  if ($('chkSplashRide')) $('chkSplashRide').checked = false;
+  if ($('chkTomGrooves')) $('chkTomGrooves').checked = false;
+  if ($('chkBassSlap')) $('chkBassSlap').checked = false;
+  if ($('chkBassPickup')) $('chkBassPickup').checked = false;
+  if (typeof applyPresetInstruments === 'function') applyPresetInstruments('juvenil', { isInitialDefault: true });
   if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
+  if (typeof scheduleStyleFinalPreview === 'function') scheduleStyleFinalPreview(true);
   logLine('Preset desactivado. Modo libre restaurado.');
   showToast('Preset desactivado. Ahora puedes configurar tu propio estilo libremente.', 'info');
 }
 
 if ($('btnClearPreset')) {
   $('btnClearPreset').addEventListener('click', () => {
-    clearActivePreset();
-    // Limpiar o vaciar estilo y exclusión si coincidían
     $('styleInput').value = '';
     $('excludeInput').value = '';
+    clearActivePreset();
+    if (typeof scheduleStyleFinalPreview === 'function') scheduleStyleFinalPreview(true);
   });
 }
 
@@ -6507,6 +6519,9 @@ document.querySelectorAll('.rhythm-pill').forEach(pill => {
     document.querySelectorAll('.rhythm-pill').forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     const r = pill.dataset.rhythm;
+    if (window.userExplicitControlFlags) {
+      window.userExplicitControlFlags.rhythm = Boolean(r && r !== 'libre');
+    }
     if (r === 'dos_pasos' || r === 'gospel_2step') {
       if ($('chkDrums')) $('chkDrums').checked = true;
       if ($('chkBass')) $('chkBass').checked = true;
@@ -6692,10 +6707,24 @@ function updateEffectiveConfigSummary() {
   }
 }
 
+window.userExplicitControlFlags = {
+  bpm: false,
+  hihat: false,
+  crashToms: false,
+  splashRide: false,
+  tomGrooves: false,
+  bassSlap: false,
+  bassPickup: false,
+  instruments: false,
+  rhythm: false
+};
+window.userExplicitSf2Ids = new Set();
+
 if ($('userBpmInput')) {
   $('userBpmInput').addEventListener('input', () => {
     const val = parseInt($('userBpmInput').value, 10);
     if (val && val >= 40 && val <= 220) {
+      window.userExplicitControlFlags.bpm = true;
       syncBpmToStylePrompt(val);
       updateEffectiveConfigSummary();
     }
@@ -6715,6 +6744,7 @@ if ($('styleInput')) {
 document.querySelectorAll('input[name="hihat_mode"]').forEach(radio => {
   radio.addEventListener('change', () => {
     if (radio.checked) {
+      window.userExplicitControlFlags.hihat = true;
       updateHiHatInStylePrompt(radio.value);
       updateEffectiveConfigSummary();
       if (radio.value === '8th') {
@@ -6728,9 +6758,25 @@ document.querySelectorAll('input[name="hihat_mode"]').forEach(radio => {
   });
 });
 
+const _EXPLICIT_CHK_FLAG_MAP = {
+  chkCrashToms: 'crashToms',
+  chkSplashRide: 'splashRide',
+  chkTomGrooves: 'tomGrooves',
+  chkBassSlap: 'bassSlap',
+  chkBassPickup: 'bassPickup',
+  chkDrums: 'instruments',
+  chkBass: 'instruments',
+  chkGuitar: 'instruments',
+  chkPiano: 'instruments',
+  chkOrgan: 'instruments'
+};
 ['chkCrashToms', 'chkSplashRide', 'chkTomGrooves', 'chkBassSlap', 'chkBassPickup', 'chkDrums', 'chkBass', 'chkGuitar', 'chkPiano', 'chkOrgan', 'chkNoLatin'].forEach(id => {
   const el = $(id);
-  if (el) el.addEventListener('change', updateEffectiveConfigSummary);
+  if (el) el.addEventListener('change', () => {
+    const fk = _EXPLICIT_CHK_FLAG_MAP[id];
+    if (fk && window.userExplicitControlFlags) window.userExplicitControlFlags[fk] = true;
+    updateEffectiveConfigSummary();
+  });
 });
 setTimeout(updateEffectiveConfigSummary, 0);
 
@@ -8653,6 +8699,31 @@ function setBusy(b){
   $('cancelBtn').style.display = b ? 'block' : 'none';
 }
 
+/* ---------- Mapa limpio de instrumentos SF2 -> nombre musical canónico conciso (sin números de catálogo ni duplicaciones) ---------- */
+const SF2_ID_TO_STYLE_NAME = {
+  piano_cola: 'acoustic grand piano',
+  bajo_finger: 'electric bass',
+  bajo_slap: 'electric bass',
+  bateria_acustica: 'acoustic drums',
+  organo: 'Hammond B3 organ',
+  piano_fm_dx: 'FM electric piano',
+  piano_sintetizado: 'electric grand piano',
+  guitarra_acustica: 'acoustic guitar',
+  guitarra_distorsionada: 'overdriven electric guitar',
+  guitarra_limpia: 'clean electric guitar',
+  bateria_electronica: 'electronic drums',
+  bongos: 'bongos',
+  congas: 'congas',
+  cajon: 'Peruvian cajon',
+  maracas: 'maracas',
+  synth_bass: 'synth bass',
+  synth_lead: 'synth lead',
+  flautas: 'flute',
+  synth_pad: 'warm synth pad',
+  cuerdas: 'orchestral strings',
+  campanas: 'tubular bells'
+};
+
 /* ---------- Constructor compartido de parámetros musicales (/api/preview_parameters y /api/transform) ---------- */
 function buildGenerationStylePayload(opts = {}) {
   const forPreview = Boolean(opts && opts.forPreview);
@@ -8661,7 +8732,8 @@ function buildGenerationStylePayload(opts = {}) {
 
   // Resolver configuración efectiva con prioridad absoluta de usuario
   const effCfg = getEffectiveUserMusicalConfig();
-  let finalStyle = ($('styleInput') ? $('styleInput').value : '').trim();
+  const userPromptText = ($('styleInput') ? $('styleInput').value : '').trim();
+  const userPromptLower = userPromptText.toLowerCase();
   const activeRhythmPill = document.querySelector('.rhythm-pill.active');
   const rhythmType = activeRhythmPill ? activeRhythmPill.dataset.rhythm : 'libre';
   const activePreset = effCfg.activePreset;
@@ -8669,99 +8741,110 @@ function buildGenerationStylePayload(opts = {}) {
 
   const isSoloGuitarMode = instr && (
     activePreset === 'guitar_solo' ||
-    finalStyle.toLowerCase().includes('solo de guitarra') ||
-    finalStyle.toLowerCase().includes('guitar solo') ||
-    finalStyle.toLowerCase().includes('solo guitar') ||
-    finalStyle.toLowerCase().includes('guitarra sola')
+    userPromptLower.includes('solo de guitarra') ||
+    userPromptLower.includes('guitar solo') ||
+    userPromptLower.includes('solo guitar') ||
+    userPromptLower.includes('guitarra sola')
   );
   const isSoloBassMode = instr && (
     activePreset === 'bass_solo' ||
-    finalStyle.toLowerCase().includes('solo de bajo') ||
-    finalStyle.toLowerCase().includes('bass solo') ||
-    finalStyle.toLowerCase().includes('solo bass') ||
-    finalStyle.toLowerCase().includes('bajo solo')
+    userPromptLower.includes('solo de bajo') ||
+    userPromptLower.includes('bass solo') ||
+    userPromptLower.includes('solo bass') ||
+    userPromptLower.includes('bajo solo')
   );
   const isSoloDrumMode = instr && (
-    finalStyle.toLowerCase().includes('solo de bateria') ||
-    finalStyle.toLowerCase().includes('drum solo') ||
-    finalStyle.toLowerCase().includes('bateria sola')
+    userPromptLower.includes('solo de bateria') ||
+    userPromptLower.includes('solo de batería') ||
+    userPromptLower.includes('drum solo') ||
+    userPromptLower.includes('bateria sola') ||
+    userPromptLower.includes('batería sola')
   );
   const isAnySoloInstrumentMode = instr && (isSoloGuitarMode || isSoloBassMode || isSoloDrumMode || isSoloPianoPrayerMode);
-
-  if (!isAnySoloInstrumentMode) {
-    if ((rhythmType === 'dos_pasos' || rhythmType === 'gospel_2step') && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('dos pasos') && !finalStyle.toLowerCase().includes('two-step')) {
-      finalStyle = `full live acoustic praise drum kit, tempo 4/4, loud cutting snare drum backbeat cracking hard on beats 2 and 4, heavy kick drum on 1 and 3, bright metallic hi-hat cymbals, crash cymbal downbeats, dynamic drum fills, loud upfront drums in the front of the mix, authentic physical electric bass guitar, zero synth bass, traditional two-step praise straight 4/4 rhythm, ${effCfg.effectiveBpm} bpm, no black gospel, no soul, no missing snare, no quiet snare, no missing cymbals, no kick drum only, ${finalStyle}`;
-    } else if (rhythmType === 'worship_ballad' && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('ballad')) {
-      finalStyle = `sacred Christian worship ballad, ${effCfg.effectiveBpm} bpm, straight 4/4 rock drum beat with snare backbeat on 2 and 4, steady bass, clean guitar, ${finalStyle}`;
-    } else if (rhythmType === 'waltz_34' && activePreset !== 'juvenil' && !finalStyle.toLowerCase().includes('waltz') && !finalStyle.toLowerCase().includes('vals')) {
-      finalStyle = `grand Viennese waltz hymn in 3/4 time, authentic Viennese oom-pah-pah 3/4 lilt, Strauss style, ${finalStyle}`;
-    }
-  }
 
   const studioSelPayload = (typeof getStudioVirtualSelections === 'function')
     ? getStudioVirtualSelections()
     : { drums: 'auto', guitars: 'auto', basses: 'auto', keyboards: 'auto', consoles: 'auto', microphones: 'auto' };
-  const hasAnyStudioSelector = Object.values(studioSelPayload).some(v => v && v !== 'auto');
 
-  // Banda activa (sólo si NO es un modo solista aislado y sin pisar categorías ya elegidas en Estudio Virtual)
-  const bandExtras = [];
-  if (!isAnySoloInstrumentMode) {
-    if ($('chkDrums') && $('chkDrums').checked && studioSelPayload.drums === 'auto' && !finalStyle.toLowerCase().includes('drum')) {
-      bandExtras.push('loud upfront prominent acoustic drum kit with crisp snare crack in the front of the mix, dynamic rhythmic pulse, articulate hi-hat, no distant drums');
+  // Instrumentos seleccionados EXPRESAMENTE por el usuario (los defaults internos de FluidSynth no se inyectan en `style`)
+  const uFlags = (typeof window !== 'undefined' && window.userExplicitControlFlags) ? window.userExplicitControlFlags : {};
+  const explicitSf2Ids = (typeof window !== 'undefined' && window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0)
+    ? Array.from(window.userExplicitSf2Ids)
+    : [];
+  const activeTrackIds = (typeof ACTIVE_UNIFIED_TRACKS !== 'undefined' && ACTIVE_UNIFIED_TRACKS)
+    ? Object.keys(ACTIVE_UNIFIED_TRACKS)
+    : [];
+  const styleTrackIds = explicitSf2Ids.length > 0
+    ? explicitSf2Ids
+    : ((Boolean(activePreset) || Boolean(uFlags.instruments)) ? activeTrackIds : []);
+  const selectedInstruments = [];
+  const seenInstLower = new Set();
+  const _pushInst = (name) => {
+    const clean = String(name || '').trim();
+    if (!clean) return;
+    const low = clean.toLowerCase();
+    if (!seenInstLower.has(low)) {
+      seenInstLower.add(low);
+      selectedInstruments.push(clean);
     }
-    if ($('chkBass') && $('chkBass').checked && studioSelPayload.basses === 'auto' && !finalStyle.toLowerCase().includes('bass guitar') && !finalStyle.toLowerCase().includes('jazz bass') && !finalStyle.toLowerCase().includes('precision')) {
-      if (effCfg.bassSlap) {
-        bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
-      } else {
-        bandExtras.push('authentic physical electric bass guitar with roundwound steel strings and warm Ampeg SVT tube amplifier, real human fingerstyle bass plucking, organic low-end fundamental, 100% real electric bass, zero synth bass, zero synthesizer bass, zero 808 sub');
-      }
-    }
-    if ($('chkGuitar') && $('chkGuitar').checked && studioSelPayload.guitars === 'auto' && !finalStyle.toLowerCase().includes('guitar')) {
-      bandExtras.push('crisp acoustic rhythm guitar strumming');
-    }
-    if ($('chkPiano') && $('chkPiano').checked && studioSelPayload.keyboards === 'auto' && !finalStyle.toLowerCase().includes('piano')) {
-      bandExtras.push('acoustic grand piano');
-    }
-    if ($('chkOrgan') && $('chkOrgan').checked && studioSelPayload.keyboards === 'auto' && !finalStyle.toLowerCase().includes('organ')) {
-      bandExtras.push('Hammond B3 organ');
-    }
-    if (!hasAnyStudioSelector && typeof ACTIVE_UNIFIED_TRACKS !== 'undefined' && typeof FREE_CATALOG_ITEMS !== 'undefined') {
-      const selectedNames = Object.keys(ACTIVE_UNIFIED_TRACKS).map(id => {
+  };
+
+  if (!isAnySoloInstrumentMode && styleTrackIds.length > 0) {
+    styleTrackIds.forEach(id => {
+      if (SF2_ID_TO_STYLE_NAME[id]) {
+        _pushInst(SF2_ID_TO_STYLE_NAME[id]);
+      } else if (typeof FREE_CATALOG_ITEMS !== 'undefined' && FREE_CATALOG_ITEMS) {
         const item = FREE_CATALOG_ITEMS.find(x => x.id === id);
-        return item ? item.name : id;
-      });
-      if (selectedNames.length > 0) {
-        bandExtras.push(`featured instruments: ${selectedNames.join(', ')}`);
+        if (item && item.name) {
+          const stripped = item.name.replace(/^\d+[A-Z]?\.\s*/i, '').replace(/\s*\([^)]*\)/g, '').trim();
+          _pushInst(stripped);
+        }
       }
-    }
-    if (bandExtras.length > 0) {
-      finalStyle = finalStyle ? `${finalStyle}, ${bandExtras.join(', ')}` : bandExtras.join(', ');
-    }
+    });
   }
 
-  // Sincronización Armónica de Acordes / Tablatura
+  // Sincronización Armónica de Acordes / Tablatura (separada del texto libre del usuario)
+  const harmonyClauses = [];
   if ($('chkAutoApplyChords') && $('chkAutoApplyChords').checked && $('chordInput') && $('chordInput').value.trim()) {
     if (!currentHarmonicAnalysis && typeof runHarmonicAnalysis === 'function') runHarmonicAnalysis();
     if (currentHarmonicAnalysis && (currentHarmonicAnalysis.detectedKey || currentHarmonicAnalysis.progressionText)) {
-      const harmPrompt = [];
-      if (currentHarmonicAnalysis.detectedKey && !finalStyle.toLowerCase().includes('key of')) {
-        harmPrompt.push(`key of ${currentHarmonicAnalysis.detectedKey}`);
+      if (currentHarmonicAnalysis.detectedKey && !userPromptLower.includes('key of')) {
+        harmonyClauses.push(`key of ${currentHarmonicAnalysis.detectedKey}`);
       }
-      if (currentHarmonicAnalysis.progressionText && !finalStyle.toLowerCase().includes('chord progression')) {
-        harmPrompt.push(`chord progression: ${currentHarmonicAnalysis.progressionText}`);
+      if (currentHarmonicAnalysis.progressionText && !userPromptLower.includes('chord progression')) {
+        harmonyClauses.push(`chord progression: ${currentHarmonicAnalysis.progressionText}`);
       }
       if (currentHarmonicAnalysis.bassInversions && currentHarmonicAnalysis.bassInversions.length > 0) {
-        harmPrompt.push(`bassline voice leading with bass notes (${currentHarmonicAnalysis.bassInversions.join(', ')})`);
+        harmonyClauses.push(`bass voice leading (${currentHarmonicAnalysis.bassInversions.join(', ')})`);
       }
-      harmPrompt.push('tight musical accompaniment following chord changes');
-      finalStyle = finalStyle ? `${harmPrompt.join(', ')}, ${finalStyle}` : harmPrompt.join(', ');
       if (!forPreview) {
         logLine(`Armonía sincronizada: ${currentHarmonicAnalysis.spanishKey} | ${currentHarmonicAnalysis.progressionText}`);
       }
     }
   }
 
-  fd.append('style', finalStyle);
+  const styleContext = {
+    user_prompt: userPromptText,
+    rhythm_type: rhythmType,
+    harmony_clauses: harmonyClauses,
+    selected_instruments: selectedInstruments,
+    selected_instrument_ids: styleTrackIds,
+    explicit_flags: {
+      bpm: Boolean(uFlags.bpm || Boolean(activePreset) || Boolean(extractBpmFromStylePrompt(userPromptText))),
+      hihat: Boolean(uFlags.hihat),
+      crash_toms: Boolean(uFlags.crashToms),
+      splash_ride: Boolean(uFlags.splashRide),
+      tom_grooves: Boolean(uFlags.tomGrooves),
+      bass_slap: Boolean(uFlags.bassSlap),
+      bass_pickup: Boolean(uFlags.bassPickup),
+      instruments: Boolean(selectedInstruments.length > 0 || Boolean(activePreset)),
+      rhythm: Boolean(rhythmType && rhythmType !== 'libre'),
+      vocal_gender: Boolean(typeof gender !== 'undefined' && (gender === 'male' || gender === 'female'))
+    }
+  };
+
+  fd.append('style', userPromptText);
+  fd.append('style_context_json', JSON.stringify(styleContext));
   fd.append('studio_drums', studioSelPayload.drums || 'auto');
   fd.append('studio_guitar', studioSelPayload.guitars || 'auto');
   fd.append('studio_bass', studioSelPayload.basses || 'auto');
@@ -8812,15 +8895,16 @@ function buildGenerationStylePayload(opts = {}) {
     autoExcludeGroups.push('ritmo latino, percusion latina, cumbia, salsa, bachata, reggaeton, murga, comparsa, batucada, sincopa');
   }
 
-  // Baneo automático de sintetizadores de bajo SOLO cuando hay bajo real y NO se pidió synth bass explícitamente
-  const lowerFinalStyle = finalStyle.toLowerCase();
+  // Baneo automático de sintetizadores de bajo SOLO cuando hay bajo real seleccionado explícitamente y NO se pidió synth bass
   const hasMinimoogSelected = (studioSelPayload.keyboards === 'minimoog');
-  const hasExplicitSynthBass = hasMinimoogSelected || /\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass|electronic\s+bass|sub[\s_-]*bass\s+synth)\b/i.test(lowerFinalStyle);
-  const cleanedStyleForBassCheck = lowerFinalStyle.replace(/\b(bass\s+drum|double\s+bass\s+drum|bassoons?)\b/g, '');
+  const hasSf2SynthBass = styleTrackIds.includes('synth_bass');
+  const hasExplicitSynthBass = hasMinimoogSelected || hasSf2SynthBass || /\b(synth[\s_-]*bass|synthesizer\s+bass|808\s*(?:bass|sub)|moog\s+bass|electronic\s+bass|sub[\s_-]*bass\s+synth)\b/i.test(userPromptLower);
+  const cleanedStyleForBassCheck = userPromptLower.replace(/\b(bass\s+drum|double\s+bass\s+drum|bassoons?)\b/g, '');
   const hasStudioElectricBass = (studioSelPayload.basses && studioSelPayload.basses !== 'auto');
+  const hasSf2RealBass = styleTrackIds.includes('bajo_finger') || styleTrackIds.includes('bajo_slap');
   const hasRealBassSelected = !isSoloGuitarMode && !hasExplicitSynthBass && (
     hasStudioElectricBass ||
-    ($('chkBass') && $('chkBass').checked) ||
+    hasSf2RealBass ||
     /\b(bass|bajo|fender|precision|jazz\s+bass|stingray|contrabajo|upright)\b/i.test(cleanedStyleForBassCheck)
   );
   if (hasRealBassSelected) {
@@ -8837,7 +8921,8 @@ function buildGenerationStylePayload(opts = {}) {
   fd.append('obfuscate', String(Boolean($('obfuscate') && $('obfuscate').checked)));
 
   const signature = JSON.stringify({
-    s: finalStyle,
+    s: userPromptText,
+    ctx: styleContext,
     st: studioSelPayload,
     bpm: effCfg.effectiveBpm,
     hh: effCfg.hihatMode,
@@ -8849,7 +8934,7 @@ function buildGenerationStylePayload(opts = {}) {
     ly: lyricsToSend.slice(0, 300),
   });
 
-  return { fd, finalStyle, finalExclude, studioSelPayload, effCfg, signature };
+  return { fd, finalStyle: userPromptText, styleContext, finalExclude, studioSelPayload, effCfg, signature };
 }
 
 /* ---------- Generar ---------- */
@@ -11170,10 +11255,16 @@ async function initUnifiedInstruments() {
   }
   const activePresetCard = document.querySelector('.preset-card.active');
   const initialPreset = activePresetCard ? activePresetCard.dataset.preset : 'juvenil';
-  applyPresetInstruments(initialPreset);
+  if (window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0) {
+    renderActiveInstrumentsChips();
+    renderUnifiedInstrumentsGrid();
+    return;
+  }
+  applyPresetInstruments(initialPreset, { isInitialDefault: !activePresetCard });
 }
 
-function applyPresetInstruments(presetKey) {
+function applyPresetInstruments(presetKey, opts = {}) {
+  const isInitialDefault = Boolean(opts && opts.isInitialDefault);
   let mapping = PRESET_INSTRUMENTS_MAP[presetKey];
   if (presetKey === 'piano_oracion') {
     const selectedRadio = document.querySelector('input[name="prayer_piano_type"]:checked');
@@ -11183,17 +11274,26 @@ function applyPresetInstruments(presetKey) {
   if (!mapping) mapping = PRESET_INSTRUMENTS_MAP.juvenil;
 
   ACTIVE_UNIFIED_TRACKS = Object.assign({}, mapping);
+  if (window.userExplicitSf2Ids && typeof window.userExplicitSf2Ids.clear === 'function') {
+    window.userExplicitSf2Ids.clear();
+    if (!isInitialDefault) {
+      Object.keys(mapping).forEach(k => window.userExplicitSf2Ids.add(k));
+    }
+  }
+  if (window.userExplicitControlFlags) {
+    window.userExplicitControlFlags.instruments = !isInitialDefault;
+  }
   renderActiveInstrumentsChips();
   renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies();
+  syncLegacyBandProxies({ syncSlap: !isInitialDefault });
   if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
 }
 
 function restorePresetInstruments() {
   const activeCard = document.querySelector('.preset-card.active');
   const presetKey = activeCard ? activeCard.dataset.preset : 'juvenil';
-  applyPresetInstruments(presetKey);
-  showToast('Instrumentos restaurados según el preset actual', 'info');
+  applyPresetInstruments(presetKey, { isInitialDefault: !activeCard });
+  showToast(activeCard ? 'Instrumentos restaurados según el preset actual' : 'Instrumentos restablecidos a base neutral (sin inyección en STYLE)', 'info');
 }
 
 function renderActiveInstrumentsChips() {
@@ -11244,9 +11344,33 @@ function onActiveChipVolChange(id, val) {
 
 function removeInstrumentFromMix(id) {
   delete ACTIVE_UNIFIED_TRACKS[id];
+  if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.delete(id);
+  if (window.userExplicitControlFlags) {
+    const hasPreset = Boolean(document.querySelector('.preset-card.active'));
+    window.userExplicitControlFlags.instruments = hasPreset || Boolean(window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0);
+  }
   renderActiveInstrumentsChips();
   renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies();
+  syncLegacyBandProxies({ syncSlap: id === 'bajo_slap' });
+  if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
+}
+
+function setAllInstrumentsState(enableAll) {
+  if (enableAll) {
+    (FREE_CATALOG_ITEMS || []).forEach(item => {
+      const vol = Math.round((item.default_volume || 1.0) * 100);
+      ACTIVE_UNIFIED_TRACKS[item.id] = vol;
+      if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.add(item.id);
+    });
+    if (window.userExplicitControlFlags) window.userExplicitControlFlags.instruments = true;
+  } else {
+    ACTIVE_UNIFIED_TRACKS = {};
+    if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.clear();
+    if (window.userExplicitControlFlags) window.userExplicitControlFlags.instruments = false;
+  }
+  renderActiveInstrumentsChips();
+  renderUnifiedInstrumentsGrid();
+  syncLegacyBandProxies({ syncSlap: false });
   if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
 }
 
@@ -11299,12 +11423,19 @@ function onUnifiedInstCheckboxToggle(id, checked) {
     const volEl = document.getElementById('gridVol_' + id);
     const vol = volEl ? parseInt(volEl.value, 10) : 100;
     ACTIVE_UNIFIED_TRACKS[id] = isNaN(vol) ? 100 : vol;
+    if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.add(id);
   } else {
     delete ACTIVE_UNIFIED_TRACKS[id];
+    if (window.userExplicitSf2Ids) window.userExplicitSf2Ids.delete(id);
+  }
+  if (window.userExplicitControlFlags) {
+    const hasPreset = Boolean(document.querySelector('.preset-card.active'));
+    window.userExplicitControlFlags.instruments = hasPreset || Boolean(window.userExplicitSf2Ids && window.userExplicitSf2Ids.size > 0);
+    if (id === 'bajo_slap') window.userExplicitControlFlags.bassSlap = checked;
   }
   renderActiveInstrumentsChips();
   renderUnifiedInstrumentsGrid();
-  syncLegacyBandProxies();
+  syncLegacyBandProxies({ syncSlap: id === 'bajo_slap' });
   if (typeof updateEffectiveConfigSummary === 'function') updateEffectiveConfigSummary();
 }
 
@@ -11319,7 +11450,8 @@ function onGridVolChange(id, val) {
   }
 }
 
-function syncLegacyBandProxies() {
+function syncLegacyBandProxies(opts = {}) {
+  const syncSlap = Boolean(opts && opts.syncSlap);
   const activeIds = Object.keys(ACTIVE_UNIFIED_TRACKS);
   const hasDrums = activeIds.some(id => id.includes('bateria'));
   const hasBass = activeIds.some(id => id.includes('bajo') || id.includes('synth_bass'));
@@ -11330,7 +11462,7 @@ function syncLegacyBandProxies() {
 
   if ($('chkDrums')) $('chkDrums').checked = hasDrums;
   if ($('chkBass')) $('chkBass').checked = hasBass;
-  if ($('chkBassSlap')) $('chkBassSlap').checked = hasSlap;
+  if (syncSlap && $('chkBassSlap')) $('chkBassSlap').checked = hasSlap;
   if ($('chkGuitar')) $('chkGuitar').checked = hasGuitar;
   if ($('chkPiano')) $('chkPiano').checked = hasPiano;
   if ($('chkOrgan')) $('chkOrgan').checked = hasOrgan;
@@ -12489,11 +12621,17 @@ function _renderStyleFinalFromBackend(data) {
   const finalText = String(data.style_full_preview || '');
   const finalLen = typeof data.style_length === 'number' ? data.style_length : finalText.length;
   const maxChars = data.style_max_chars || 1000;
+  const availChars = typeof data.style_available_chars === 'number'
+    ? data.style_available_chars
+    : Math.max(0, maxChars - finalLen);
   const rawLen = typeof data.style_raw_length === 'number' ? data.style_raw_length : finalLen;
   const sp = data.studio_profiles || null;
   const opt = data.style_optimization || null;
+  const bd = data.style_breakdown || null;
   const omitted = (sp && Array.isArray(sp.omitted_categories)) ? sp.omitted_categories : [];
   const reduced = (sp && Array.isArray(sp.reduced_categories)) ? sp.reduced_categories : [];
+  const conflicts = Array.isArray(data.conflicts) ? data.conflicts.filter(Boolean) : [];
+  const userOverflowWarn = data.user_prompt_warning_es ? String(data.user_prompt_warning_es).trim() : '';
   const preservedDims = (sp && sp.preserved_dimensions) ? sp.preserved_dimensions : {};
   const activeCount = (sp && typeof sp.active_count === 'number') ? sp.active_count : 0;
   const allThreeDims = activeCount > 0 && Object.values(preservedDims).filter(arr => Array.isArray(arr) && arr.length === 3).length === activeCount;
@@ -12503,14 +12641,34 @@ function _renderStyleFinalFromBackend(data) {
   if (ta) {
     ta.value = finalText;
     ta.dataset.stale = 'false';
+    if (!finalText) {
+      ta.placeholder = `0 / ${maxChars.toLocaleString('es-AR')} caracteres — ${maxChars.toLocaleString('es-AR')} disponibles. Escribe tu prompt o selecciona configuraciones musicales.`;
+    }
   }
   if (copyBtn) copyBtn.disabled = !finalText.length;
   if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; }
 
+  const conflictSuffix = conflicts.length > 0 ? ` | ${conflicts.join(' | ')}` : '';
   let warningMsg = '';
-  if (omitted.length > 0) {
+  if (userOverflowWarn) {
+    const omitExtra = omitted.length > 0 ? ` ${_formatOmissionWarningClient(omitted, data.omitted_warning_es)} [Omitida por límite de 1000 chars]` : '';
+    warningMsg = `⚠️ ${userOverflowWarn}${omitExtra}${conflictSuffix}`;
+    _setStyleFinalBadge('Excede 1.000', 'err');
+    if (warnDot) { warnDot.style.display = 'inline-flex'; warnDot.classList.add('danger'); }
+    if (omitBanner) {
+      omitBanner.style.display = 'block';
+      omitBanner.textContent = `⚠️ ${userOverflowWarn}`;
+    }
+    if (warnEl) {
+      warnEl.style.display = 'block';
+      warnEl.style.background = 'rgba(239,68,68,0.14)';
+      warnEl.style.border = '1px solid rgba(239,68,68,0.45)';
+      warnEl.style.color = '#FECACA';
+      warnEl.textContent = warningMsg;
+    }
+  } else if (omitted.length > 0) {
     const esWarn = _formatOmissionWarningClient(omitted, data.omitted_warning_es);
-    warningMsg = `⚠️ Advertencia por límite de ${maxChars} caracteres: ${esWarn} [Omitida por límite de 1000 chars]`;
+    warningMsg = `⚠️ Advertencia por límite de ${maxChars} caracteres: ${esWarn} [Omitida por límite de 1000 chars]${conflictSuffix}`;
     _setStyleFinalBadge(`Omisión (${omitted.length})`, 'err');
     if (warnDot) { warnDot.style.display = 'inline-flex'; warnDot.classList.add('danger'); }
     if (omitBanner) {
@@ -12525,7 +12683,7 @@ function _renderStyleFinalFromBackend(data) {
       warnEl.textContent = warningMsg;
     }
   } else if (reduced.length > 0 || (opt && opt.compacted && rawLen > finalLen)) {
-    warningMsg = data.compaction_notice || `⚠️ Aviso por límite de ${maxChars} caracteres: el backend optimizó el texto (${rawLen} → ${finalLen} chars) conservando todas las selecciones activas.`;
+    warningMsg = (data.compaction_notice || `Aviso por límite de ${maxChars} caracteres: el backend optimizó el texto (${rawLen} → ${finalLen} chars) conservando todas las selecciones activas.`) + conflictSuffix;
     _setStyleFinalBadge(allThreeDims ? 'Optimizado (3 dim.)' : 'Compactado', allThreeDims ? 'opt' : 'warn');
     if (warnDot) { warnDot.style.display = 'inline-flex'; warnDot.classList.remove('danger'); }
     if (omitBanner) { omitBanner.style.display = 'none'; omitBanner.textContent = ''; }
@@ -12536,8 +12694,23 @@ function _renderStyleFinalFromBackend(data) {
       warnEl.style.color = '#FDE68A';
       warnEl.textContent = `⚠️ ${warningMsg}`;
     }
+  } else if (conflicts.length > 0) {
+    warningMsg = conflicts.join(' | ');
+    _setStyleFinalBadge('Conflicto', 'warn');
+    if (warnDot) { warnDot.style.display = 'inline-flex'; warnDot.classList.remove('danger'); }
+    if (omitBanner) {
+      omitBanner.style.display = 'block';
+      omitBanner.textContent = `⚠️ ${conflicts[0]}`;
+    }
+    if (warnEl) {
+      warnEl.style.display = 'block';
+      warnEl.style.background = 'rgba(245,158,11,0.14)';
+      warnEl.style.border = '1px solid rgba(245,158,11,0.45)';
+      warnEl.style.color = '#FDE68A';
+      warnEl.textContent = `⚠️ ${warningMsg}`;
+    }
   } else {
-    _setStyleFinalBadge(finalLen > 0 ? 'Óptimo' : 'Vacío', finalLen > 0 ? 'ok' : '');
+    _setStyleFinalBadge(`${availChars.toLocaleString('es-AR')} disponibles`, 'ok');
     if (warnDot) { warnDot.style.display = 'none'; warnDot.classList.remove('danger'); }
     if (omitBanner) { omitBanner.style.display = 'none'; omitBanner.textContent = ''; }
     if (warnEl) { warnEl.style.display = 'none'; warnEl.textContent = ''; }
@@ -12546,7 +12719,11 @@ function _renderStyleFinalFromBackend(data) {
 
   if (metaNote) {
     const rawPart = rawLen > finalLen ? ` (optimizado desde ${rawLen} chars)` : '';
-    metaNote.textContent = `Exacto del backend (/api/preview_parameters)${rawPart} • Solo lectura • 0 créditos`;
+    const availPart = ` • ${availChars.toLocaleString('es-AR')} disponibles`;
+    const bdPart = (bd && finalLen > 0)
+      ? ` • Tu prompt: ${bd.user_prompt_chars || 0} | Config: ${bd.explicit_config_chars || 0} | Estudio: ${bd.studio_virtual_chars || 0}`
+      : (finalLen === 0 ? ' • Sin inyección automática' : '');
+    metaNote.textContent = `Exacto del backend (/api/preview_parameters)${rawPart}${availPart}${bdPart} • Solo lectura • 0 créditos`;
   }
 }
 
@@ -12635,7 +12812,7 @@ function scheduleStyleFinalPreview(forceImmediate = false) {
   }, delayMs);
 }
 
-function updateStudioSelectorsUI() {
+function updateStudioSelectorsUI(forceImmediate = false) {
   studioVirtualSelections = getStudioVirtualSelections();
   saveStudioSelectorsToStorage();
 
@@ -12677,10 +12854,10 @@ function updateStudioSelectorsUI() {
   }
 
   if ($('styleInput')) {
-    $('styleInput').required = (activeCount === 0);
+    $('styleInput').required = false;
   }
 
-  scheduleStyleFinalPreview(false);
+  scheduleStyleFinalPreview(Boolean(forceImmediate));
 }
 
 function renderStudioSelectorsFromCatalog(catalog) {
@@ -12716,7 +12893,7 @@ function resetStudioVirtualSelectors() {
       if (sel) sel.value = 'auto';
     });
   }
-  updateStudioSelectorsUI();
+  updateStudioSelectorsUI(true);
   showToast('Selectores del Estudio Virtual restablecidos a Original / Automático', 'info');
 }
 
@@ -13029,6 +13206,7 @@ function handleTapTempo() {
 
 function onBpmSliderChange(val) {
   val = parseInt(val, 10);
+  if (window.userExplicitControlFlags) window.userExplicitControlFlags.bpm = true;
   if ($('bpmRangeSlider')) $('bpmRangeSlider').value = val;
   if ($('bpmNumberDisplay')) $('bpmNumberDisplay').textContent = val;
   if ($('userBpmInput')) $('userBpmInput').value = val;
